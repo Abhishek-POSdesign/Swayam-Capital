@@ -1,0 +1,17 @@
+{
+  "name": "swayam-capital-web",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Swayam Capital Dashboard & Options Strategy Builder Frontend",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "plotly.js-dist-min": "^2.35.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
