@@ -113,3 +113,38 @@ To automatically reconcile your 2:30 PM manual self-assessment with the fully-sy
    - **Start in:** `D:\Claude\POS\Trading-Platform\Swayam Capital`
 6. Click **Finish**.
 7. *(Optional Verification)*: You can test it immediately by right-clicking the new task and clicking **Run**, or running `python scripts/run_reconciler.py` in PowerShell.
+
+---
+
+## 9. Morning FYERS Token Refresh Routine
+
+FYERS access tokens expire daily. Before market open (e.g., 08:45–09:00 IST), run:
+```powershell
+python scripts/refresh_fyers_token.py
+```
+This script:
+1. Opens your browser to authenticate with your FYERS PIN and OTP.
+2. Updates your local `.env` file.
+3. Automatically pushes the new token to **Google Cloud Secret Manager (`fyers-access-token`)**, ensuring the 24/7 cloud options recorder has fresh credentials before 09:15 IST.
+
+---
+
+## 10. Nightly Options GCS Ingest Scheduled Task (22:30 IST)
+
+To automatically download the day's 45,000+ options snapshots from Google Cloud Storage into your local DuckDB database:
+
+1. Open **Windows Task Scheduler** (`taskschd.msc`).
+2. Click **Create Basic Task...**
+3. **Name:** `Swayam Capital Nightly Options Ingest`
+4. **Trigger:** Select **Daily** and set start time to `22:30:00` (10:30 PM).
+5. **Action:** Select **Start a program**:
+   - **Program/script:** `D:\Claude\POS\Trading-Platform\Swayam Capital\.venv\Scripts\python.exe`
+   - **Add arguments:** `scripts\ingest_gcs_to_duckdb.py`
+   - **Start in:** `D:\Claude\POS\Trading-Platform\Swayam Capital`
+6. Click **Finish**.
+
+> **Backfill Support:** If your PC was off for several days, run:
+> ```powershell
+> python scripts/ingest_gcs_to_duckdb.py --date-range 2026-09-08:2026-09-12
+> ```
+

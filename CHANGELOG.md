@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - BUILD-5 (2026-09-05)
+- **Live Options Recorder Cloud Function (`cloud/recorder/`)**: Standalone Gen2 Cloud Function deployed to Google Cloud (`asia-south1`) running every 60s during trading hours (09:15–15:30 IST, Mon–Fri).
+- **Time Gating & Idempotency**: Strict market hours check exits as an idempotent HTTP 200 no-op outside trading hours. GCS Parquet writes deduplicate strictly on `(snapshot_time_utc, symbol)` before rewriting the daily file, preventing duplicates from scheduler retries or clock skew.
+- **Unified DuckDB Historical Storage (`src/swayam/local_db.py`)**: Extended `options_history` table with intraday columns (`snapshot_time_utc`, `bid`, `ask`, `iv`, `delta`, `gamma`, `theta`, `vega`) and composite natural key `(trade_date, symbol, snapshot_time_utc)`. Unified table houses both historical Bhavcopy and live recorded snapshots without schema fragmentation.
+- **FYERS Token Refresher & Secret Manager Sync (`scripts/refresh_fyers_token.py`)**: Interactive helper to authenticate with FYERS and push the new access token to Google Cloud Secret Manager (`fyers-access-token`) and update `.env`.
+- **Automated Cloud Deployer (`scripts/deploy_recorder.py`)**: One-command deployment script provisioning the Cloud Function Gen2 and configuring Cloud Scheduler.
+- **Nightly GCS Ingest Tool (`scripts/ingest_gcs_to_duckdb.py`)**: Synchronizes daily Parquet files from Cloud Storage to local DuckDB with full `--date-range` backfill support and execution logging.
+- **Documentation**: Added `docs/gcp_setup.md`, `docs/recorder_architecture.md`, updated `SETUP.md` with morning refresh and nightly ingest scheduled tasks, and expanded `README.md`.
+- **Test Suite Expansion**: Added 10 new tests across `tests/cloud/` and `tests/scripts/`, bringing the verified automated suite to 112 pytest + 6 vitest (118 total passing).
+
 ### Added - BUILD-4 (2026-09-05)
 - **Operational Readiness Engine (`src/swayam/readiness/`)**: 60-second manual-first readiness check operationalizing Method `Operational Readiness Rules.md`.
 - **Verdict Calculator (`verdict.py`)**: Computes 🟢/🟡/🔴 verdicts evaluating sleep buckets (<5h blocks, 5-6h caps at 75% size), alcohol lockout (90-day lockout & re-entry ramp), 48h workout window, mood turbulence (Angry/Grief blocks), and life stressors via `TolerantComparator`.

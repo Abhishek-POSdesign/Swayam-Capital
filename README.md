@@ -67,6 +67,13 @@ Swayam Capital/
 │       │   ├── daily_log_reader.py# Parses today's Obsidian daily log for defaults
 │       │   └── reconciler.py      # End-of-day cross-check against synced Atlas data
 │       └── smoketest.py           # Unified connection and health verification tool
+├── cloud/
+│   └── recorder/                  # 24/7 Live Options Recorder Cloud Function Gen2 (BUILD-5)
+│       ├── main.py                # HTTP entrypoint called every 60s by Cloud Scheduler
+│       ├── fyers_recorder.py      # Time gating, FYERS chain fetch, GCS append & deduplication
+│       ├── config.py              # Cloud Function config and Secret Manager token loader
+│       ├── requirements.txt       # Minimal cloud runtime dependencies
+│       └── README.md              # Cloud recorder documentation
 ├── web/                           # Dashboard and Strategy Builder frontend
 │   └── README.md                  # Frontend scaffolding notes (BUILD-3)
 ├── migrations/                    # Additive SQL migrations for Supabase
@@ -75,22 +82,27 @@ Swayam Capital/
 ├── scripts/                       # Operational utility scripts
 │   ├── apply_migration.py         # Executes SQL migrations against Supabase
 │   ├── download_all_bhavcopy.py   # Bulk historical NSE Bhavcopy downloader
-│   └── generate_fyers_token.py    # Helper for FYERS OAuth access token flow
-├── tests/                         # Pytest automated test suite
-│   ├── __init__.py
-│   ├── test_config.py             # Settings validation tests
-│   ├── test_rules_engine.py       # TolerantComparator edge-case unit tests
-│   ├── test_vault_reader.py       # Method files reader tests against Second Brain
-│   ├── test_tradingview_helper.py # TradingView URL construction tests
-│   ├── test_bhavcopy.py           # NSE Bhavcopy parsing and DuckDB ingestion tests
-│   └── test_smoketest.py          # Smoketest execution test
+│   ├── generate_fyers_token.py    # Helper for FYERS OAuth access token flow
+│   ├── refresh_fyers_token.py     # Interactive FYERS token refresher & Secret Manager sync
+│   ├── deploy_recorder.py         # Automated GCP Cloud Function & Scheduler deployer
+│   ├── ingest_gcs_to_duckdb.py    # Local nightly GCS to DuckDB options ingest tool
+│   └── run_reconciler.py          # Windows task script for nightly readiness reconciliation
+├── tests/                         # Pytest automated test suite (112 tests)
+│   ├── api/                       # API route integration tests
+│   ├── cloud/                     # Cloud recorder unit tests
+│   ├── readiness/                 # Readiness engine and reconciler tests
+│   ├── scripts/                   # CLI and ingest script tests
+│   └── ...                        # Core unit and mock tests
 ├── data/                          # Local data cache (gitignored)
 │   ├── bhavcopy/                  # Raw downloaded NSE CSV files
 │   ├── options_cache.duckdb       # DuckDB multi-year options history database
-│   └── recorded_ticks/            # Parquet files from Phase 1 live WebSocket recorder
+│   └── ingest.log                 # Nightly sync execution log
 └── docs/
     ├── architecture.md            # System architecture mapping
-    └── AI_INTEGRATION.md          # Distilled POS design-bible AI philosophy
+    ├── AI_INTEGRATION.md          # Distilled POS design-bible AI philosophy
+    ├── readiness_workflow.md      # 60-second manual-first readiness workflow
+    ├── gcp_setup.md               # One-time Google Cloud setup walkthrough
+    └── recorder_architecture.md   # Live options recorder design and schema
 ```
 
 ---
