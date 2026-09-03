@@ -11,10 +11,15 @@ venv/
 .venv/
 env/
 
+# Python packaging artifacts
+*.egg-info/
+src/*.egg-info/
+build/
+dist/
+*.egg
+
 # Node.js
 node_modules/
-dist/
-build/
 .next/
 
 # Data and Cache
