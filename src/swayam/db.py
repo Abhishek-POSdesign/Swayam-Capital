@@ -67,13 +67,24 @@ class SupabaseDB:
         payload = {"key": key, "value": value, "updated_by": updated_by}
         self.client.table("config").upsert(payload).execute()
 
-    def get_margin_base_inr(self, fallback: float = 850000.0) -> float:
-        """Convenience method to retrieve current margin base in INR."""
-        val = self.get_config("margin_base_inr", fallback)
+    def get_margin_base_inr(self) -> float:
+        """Retrieves the current margin base in INR from the config table.
+
+        Raises:
+            DatabaseError: If the config row is missing or the value cannot be parsed.
+        """
+        val = self.get_config("margin_base_inr")
+        if val is None:
+            raise DatabaseError(
+                "Config key 'margin_base_inr' not found in Supabase. "
+                "Ensure migration 001 has been applied and seeded."
+            )
         try:
             return float(val)
-        except (ValueError, TypeError):
-            return fallback
+        except (ValueError, TypeError) as e:
+            raise DatabaseError(
+                f"Config value for 'margin_base_inr' is not a valid float: {val!r}"
+            ) from e
 
 
 # Global database instance
