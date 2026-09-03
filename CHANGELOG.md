@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - BUILD-4 (2026-09-05)
+- **Operational Readiness Engine (`src/swayam/readiness/`)**: 60-second manual-first readiness check operationalizing Method `Operational Readiness Rules.md`.
+- **Verdict Calculator (`verdict.py`)**: Computes 🟢/🟡/🔴 verdicts evaluating sleep buckets (<5h blocks, 5-6h caps at 75% size), alcohol lockout (90-day lockout & re-entry ramp), 48h workout window, mood turbulence (Angry/Grief blocks), and life stressors via `TolerantComparator`.
+- **Daily Log Reader (`daily_log_reader.py`)**: Parses today's Obsidian daily log (`01 - Daily Logs/{YYYY-MM-DD}.md`) for available Atlas defaults to pre-populate form suggestions while keeping manual feelings primary.
+- **Evening Reconciler (`reconciler.py` & `scripts/run_reconciler.py`)**: Nightly 22:00 IST cross-check comparing pre-market self-assessment against synced Atlas health data for pattern tracking without modifying trade history.
+- **REST API Endpoints (`routes/readiness.py`)**: Added `GET /api/readiness/today`, `POST /api/readiness/log`, and `POST /api/readiness/reconcile`.
+- **Validation Safety Gate Integration (`routes/validation.py`)**: Integrated readiness gate into `/api/strategy/validate`—RED verdict strictly blocks trade validation; YELLOW verdict automatically enforces reduced sizing ceiling.
+- **Frontend Readiness Component (`readiness-check.js`)**: Compact pre-trade form with mood pill selectors and live verdict badge with re-log and reconciliation capabilities.
+- **Test Suite Expansion**: Added 20 new tests across `tests/readiness/` and `tests/api/test_readiness_endpoints.py`, bringing the automated test suite to 102 pytest + 6 vitest (108 total passing).
+
 ### Fixed - BUILD-3 FIXES (2026-09-05)
 - **api (validation)**: Eliminated silent fallback `margin_base_inr = 850000.0`. Missing or unreachable Supabase margin base now raises `HTTPException(503)` loudly with diagnostic detail.
 - **api (execution)**: Eliminated silent fallback `margin_base_inr = 850000.0`. Missing margin base now raises `HTTPException(503)` loudly.

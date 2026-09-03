@@ -96,3 +96,20 @@ python -m swayam.smoketest
 5. Open [**http://localhost:5173**](http://localhost:5173) in your browser.
 
 > **Note on Supabase Project:** The default project reference is `wxijlrwoiaeaupaaqecc`. Ensure your `.env` contains `SUPABASE_URL=https://wxijlrwoiaeaupaaqecc.supabase.co` and the corresponding anon key.
+
+---
+
+## 8. Scheduled Task Setup (Evening Readiness Reconciler)
+
+To automatically reconcile your 2:30 PM manual self-assessment with the fully-synced Atlas data each night at 22:00 IST:
+
+1. Press `Win + R`, type `taskschd.msc`, and press **Enter** to open Windows Task Scheduler.
+2. Click **Create Basic Task...** in the Actions panel on the right.
+3. **Name:** `Swayam Capital Daily Readiness Reconciler`
+4. **Trigger:** Select **Daily** and set start time to `22:00:00` (10:00 PM).
+5. **Action:** Select **Start a program**:
+   - **Program/script:** `D:\Claude\POS\Trading-Platform\Swayam Capital\.venv\Scripts\python.exe`
+   - **Add arguments:** `scripts\run_reconciler.py`
+   - **Start in:** `D:\Claude\POS\Trading-Platform\Swayam Capital`
+6. Click **Finish**.
+7. *(Optional Verification)*: You can test it immediately by right-clicking the new task and clicking **Run**, or running `python scripts/run_reconciler.py` in PowerShell.

@@ -60,6 +60,12 @@ Swayam Capital/
 │       │       ├── vertex.py      # Vertex AI (Gemini) provider stub
 │       │       ├── openrouter.py  # OpenRouter provider stub
 │       │       └── direct.py      # Direct API provider stub (Anthropic/OpenAI)
+│       ├── readiness/             # Operational Readiness evaluation engine (BUILD-4)
+│       │   ├── __init__.py
+│       │   ├── models.py          # ReadinessInput, ReadinessVerdict, ReadinessReconciliation
+│       │   ├── verdict.py         # 🟢/🟡/🔴 verdict calculator against Method rules
+│       │   ├── daily_log_reader.py# Parses today's Obsidian daily log for defaults
+│       │   └── reconciler.py      # End-of-day cross-check against synced Atlas data
 │       └── smoketest.py           # Unified connection and health verification tool
 ├── web/                           # Dashboard and Strategy Builder frontend
 │   └── README.md                  # Frontend scaffolding notes (BUILD-3)
