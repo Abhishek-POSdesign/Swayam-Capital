@@ -69,10 +69,30 @@ This guide takes you from a clean machine to a fully verified Swayam Capital dev
 
 ## 6. Run System Health Verification (Smoketest)
 
-Verify that all subsystems (Environment, Obsidian Vault, Rules Engine, Supabase, FYERS API, and DuckDB) are communicating properly:
+Verify that all subsystems (Environment, Obsidian Vault, Rules Engine, Supabase, FYERS API, DuckDB, and Web) are communicating properly:
 
 ```powershell
 python -m swayam.smoketest
 ```
 
-When all 7 checks display green checkmarks (`[✅]`), the foundation is ready for BUILD-2!
+---
+
+## 7. Web Dashboard Setup (`web/`)
+
+1. Ensure Node.js (`v18+`) is installed (`node -v`, `npm -v`).
+2. Install frontend dependencies:
+   ```powershell
+   cd web
+   npm install
+   ```
+3. Run the development server:
+   ```powershell
+   npm run dev
+   ```
+4. Start the backend in a separate terminal:
+   ```powershell
+   python -m uvicorn swayam.api.main:app --reload --port 8000
+   ```
+5. Open [**http://localhost:5173**](http://localhost:5173) in your browser.
+
+> **Note on Supabase Project:** The default project reference is `wxijlrwoiaeaupaaqecc`. Ensure your `.env` contains `SUPABASE_URL=https://wxijlrwoiaeaupaaqecc.supabase.co` and the corresponding anon key.

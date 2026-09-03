@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - BUILD-3 (2026-09-05)
+- **FastAPI Backend (`src/swayam/api/`)**: High-performance asynchronous REST API and WebSocket services for market data, rules gating, strategy calculations, and paper execution.
+- **Obsidian Trade Journal Writer (`journal_writer.py`)**: Automatic generation of YAML-frontmattered companion markdown trade logs in `02 - Projects/Trading/04 - Journal/{YYYY-MM-DD}-trade{XX}.md`.
+- **Real-Time Strategy Builder (`web/`)**: Dark-mode web dashboard built with Vite 6 and Plotly.js (`plotly.js-dist-min`).
+- **Interactive Payoff Visualizer (`payoff-chart.js`)**: Dual-horizon interactive payoff curve (T+0 today vs at-expiry) with labeled breakevens and live spot markers.
+- **Pre-Trade Method Rule Gating (`routes/validation.py`)**: Automatic audit against 1% risk ceiling, 1:2.0 R:R floor, and overnight hedge caps using `TolerantComparator`.
+- **Paper Execution Modal & Active Trades Panel**: Safe simulation mode saving open positions to database while strictly blocking real broker orders (`mode: "real"` returns 403 Forbidden).
+- **Test Suite Expansion**: Added 17 new backend integration tests and 6 frontend unit tests, expanding the total automated suite to 83 passing tests.
+
 ### Added - BUILD-2 (2026-09-05)
 - **Options Math Engine (`src/swayam/options_math/`)**: pure-Python computation layer for pricing, Greeks, and payoff curves.
 - **Typed models (`models.py`)**: `Leg`, `Spread`, `GreeksSummary`, `PayoffCurve` dataclasses.

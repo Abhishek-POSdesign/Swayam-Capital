@@ -107,6 +107,29 @@ Swayam Capital/
    python -m swayam.smoketest
    ```
 
+## 🚀 Running the Dashboard (Full MVP)
+
+Run the backend and frontend in two separate terminals:
+
+1. **Terminal 1 — Start the FastAPI Backend:**
+   ```powershell
+   python -m uvicorn swayam.api.main:app --reload --port 8000
+   ```
+
+2. **Terminal 2 — Start the Vite Frontend Dev Server:**
+   ```powershell
+   cd web
+   npm install
+   npm run dev
+   ```
+
+3. **Open in Browser:**
+   Navigate to [**http://localhost:5173**](http://localhost:5173) in your browser.
+   - Choose a preset (e.g. Bear Put Spread)
+   - Inspect the live Plotly.js payoff curve and portfolio Greeks
+   - Audit against Obsidian Method rules
+   - Click "⚡ EXECUTE PAPER TRADE" to write directly to your Obsidian vault!
+
 See [`SETUP.md`](SETUP.md) for full walkthrough and database setup.
 
 ---
