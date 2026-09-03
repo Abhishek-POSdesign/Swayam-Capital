@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - BUILD-3 FIXES (2026-09-05)
+- **api (validation)**: Eliminated silent fallback `margin_base_inr = 850000.0`. Missing or unreachable Supabase margin base now raises `HTTPException(503)` loudly with diagnostic detail.
+- **api (execution)**: Eliminated silent fallback `margin_base_inr = 850000.0`. Missing margin base now raises `HTTPException(503)` loudly.
+- **api (execution)**: Reordered execution lifecycle: Supabase INSERT to `swayam_positions` now executes BEFORE markdown journal writing, preventing orphan files on database failure. Eliminated silent `except Exception: pass` swallowing.
+- **api (execution)**: Added `expiry_date` to `db_record` to satisfy NOT NULL schema constraint on `swayam_positions`.
+- **api (validation)**: Replaced hardcoded `0.02` tolerance literals with configurable `settings.default_tolerance_pct` from `.env`.
+- **tests**: Added 5 new regression tests across `test_execute_paper.py` and `test_strategy_validate.py`, expanding the verified test suite to 82 pytest + 6 vitest (88 total passing).
+
 ### Added - BUILD-3 (2026-09-05)
 - **FastAPI Backend (`src/swayam/api/`)**: High-performance asynchronous REST API and WebSocket services for market data, rules gating, strategy calculations, and paper execution.
 - **Obsidian Trade Journal Writer (`journal_writer.py`)**: Automatic generation of YAML-frontmattered companion markdown trade logs in `02 - Projects/Trading/04 - Journal/{YYYY-MM-DD}-trade{XX}.md`.
