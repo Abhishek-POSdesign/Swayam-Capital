@@ -6,13 +6,13 @@ Initializes REST API routes, CORS middleware, and WebSocket broadcasting service
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from swayam.api.routes import execution, health, market, positions, strategy, validation
+from swayam.api.routes import execution, health, market, positions, readiness, strategy, validation
 from swayam.api.ws_manager import ws_manager
 
 app = FastAPI(
     title="Swayam Capital API",
     description="Rule-enforced algorithmic and paper options trading platform",
-    version="0.3.0",
+    version="0.4.0",
 )
 
 # Enable CORS for local Vite dev server and browser clients
@@ -31,6 +31,7 @@ app.include_router(strategy.router)
 app.include_router(validation.router)
 app.include_router(execution.router)
 app.include_router(positions.router)
+app.include_router(readiness.router)
 
 
 @app.websocket("/ws/spot")

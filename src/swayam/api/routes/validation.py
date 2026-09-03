@@ -5,6 +5,7 @@ Audits candidate option strategies against Abhishek's strict Obsidian Method rul
 using TolerantComparator (2% tolerance band). Prevents rogue or unhedged trade execution.
 """
 
+from datetime import date
 from typing import Any
 from fastapi import APIRouter, HTTPException
 from swayam.api.models_api import StrategyComputeRequest, ValidationCheck, ValidationResponse
@@ -48,8 +49,30 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
     comparator = TolerantComparator(tolerance_pct=settings.default_tolerance_pct)
     checks: list[ValidationCheck] = []
 
-    # Check 1: Per-trade risk cap (1.0% of margin base + tolerance)
-    per_trade_cap_inr = rules.per_trade_risk_pct * margin_base_inr
+    # Check 0: Operational Readiness Gate
+    today_str = date.today().strftime("%Y-%m-%d")
+    effective_risk_pct = rules.per_trade_risk_pct
+    try:
+        client = db.client
+        res = client.table("swayam_readiness_log").select("*").eq("log_date", today_str).execute()
+        if res.data:
+            readiness_row = res.data[0]
+            if not readiness_row.get("trading_allowed", True):
+                reasons = readiness_row.get("factors", {}).get("reasons", ["Daily operational readiness check blocked trading."])
+                checks.append(
+                    ValidationCheck(
+                        rule="readiness_gate",
+                        verdict="FAIL",
+                        note=f"Trading blocked today by Readiness check: {'; '.join(reasons)}",
+                    )
+                )
+            elif readiness_row.get("size_cap_pct") is not None:
+                effective_risk_pct = float(readiness_row["size_cap_pct"])
+    except Exception:
+        pass
+
+    # Check 1: Per-trade risk cap (Effective risk % + tolerance)
+    per_trade_cap_inr = effective_risk_pct * margin_base_inr
     passed_cap = comparator.within_cap(max_loss, per_trade_cap_inr)
     checks.append(
         ValidationCheck(
@@ -58,7 +81,7 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
             actual_inr=round(max_loss, 2),
             cap_inr=round(per_trade_cap_inr, 2),
             tolerance_pct=settings.default_tolerance_pct,
-            note=f"Max loss ₹{max_loss:,.0f} vs cap ₹{per_trade_cap_inr:,.0f} (1.0% + {settings.default_tolerance_pct * 100:.0f}% tolerance)",
+            note=f"Max loss ₹{max_loss:,.0f} vs cap ₹{per_trade_cap_inr:,.0f} ({effective_risk_pct * 100:.2f}% + {settings.default_tolerance_pct * 100:.0f}% tolerance)",
         )
     )
 
