@@ -84,13 +84,54 @@ def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
         },
     }
 
-    # Retrieve current margin base
+    # Retrieve current margin base — no fallback, fail loudly if unavailable
     try:
         margin_base_inr = db.get_margin_base_inr()
-    except Exception:
-        margin_base_inr = 850000.0
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"Cannot execute: margin base unavailable from Supabase config table. "
+                f"Journal writer needs the live margin_base_inr for % display. "
+                f"Underlying error: {e}"
+            ),
+        ) from e
 
-    # Step 3: Write markdown trade journal to Obsidian vault
+    # Step 3: Insert to database FIRST — no silent failure, no orphan file
+    expiry_date_val = str(min(l.expiry_date for l in req.legs))
+    db_record = {
+        "id": position_id,
+        "strategy_name": req.strategy_name,
+        "underlying": req.underlying,
+        "expiry_date": expiry_date_val,
+        "legs": legs_dict,
+        "net_debit_credit_inr": curve.net_debit_credit_inr,
+        "max_loss_inr": curve.max_loss_inr,
+        "max_profit_inr": curve.max_profit_inr,
+        "breakeven_points": list(curve.breakevens),
+        "risk_at_entry_inr": curve.max_loss_inr,
+        "status": "open",
+        "mode": "paper",
+        "opened_at": opened_at,
+    }
+    try:
+        client = db.client
+        client.table("swayam_positions").insert(db_record).execute()
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"Trade execution blocked: Supabase INSERT to swayam_positions failed. "
+                f"No trade recorded. No journal file created. Underlying error: {e}"
+            ),
+        ) from e
+
+    # Step 4: Track locally in session (memory only)
+    from swayam.api.routes.positions import record_local_paper_position
+    db_record["journal_path"] = None  # set after journal write succeeds
+    record_local_paper_position(db_record)
+
+    # Step 5: Write markdown trade journal to Obsidian vault
     try:
         journal_rel_path = write_new_trade_journal(
             position_id=position_id,
@@ -102,33 +143,16 @@ def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to generate trade journal file in vault: {e}",
+            detail=(
+                f"Trade recorded in Supabase (position_id={position_id}) but journal file write failed. "
+                f"Manually create journal or re-run journal generation for this position_id. "
+                f"Underlying error: {e}"
+            ),
         ) from e
 
-    # Step 4: Record in database
-    db_record = {
-        "id": position_id,
-        "strategy_name": req.strategy_name,
-        "underlying": req.underlying,
-        "legs": legs_dict,
-        "net_debit_credit_inr": curve.net_debit_credit_inr,
-        "max_loss_inr": curve.max_loss_inr,
-        "max_profit_inr": curve.max_profit_inr,
-        "breakeven_points": list(curve.breakevens),
-        "risk_at_entry_inr": curve.max_loss_inr,
-        "status": "open",
-        "mode": "paper",
-        "opened_at": opened_at,
-        "journal_path": journal_rel_path,
-    }
-
-    # Track locally in session
-    from swayam.api.routes.positions import record_local_paper_position
-    record_local_paper_position(db_record)
-
+    # Step 6: Update local record with journal path + insert journal_entries row
+    db_record["journal_path"] = journal_rel_path
     try:
-        client = db.client
-        client.table("swayam_positions").insert(db_record).execute()
         client.table("swayam_journal_entries").insert({
             "position_id": position_id,
             "entry_date": opened_at.split("T")[0],
@@ -136,13 +160,19 @@ def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
             "md_path": journal_rel_path,
             "created_at": opened_at,
         }).execute()
-    except Exception:
-        # If Supabase is unreachable during local testing, log but do not crash paper flow
-        pass
+    except Exception as e:
+        # Position is recorded, journal file exists — this is the only step that's recoverable later
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Position {position_id} recorded and journal file written to {journal_rel_path}, "
+                f"but swayam_journal_entries index INSERT failed. Reconcile later. Error: {e}"
+            ),
+        ) from e
 
     return {
         "position_id": position_id,
         "journal_path": journal_rel_path,
         "status": "opened",
-        "message": f"Paper trade #{position_id[:8]} opened successfully. Journal created at {journal_rel_path}.",
+        "message": f"Paper trade #{position_id[:8]} opened. Journal at {journal_rel_path}.",
     }
