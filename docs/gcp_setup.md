@@ -104,3 +104,24 @@ This updates both your local `.env` and pushes the active token directly into Go
 python scripts/ingest_gcs_to_duckdb.py
 ```
 Downloads that day's recorded Parquet file from `gs://swayam-capital-options-data` and updates your local DuckDB `options_history` table.
+
+---
+
+## 4. AI Trading Partner Verification (BUILD-6)
+
+The AI Trading Partner connects directly to Vertex AI Gemini models using your local Application Default Credentials:
+
+1. **Verify your local session is authenticated:**
+   ```powershell
+   gcloud auth application-default login
+   ```
+2. **Apply Database Migration 002 (adds AI chat tables):**
+   ```powershell
+   python scripts/apply_migration.py 002
+   ```
+3. **Verify AI Reachability via Smoketest:**
+   ```powershell
+   python -m swayam.smoketest --skip-web
+   ```
+   Look for: `[OK] AI Provider — Vertex AI Gemini reachable, project: swayam-capital, model: gemini-3.1-pro-preview`
+

@@ -4,6 +4,7 @@
 
 import { api } from './api.js';
 import { renderActiveTrades } from './components/active-trades.js';
+import { AIChatPanel } from './components/ai-chat.js';
 import { initHeader, updateHeaderSpot } from './components/header.js';
 import { ReadinessCheckComponent } from './components/readiness-check.js';
 import { renderRulePanel } from './components/rule-panel.js';
@@ -17,6 +18,7 @@ class SwayamApp {
     this.builder = null;
     this.wsClient = null;
     this.readiness = null;
+    this.aiChat = null;
   }
 
   async init() {
@@ -67,6 +69,13 @@ class SwayamApp {
 
     // 7. Wire Modal Action Listeners
     this.setupModal();
+
+    // 8. Initialize AI Trading Partner Chat Panel
+    const aiContainer = document.getElementById('ai-sidebar-container');
+    if (aiContainer) {
+      this.aiChat = new AIChatPanel(aiContainer);
+      await this.aiChat.init();
+    }
   }
 
   async loadRules(forceReload = false) {

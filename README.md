@@ -51,13 +51,17 @@ Swayam Capital/
 │       ├── db.py                  # Supabase client wrapper
 │       ├── local_db.py            # Local DuckDB manager for historical options cache
 │       ├── tradingview_helper.py  # TradingView URL generator for second-screen charts
-│       ├── ai/                    # Multi-provider AI adapter architecture
+│       ├── ai/                    # Multi-provider AI adapter architecture (BUILD-6)
 │       │   ├── __init__.py
-│       │   ├── adapter.py         # Abstract AIProvider interface
+│       │   ├── adapter.py         # Abstract AIProvider interface with custom error types
 │       │   ├── factory.py         # Provider factory resolving AI_PROVIDER
+│       │   ├── router.py          # 3-tier model router (primary / fallback / lightweight)
+│       │   ├── persona/           # Purpose-built Trading Partner mentor persona
+│       │   │   ├── __init__.py
+│       │   │   └── trading_partner.py # Static persona rules + dynamic context assembler
 │       │   └── providers/
 │       │       ├── __init__.py
-│       │       ├── vertex.py      # Vertex AI (Gemini) provider stub
+│       │       ├── vertex.py      # Real Google Cloud Vertex AI (Gemini) provider via ADC
 │       │       ├── openrouter.py  # OpenRouter provider stub
 │       │       └── direct.py      # Direct API provider stub (Anthropic/OpenAI)
 │       ├── readiness/             # Operational Readiness evaluation engine (BUILD-4)
@@ -75,9 +79,11 @@ Swayam Capital/
 │       ├── requirements.txt       # Minimal cloud runtime dependencies
 │       └── README.md              # Cloud recorder documentation
 ├── web/                           # Dashboard and Strategy Builder frontend
+│   ├── src/components/ai-chat.js  # Collapsible streaming AI chat sidebar panel
 │   └── README.md                  # Frontend scaffolding notes (BUILD-3)
 ├── migrations/                    # Additive SQL migrations for Supabase
 │   ├── 001_initial_schema.sql     # Core positions, trade history, and readiness tables
+│   ├── 002_ai_conversations_and_rule_log.sql # AI chat state, rule log, daily cost tracking
 │   └── README.md                  # Migration instructions
 ├── scripts/                       # Operational utility scripts
 │   ├── apply_migration.py         # Executes SQL migrations against Supabase
@@ -87,8 +93,9 @@ Swayam Capital/
 │   ├── deploy_recorder.py         # Automated GCP Cloud Function & Scheduler deployer
 │   ├── ingest_gcs_to_duckdb.py    # Local nightly GCS to DuckDB options ingest tool
 │   └── run_reconciler.py          # Windows task script for nightly readiness reconciliation
-├── tests/                         # Pytest automated test suite (112 tests)
-│   ├── api/                       # API route integration tests
+├── tests/                         # Pytest automated test suite (160 tests + 6 vitest)
+│   ├── ai/                        # Vertex provider, persona, context assembly tests
+│   ├── api/                       # API route integration tests (including AI routes)
 │   ├── cloud/                     # Cloud recorder unit tests
 │   ├── readiness/                 # Readiness engine and reconciler tests
 │   ├── scripts/                   # CLI and ingest script tests
@@ -100,9 +107,11 @@ Swayam Capital/
 └── docs/
     ├── architecture.md            # System architecture mapping
     ├── AI_INTEGRATION.md          # Distilled POS design-bible AI philosophy
+    ├── AI_TRADING_PARTNER.md      # Purpose-built AI partner architecture & persona guide
     ├── readiness_workflow.md      # 60-second manual-first readiness workflow
     ├── gcp_setup.md               # One-time Google Cloud setup walkthrough
     └── recorder_architecture.md   # Live options recorder design and schema
+
 ```
 
 ---

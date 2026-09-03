@@ -13,17 +13,22 @@
     <!-- Operational Readiness Widget -->
     <div id="readiness-container" style="max-width: 1400px; margin: 1rem auto 0 auto; padding: 0 1.5rem;"></div>
 
-    <!-- Main Dashboard Grid -->
-    <main class="dashboard-container">
-      <!-- Left Column: Strategy Builder, Legs & Payoff Chart -->
-      <section id="builder-container"></section>
+    <!-- Main Dashboard Grid with AI Sidebar -->
+    <div class="dashboard-with-ai">
+      <main class="dashboard-container">
+        <!-- Left Column: Strategy Builder, Legs & Payoff Chart -->
+        <section id="builder-container"></section>
 
-      <!-- Right Column: Rule Panel & Live Validation Panel -->
-      <section class="right-column">
-        <div id="rule-panel-container"></div>
-        <div id="validation-panel-container"></div>
-      </section>
-    </main>
+        <!-- Right Column: Rule Panel & Live Validation Panel -->
+        <section class="right-column">
+          <div id="rule-panel-container"></div>
+          <div id="validation-panel-container"></div>
+        </section>
+      </main>
+
+      <!-- AI Trading Partner Sidebar -->
+      <aside class="ai-sidebar" id="ai-sidebar-container" style="position:relative;"></aside>
+    </div>
 
     <!-- Active Paper Trades Table -->
     <section id="active-trades-container"></section>

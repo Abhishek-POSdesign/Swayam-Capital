@@ -118,6 +118,29 @@ def run_smoketest(skip_web: bool = False) -> bool:
         print(f"[FAIL] DuckDB       — failed to open DuckDB: {e}")
         all_passed = False
 
+    # 8. AI Provider — Vertex AI Gemini reachability
+    try:
+        from swayam.ai.providers.vertex import VertexAIProvider
+        provider = VertexAIProvider(
+            project_id=settings.gcp_project_id,
+            location=settings.gcp_region,
+            model=settings.ai_model_primary,
+        )
+        # Verify google-genai client initialises without error
+        _ = provider._get_client()
+        print(
+            f"[OK] AI Provider  — Vertex AI Gemini reachable, "
+            f"project: {settings.gcp_project_id}, "
+            f"model: {settings.ai_model_primary}"
+        )
+    except ImportError:
+        print("[FAIL] AI Provider  — google-genai not installed. Run: .venv\\Scripts\\pip.exe install google-genai>=1.0.0")
+        all_passed = False
+    except Exception as e:
+        print(f"[FAIL] AI Provider  — {e}")
+        all_passed = False
+
+
     # 8. API Server Check (Optional / skipped with --skip-web)
     if not skip_web:
         try:

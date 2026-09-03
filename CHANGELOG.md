@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - BUILD-6 (2026-09-06)
+- **AI Trading Partner (`src/swayam/ai/`)**: Purpose-built options specialist AI colleague powered by Google Cloud Vertex AI Gemini with Application Default Credentials (ADC) and zero JSON key files.
+- **3-Tier Model Router (`router.py`)**: Automatic multi-tier model fallback: Primary `gemini-3.1-pro-preview` for deep reasoning, fallback `gemini-2.5-pro` on rate limits or permissions, and lightweight `gemini-2.5-flash-lite` for quick widget calculations.
+- **Trading Partner Persona (`persona/trading_partner.py`)**: Strict trading mentor persona enforcing 6 non-negotiable behavioral constraints (never naked longs, never revenge encouragement, never stop-widening, never override RED readiness verdicts, never claim direction certainty, and never break risk caps).
+- **Dynamic Context Assembly (`assemble_context()`)**: Real-time context builder refreshing every user message with Method rules, margin base, live NIFTY spot, readiness check, open positions, recent journal entries, and historical summaries.
+- **SSE Streaming Endpoints (`routes/ai.py`)**: Server-Sent Events API endpoints (`POST /api/ai/conversations/{id}/messages`, `GET/POST /conversations`, `archive`, `delete`, `usage/today`) with conversation persistence in Supabase and daily rupee cost tracking (`swayam_ai_usage_daily`).
+- **Collapsible Dashboard Chat Panel (`web/src/components/ai-chat.js`)**: Real-time streaming AI chat sidebar on the dashboard with quick starter prompts, history drawer, and daily spend footer.
+- **Database Migration 002 (`migrations/002_ai_conversations_and_rule_log.sql`)**: Created tables for conversations, messages, rule evolution log, daily usage tracking, and documented single-user private trading terminal posture with RLS disabled.
+- **Test Suite Expansion**: Added 48 new tests across `tests/ai/` and `tests/api/test_ai_endpoints.py`, bringing the automated test suite to 160 pytest + 6 vitest (166 total passing).
+
 ### Added - BUILD-5 (2026-09-05)
 - **Live Options Recorder Cloud Function (`cloud/recorder/`)**: Standalone Gen2 Cloud Function deployed to Google Cloud (`asia-south1`) running every 60s during trading hours (09:15–15:30 IST, Mon–Fri).
 - **Time Gating & Idempotency**: Strict market hours check exits as an idempotent HTTP 200 no-op outside trading hours. GCS Parquet writes deduplicate strictly on `(snapshot_time_utc, symbol)` before rewriting the daily file, preventing duplicates from scheduler retries or clock skew.

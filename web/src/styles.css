@@ -101,12 +101,33 @@ button.primary:hover:not(:disabled) {
   background-color: #22c55e;
 }
 
+/* Dashboard outer wrapper (dashboard grid + AI sidebar) */
+.dashboard-with-ai {
+  display: flex;
+  gap: 0;
+  align-items: flex-start;
+  min-height: 0;
+}
+
+.ai-sidebar {
+  width: 340px;
+  min-width: 280px;
+  flex-shrink: 0;
+  height: calc(100vh - 80px);
+  position: sticky;
+  top: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+}
+
 /* Dashboard Grid */
 .dashboard-container {
+  flex: 1;
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 1.5rem;
   padding: 1.5rem 2rem;
+  min-width: 0;
 }
 
 .panel {

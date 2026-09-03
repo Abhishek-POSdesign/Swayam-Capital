@@ -90,6 +90,15 @@ class Settings:
     ai_fallback_provider: str = field(default_factory=lambda: os.getenv("AI_FALLBACK_PROVIDER", "direct"))
     ai_fallback_model: str = field(default_factory=lambda: os.getenv("AI_FALLBACK_MODEL", "claude-3-5-sonnet-20241022"))
 
+    # AI Generation Parameters
+    ai_max_output_tokens: int = field(default_factory=lambda: int(os.getenv("AI_MAX_OUTPUT_TOKENS", "2048")))
+    ai_temperature: float = field(default_factory=lambda: float(os.getenv("AI_TEMPERATURE", "0.7")))
+
+    # AI Cost Tracking (Sept 2026 Vertex AI pricing for Gemini 2.5 Pro, prompts ≤200k)
+    ai_input_cost_per_1k_usd: float = field(default_factory=lambda: float(os.getenv("AI_INPUT_COST_PER_1K_USD", "0.00125")))
+    ai_output_cost_per_1k_usd: float = field(default_factory=lambda: float(os.getenv("AI_OUTPUT_COST_PER_1K_USD", "0.005")))
+    usd_to_inr_rate: float = field(default_factory=lambda: float(os.getenv("USD_TO_INR_RATE", "83.0")))
+
     def validate_required_vars(self) -> list[str]:
         """Checks for missing required environment variables and returns a list of missing names."""
         missing: list[str] = []

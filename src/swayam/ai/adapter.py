@@ -11,6 +11,37 @@ from pathlib import Path
 from typing import Any, Generator, Optional
 
 
+# ---------------------------------------------------------------------------
+# Custom AI exceptions — raised by providers and caught by the router
+# ---------------------------------------------------------------------------
+
+class AIRateLimitError(Exception):
+    """Raised when the AI provider returns a quota / rate-limit error.
+
+    Maps to: google.api_core.exceptions.ResourceExhausted (Vertex AI).
+    The router will attempt a model-tier fallback on this error.
+    """
+    pass
+
+
+class AIPermissionError(Exception):
+    """Raised when credentials are insufficient or the API is not enabled.
+
+    Maps to: google.api_core.exceptions.PermissionDenied (Vertex AI).
+    The router will attempt a model-tier fallback and log a diagnostic message.
+    """
+    pass
+
+
+class ModelNotFoundError(Exception):
+    """Raised when the requested model ID is not found or has been deprecated.
+
+    Triggers automatic fallback to AI_MODEL_REASONING_FALLBACK in the router.
+    """
+    pass
+
+
+
 class AIProvider(ABC):
     """Abstract base class establishing the standard Swayam AI Provider contract."""
 
