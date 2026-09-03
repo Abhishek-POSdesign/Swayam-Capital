@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from swayam.api.models_api import StrategyComputeRequest, ValidationCheck, ValidationResponse
 from swayam.api.routes.strategy import build_spread_from_request
+from swayam.config import settings
 from swayam.db import db
 from swayam.options_math import compute_max_profit_loss
 from swayam.rules_engine import TolerantComparator
@@ -31,16 +32,23 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load Method rules from vault: {e}") from e
 
-    # Retrieve live margin base
+    # Retrieve live margin base — no fallback, fail loudly if unavailable
     try:
         margin_base_inr = db.get_margin_base_inr()
-    except Exception:
-        margin_base_inr = 850000.0
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"Cannot validate: margin base unavailable from Supabase config table. "
+                f"Rule caps depend on live margin_base_inr. Check Supabase connectivity. "
+                f"Underlying error: {e}"
+            ),
+        ) from e
 
-    comparator = TolerantComparator(tolerance_pct=0.02)
+    comparator = TolerantComparator(tolerance_pct=settings.default_tolerance_pct)
     checks: list[ValidationCheck] = []
 
-    # Check 1: Per-trade risk cap (1.0% of margin base + 2% tolerance)
+    # Check 1: Per-trade risk cap (1.0% of margin base + tolerance)
     per_trade_cap_inr = rules.per_trade_risk_pct * margin_base_inr
     passed_cap = comparator.within_cap(max_loss, per_trade_cap_inr)
     checks.append(
@@ -49,12 +57,12 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
             verdict="PASS" if passed_cap else "FAIL",
             actual_inr=round(max_loss, 2),
             cap_inr=round(per_trade_cap_inr, 2),
-            tolerance_pct=0.02,
-            note=f"Max loss ₹{max_loss:,.0f} vs cap ₹{per_trade_cap_inr:,.0f} (1.0% + 2% tolerance)",
+            tolerance_pct=settings.default_tolerance_pct,
+            note=f"Max loss ₹{max_loss:,.0f} vs cap ₹{per_trade_cap_inr:,.0f} (1.0% + {settings.default_tolerance_pct * 100:.0f}% tolerance)",
         )
     )
 
-    # Check 2: Reward-to-Risk minimum floor (1:2.0 floor - 2% tolerance)
+    # Check 2: Reward-to-Risk minimum floor (1:2.0 floor - tolerance)
     passed_rr = comparator.meets_floor(rr_implied, rules.rr_minimum)
     checks.append(
         ValidationCheck(
@@ -62,7 +70,7 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
             verdict="PASS" if passed_rr else "FAIL",
             actual=round(rr_implied, 2),
             floor=rules.rr_minimum,
-            tolerance_pct=0.02,
+            tolerance_pct=settings.default_tolerance_pct,
             note=f"R:R ratio {rr_implied:.2f} vs minimum {rules.rr_minimum:.1f}",
         )
     )
@@ -88,7 +96,7 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
             verdict="PASS" if passed_overnight else "FAIL",
             actual_inr=round(max_loss, 2),
             cap_inr=round(overnight_cap_inr, 2),
-            tolerance_pct=0.02,
+            tolerance_pct=settings.default_tolerance_pct,
             note=f"Defined risk ₹{max_loss:,.0f} caps overnight catastrophe risk",
         )
     )
