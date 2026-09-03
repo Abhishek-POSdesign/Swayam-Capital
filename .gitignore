@@ -28,6 +28,7 @@ data/
 *.csv
 *.sqlite
 *.duckdb
+*.log
 
 # IDE & OS
 .vscode/
