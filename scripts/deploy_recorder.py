@@ -56,7 +56,7 @@ def deploy() -> None:
         f'--source="{source_dir}" '
         f'--entry-point=record_snapshot '
         f'--trigger-http '
-        f'--allow-unauthenticated=false '
+        f'--no-allow-unauthenticated '
         f'--service-account={SERVICE_ACCOUNT} '
         f'--memory=512MB '
         f'--timeout=60s '
