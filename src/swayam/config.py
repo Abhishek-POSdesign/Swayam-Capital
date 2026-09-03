@@ -74,10 +74,19 @@ class Settings:
         default_factory=lambda: float(os.getenv("DEFAULT_TOLERANCE_PCT", "0.02"))
     )
 
-    # AI Integration
+    # GCP Configuration
+    gcp_project_id: str = field(default_factory=lambda: os.getenv("GCP_PROJECT_ID", "swayam-capital"))
+    gcp_region: str = field(default_factory=lambda: os.getenv("GCP_REGION", "asia-south1"))
+    gcs_options_bucket: str = field(default_factory=lambda: os.getenv("GCS_OPTIONS_BUCKET", "swayam-capital-options-data"))
+    gcp_billing_account: str = field(default_factory=lambda: os.getenv("GCP_BILLING_ACCOUNT", ""))
+
+    # AI Integration (3-Tier Routing)
     ai_provider: str = field(default_factory=lambda: os.getenv("AI_PROVIDER", "vertex"))
     ai_api_key: str = field(default_factory=lambda: os.getenv("AI_API_KEY", ""))
-    ai_model: str = field(default_factory=lambda: os.getenv("AI_MODEL", "gemini-1.5-pro"))
+    ai_model: str = field(default_factory=lambda: os.getenv("AI_MODEL", "gemini-3.1-pro-preview"))
+    ai_model_primary: str = field(default_factory=lambda: os.getenv("AI_MODEL_PRIMARY", "gemini-3.1-pro-preview"))
+    ai_model_reasoning_fallback: str = field(default_factory=lambda: os.getenv("AI_MODEL_REASONING_FALLBACK", "gemini-2.5-pro"))
+    ai_model_lightweight: str = field(default_factory=lambda: os.getenv("AI_MODEL_LIGHTWEIGHT", "gemini-2.5-flash-lite"))
     ai_fallback_provider: str = field(default_factory=lambda: os.getenv("AI_FALLBACK_PROVIDER", "direct"))
     ai_fallback_model: str = field(default_factory=lambda: os.getenv("AI_FALLBACK_MODEL", "claude-3-5-sonnet-20241022"))
 
