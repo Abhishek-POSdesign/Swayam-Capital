@@ -48,9 +48,35 @@ class LocalDB:
                 open_interest BIGINT,
                 change_in_oi BIGINT,
                 underlying_spot NUMERIC(10, 2),
-                PRIMARY KEY (trade_date, symbol)
+                snapshot_time_utc TIMESTAMP NOT NULL DEFAULT '1970-01-01 00:00:00',
+                bid NUMERIC(10, 2),
+                ask NUMERIC(10, 2),
+                iv NUMERIC(6, 4),
+                delta NUMERIC(6, 4),
+                gamma NUMERIC(8, 6),
+                theta NUMERIC(10, 2),
+                vega NUMERIC(10, 2),
+                PRIMARY KEY (trade_date, symbol, snapshot_time_utc)
             );
         """)
+
+        # Migration helper: ensure all intraday columns exist if table was created previously
+        table_info = active_conn.execute("PRAGMA table_info('options_history');").fetchall()
+        existing_cols = {col[1] for col in table_info}
+        migration_cols = [
+            ("snapshot_time_utc", "TIMESTAMP DEFAULT '1970-01-01 00:00:00'"),
+            ("bid", "NUMERIC(10, 2)"),
+            ("ask", "NUMERIC(10, 2)"),
+            ("iv", "NUMERIC(6, 4)"),
+            ("delta", "NUMERIC(6, 4)"),
+            ("gamma", "NUMERIC(8, 6)"),
+            ("theta", "NUMERIC(10, 2)"),
+            ("vega", "NUMERIC(10, 2)"),
+        ]
+        for col_name, col_type in migration_cols:
+            if col_name not in existing_cols:
+                active_conn.execute(f"ALTER TABLE options_history ADD COLUMN IF NOT EXISTS {col_name} {col_type};")
+
         active_conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_options_history_underlying_expiry
                 ON options_history(underlying, expiry_date, trade_date);
@@ -60,7 +86,7 @@ class LocalDB:
         """Ingests a cleaned pandas DataFrame of options data into DuckDB.
 
         Args:
-            df: DataFrame containing the columns matching `options_history`.
+            df: DataFrame containing columns matching `options_history`.
 
         Returns:
             int: Number of rows inserted.
@@ -68,13 +94,23 @@ class LocalDB:
         if df.empty:
             return 0
         conn = self.get_connection()
-        conn.register("incoming_df", df)
-        # Upsert: insert or replace on primary key conflict
-        conn.execute("""
-            INSERT OR REPLACE INTO options_history
-            SELECT * FROM incoming_df;
+        insert_df = df.copy()
+        if "snapshot_time_utc" not in insert_df.columns:
+            insert_df["snapshot_time_utc"] = pd.Timestamp("1970-01-01 00:00:00")
+
+        # Fetch valid target column names
+        table_info = conn.execute("PRAGMA table_info('options_history');").fetchall()
+        valid_cols = [c[1] for c in table_info]
+        matching_cols = [c for c in insert_df.columns if c in valid_cols]
+
+        col_str = ", ".join(matching_cols)
+        conn.register("incoming_df", insert_df[matching_cols])
+        conn.execute(f"""
+            INSERT OR REPLACE INTO options_history ({col_str})
+            SELECT {col_str} FROM incoming_df;
         """)
-        return len(df)
+        conn.unregister("incoming_df")
+        return len(insert_df)
 
     def get_table_count(self) -> int:
         """Returns the number of user tables present in the DuckDB file."""
