@@ -7,7 +7,7 @@ at runtime, extracting trading, risk, and operational readiness rules as percent
 provides dynamic calculation of rupee limits based on the current margin base.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 import re
 from typing import Optional
@@ -44,12 +44,8 @@ class MethodRules:
     alcohol_lockout_days: int              # 90 days
 
     # Re-entry Ramp Tiers: tuple of ((min_day, max_day), risk_cap_pct)
-    reentry_ramp: tuple[tuple[tuple[int, Optional[int]], float], ...] = (
-        ((91, 120), 0.0025),
-        ((121, 150), 0.0050),
-        ((151, 180), 0.0075),
-        ((181, None), 0.0100),
-    )
+    # Parsed dynamically from Operational Readiness Rules § Factor 2 (no hardcoded default)
+    reentry_ramp: tuple[tuple[tuple[int, Optional[int]], float], ...]
 
     def calculate_per_trade_rupee_cap(self, margin_base: Optional[float] = None) -> float:
         """Calculates effective per-trade rupee cap from percentage × margin base."""
@@ -135,6 +131,25 @@ class VaultReader:
         self._cached_mtimes = self._get_mtimes()
         return parsed
 
+    def _parse_reentry_ramp(self, op_text: str) -> tuple[tuple[tuple[int, Optional[int]], float], ...]:
+        """Parses the 4-tier re-entry ramp from Operational Readiness Rules § Factor 2."""
+        tier_pattern = (
+            r"\*\*Days?\s+(\d+)(?:[-–](\d+))?\+?[^*]*\*\*[:\s]*.*?"
+            r"(\d+(?:\.\d+)?)%\s+(?:risk\s+per\s+trade\s+cap|cap\s+resumes)"
+        )
+        matches = list(re.finditer(tier_pattern, op_text, re.IGNORECASE))
+        if len(matches) < 4:
+            raise MethodRulesParseError(
+                f"Could not parse at least 4 tiers for reentry_ramp from Operational Readiness Rules. Found {len(matches)}."
+            )
+        tiers = []
+        for m in matches:
+            start_day = int(m.group(1))
+            end_day = int(m.group(2)) if m.group(2) else None
+            risk_pct = float(m.group(3)) / 100.0
+            tiers.append(((start_day, end_day), risk_pct))
+        return tuple(tiers)
+
     def _parse_all_rules(self, risk_text: str, op_text: str, brief_text: str) -> MethodRules:
         """Internal parsing logic with strict regex extraction."""
 
@@ -183,30 +198,46 @@ class VaultReader:
         # 8. Margin Base Range from Personal Trading Brief or Risk Management Rules (~₹8–9 lakh)
         combined_text = brief_text + "\n" + risk_text
         m = re.search(r"₹\s*(\d+)\s*[-–]\s*(\d+)\s*lakh", combined_text, re.IGNORECASE)
-        if m:
-            margin_min = float(m.group(1)) * 100000.0
-            margin_max = float(m.group(2)) * 100000.0
-            margin_default = (margin_min + margin_max) / 2.0
-        else:
-            margin_min, margin_max, margin_default = 800000.0, 900000.0, 850000.0
+        if not m:
+            raise MethodRulesParseError(
+                "Could not parse margin_base range ('₹X–Y lakh') from Personal Trading Brief. "
+                "The vault may have drifted or the range format changed."
+            )
+        margin_min = float(m.group(1)) * 100000.0
+        margin_max = float(m.group(2)) * 100000.0
+        margin_default = (margin_min + margin_max) / 2.0
 
         # 9. Sleep thresholds from Operational Readiness Rules
         # No trade: < 5 hours
         m = re.search(r"<\s*(\d+(?:\.\d+)?)\s*hours.*?No\s+trading", op_text, re.IGNORECASE | re.DOTALL)
-        sleep_no_trade = float(m.group(1)) if m else 5.0
+        if not m:
+            raise MethodRulesParseError(
+                "Could not parse sleep_no_trade_threshold_hours from Operational Readiness Rules § Sleep."
+            )
+        sleep_no_trade = float(m.group(1))
 
         # Reduced size: 5–6 hours -> 75%
         m = re.search(r"(\d+)\s*[-–]\s*(\d+)\s*hours.*?(\d+)%\s+of\s+normal", op_text, re.IGNORECASE | re.DOTALL)
-        if m:
-            sleep_red_min = float(m.group(1))
-            sleep_red_max = float(m.group(2))
-            sleep_red_factor = float(m.group(3)) / 100.0
-        else:
-            sleep_red_min, sleep_red_max, sleep_red_factor = 5.0, 6.0, 0.75
+        if not m:
+            raise MethodRulesParseError(
+                "Could not parse sleep_reduced_size params (e.g. '5–6 hours ... 75% of normal') "
+                "from Operational Readiness Rules § Sleep."
+            )
+        sleep_red_min = float(m.group(1))
+        sleep_red_max = float(m.group(2))
+        sleep_red_factor = float(m.group(3)) / 100.0
 
         # 10. Alcohol lockout days (90 days / 3 months)
         m = re.search(r"(\d+)[-\s]day\s+(?:lockout|clock)", op_text, re.IGNORECASE)
-        alcohol_lockout = int(m.group(1)) if m else 90
+        if not m:
+            raise MethodRulesParseError(
+                "Could not parse alcohol_lockout_days from Operational Readiness Rules Factor 2. "
+                "Expected a phrase like 'X-day lockout' or 'X-day clock'."
+            )
+        alcohol_lockout = int(m.group(1))
+
+        # 11. Re-entry ramp tiers
+        reentry_ramp = self._parse_reentry_ramp(op_text)
 
         return MethodRules(
             per_trade_risk_pct=per_trade_risk_pct,
@@ -224,4 +255,5 @@ class VaultReader:
             sleep_reduced_size_hours_max=sleep_red_max,
             sleep_reduced_size_factor=sleep_red_factor,
             alcohol_lockout_days=alcohol_lockout,
+            reentry_ramp=reentry_ramp,
         )
