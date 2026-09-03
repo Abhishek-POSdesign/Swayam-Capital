@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Swayam Capital — Options Trading Platform</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <!-- Header -->
+    <div id="header-container"></div>
+
+    <!-- Main Dashboard Grid -->
+    <main class="dashboard-container">
+      <!-- Left Column: Strategy Builder, Legs & Payoff Chart -->
+      <section id="builder-container"></section>
+
+      <!-- Right Column: Rule Panel & Live Validation Panel -->
+      <section class="right-column">
+        <div id="rule-panel-container"></div>
+        <div id="validation-panel-container"></div>
+      </section>
+    </main>
+
+    <!-- Active Paper Trades Table -->
+    <section id="active-trades-container"></section>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="modal-overlay">
+      <div class="modal-content">
+        <h3 style="margin-bottom: 1rem; color: var(--accent);">Confirm Paper Execution</h3>
+        <p style="margin-bottom: 0.75rem; color: var(--text-primary);">
+          Are you sure you want to execute this paper trade?
+        </p>
+        <div style="background-color: var(--bg-elevated); padding: 1rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.875rem;" class="mono">
+          <div>Strategy: <strong id="modal-strategy-name" style="color: var(--text-primary);">-</strong></div>
+          <div>Max Loss: <span id="modal-max-loss" style="color: var(--red);">-</span></div>
+          <div>Max Profit: <span id="modal-max-profit" style="color: var(--green);">-</span></div>
+          <div>R:R Ratio: <span id="modal-rr" style="color: var(--amber);">-</span></div>
+        </div>
+        <div class="modal-actions">
+          <button id="modal-btn-cancel">Cancel</button>
+          <button id="modal-btn-confirm" class="primary">Confirm & Execute</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
