@@ -28,7 +28,7 @@ def get_positions(status: str = Query(default="open")) -> list[PositionResponse]
     # Attempt fetching from Supabase
     try:
         client = db.client
-        res = client.table("positions").select("*").eq("status", status).execute()
+        res = client.table("swayam_positions").select("*").eq("status", status).execute()
         if res.data:
             positions_data.extend(res.data)
     except Exception:
@@ -76,7 +76,7 @@ def get_position_pnl_live(position_id: str) -> dict[str, Any]:
 
     try:
         client = db.client
-        res = client.table("positions").select("*").eq("id", position_id).single().execute()
+        res = client.table("swayam_positions").select("*").eq("id", position_id).single().execute()
         if res.data:
             return {
                 "position_id": position_id,

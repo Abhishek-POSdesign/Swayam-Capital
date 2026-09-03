@@ -127,14 +127,16 @@ def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
     record_local_paper_position(db_record)
 
     try:
-        if db.client is not None:
-            db.client.table("positions").insert(db_record).execute()
-            db.client.table("journal_entries").insert({
-                "position_id": position_id,
-                "md_path": journal_rel_path,
-                "created_at": opened_at,
-            }).execute()
-    except Exception as e:
+        client = db.client
+        client.table("swayam_positions").insert(db_record).execute()
+        client.table("swayam_journal_entries").insert({
+            "position_id": position_id,
+            "entry_date": opened_at.split("T")[0],
+            "entry_type": "entry",
+            "md_path": journal_rel_path,
+            "created_at": opened_at,
+        }).execute()
+    except Exception:
         # If Supabase is unreachable during local testing, log but do not crash paper flow
         pass
 

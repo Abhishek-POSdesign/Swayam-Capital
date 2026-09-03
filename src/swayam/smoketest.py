@@ -80,9 +80,9 @@ def run_smoketest(skip_web: bool = False) -> bool:
     # 4. Supabase Connectivity
     try:
         client = db.client
-        res = client.table("config").select("key, value").execute()
+        res = client.table("swayam_config").select("key, value").execute()
         rows = res.data or []
-        print(f"[OK] Supabase     — connected, config table has {len(rows)} seed rows")
+        print(f"[OK] Supabase     — connected, swayam_config table has {len(rows)} seed rows")
     except Exception as e:
         print(f"[FAIL] Supabase     — connection error: {e}")
         all_passed = False

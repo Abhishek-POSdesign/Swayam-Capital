@@ -48,7 +48,7 @@ class SupabaseDB:
             Any: The stored config value.
         """
         try:
-            res = self.client.table("config").select("value").eq("key", key).execute()
+            res = self.client.table("swayam_config").select("value").eq("key", key).execute()
             if res.data and len(res.data) > 0:
                 return res.data[0]["value"]
             return default
@@ -57,7 +57,7 @@ class SupabaseDB:
             return default
 
     def set_config(self, key: str, value: Any, updated_by: str = "swayam") -> None:
-        """Inserts or updates a configuration key in the `config` table.
+        """Inserts or updates a configuration key in the `swayam_config` table.
 
         Args:
             key: Config key name.
@@ -65,7 +65,7 @@ class SupabaseDB:
             updated_by: Identifier of the component or user making the change.
         """
         payload = {"key": key, "value": value, "updated_by": updated_by}
-        self.client.table("config").upsert(payload).execute()
+        self.client.table("swayam_config").upsert(payload).execute()
 
     def get_margin_base_inr(self) -> float:
         """Retrieves the current margin base in INR from the config table.

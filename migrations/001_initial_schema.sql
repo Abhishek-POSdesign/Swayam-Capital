@@ -3,7 +3,7 @@
 -- Multi-year sustainability: Additive-only schema. Never modify this file once applied.
 
 -- Positions: one row per open trade (live or paper)
-CREATE TABLE IF NOT EXISTS positions (
+CREATE TABLE IF NOT EXISTS swayam_positions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     opened_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     mode TEXT NOT NULL CHECK (mode IN ('paper', 'live')),
@@ -22,13 +22,13 @@ CREATE TABLE IF NOT EXISTS positions (
     notes TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_positions_status ON positions(status);
-CREATE INDEX IF NOT EXISTS idx_positions_opened_at ON positions(opened_at DESC);
+CREATE INDEX IF NOT EXISTS idx_swayam_positions_status ON swayam_positions(status);
+CREATE INDEX IF NOT EXISTS idx_swayam_positions_opened_at ON swayam_positions(opened_at DESC);
 
 -- Trade history: one row per closed trade (immutable log)
-CREATE TABLE IF NOT EXISTS trade_history (
+CREATE TABLE IF NOT EXISTS swayam_trade_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    position_id UUID REFERENCES positions(id),
+    position_id UUID REFERENCES swayam_positions(id),
     closed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     close_reason TEXT NOT NULL CHECK (close_reason IN ('target_hit', 'stop_hit', 'time_exit', 'manual')),
     realized_pnl_inr NUMERIC(12, 2) NOT NULL,
@@ -38,10 +38,10 @@ CREATE TABLE IF NOT EXISTS trade_history (
     journal_md_path TEXT                 -- path to the Obsidian journal file
 );
 
-CREATE INDEX IF NOT EXISTS idx_trade_history_closed_at ON trade_history(closed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_swayam_trade_history_closed_at ON swayam_trade_history(closed_at DESC);
 
 -- Backtest runs: one row per backtest execution
-CREATE TABLE IF NOT EXISTS backtest_runs (
+CREATE TABLE IF NOT EXISTS swayam_backtest_runs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     run_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     rule_snapshot JSONB NOT NULL,        -- snapshot of MethodRules at time of run
@@ -57,10 +57,10 @@ CREATE TABLE IF NOT EXISTS backtest_runs (
     notes TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_backtest_runs_run_at ON backtest_runs(run_at DESC);
+CREATE INDEX IF NOT EXISTS idx_swayam_backtest_runs_run_at ON swayam_backtest_runs(run_at DESC);
 
 -- Config: overrides for values not derivable from vault (e.g., current margin base)
-CREATE TABLE IF NOT EXISTS config (
+CREATE TABLE IF NOT EXISTS swayam_config (
     key TEXT PRIMARY KEY,
     value JSONB NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -68,14 +68,14 @@ CREATE TABLE IF NOT EXISTS config (
 );
 
 -- Seed initial config
-INSERT INTO config (key, value, updated_by) VALUES
+INSERT INTO swayam_config (key, value, updated_by) VALUES
     ('margin_base_inr', '850000', 'BUILD-1'),
     ('current_alcohol_streak_days', '0', 'BUILD-1'),
     ('current_reentry_ramp_tier', 'null', 'BUILD-1')
 ON CONFLICT (key) DO NOTHING;
 
 -- Readiness log: one row per trading day, records the daily verdict
-CREATE TABLE IF NOT EXISTS readiness_log (
+CREATE TABLE IF NOT EXISTS swayam_readiness_log (
     log_date DATE PRIMARY KEY,
     verdict TEXT NOT NULL CHECK (verdict IN ('green', 'yellow', 'red')),
     factors JSONB NOT NULL,              -- {sleep: {status, hours}, alcohol: {status, streak_days}, ...}
@@ -85,9 +85,9 @@ CREATE TABLE IF NOT EXISTS readiness_log (
 );
 
 -- Journal entries: one row per trade journal entry (mirrors vault markdown files)
-CREATE TABLE IF NOT EXISTS journal_entries (
+CREATE TABLE IF NOT EXISTS swayam_journal_entries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    position_id UUID REFERENCES positions(id),
+    position_id UUID REFERENCES swayam_positions(id),
     entry_date DATE NOT NULL,
     entry_type TEXT NOT NULL CHECK (entry_type IN ('entry', 'daily_update', 'exit', 'no_trade_day')),
     md_path TEXT,                        -- path to vault MD file
@@ -96,4 +96,4 @@ CREATE TABLE IF NOT EXISTS journal_entries (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_journal_entries_position_id ON journal_entries(position_id);
+CREATE INDEX IF NOT EXISTS idx_swayam_journal_entries_position_id ON swayam_journal_entries(position_id);
