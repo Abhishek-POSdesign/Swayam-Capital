@@ -5,6 +5,7 @@
 import { api } from './api.js';
 import { renderActiveTrades } from './components/active-trades.js';
 import { initHeader, updateHeaderSpot } from './components/header.js';
+import { ReadinessCheckComponent } from './components/readiness-check.js';
 import { renderRulePanel } from './components/rule-panel.js';
 import { StrategyBuilder } from './components/strategy-builder.js';
 import { SpotWebSocketClient } from './modules/ws-client.js';
@@ -15,6 +16,7 @@ class SwayamApp {
     this.activePositions = [];
     this.builder = null;
     this.wsClient = null;
+    this.readiness = null;
   }
 
   async init() {
@@ -23,6 +25,19 @@ class SwayamApp {
     // 1. Initialize Header
     const headerContainer = document.getElementById('header-container');
     initHeader(headerContainer, () => this.handleReloadRules());
+
+    // 1.5. Initialize Readiness Check
+    const readinessContainer = document.getElementById('readiness-container');
+    if (readinessContainer) {
+      this.readiness = new ReadinessCheckComponent(readinessContainer, {
+        onVerdictChanged: (verdict) => {
+          if (this.builder) {
+            this.builder.recomputePayoff();
+          }
+        },
+      });
+      await this.readiness.init();
+    }
 
     // 2. Fetch Initial Rules & Margin Base
     await this.loadRules();
