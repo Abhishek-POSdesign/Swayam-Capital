@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - BUILD-2 (2026-09-05)
+- **Options Math Engine (`src/swayam/options_math/`)**: pure-Python computation layer for pricing, Greeks, and payoff curves.
+- **Typed models (`models.py`)**: `Leg`, `Spread`, `GreeksSummary`, `PayoffCurve` dataclasses.
+- **Pricing engine (`engine.py`)**: Black-Scholes wrapper via `vollib` / `py_vollib` with edge-case handling and `IVSolveFailed` exception.
+- **Payoff computation (`payoff.py`)**: dual-curve (today + at-expiry) computation with breakeven and max/min detection.
+- **Aggregated Greeks (`greeks.py`)**: multi-leg position Greeks with unit normalization (theta in ₹/day, vega in ₹ per 1% IV).
+- **Strategy presets (`strategies.py`)**: Bear Put Spread, Bull Call Spread, Iron Condor, Calendar Spread factories with 50-point strike snapping.
+- **Test coverage**: 25 new unit tests bringing total to 60 passing tests.
+
 ### Fixed - BUILD-1 FIXES (2026-09-04)
 - **vault_reader**: Eliminated silent fallback on missing margin base range ('₹X–Y lakh'); now raises `MethodRulesParseError`.
 - **vault_reader**: Eliminated silent fallback on missing sleep threshold; now raises `MethodRulesParseError`.
