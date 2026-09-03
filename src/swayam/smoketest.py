@@ -25,8 +25,11 @@ from swayam.local_db import local_db
 from swayam.vault_reader import VaultReader
 
 
-def run_smoketest() -> bool:
-    """Executes the 7 core connectivity checks and prints a formatted status report.
+def run_smoketest(skip_web: bool = False) -> bool:
+    """Executes core connectivity and web checks and prints a formatted status report.
+
+    Args:
+        skip_web: If True, skips local API and web build checks.
 
     Returns:
         bool: True if all critical checks pass, False otherwise.
@@ -115,6 +118,30 @@ def run_smoketest() -> bool:
         print(f"[FAIL] DuckDB       — failed to open DuckDB: {e}")
         all_passed = False
 
+    # 8. API Server Check (Optional / skipped with --skip-web)
+    if not skip_web:
+        try:
+            import urllib.request
+            req = urllib.request.Request("http://localhost:8000/health")
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
+                if resp.status == 200:
+                    print("[OK] API Server   — reachable at http://localhost:8000/health")
+                else:
+                    print(f"[FAIL] API Server   — returned status {resp.status}")
+        except Exception:
+            print("[INFO] API Server   — not running (start with `python -m uvicorn swayam.api.main:app --port 8000`)")
+
+    # 9. Frontend Build Check (Optional / skipped with --skip-web)
+    if not skip_web:
+        dist_html = settings.project_root / "web" / "dist" / "index.html"
+        pkg_json = settings.project_root / "web" / "package.json"
+        if dist_html.exists():
+            print("[OK] Frontend     — web/ dist build verified")
+        elif pkg_json.exists():
+            print("[INFO] Frontend     — web/ installed (build with `cd web && npm run build`)")
+        else:
+            print("[FAIL] Frontend     — web/ directory not found")
+
     print("=" * 60)
     if all_passed:
         print("All checks passed. Foundation is ready.\n")
@@ -125,5 +152,6 @@ def run_smoketest() -> bool:
 
 
 if __name__ == "__main__":
-    success = run_smoketest()
+    skip_web_flag = "--skip-web" in sys.argv
+    success = run_smoketest(skip_web=skip_web_flag)
     sys.exit(0 if success else 1)

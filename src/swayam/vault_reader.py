@@ -78,12 +78,13 @@ class VaultReader:
 
     def __init__(
         self,
-        method_dir: Path,
-        brief_file: Path,
+        method_dir: Optional[Path] = None,
+        brief_file: Optional[Path] = None,
         operational_file: Optional[Path] = None,
     ) -> None:
-        self.method_dir = Path(method_dir)
-        self.brief_file = Path(brief_file)
+        from swayam.config import settings
+        self.method_dir = Path(method_dir) if method_dir else settings.trading_method_path
+        self.brief_file = Path(brief_file) if brief_file else settings.trading_brief_path
         self.risk_file = self.method_dir / "Risk Management Rules.md"
         self.operational_file = (
             Path(operational_file)
@@ -257,3 +258,6 @@ class VaultReader:
             alcohol_lockout_days=alcohol_lockout,
             reentry_ramp=reentry_ramp,
         )
+
+
+vault_reader = VaultReader()

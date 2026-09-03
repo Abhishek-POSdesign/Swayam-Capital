@@ -55,6 +55,7 @@ class Settings:
     )
 
     # Local Data Cache Paths
+    project_root: Path = field(default_factory=lambda: PROJECT_ROOT)
     local_data_dir: Path = field(
         default_factory=lambda: Path(os.getenv("LOCAL_DATA_DIR", str(PROJECT_ROOT / "data")))
     )
