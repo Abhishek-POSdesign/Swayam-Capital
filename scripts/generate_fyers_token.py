@@ -9,7 +9,22 @@ Usage:
 """
 
 from pathlib import Path
+import re
+import sys
+import urllib.parse
 import webbrowser
+
+# Ensure UTF-8 output on Windows consoles
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+# Add project src directory to sys.path so direct script execution works
+ROOT_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT_DIR / "src"))
+
 from fyers_apiv3 import fyersModel
 from swayam.config import settings
 
@@ -23,7 +38,7 @@ def generate_token() -> None:
     client_id = settings.fyers_client_id or input("Enter your FYERS Client ID (e.g., YA38914): ").strip()
     app_id = settings.fyers_app_id or input("Enter your FYERS App ID (e.g., ABC123-100): ").strip()
     secret_key = settings.fyers_secret_key or input("Enter your FYERS Secret Key: ").strip()
-    redirect_uri = settings.fyers_redirect_uri
+    redirect_uri = settings.fyers_redirect_uri or "https://trade.fyers.in/api-anchor/result.html"
 
     if not app_id or not secret_key:
         print("[❌] Error: App ID and Secret Key are required to authenticate.")
@@ -45,14 +60,30 @@ def generate_token() -> None:
     except Exception:
         pass
 
-    print("[2] Log in and authorize the app.")
-    print("[3] After authorization, your browser will redirect to a URL like:")
-    print(f"    {redirect_uri}?s=ok&code=YOUR_AUTH_CODE&...\n")
+    print("[2] Log in with your FYERS PIN and OTP in the browser.")
+    print("[3] After authorization, your browser will show the auth code (or redirect to the anchor URL).")
+    print(f"    Target URL: {redirect_uri}\n")
 
-    auth_code = input("Paste the 'code' parameter from the redirect URL here: ").strip()
-    if not auth_code:
+    raw_input = input("Paste the 'auth_code' (or paste the entire redirect URL) here: ").strip()
+    if not raw_input:
         print("[❌] Error: No auth code provided. Aborting.")
         return
+
+    # Foolproof parsing: handle raw code, full URL, or 'auth_code : XXX'
+    if "code=" in raw_input or "auth_code=" in raw_input:
+        parsed = urllib.parse.urlparse(raw_input)
+        qs = urllib.parse.parse_qs(parsed.query or parsed.path)
+        if "auth_code" in qs:
+            auth_code = qs["auth_code"][0]
+        elif "code" in qs:
+            auth_code = qs["code"][0]
+        else:
+            m = re.search(r"(?:auth_code|code)=([^&\s]+)", raw_input)
+            auth_code = m.group(1) if m else raw_input
+    elif ":" in raw_input and ("auth_code" in raw_input or "code" in raw_input):
+        auth_code = raw_input.split(":")[-1].strip()
+    else:
+        auth_code = raw_input
 
     session.set_token(auth_code)
     response = session.generate_token()
@@ -61,11 +92,10 @@ def generate_token() -> None:
         token = response["access_token"]
         print(f"\n[✅] Authentication Successful! Access Token acquired.")
 
-        env_path = Path(__file__).resolve().parent.parent / ".env"
+        env_path = ROOT_DIR / ".env"
         if env_path.exists():
             content = env_path.read_text(encoding="utf-8")
             if "FYERS_ACCESS_TOKEN=" in content:
-                import re
                 new_content = re.sub(r"FYERS_ACCESS_TOKEN=.*", f"FYERS_ACCESS_TOKEN={token}", content)
                 env_path.write_text(new_content, encoding="utf-8")
                 print(f"[✅] Successfully updated FYERS_ACCESS_TOKEN in {env_path}")
