@@ -180,6 +180,12 @@
   2. **Dark/Light Chart Theme Sync:** Dispatches `swayam-theme-change` CustomEvent from header; NIFTY chart, VIX chart, and Payoff chart listen and call `Plotly.relayout` or re-render canvas immediately.
   3. **AI Chat Testing Mode Memory:** Persists `swayam_active_session_id` in `localStorage`; `trading_partner.py` permanently enforces Constraint 7 ("Paper Trading / Testing Phase active: all execution is strictly paper simulation") in system instructions and context assembly.
   4. **Fast Headless Test DOM:** Resolved regex catastrophic backtracking and event handler recursion in test environment, achieving 65 passing frontend tests in under 30s.
+- **Post-Build-10 User Refinements:**
+  1. **Database Test Trades Cleanup:** Archived 51 legacy test paper trades in Supabase `swayam_positions` from earlier automated tests, resetting active trades count to 0.
+  2. **Strategy Payoff Chart Enhancement:** Fixed missing IV parameter causing 400 error and blank chart. Added green (+profit) and red (-loss) shaded regions, prominent breakeven markers, spot indicator, and top metric chips (Max Profit, Max Loss, Breakeven).
+  3. **Push Layout for AI Panel:** Opening AI drawer now auto-collapses `#strategy-left-rail` (0px) and shifts main layout 400px left, eliminating overlay occlusion on top of the Strategy Payoff chart.
+  4. **Browser Refresh Persistence:** Route detection now checks `window.location.pathname` synchronously with `data-initial-page` attribute and popstate listener. Refreshing on `/strategy` stays on `/strategy` without flashing or redirecting to Home.
+  5. **Reclaimed Screen Space:** Removed bottom full-width AI chat box from Strategy Builder, giving full vertical and horizontal focus to builder legs, payoff chart, and execution data.
 - **All 321 Tests Passing:** 256 backend pytest + 65 frontend vitest tests pass cleanly with 0 failures.
 
 ---
