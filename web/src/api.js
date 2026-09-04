@@ -63,11 +63,13 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getTodayReadiness: () => request('/api/readiness/today'),
+  getReadinessKPIs: () => request('/api/readiness/kpis'),
   logReadiness: (payload) =>
     request('/api/readiness/log', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
   reconcileReadiness: () => request('/api/readiness/reconcile', { method: 'POST' }),
+  getAIBrief: () => request('/api/ai/brief/today'),
 };
 
