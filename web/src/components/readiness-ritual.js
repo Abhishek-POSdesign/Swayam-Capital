@@ -75,50 +75,47 @@ export class ReadinessRitualComponent {
 
   render() {
     const todayFormatted = new Intl.DateTimeFormat('en-GB', {
-      weekday: 'long',
+      weekday: 'short',
       day: 'numeric',
-      month: 'long',
-      year: 'numeric',
+      month: 'short',
     }).format(new Date()).toUpperCase();
 
     this.container.innerHTML = `
-      <div class="tile readiness-ritual-tile" style="display: flex; flex-direction: column; gap: 14px;">
-        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-          <span class="eyebrow">TODAY'S RITUAL · ${todayFormatted}</span>
-          <span id="ritual-status-chip" style="font-size: 0.72rem; color: var(--dl-fg-3);">Step 1 of 6</span>
+      <div class="tile readiness-ritual-tile" style="display: flex; flex-direction: column; gap: 10px; padding: 14px 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span class="eyebrow" style="color: var(--dl-fg-3);">MORNING RITUAL · ${todayFormatted}</span>
+          <span id="ritual-status-chip" style="font-size: 0.68rem; color: var(--dl-fg-3);">60-sec check</span>
         </div>
 
-        <!-- 1. Meditation Timer -->
-        <div class="ritual-step" id="step-meditation" style="padding: 10px 12px; background: var(--dl-card-2); border-radius: 12px; border: 1px solid var(--dl-line); display: flex; align-items: center; justify-content: space-between;">
-          <div style="display: flex; align-items: center; gap: 14px;">
-            <div style="position: relative; width: 56px; height: 56px;">
-              <svg width="56" height="56" viewBox="0 0 56 56" style="transform: rotate(-90deg);">
-                <circle cx="28" cy="28" r="24" stroke="var(--dl-track)" stroke-width="3" fill="none" />
-                <circle id="meditation-ring-progress" cx="28" cy="28" r="24" stroke="var(--accent-sage)" stroke-width="3" fill="none" stroke-dasharray="150.8" stroke-dashoffset="0" style="transition: stroke-dashoffset 1s linear;" />
+        <!-- 1. Meditation Timer (compact) -->
+        <div class="ritual-step" id="step-meditation" style="padding: 8px 10px; background: var(--dl-card-2); border-radius: 10px; border: 1px solid var(--dl-line); display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="position: relative; width: 40px; height: 40px; flex-shrink: 0;">
+              <svg width="40" height="40" viewBox="0 0 40 40" style="transform: rotate(-90deg);">
+                <circle cx="20" cy="20" r="17" stroke="var(--dl-track)" stroke-width="2.5" fill="none" />
+                <circle id="meditation-ring-progress" cx="20" cy="20" r="17" stroke="var(--accent-sage)" stroke-width="2.5" fill="none" stroke-dasharray="106.8" stroke-dashoffset="0" style="transition: stroke-dashoffset 1s linear;" />
               </svg>
-              <div id="meditation-timer-display" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-size: 0.88rem; font-weight: 700; color: var(--dl-fg);">
+              <div id="meditation-timer-display" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700; color: var(--dl-fg);">
                 5:00
               </div>
             </div>
             <div>
-              <div style="font-size: 0.85rem; font-weight: 600; color: var(--dl-fg);">Meditation Timer</div>
-              <div id="meditation-subtitle" style="font-size: 0.75rem; color: var(--dl-fg-2);">5-min calm reset before market</div>
+              <div style="font-size: 0.8rem; font-weight: 600; color: var(--dl-fg); line-height: 1.2;">Meditation</div>
+              <button id="btn-meditation-skip" style="background: none; border: none; padding: 0; font-size: 0.7rem; color: var(--dl-fg-3); cursor: pointer; text-decoration: underline; text-decoration-style: dotted;">Skip for now</button>
             </div>
           </div>
-          <div style="display: flex; gap: 6px;">
-            <button id="btn-meditation-toggle" class="ritual-btn-action" style="background: var(--accent-sage); color: #101116; border: none; padding: 6px 14px; border-radius: 9px; font-weight: 600; font-size: 0.8rem; cursor: pointer;">
+          <div style="display: flex; gap: 5px;">
+            <button id="btn-meditation-toggle" class="ritual-btn-action" style="background: var(--accent-sage); color: #101116; border: none; padding: 5px 12px; border-radius: 8px; font-weight: 600; font-size: 0.75rem; cursor: pointer;">
               Start
             </button>
-            <button id="btn-meditation-reset" style="background: transparent; color: var(--dl-fg-3); border: 1px solid var(--dl-line); padding: 6px 10px; border-radius: 9px; font-size: 0.75rem; cursor: pointer; display: none;">
-              ↺
-            </button>
+            <button id="btn-meditation-reset" style="background: transparent; color: var(--dl-fg-3); border: 1px solid var(--dl-line); padding: 5px 8px; border-radius: 8px; font-size: 0.72rem; cursor: pointer; display: none;">↺</button>
           </div>
         </div>
 
         <!-- 2. Sleep Duration -->
-        <div class="ritual-step" id="step-sleep" style="display: flex; flex-direction: column; gap: 6px;">
-          <label class="eyebrow" style="color: var(--dl-fg-2);">Sleep Last Night</label>
-          <select id="ritual-sleep-select" style="background: var(--dl-card-2); color: var(--dl-fg); border: 1px solid var(--dl-line); border-radius: 9px; padding: 7px 12px; font-size: 0.85rem; outline: none; width: 100%;">
+        <div class="ritual-step" id="step-sleep" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <span style="font-size: 0.8rem; color: var(--dl-fg-2); white-space: nowrap;">Sleep last night</span>
+          <select id="ritual-sleep-select" style="background: var(--dl-card-2); color: var(--dl-fg); border: 1px solid var(--dl-line); border-radius: 8px; padding: 5px 10px; font-size: 0.8rem; outline: none; min-width: 130px;">
             <option value="<3">&lt; 3 hours</option>
             <option value="3-4">3 – 4 hours</option>
             <option value="4-5">4 – 5 hours</option>
@@ -130,63 +127,78 @@ export class ReadinessRitualComponent {
 
         <!-- 3. Alcohol in Last 24h -->
         <div class="ritual-step" id="step-alcohol" style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="font-size: 0.85rem; color: var(--dl-fg);">Alcohol in last 24h?</span>
-          <div class="pill-group" style="display: flex; gap: 6px;">
-            <button type="button" class="pill-toggle active" data-field="alcohol" data-val="false" style="padding: 4px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; border: 1px solid rgba(134,171,146,0.3); background: var(--accent-sage-tint); color: var(--accent-sage); cursor: pointer;">No</button>
-            <button type="button" class="pill-toggle" data-field="alcohol" data-val="true" style="padding: 4px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Yes</button>
+          <span style="font-size: 0.8rem; color: var(--dl-fg-2);">Alcohol in last 24h?</span>
+          <div class="pill-group" style="display: flex; gap: 5px;">
+            <button type="button" class="pill-toggle active" data-field="alcohol" data-val="false" style="padding: 3px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; border: 1px solid rgba(134,171,146,0.3); background: var(--accent-sage-tint); color: var(--accent-sage); cursor: pointer;">No</button>
+            <button type="button" class="pill-toggle" data-field="alcohol" data-val="true" style="padding: 3px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Yes</button>
           </div>
         </div>
 
         <!-- 4. Workout in Last 48h -->
         <div class="ritual-step" id="step-workout" style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="font-size: 0.85rem; color: var(--dl-fg);">Workout in last 48h?</span>
-          <div class="pill-group" style="display: flex; gap: 6px;">
-            <button type="button" class="pill-toggle active" data-field="workout" data-val="true" style="padding: 4px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; border: 1px solid rgba(134,171,146,0.3); background: var(--accent-sage-tint); color: var(--accent-sage); cursor: pointer;">Yes</button>
-            <button type="button" class="pill-toggle" data-field="workout" data-val="false" style="padding: 4px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">No</button>
+          <span style="font-size: 0.8rem; color: var(--dl-fg-2);">Workout in last 48h?</span>
+          <div class="pill-group" style="display: flex; gap: 5px;">
+            <button type="button" class="pill-toggle active" data-field="workout" data-val="true" style="padding: 3px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; border: 1px solid rgba(134,171,146,0.3); background: var(--accent-sage-tint); color: var(--accent-sage); cursor: pointer;">Yes</button>
+            <button type="button" class="pill-toggle" data-field="workout" data-val="false" style="padding: 3px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">No</button>
           </div>
         </div>
 
         <!-- 5. Current Mood -->
-        <div class="ritual-step" id="step-mood" style="display: flex; flex-direction: column; gap: 6px;">
-          <label class="eyebrow" style="color: var(--dl-fg-2);">Current Mood</label>
-          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-            <button type="button" class="pill-mood active" data-mood="focused" style="padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; border: 1px solid rgba(134,171,146,0.3); background: var(--accent-sage-tint); color: var(--accent-sage); cursor: pointer;">Calm & Focused</button>
-            <button type="button" class="pill-mood" data-mood="neutral" style="padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Neutral</button>
-            <button type="button" class="pill-mood" data-mood="tired" style="padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Restless</button>
-            <button type="button" class="pill-mood" data-mood="off" style="padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Anxious</button>
-            <button type="button" class="pill-mood" data-mood="angry_grief" style="padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Angry</button>
+        <div class="ritual-step" id="step-mood" style="display: flex; flex-direction: column; gap: 5px;">
+          <span class="eyebrow" style="color: var(--dl-fg-3); font-size: 0.65rem;">Mood</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+            <button type="button" class="pill-mood active" data-mood="focused" style="padding: 3px 9px; border-radius: 999px; font-size: 0.73rem; font-weight: 600; border: 1px solid rgba(134,171,146,0.3); background: var(--accent-sage-tint); color: var(--accent-sage); cursor: pointer;">Focused</button>
+            <button type="button" class="pill-mood" data-mood="neutral" style="padding: 3px 9px; border-radius: 999px; font-size: 0.73rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Neutral</button>
+            <button type="button" class="pill-mood" data-mood="tired" style="padding: 3px 9px; border-radius: 999px; font-size: 0.73rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Restless</button>
+            <button type="button" class="pill-mood" data-mood="off" style="padding: 3px 9px; border-radius: 999px; font-size: 0.73rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Anxious</button>
+            <button type="button" class="pill-mood" data-mood="angry_grief" style="padding: 3px 9px; border-radius: 999px; font-size: 0.73rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Angry</button>
           </div>
         </div>
 
         <!-- 6. Life Stressor -->
-        <div class="ritual-step" id="step-stressor" style="display: flex; flex-direction: column; gap: 6px;">
-          <label class="eyebrow" style="color: var(--dl-fg-2);">Life Stressor</label>
-          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-            <button type="button" class="pill-stressor active" data-stressor="none" style="padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; border: 1px solid rgba(134,171,146,0.3); background: var(--accent-sage-tint); color: var(--accent-sage); cursor: pointer;">None</button>
-            <button type="button" class="pill-stressor" data-stressor="work" style="padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Work</button>
-            <button type="button" class="pill-stressor" data-stressor="family" style="padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Family</button>
-            <button type="button" class="pill-stressor" data-stressor="other" style="padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Health</button>
-            <button type="button" class="pill-stressor" data-stressor="financial" style="padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Financial</button>
+        <div class="ritual-step" id="step-stressor" style="display: flex; flex-direction: column; gap: 5px;">
+          <span class="eyebrow" style="color: var(--dl-fg-3); font-size: 0.65rem;">Life Stressor</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+            <button type="button" class="pill-stressor active" data-stressor="none" style="padding: 3px 9px; border-radius: 999px; font-size: 0.73rem; font-weight: 600; border: 1px solid rgba(134,171,146,0.3); background: var(--accent-sage-tint); color: var(--accent-sage); cursor: pointer;">None</button>
+            <button type="button" class="pill-stressor" data-stressor="work" style="padding: 3px 9px; border-radius: 999px; font-size: 0.73rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Work</button>
+            <button type="button" class="pill-stressor" data-stressor="family" style="padding: 3px 9px; border-radius: 999px; font-size: 0.73rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Family</button>
+            <button type="button" class="pill-stressor" data-stressor="health" style="padding: 3px 9px; border-radius: 999px; font-size: 0.73rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Health</button>
+            <button type="button" class="pill-stressor" data-stressor="financial" style="padding: 3px 9px; border-radius: 999px; font-size: 0.73rem; font-weight: 500; border: 1px solid var(--dl-line); background: transparent; color: var(--dl-fg-2); cursor: pointer;">Financial</button>
           </div>
         </div>
 
         <!-- Submit Button -->
-        <button id="btn-confirm-readiness" style="margin-top: 4px; height: 36px; background: var(--accent-sage); color: #101116; border: none; border-radius: 9px; font-weight: 700; font-size: 0.85rem; letter-spacing: 0.02em; cursor: pointer; transition: opacity var(--dur-fast) ease;">
+        <button id="btn-confirm-readiness" style="margin-top: 2px; height: 34px; background: var(--accent-sage); color: #101116; border: none; border-radius: 9px; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.02em; cursor: pointer; transition: opacity var(--dur-fast) ease;">
           Confirm Readiness
         </button>
       </div>
     `;
   }
 
+
   attachEvents() {
     // 1. Meditation Timer
     const btnToggle = this.container.querySelector('#btn-meditation-toggle');
     const btnReset = this.container.querySelector('#btn-meditation-reset');
+    const btnSkip = this.container.querySelector('#btn-meditation-skip');
     if (btnToggle) {
       btnToggle.addEventListener('click', () => this.toggleMeditationTimer());
     }
     if (btnReset) {
       btnReset.addEventListener('click', () => this.resetMeditationTimer());
+    }
+    if (btnSkip) {
+      btnSkip.addEventListener('click', () => {
+        // Skipping meditation — mark as explicitly skipped (no timestamp set)
+        this.meditationCompletedAt = null;
+        btnSkip.textContent = 'Skipped';
+        btnSkip.style.color = 'var(--dl-fg-3)';
+        btnSkip.style.textDecoration = 'none';
+        if (btnToggle) {
+          btnToggle.style.opacity = '0.4';
+          btnToggle.disabled = true;
+        }
+      });
     }
 
     // 2. Sleep Select
@@ -326,11 +338,11 @@ export class ReadinessRitualComponent {
     const display = this.container.querySelector('#meditation-timer-display');
     if (display) display.textContent = timeStr;
 
-    // SVG dashoffset: full circle circumference is 2 * PI * 24 ≈ 150.8
+    // SVG dashoffset: compact ring circumference is 2 * PI * 17 ≈ 106.8
     const progress = this.container.querySelector('#meditation-ring-progress');
     if (progress) {
       const fraction = (300 - this.timerSeconds) / 300;
-      const offset = 150.8 * (1 - fraction);
+      const offset = 106.8 * (1 - fraction);
       progress.style.strokeDashoffset = offset;
     }
   }
