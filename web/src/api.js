@@ -63,11 +63,15 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getTodayReadiness: () => request('/api/readiness/today'),
+  getReadinessKPIs: () => request('/api/readiness/kpis'),
   logReadiness: (payload) =>
     request('/api/readiness/log', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
   reconcileReadiness: () => request('/api/readiness/reconcile', { method: 'POST' }),
+  getAIBrief: () => request('/api/ai/brief/today'),
+  getNiftyCandles: (timeframe = '1d') => request(`/api/market/nifty/candles?timeframe=${timeframe}`),
+  getVixHistory: (days = 365) => request(`/api/market/vix/history?days=${days}`),
 };
 

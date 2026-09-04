@@ -6,7 +6,7 @@ Initializes REST API routes, CORS middleware, and WebSocket broadcasting service
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from swayam.api.routes import ai, execution, health, market, positions, readiness, strategy, validation
+from swayam.api.routes import ai, execution, health, market, notebook, pinned, positions, readiness, session, strategy, tts, validation
 from swayam.api.ws_manager import ws_manager
 
 app = FastAPI(
@@ -33,6 +33,36 @@ app.include_router(execution.router)
 app.include_router(positions.router)
 app.include_router(readiness.router)
 app.include_router(ai.router)
+app.include_router(tts.router)
+app.include_router(notebook.router)
+app.include_router(pinned.router)
+app.include_router(session.router)
+
+# Serve frontend static files from built dist if present (Cloud Run & production)
+from pathlib import Path
+from fastapi import HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+_web_dist = Path(__file__).resolve().parents[3] / "web" / "dist"
+if _web_dist.exists():
+    _assets_dir = _web_dist / "assets"
+    if _assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=_assets_dir), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str):
+        if full_path.startswith("api/") or full_path == "api":
+            raise HTTPException(status_code=404, detail="API endpoint not found")
+
+        candidate = _web_dist / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+
+        index_html = _web_dist / "index.html"
+        if not index_html.exists():
+            raise HTTPException(status_code=404, detail="Frontend not built")
+        return FileResponse(index_html)
 
 
 

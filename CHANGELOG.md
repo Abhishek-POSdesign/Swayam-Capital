@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - BUILD-9-FIXES-B (2026-09-07)
+- **Full-Width Interactive Conversational Workspace (`web/src/components/chat-surface.js`, `web/src/pages/home.js`)**: Upgraded "What Matters Today" into an expansive 1,000–1,400px wide conversational workspace matching Cursor terminal standards, complete with pre-market briefing, speech synthesizer playback, per-message actions (save to memory, pin rule), streaming dialogue history, and continuous session bridge to Strategy Builder.
+- **Indian English Text-to-Speech (`src/swayam/ai/tts.py`, `src/swayam/api/routes/tts.py`, `web/src/components/tts-player.js`)**: Integrated Google Cloud Text-to-Speech via Cloud Run Application Default Credentials (ADC), featuring Neural2 Indian English voices (`swayam_calm` male default, `swayam_warm` female alternate), configurable speech rate (0.5x–2.0x), audio caching, and single-stream playback.
+- **3-Tier Event-Driven Memory Model (`src/swayam/ai/memory.py`, `src/swayam/api/routes/notebook.py`, `pinned.py`, `session.py`, `migrations/005_ai_memory_system.sql`)**:
+  - Layer 1: Verbatim Working Memory preserved across the trading day and active positions.
+  - Layer 2: Event-driven compaction (Daily 4:00 PM IST cron + closed trade with journal reflection).
+  - Layer 3: Persistent Memory Notebook and Pinned Decisions injected permanently into system context.
+  - Layer 4: 200-message safety valve auto-compacting oldest half.
+- **AI Settings Drawer (`web/src/components/ai-settings-drawer.js`)**: Voice selection, speech rate slider, auto-play toggle, and direct management for pinned rules and notebook memories.
+- **Fixes A1–A7 UI Polishing**:
+  - Fix A1: Repainted light theme tokens to match Atlas paper-cream (`#ebe8e1` canvas, `#f8f6f2` cards, `#1a1a1c` text).
+  - Fix A2: Added streak-protecting double-confirmation modal for alcohol = "Yes".
+  - Fix A3: Applied correct charcoal `#191b21` and lilac theme tokens to AI drawer.
+  - Fix A4: Implemented non-blocking content-shift layout pattern (`margin-right: 370px`).
+  - Fix A5: Corrected API endpoints to relative URLs (`API_BASE = ''`).
+  - Fix A6: Added context-aware pre-market starter prompts.
+  - Fix A7: Added collapsible Morning Ritual panel folding to a slim 56px strip with `localStorage` state.
+- **Test Suite Expansion**: Total automated test suite expanded to **286 passing tests** (242 pytest + 44 vitest, 0 failures).
+
+### Added - BUILD-9.5 (2026-09-07)
+- **Multi-Stage Dockerfile & Containerization (`Dockerfile`, `.dockerignore`, `.gcloudignore`)**: Single multi-stage container build bundling Node 20 (Vite frontend compilation) and Python 3.11-slim (FastAPI + Gunicorn ASGI production server) running under 1GB RAM / 1 vCPU with 0-to-3 auto-scaling instances.
+- **Vite Frontend Static Serving from FastAPI (`src/swayam/api/main.py`, `tests/api/test_static_serving.py`)**: Seamless static file serving from `/` and `/assets` with client-side SPA routing fallback to `index.html` and explicit 404 guards for missing `/api/*` requests.
+- **Automated Cloud Build Pipeline (`cloudbuild.yaml`)**: High-performance Cloud Build definition compiling container images, pushing to Artifact Registry (`asia-south1`), and deploying directly to Cloud Run with environment variables and secret injections.
+- **Google Cloud Security & Secret Manager Wiring**: Dedicated Service Account `swayam-dashboard-sa` provisioned with minimal least-privilege roles (`roles/secretmanager.secretAccessor`, `roles/aiplatform.user`, `roles/storage.objectViewer`). All 7 core secrets safely synchronized to Google Secret Manager.
+- **Custom Domain Mapping (`swayam.abhisheksikka.com`)**: Configured Cloud Run domain mapping pointing to `ghs.googlehosted.com.` with automatic SSL certificate management and Identity-Aware Proxy (IAP) access control.
+- **Deployment Documentation & Runbooks (`docs/DEPLOY.md`, `docs/RUNBOOK.md`)**: Comprehensive operations guides covering manual deployment, log inspection, rollback procedures, and troubleshooting.
+
+### Added - BUILD-9 (2026-09-07)
+- **Multi-Page Architecture & Home Page View (`web/src/pages/home.js`, `web/src/main.js`, `web/index.html`)**: Transformed Swayam Capital from a single crowded screen into a multi-page terminal, launching with the dedicated **Home (Readiness + Market Prep)** view.
+- **Atlas Design System Inheritance (`web/src/styles/swayam-tokens.css`)**: Implemented Atlas daylight dark-mode tokens (`#101116` background, `#191b21` cards, 12-column bento grid, 13px gap, 16px border-radius) and strictly mapped the 5 locked semantic meanings (Sage = PASS/Profit, Coral = Alert/Loss, Lilac = AI Partner, Amber = Warning, Blue = Info).
+- **Sequential Readiness Ritual (`web/src/components/readiness-ritual.js`)**: Clean single-column 6-step pre-trade operational readiness checklist:
+  1. Interactive 5-minute meditation timer with circular SVG progress ring, pause/resume/reset controls, and Web Audio API completion bell chime.
+  2. Sleep duration selector.
+  3. Alcohol in last 24h toggle (No/Yes).
+  4. Workout in last 48h toggle (Yes/No).
+  5. Current mood pills (Calm & Focused, Neutral, Restless, Anxious, Angry).
+  6. Life stressor pills (None, Work, Family, Health, Financial).
+- **Verdict Card (`web/src/components/verdict-card.js`)**: Dynamic state-aware card rendered in Atlas pastel cards (`--dl-done` mint for GREEN, `--dl-skip` amber for YELLOW, `--dl-alert` coral for RED) with rule reason tags and trading sizing permissions.
+- **Reflective History Cards (`web/src/components/kpi-history-card.js`, `GET /api/readiness/kpis`)**: Reusable `.fig-xl` serif metric cards querying Supabase for actual alcohol-free streaks with ramp tier tags, 7-day readiness dot indicators, and morning routine completion with trend sparkline.
+- **Market Prep Bento Grid (`web/src/components/`)**:
+  - **Overnight Global Strip (`overnight-strip.js`)**: 5 global indicators (DJI, S&P 500, NASDAQ, USD/INR, BRENT) in tabular monospace format.
+  - **India VIX Card (`vix-card.js`)**: 20-day historical value, volatility regime badge, and sparkline.
+  - **NIFTY Candlestick Chart Card (`nifty-chart-card.js`)**: Dark-themed candlestick chart with 20-EMA overlay and key support level at 24,700.
+  - **Macro Events Card (`macro-events-card.js`)**: Next 5 days economic calendar (RBI Policy Meet, US CPI, FOMC Minutes).
+  - **AI Reading Queue Card (`reading-queue-card.js`)**: Curated overnight institutional notes with reading time estimates.
+- **AI Trading Partner Pre-Market Brief (`GET /api/ai/brief/today`, `web/src/components/ai-brief-card.js`)**: New backend endpoint generating <80-word actionable daily briefing framed as elimination criteria via Gemini AI Router, with lilac left-border card finish and persistent floating AI launcher orb in the bottom-right corner.
+- **Test Suite Expansion**: Added 25 new automated tests across backend routes (`tests/api/test_ai_brief.py`, `tests/api/test_readiness_kpis.py`) and frontend components (`web/tests/test_readiness_ritual.test.js`, `web/tests/test_verdict_card.test.js`, `web/tests/test_ai_brief_card.test.js`, `web/tests/test_home_composition.test.js`), bringing the automated test suite to **244 passing tests** (216 pytest + 28 vitest, 0 failures).
+
 ### Added - BUILD-8 (2026-09-07)
 - **Two-Tier Risk Model (`src/swayam/rule_engine/statistical_risk.py`, `src/swayam/vault_reader.py`, `src/swayam/api/routes/validation.py`)**: Replaced single mathematical worst-case loss check with Abhishek's two-tier risk framework:
   1. **Tier 1 — Realistic Risk Cap (1.0% of margin base)**: Primary sizing gate evaluating candidate spread losses if NIFTY moves ±2σ over 1 day based on trailing 20-day realized volatility.

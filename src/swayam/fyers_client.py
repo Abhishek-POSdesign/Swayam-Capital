@@ -103,6 +103,49 @@ class FyersClient:
         except Exception as e:
             raise FyersClientError(f"Option chain request error: {e}") from e
 
+    def get_historical_candles(
+        self,
+        symbol: str,
+        resolution: str,
+        date_format: str = "1",
+        range_from: str = "",
+        range_to: str = "",
+        cont_flag: str = "1",
+    ) -> dict[str, Any]:
+        """Fetches historical OHLCV candlestick data from FYERS.
+
+        Args:
+            symbol: Trading symbol, e.g. "NSE:NIFTY50-INDEX".
+            resolution: Candle resolution — "15" (15m), "60" (1h), "D" (daily).
+            date_format: "1" for date string (YYYY-MM-DD), "0" for epoch.
+            range_from: Start date/epoch.
+            range_to: End date/epoch.
+            cont_flag: "1" to include continuous data.
+
+        Returns:
+            dict with key "candles": list of [timestamp, open, high, low, close, volume].
+
+        Raises:
+            FyersClientError: On API error or unauthenticated request.
+        """
+        data: dict[str, Any] = {
+            "symbol": symbol,
+            "resolution": resolution,
+            "date_format": date_format,
+            "range_from": range_from,
+            "range_to": range_to,
+            "cont_flag": cont_flag,
+        }
+        try:
+            response = self.model.history(data=data)
+            if response.get("s") == "ok":
+                return response  # contains "candles" key
+            raise FyersClientError(
+                f"FYERS historical data fetch failed: {response.get('message', response)}"
+            )
+        except Exception as e:
+            raise FyersClientError(f"FYERS historical candles request error: {e}") from e
+
     def stream_ticks(
         self,
         symbols: list[str],

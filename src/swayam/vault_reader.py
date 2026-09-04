@@ -99,6 +99,24 @@ class VaultReader:
             if operational_file
             else self.method_dir / "Operational Readiness Rules.md"
         )
+
+        # Cloud-deploy fallback (added 2026-09-07 to fix BUILD-9.5 vault-path bug):
+        # When running in Cloud Run, the vault (G: drive on Windows) doesn't
+        # exist. Fall back to Method files embedded in the container at
+        # src/swayam/data/method_files/. Local dev still uses the live vault.
+        # Fallback is triggered ONLY if default vault path is used and missing —
+        # never overrides custom caller-provided paths or a working vault.
+        is_default_paths = (method_dir is None and brief_file is None and operational_file is None)
+        if is_default_paths:
+            embedded_dir = Path(__file__).resolve().parent / "data" / "method_files"
+            if not self.risk_file.exists() and (embedded_dir / "Risk Management Rules.md").exists():
+                self.method_dir = embedded_dir
+                self.risk_file = embedded_dir / "Risk Management Rules.md"
+            if not self.operational_file.exists() and (embedded_dir / "Operational Readiness Rules.md").exists():
+                self.operational_file = embedded_dir / "Operational Readiness Rules.md"
+            if not self.brief_file.exists() and (embedded_dir / "Personal Trading Brief.md").exists():
+                self.brief_file = embedded_dir / "Personal Trading Brief.md"
+
         self._cached_rules: Optional[MethodRules] = None
         self._cached_mtimes: dict[Path, float] = {}
 

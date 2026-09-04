@@ -8,7 +8,7 @@
 > **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-south1`, AI Location: `global`)  
 > **Supabase Database:** `wxijlrwoiaeaupaaqecc` (`https://wxijlrwoiaeaupaaqecc.supabase.co`)  
 > **Broker Integration:** FYERS API v3 (Client ID: `YA38914`)  
-> **Status:** Phase 1 Complete (BUILDs 1–8 Shipped). 217 automated tests passing (207 pytest + 10 vitest). Ready for UI Redesign Session.
+> **Status:** Phase 1 Complete (BUILDs 1–9.5 + BUILD-9-FIXES-B Shipped). 286 automated tests passing (242 pytest + 44 vitest, 0 failures). Conversational AI partner, Indian English TTS (ADC), 3-tier memory engine, and Atlas UI improvements integrated. Deployed to Cloud Run behind custom subdomain `https://swayam.abhisheksikka.com` with Google Identity-Aware Proxy (IAP). Ready for BUILD-10.
 
 ---
 
@@ -127,7 +127,26 @@
 - **AI Persona & Context Integration:** Embedded risk philosophy into `TRADING_PARTNER_PERSONA` and injected today's computed realized volatility (`realistic_vol_pct`) into context assembly.
 - **Smoketest Check:** Added 20-day NIFTY realized volatility computation step to `swayam.smoketest`.
 - **Zero Silent Fallback Discipline:** Strict exception raising (`InsufficientHistoryError`, `HistoricalDataUnavailableError`, `MethodRulesParseError`, HTTP 503) rejecting silent fallback defaults.
-- **Test Suite Expansion:** Added 30 new tests, bringing the total suite to 207 pytest + 10 vitest (217 total passing tests).
+### ✅ BUILD-9: UI Redesign Home Screen (Readiness + Market Prep)
+- **Multi-Page Architecture:** Transformed Swayam Capital into a multi-page terminal, launching with the dedicated **Home (Readiness + Market Prep)** view on `/` while preserving `/strategy` for the Strategy Builder.
+- **Atlas Design System Inheritance:** Implemented Atlas dark daylight tokens (`swayam-tokens.css`), 12-column bento grid, 13px gap, 16px radius, and semantic colors (Sage = Pass/Profit, Coral = Alert/Loss, Lilac = AI Partner, Amber = Warning, Blue = Info).
+- **Sequential Readiness Ritual (`readiness-ritual.js`):** Clean single-column 6-step pre-trade operational readiness checklist featuring an interactive 5-minute meditation timer with circular SVG progress ring, pause/reset controls, and Web Audio API completion bell chime.
+- **Verdict Card (`verdict-card.js`):** Dynamic state-aware card rendered in Atlas pastel cards (`--dl-done` mint for GREEN, `--dl-skip` amber for YELLOW, `--dl-alert` coral for RED) with rule reason tags and trading sizing permissions.
+- **Reflective History Cards (`kpi-history-card.js`, `GET /api/readiness/kpis`):** Reusable `.fig-xl` serif metric cards querying Supabase for actual alcohol-free streaks with ramp tier tags, 7-day readiness dot indicators, and morning routine completion with trend sparkline.
+- **Market Prep Bento Grid:**
+  - **Overnight Global Strip (`overnight-strip.js`):** 5 global indicators (DJI, S&P 500, NASDAQ, USD/INR, BRENT) in tabular monospace format.
+  - **India VIX Card (`vix-card.js`):** 20-day historical value, volatility regime badge, and sparkline.
+  - **NIFTY Candlestick Chart Card (`nifty-chart-card.js`):** Dark-themed candlestick chart with 20-EMA overlay and key support level at 24,700.
+  - **Macro Events Card (`macro-events-card.js`):** Next 5 days economic calendar (RBI Policy Meet, US CPI, FOMC Minutes).
+  - **AI Reading Queue Card (`reading-queue-card.js`):** Curated overnight institutional notes with reading time estimates.
+### ✅ BUILD-9.5: Cloud Deployment (Cloud Run + Custom Subdomain)
+- **Single Multi-Stage Container Architecture:** Unified container (`Dockerfile`) compiling the Vite frontend with Node 20 and serving both the REST/WebSocket API and built static frontend via FastAPI + Gunicorn ASGI workers (`swayam.api.main:app`) on Python 3.11-slim.
+- **Client-Side SPA Routing & 404 Guards:** Built frontend static files served from `/` and `/assets` with client-side fallback to `index.html` and strict 404 guards for missing `/api/*` requests (`tests/api/test_static_serving.py`).
+- **Google Cloud Run Deployments:** Deployed service `swayam-dashboard` with automated 0-to-3 auto-scaling (scale-to-zero when idle ensures $0 baseline cost).
+- **Google Secret Manager Integration:** Synchronized 7 sensitive configuration variables (`swayam-supabase-url`, `swayam-supabase-anon-key`, `swayam-supabase-service-role-key`, `fyers-access-token`, `fyers-client-id`, `fyers-app-id`, `fyers-secret-key`) injected directly into Cloud Run at runtime.
+- **Security & Access Control:** Protected via Google Identity-Aware Proxy (IAP) and IAM invoker policy restricted strictly to `abhisheksikka99.99@gmail.com`.
+- **Custom Subdomain Mapping (`swayam.abhisheksikka.com`):** Configured Cloud Run domain mapping pointing to `ghs.googlehosted.com.` with automatic SSL certificate management.
+- **Operations & Runbooks:** Full deployment runbook (`docs/DEPLOY.md`) and operational troubleshooting cheatsheet (`docs/RUNBOOK.md`).
 
 ---
 

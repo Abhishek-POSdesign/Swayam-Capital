@@ -8,7 +8,7 @@ support and explicit zero-silent-fallback error handling.
 
 from datetime import date, datetime, timezone
 import math
-from typing import Optional
+from typing import Any, Optional
 import numpy as np
 
 from swayam.local_db import LocalDB, local_db
@@ -90,32 +90,48 @@ def compute_realized_vol(
     except Exception as exc:
         raise RealizedVolError(f"Database error checking realized_vol_cache: {exc}") from exc
 
-    # 2. Check if nifty_daily_bars exists
+    # 2. Check if nifty_daily_bars exists in DuckDB
+    rows: list[tuple[Any, Any]] = []
+    daily_bars_res = []
     try:
         daily_bars_res = conn.execute(
             "SELECT table_name FROM information_schema.tables WHERE table_name = 'nifty_daily_bars';"
         ).fetchall()
-        if not daily_bars_res:
-            raise HistoricalDataUnavailableError("Table 'nifty_daily_bars' does not exist in DuckDB.")
-    except HistoricalDataUnavailableError:
-        raise
+        if daily_bars_res:
+            rows = conn.execute(
+                """
+                SELECT trade_date, close
+                FROM nifty_daily_bars
+                WHERE symbol = ? AND trade_date <= ?
+                ORDER BY trade_date DESC
+                LIMIT ?;
+                """,
+                [symbol, as_of_date, window_days],
+            ).fetchall()
     except Exception as exc:
         raise RealizedVolError(f"Database error querying nifty_daily_bars schema: {exc}") from exc
 
-    # 3. Query trailing closes ending on or before as_of_date
-    try:
-        rows = conn.execute(
-            """
-            SELECT trade_date, close
-            FROM nifty_daily_bars
-            WHERE symbol = ? AND trade_date <= ?
-            ORDER BY trade_date DESC
-            LIMIT ?;
-            """,
-            [symbol, as_of_date, window_days],
-        ).fetchall()
-    except Exception as exc:
-        raise RealizedVolError(f"Database error querying nifty_daily_bars: {exc}") from exc
+    # Fallback to Supabase swayam_nifty_daily_bars for cloud deployments when DuckDB table is absent
+    if db is None and len(rows) < window_days:
+        try:
+            from swayam.db import db as cloud_db
+            if cloud_db.url and cloud_db.key:
+                sb_res = (
+                    cloud_db.client.table("swayam_nifty_daily_bars")
+                    .select("trade_date, close")
+                    .eq("symbol", symbol)
+                    .lte("trade_date", as_of_date.isoformat())
+                    .order("trade_date", desc=True)
+                    .limit(window_days)
+                    .execute()
+                )
+                if sb_res.data and len(sb_res.data) > len(rows):
+                    rows = [(r["trade_date"], float(r["close"])) for r in sb_res.data]
+        except Exception:
+            pass
+
+    if not rows and not daily_bars_res:
+        raise HistoricalDataUnavailableError("Table 'nifty_daily_bars' does not exist in DuckDB.")
 
     if len(rows) < window_days:
         raise InsufficientHistoryError(
