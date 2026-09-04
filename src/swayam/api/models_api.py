@@ -200,3 +200,85 @@ class PositionResponse(BaseModel):
     opened_at: str
     unrealized_pnl_inr: Optional[float] = 0.0
     journal_path: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Journal and Lesson Ledger Models (BUILD-11)
+# ---------------------------------------------------------------------------
+
+class JournalTradeItem(BaseModel):
+    position_id: str
+    opened_at: str
+    closed_at: Optional[str] = None
+    strategy_name: str
+    underlying: str = "NIFTY"
+    legs_summary: str = ""
+    entry_debit_credit_inr: float = 0.0
+    gross_pnl_inr: float = 0.0
+    net_pnl_inr: float = 0.0
+    charges_inr: float = 0.0
+    rr_planned: Optional[float] = None
+    rr_actual: Optional[float] = None
+    time_in_trade_str: Optional[str] = None
+    time_in_trade_minutes: Optional[int] = None
+    points_in_trade: Optional[float] = None
+    duration_days: Optional[float] = None
+    status: str = "closed"
+    outcome: Optional[str] = None  # WIN | LOSS | BREAKEVEN
+    exit_reason: Optional[str] = None
+    rules_followed: Optional[bool] = True
+    rules_broken_reason: Optional[str] = None
+    directional_view: Optional[str] = None
+    setup_technical: Optional[str] = None
+    setup_location: Optional[str] = None
+    with_or_against_trend: Optional[str] = None
+    moneyness_summary: Optional[str] = None
+    entry_rationale: Optional[str] = None
+    exit_rationale: Optional[str] = None
+    journal_path: Optional[str] = None
+    lesson_id: Optional[str] = None
+    lesson_text: Optional[str] = None
+    lesson_source: Optional[str] = None
+
+
+class JournalKPIs(BaseModel):
+    total_trades: int = 0
+    wins_count: int = 0
+    losses_count: int = 0
+    breakeven_count: int = 0
+    win_rate_pct: float = 0.0
+    avg_rr_actual: float = 0.0
+    cumulative_net_pnl_inr: float = 0.0
+    cumulative_gross_pnl_inr: float = 0.0
+    cumulative_pnl_pct_of_margin: float = 0.0
+    discipline_rate_pct: float = 100.0
+    charges_drag_inr: float = 0.0
+    charges_drag_pct: float = 0.0
+    max_profit_trade: Optional[dict[str, Any]] = None
+    max_loss_trade: Optional[dict[str, Any]] = None
+
+
+class JournalTradesResponse(BaseModel):
+    trades: list[JournalTradeItem]
+    total_count: int
+    kpis: JournalKPIs
+
+
+class LessonResponse(BaseModel):
+    id: str
+    position_id: str
+    trade_closed_at: str
+    strategy_name: str
+    outcome: str
+    realised_pnl_inr: float
+    rr_planned: Optional[float] = None
+    rr_actual: Optional[float] = None
+    lesson_text: str
+    lesson_source: str = "ai_generated"
+    created_at: str
+    updated_at: str
+
+
+class LessonUpdateRequest(BaseModel):
+    lesson_text: str
+

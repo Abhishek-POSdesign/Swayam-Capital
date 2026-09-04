@@ -98,6 +98,7 @@ class ClosePositionResponse(BaseModel):
     realized_pnl_inr: float
     total_charges_inr: float
     journal_path: Optional[str] = None
+    lesson: Optional[dict[str, Any]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -479,9 +480,12 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
     # 2. Resolve exit premiums per leg
     # If exit_legs provided, use them; otherwise fetch from FYERS option chain
     chain_lookup: dict[tuple[float, str], dict[str, Any]] = {}
+    spot_at_exit: Optional[float] = None
     if not req.exit_legs:
         raw_chain = _get_cached_option_chain(underlying, expiry=expiry_val)
-        _, chain_lookup = _build_chain_lookup(raw_chain)
+        spot_val, chain_lookup = _build_chain_lookup(raw_chain)
+        if spot_val > 0:
+            spot_at_exit = spot_val
 
     gross_exit_value = 0.0
     closed_legs: list[dict[str, Any]] = []
@@ -541,8 +545,14 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
     try:
         opened_at_dt = datetime.fromisoformat(opened_at_str.replace("Z", "+00:00"))
         holding_days = max(0, (closed_at.date() - opened_at_dt.date()).days)
+        time_in_trade_minutes = max(0, int((closed_at - opened_at_dt).total_seconds() / 60))
     except Exception:
         holding_days = 0
+        time_in_trade_minutes = None
+
+    spot_at_entry = float(pos.get("spot_at_entry") or 0.0) if pos.get("spot_at_entry") else None
+    points_in_trade = round(spot_at_exit - spot_at_entry, 2) if (spot_at_exit and spot_at_entry) else None
+    outcome = "WIN" if realized_pnl_inr > 0 else "LOSS" if realized_pnl_inr < 0 else "BREAKEVEN"
 
     # 4. Database-before-journal ordering
     # Step A: Insert to swayam_trade_history
@@ -567,9 +577,19 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
                 detail=f"Database error writing trade history: {exc}",
             ) from exc
 
-    # Step B: Update swayam_positions status to 'closed'
+    # Step B: Update swayam_positions status to 'closed' and record trade journal metrics
+    pos_update_payload = {
+        "status": "closed",
+        "closed_at": closed_at.isoformat(),
+        "spot_at_exit": spot_at_exit,
+        "points_in_trade": points_in_trade,
+        "time_in_trade_minutes": time_in_trade_minutes,
+        "charges_inr": total_charges_inr,
+        "exit_reason": req.close_reason,
+        "exit_rationale": req.notes,
+    }
     try:
-        db.client.table("swayam_positions").update({"status": "closed"}).eq("id", position_id).execute()
+        db.client.table("swayam_positions").update(pos_update_payload).eq("id", position_id).execute()
     except Exception as exc:
         logger.error("Database update to swayam_positions failed for %s: %s", position_id, exc)
         if db.url and db.key:
@@ -582,6 +602,7 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
     for p in _local_paper_positions:
         if str(p.get("id")) == position_id:
             p["status"] = "closed"
+            p.update(pos_update_payload)
 
     # Step C: Append exit report to Obsidian journal note
     if journal_path:
@@ -618,12 +639,33 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
                 detail=f"Trade closed in DB, but writing to journal note failed: {exc}",
             ) from exc
 
+    # Step D: Auto-generate lesson into Lesson Ledger
+    lesson_info = None
+    try:
+        from swayam.api.routes.lessons import generate_lesson_for_position
+        pos_record_for_lesson = {**pos, **pos_update_payload, "realized_pnl_inr": realized_pnl_inr}
+        lesson_record = generate_lesson_for_position(
+            position_id=position_id,
+            pos_record=pos_record_for_lesson,
+            realized_pnl=realized_pnl_inr,
+            trade_outcome=outcome,
+        )
+        if lesson_record:
+            lesson_info = {
+                "id": str(lesson_record.get("id", "")),
+                "lesson_text": str(lesson_record.get("lesson_text", "")),
+                "lesson_source": str(lesson_record.get("lesson_source", "ai_generated")),
+            }
+    except Exception as exc:
+        logger.warning("Auto lesson generation failed on trade close: %s", exc)
+
     return ClosePositionResponse(
         position_id=position_id,
         status="closed",
         realized_pnl_inr=round(realized_pnl_inr, 2),
         total_charges_inr=round(total_charges_inr, 2),
         journal_path=journal_path,
+        lesson=lesson_info,
     )
 
 
