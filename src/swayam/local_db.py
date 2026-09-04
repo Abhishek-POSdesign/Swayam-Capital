@@ -44,7 +44,7 @@ class LocalDB:
                 close NUMERIC(10, 2) NOT NULL,
                 settle_price NUMERIC(10, 2),
                 volume BIGINT,
-                turnover_inr NUMERIC(15, 2),
+                turnover_inr NUMERIC(24, 2),
                 open_interest BIGINT,
                 change_in_oi BIGINT,
                 underlying_spot NUMERIC(10, 2),
