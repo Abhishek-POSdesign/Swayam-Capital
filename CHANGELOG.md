@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - BUILD-9.5 (2026-09-07)
+- **Multi-Stage Dockerfile & Containerization (`Dockerfile`, `.dockerignore`, `.gcloudignore`)**: Single multi-stage container build bundling Node 20 (Vite frontend compilation) and Python 3.11-slim (FastAPI + Gunicorn ASGI production server) running under 1GB RAM / 1 vCPU with 0-to-3 auto-scaling instances.
+- **Vite Frontend Static Serving from FastAPI (`src/swayam/api/main.py`, `tests/api/test_static_serving.py`)**: Seamless static file serving from `/` and `/assets` with client-side SPA routing fallback to `index.html` and explicit 404 guards for missing `/api/*` requests.
+- **Automated Cloud Build Pipeline (`cloudbuild.yaml`)**: High-performance Cloud Build definition compiling container images, pushing to Artifact Registry (`asia-south1`), and deploying directly to Cloud Run with environment variables and secret injections.
+- **Google Cloud Security & Secret Manager Wiring**: Dedicated Service Account `swayam-dashboard-sa` provisioned with minimal least-privilege roles (`roles/secretmanager.secretAccessor`, `roles/aiplatform.user`, `roles/storage.objectViewer`). All 7 core secrets safely synchronized to Google Secret Manager.
+- **Custom Domain Mapping (`swayam.abhisheksikka.com`)**: Configured Cloud Run domain mapping pointing to `ghs.googlehosted.com.` with automatic SSL certificate management and Identity-Aware Proxy (IAP) access control.
+- **Deployment Documentation & Runbooks (`docs/DEPLOY.md`, `docs/RUNBOOK.md`)**: Comprehensive operations guides covering manual deployment, log inspection, rollback procedures, and troubleshooting.
+
 ### Added - BUILD-9 (2026-09-07)
 - **Multi-Page Architecture & Home Page View (`web/src/pages/home.js`, `web/src/main.js`, `web/index.html`)**: Transformed Swayam Capital from a single crowded screen into a multi-page terminal, launching with the dedicated **Home (Readiness + Market Prep)** view.
 - **Atlas Design System Inheritance (`web/src/styles/swayam-tokens.css`)**: Implemented Atlas daylight dark-mode tokens (`#101116` background, `#191b21` cards, 12-column bento grid, 13px gap, 16px border-radius) and strictly mapped the 5 locked semantic meanings (Sage = PASS/Profit, Coral = Alert/Loss, Lilac = AI Partner, Amber = Warning, Blue = Info).

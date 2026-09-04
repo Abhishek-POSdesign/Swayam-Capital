@@ -8,7 +8,7 @@
 > **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-south1`, AI Location: `global`)  
 > **Supabase Database:** `wxijlrwoiaeaupaaqecc` (`https://wxijlrwoiaeaupaaqecc.supabase.co`)  
 > **Broker Integration:** FYERS API v3 (Client ID: `YA38914`)  
-> **Status:** Phase 1 Complete (BUILDs 1–9 Shipped). 244 automated tests passing (216 pytest + 28 vitest). Home Screen UI Redesign live. Ready for BUILD-10 (Strategy Builder & Trading Terminal).
+> **Status:** Phase 1 Complete (BUILDs 1–9.5 Shipped). 247 automated tests passing (219 pytest + 28 vitest). Deployed to Cloud Run behind custom subdomain `https://swayam.abhisheksikka.com` with Google Identity-Aware Proxy (IAP). Ready for BUILD-10.
 
 ---
 
@@ -139,8 +139,14 @@
   - **NIFTY Candlestick Chart Card (`nifty-chart-card.js`):** Dark-themed candlestick chart with 20-EMA overlay and key support level at 24,700.
   - **Macro Events Card (`macro-events-card.js`):** Next 5 days economic calendar (RBI Policy Meet, US CPI, FOMC Minutes).
   - **AI Reading Queue Card (`reading-queue-card.js`):** Curated overnight institutional notes with reading time estimates.
-- **AI Trading Partner Pre-Market Brief (`GET /api/ai/brief/today`, `ai-brief-card.js`):** New backend endpoint generating <80-word actionable daily briefing framed as elimination criteria via Gemini AI Router, with lilac left-border card finish and persistent floating AI launcher orb in the bottom-right corner.
-- **Test Suite Expansion:** Added 25 new automated tests across backend routes (`test_ai_brief.py`, `test_readiness_kpis.py`) and frontend components (`test_readiness_ritual.test.js`, `test_verdict_card.test.js`, `test_ai_brief_card.test.js`, `test_home_composition.test.js`), bringing the automated test suite to **244 passing tests** (216 pytest + 28 vitest, 0 failures).
+### ✅ BUILD-9.5: Cloud Deployment (Cloud Run + Custom Subdomain)
+- **Single Multi-Stage Container Architecture:** Unified container (`Dockerfile`) compiling the Vite frontend with Node 20 and serving both the REST/WebSocket API and built static frontend via FastAPI + Gunicorn ASGI workers (`swayam.api.main:app`) on Python 3.11-slim.
+- **Client-Side SPA Routing & 404 Guards:** Built frontend static files served from `/` and `/assets` with client-side fallback to `index.html` and strict 404 guards for missing `/api/*` requests (`tests/api/test_static_serving.py`).
+- **Google Cloud Run Deployments:** Deployed service `swayam-dashboard` with automated 0-to-3 auto-scaling (scale-to-zero when idle ensures $0 baseline cost).
+- **Google Secret Manager Integration:** Synchronized 7 sensitive configuration variables (`swayam-supabase-url`, `swayam-supabase-anon-key`, `swayam-supabase-service-role-key`, `fyers-access-token`, `fyers-client-id`, `fyers-app-id`, `fyers-secret-key`) injected directly into Cloud Run at runtime.
+- **Security & Access Control:** Protected via Google Identity-Aware Proxy (IAP) and IAM invoker policy restricted strictly to `abhisheksikka99.99@gmail.com`.
+- **Custom Subdomain Mapping (`swayam.abhisheksikka.com`):** Configured Cloud Run domain mapping pointing to `ghs.googlehosted.com.` with automatic SSL certificate management.
+- **Operations & Runbooks:** Full deployment runbook (`docs/DEPLOY.md`) and operational troubleshooting cheatsheet (`docs/RUNBOOK.md`).
 
 ---
 
