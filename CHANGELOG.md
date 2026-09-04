@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - BUILD-9 (2026-09-07)
+- **Multi-Page Architecture & Home Page View (`web/src/pages/home.js`, `web/src/main.js`, `web/index.html`)**: Transformed Swayam Capital from a single crowded screen into a multi-page terminal, launching with the dedicated **Home (Readiness + Market Prep)** view.
+- **Atlas Design System Inheritance (`web/src/styles/swayam-tokens.css`)**: Implemented Atlas daylight dark-mode tokens (`#101116` background, `#191b21` cards, 12-column bento grid, 13px gap, 16px border-radius) and strictly mapped the 5 locked semantic meanings (Sage = PASS/Profit, Coral = Alert/Loss, Lilac = AI Partner, Amber = Warning, Blue = Info).
+- **Sequential Readiness Ritual (`web/src/components/readiness-ritual.js`)**: Clean single-column 6-step pre-trade operational readiness checklist:
+  1. Interactive 5-minute meditation timer with circular SVG progress ring, pause/resume/reset controls, and Web Audio API completion bell chime.
+  2. Sleep duration selector.
+  3. Alcohol in last 24h toggle (No/Yes).
+  4. Workout in last 48h toggle (Yes/No).
+  5. Current mood pills (Calm & Focused, Neutral, Restless, Anxious, Angry).
+  6. Life stressor pills (None, Work, Family, Health, Financial).
+- **Verdict Card (`web/src/components/verdict-card.js`)**: Dynamic state-aware card rendered in Atlas pastel cards (`--dl-done` mint for GREEN, `--dl-skip` amber for YELLOW, `--dl-alert` coral for RED) with rule reason tags and trading sizing permissions.
+- **Reflective History Cards (`web/src/components/kpi-history-card.js`, `GET /api/readiness/kpis`)**: Reusable `.fig-xl` serif metric cards querying Supabase for actual alcohol-free streaks with ramp tier tags, 7-day readiness dot indicators, and morning routine completion with trend sparkline.
+- **Market Prep Bento Grid (`web/src/components/`)**:
+  - **Overnight Global Strip (`overnight-strip.js`)**: 5 global indicators (DJI, S&P 500, NASDAQ, USD/INR, BRENT) in tabular monospace format.
+  - **India VIX Card (`vix-card.js`)**: 20-day historical value, volatility regime badge, and sparkline.
+  - **NIFTY Candlestick Chart Card (`nifty-chart-card.js`)**: Dark-themed candlestick chart with 20-EMA overlay and key support level at 24,700.
+  - **Macro Events Card (`macro-events-card.js`)**: Next 5 days economic calendar (RBI Policy Meet, US CPI, FOMC Minutes).
+  - **AI Reading Queue Card (`reading-queue-card.js`)**: Curated overnight institutional notes with reading time estimates.
+- **AI Trading Partner Pre-Market Brief (`GET /api/ai/brief/today`, `web/src/components/ai-brief-card.js`)**: New backend endpoint generating <80-word actionable daily briefing framed as elimination criteria via Gemini AI Router, with lilac left-border card finish and persistent floating AI launcher orb in the bottom-right corner.
+- **Test Suite Expansion**: Added 25 new automated tests across backend routes (`tests/api/test_ai_brief.py`, `tests/api/test_readiness_kpis.py`) and frontend components (`web/tests/test_readiness_ritual.test.js`, `web/tests/test_verdict_card.test.js`, `web/tests/test_ai_brief_card.test.js`, `web/tests/test_home_composition.test.js`), bringing the automated test suite to **244 passing tests** (216 pytest + 28 vitest, 0 failures).
+
 ### Added - BUILD-8 (2026-09-07)
 - **Two-Tier Risk Model (`src/swayam/rule_engine/statistical_risk.py`, `src/swayam/vault_reader.py`, `src/swayam/api/routes/validation.py`)**: Replaced single mathematical worst-case loss check with Abhishek's two-tier risk framework:
   1. **Tier 1 — Realistic Risk Cap (1.0% of margin base)**: Primary sizing gate evaluating candidate spread losses if NIFTY moves ±2σ over 1 day based on trailing 20-day realized volatility.

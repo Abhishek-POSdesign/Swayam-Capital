@@ -8,7 +8,7 @@
 > **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-south1`, AI Location: `global`)  
 > **Supabase Database:** `wxijlrwoiaeaupaaqecc` (`https://wxijlrwoiaeaupaaqecc.supabase.co`)  
 > **Broker Integration:** FYERS API v3 (Client ID: `YA38914`)  
-> **Status:** Phase 1 Complete (BUILDs 1–8 Shipped). 217 automated tests passing (207 pytest + 10 vitest). Ready for UI Redesign Session.
+> **Status:** Phase 1 Complete (BUILDs 1–9 Shipped). 244 automated tests passing (216 pytest + 28 vitest). Home Screen UI Redesign live. Ready for BUILD-10 (Strategy Builder & Trading Terminal).
 
 ---
 
@@ -127,7 +127,20 @@
 - **AI Persona & Context Integration:** Embedded risk philosophy into `TRADING_PARTNER_PERSONA` and injected today's computed realized volatility (`realistic_vol_pct`) into context assembly.
 - **Smoketest Check:** Added 20-day NIFTY realized volatility computation step to `swayam.smoketest`.
 - **Zero Silent Fallback Discipline:** Strict exception raising (`InsufficientHistoryError`, `HistoricalDataUnavailableError`, `MethodRulesParseError`, HTTP 503) rejecting silent fallback defaults.
-- **Test Suite Expansion:** Added 30 new tests, bringing the total suite to 207 pytest + 10 vitest (217 total passing tests).
+### ✅ BUILD-9: UI Redesign Home Screen (Readiness + Market Prep)
+- **Multi-Page Architecture:** Transformed Swayam Capital into a multi-page terminal, launching with the dedicated **Home (Readiness + Market Prep)** view on `/` while preserving `/strategy` for the Strategy Builder.
+- **Atlas Design System Inheritance:** Implemented Atlas dark daylight tokens (`swayam-tokens.css`), 12-column bento grid, 13px gap, 16px radius, and semantic colors (Sage = Pass/Profit, Coral = Alert/Loss, Lilac = AI Partner, Amber = Warning, Blue = Info).
+- **Sequential Readiness Ritual (`readiness-ritual.js`):** Clean single-column 6-step pre-trade operational readiness checklist featuring an interactive 5-minute meditation timer with circular SVG progress ring, pause/reset controls, and Web Audio API completion bell chime.
+- **Verdict Card (`verdict-card.js`):** Dynamic state-aware card rendered in Atlas pastel cards (`--dl-done` mint for GREEN, `--dl-skip` amber for YELLOW, `--dl-alert` coral for RED) with rule reason tags and trading sizing permissions.
+- **Reflective History Cards (`kpi-history-card.js`, `GET /api/readiness/kpis`):** Reusable `.fig-xl` serif metric cards querying Supabase for actual alcohol-free streaks with ramp tier tags, 7-day readiness dot indicators, and morning routine completion with trend sparkline.
+- **Market Prep Bento Grid:**
+  - **Overnight Global Strip (`overnight-strip.js`):** 5 global indicators (DJI, S&P 500, NASDAQ, USD/INR, BRENT) in tabular monospace format.
+  - **India VIX Card (`vix-card.js`):** 20-day historical value, volatility regime badge, and sparkline.
+  - **NIFTY Candlestick Chart Card (`nifty-chart-card.js`):** Dark-themed candlestick chart with 20-EMA overlay and key support level at 24,700.
+  - **Macro Events Card (`macro-events-card.js`):** Next 5 days economic calendar (RBI Policy Meet, US CPI, FOMC Minutes).
+  - **AI Reading Queue Card (`reading-queue-card.js`):** Curated overnight institutional notes with reading time estimates.
+- **AI Trading Partner Pre-Market Brief (`GET /api/ai/brief/today`, `ai-brief-card.js`):** New backend endpoint generating <80-word actionable daily briefing framed as elimination criteria via Gemini AI Router, with lilac left-border card finish and persistent floating AI launcher orb in the bottom-right corner.
+- **Test Suite Expansion:** Added 25 new automated tests across backend routes (`test_ai_brief.py`, `test_readiness_kpis.py`) and frontend components (`test_readiness_ritual.test.js`, `test_verdict_card.test.js`, `test_ai_brief_card.test.js`, `test_home_composition.test.js`), bringing the automated test suite to **244 passing tests** (216 pytest + 28 vitest, 0 failures).
 
 ---
 
