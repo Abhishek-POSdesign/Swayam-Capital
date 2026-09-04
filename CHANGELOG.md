@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - BUILD-9-FIXES-B (2026-09-07)
+- **Full-Width Interactive Conversational Workspace (`web/src/components/chat-surface.js`, `web/src/pages/home.js`)**: Upgraded "What Matters Today" into an expansive 1,000–1,400px wide conversational workspace matching Cursor terminal standards, complete with pre-market briefing, speech synthesizer playback, per-message actions (save to memory, pin rule), streaming dialogue history, and continuous session bridge to Strategy Builder.
+- **Indian English Text-to-Speech (`src/swayam/ai/tts.py`, `src/swayam/api/routes/tts.py`, `web/src/components/tts-player.js`)**: Integrated Google Cloud Text-to-Speech via Cloud Run Application Default Credentials (ADC), featuring Neural2 Indian English voices (`swayam_calm` male default, `swayam_warm` female alternate), configurable speech rate (0.5x–2.0x), audio caching, and single-stream playback.
+- **3-Tier Event-Driven Memory Model (`src/swayam/ai/memory.py`, `src/swayam/api/routes/notebook.py`, `pinned.py`, `session.py`, `migrations/005_ai_memory_system.sql`)**:
+  - Layer 1: Verbatim Working Memory preserved across the trading day and active positions.
+  - Layer 2: Event-driven compaction (Daily 4:00 PM IST cron + closed trade with journal reflection).
+  - Layer 3: Persistent Memory Notebook and Pinned Decisions injected permanently into system context.
+  - Layer 4: 200-message safety valve auto-compacting oldest half.
+- **AI Settings Drawer (`web/src/components/ai-settings-drawer.js`)**: Voice selection, speech rate slider, auto-play toggle, and direct management for pinned rules and notebook memories.
+- **Fixes A1–A7 UI Polishing**:
+  - Fix A1: Repainted light theme tokens to match Atlas paper-cream (`#ebe8e1` canvas, `#f8f6f2` cards, `#1a1a1c` text).
+  - Fix A2: Added streak-protecting double-confirmation modal for alcohol = "Yes".
+  - Fix A3: Applied correct charcoal `#191b21` and lilac theme tokens to AI drawer.
+  - Fix A4: Implemented non-blocking content-shift layout pattern (`margin-right: 370px`).
+  - Fix A5: Corrected API endpoints to relative URLs (`API_BASE = ''`).
+  - Fix A6: Added context-aware pre-market starter prompts.
+  - Fix A7: Added collapsible Morning Ritual panel folding to a slim 56px strip with `localStorage` state.
+- **Test Suite Expansion**: Total automated test suite expanded to **286 passing tests** (242 pytest + 44 vitest, 0 failures).
+
 ### Added - BUILD-9.5 (2026-09-07)
 - **Multi-Stage Dockerfile & Containerization (`Dockerfile`, `.dockerignore`, `.gcloudignore`)**: Single multi-stage container build bundling Node 20 (Vite frontend compilation) and Python 3.11-slim (FastAPI + Gunicorn ASGI production server) running under 1GB RAM / 1 vCPU with 0-to-3 auto-scaling instances.
 - **Vite Frontend Static Serving from FastAPI (`src/swayam/api/main.py`, `tests/api/test_static_serving.py`)**: Seamless static file serving from `/` and `/assets` with client-side SPA routing fallback to `index.html` and explicit 404 guards for missing `/api/*` requests.

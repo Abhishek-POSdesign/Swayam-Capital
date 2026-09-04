@@ -8,7 +8,7 @@
 > **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-south1`, AI Location: `global`)  
 > **Supabase Database:** `wxijlrwoiaeaupaaqecc` (`https://wxijlrwoiaeaupaaqecc.supabase.co`)  
 > **Broker Integration:** FYERS API v3 (Client ID: `YA38914`)  
-> **Status:** Phase 1 Complete (BUILDs 1–9.5 Shipped). 247 automated tests passing (219 pytest + 28 vitest). Deployed to Cloud Run behind custom subdomain `https://swayam.abhisheksikka.com` with Google Identity-Aware Proxy (IAP). Ready for BUILD-10.
+> **Status:** Phase 1 Complete (BUILDs 1–9.5 + BUILD-9-FIXES-B Shipped). 286 automated tests passing (242 pytest + 44 vitest, 0 failures). Conversational AI partner, Indian English TTS (ADC), 3-tier memory engine, and Atlas UI improvements integrated. Deployed to Cloud Run behind custom subdomain `https://swayam.abhisheksikka.com` with Google Identity-Aware Proxy (IAP). Ready for BUILD-10.
 
 ---
 

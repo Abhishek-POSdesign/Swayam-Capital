@@ -173,6 +173,15 @@ See [`SETUP.md`](SETUP.md) for full walkthrough and database setup.
 
 ---
 
+## 🗣️ AI Trading Partner & 3-Tier Memory
+
+Swayam Capital integrates a full-width conversational AI trading partner on the Home page:
+- **3-Tier Event-Driven Memory:** Verbatim active session history (Layer 1), 4 PM IST daily session summaries and closed-trade compaction (Layer 2), persistent memory notebook and pinned rules (Layer 3).
+- **Text-to-Speech:** Calm Indian English speech playback (`en-IN-Neural2-B`) powered directly by Google Cloud TTS API via Application Default Credentials (ADC).
+- **Continuous Workflow:** Seamless session ID tracking from Home pre-market brainstorming directly into Strategy Builder.
+
+---
+
 ## 🔒 License
 
 Private, proprietary software for personal use only by Abhishek Sikka. All rights reserved.
