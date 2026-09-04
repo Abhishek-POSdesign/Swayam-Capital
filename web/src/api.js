@@ -71,5 +71,7 @@ export const api = {
     }),
   reconcileReadiness: () => request('/api/readiness/reconcile', { method: 'POST' }),
   getAIBrief: () => request('/api/ai/brief/today'),
+  getNiftyCandles: (timeframe = '1d') => request(`/api/market/nifty/candles?timeframe=${timeframe}`),
+  getVixHistory: (days = 365) => request(`/api/market/vix/history?days=${days}`),
 };
 

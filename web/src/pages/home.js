@@ -1,6 +1,6 @@
 /**
- * Home Page Controller for Swayam Capital (BUILD-9).
- * Composes the Readiness Ritual (left column) and Market Prep (right column).
+ * Home Page Controller for Swayam Capital (BUILD-9-FIXES-A).
+ * Layout change: NIFTY chart full-width (span-12), India VIX own row below it.
  */
 
 import { api } from '../api.js';
@@ -31,8 +31,8 @@ export class HomePage {
   render() {
     this.container.innerHTML = `
       <div class="home-canvas" style="max-width: 1720px; margin: 0 auto; padding: 20px 24px; display: flex; gap: 20px; align-items: flex-start;">
-        <!-- LEFT COLUMN (380px fixed width): Readiness Ritual & History -->
-        <aside class="home-left-col" style="flex: 0 0 380px; width: 380px; display: flex; flex-direction: column; gap: 13px;">
+        <!-- LEFT COLUMN (360px fixed width): Readiness Ritual & History — COMPACT -->
+        <aside class="home-left-col" style="flex: 0 0 360px; width: 360px; display: flex; flex-direction: column; gap: 13px;">
           <div id="home-ritual-container"></div>
           <div id="home-verdict-container"></div>
           <div id="home-kpi-container" style="display: flex; flex-direction: column; gap: 13px;"></div>
@@ -52,18 +52,20 @@ export class HomePage {
 
           <!-- 12-Column Bento Grid -->
           <div class="bento-grid">
-            <!-- Row 1: Overnight Global Strip (Span 12) -->
+            <!-- Row 1: Overnight Global Strip (Span 12) — big numbers -->
             <div id="home-overnight-container" class="span-12"></div>
 
-            <!-- Row 2: VIX Card (Span 4) + NIFTY Chart (Span 8) -->
-            <div id="home-vix-container" class="span-4"></div>
-            <div id="home-nifty-container" class="span-8"></div>
+            <!-- Row 2: NIFTY 50 Chart — FULL WIDTH (Span 12) with interactive tabs -->
+            <div id="home-nifty-container" class="span-12"></div>
 
-            <!-- Row 3: Macro Events (Span 6) + Reading Queue (Span 6) -->
+            <!-- Row 3: India VIX — OWN FULL-WIDTH ROW (Span 12) with percentile band -->
+            <div id="home-vix-container" class="span-12"></div>
+
+            <!-- Row 4: Macro Events (Span 6) + Reading Queue (Span 6) -->
             <div id="home-macro-container" class="span-6"></div>
             <div id="home-reading-container" class="span-6"></div>
 
-            <!-- Row 4: AI Trading Partner Brief (Span 12) -->
+            <!-- Row 5: AI Trading Partner Brief (Span 12) — markdown rendered -->
             <div id="home-ai-brief-container" class="span-12"></div>
           </div>
         </main>
@@ -96,20 +98,20 @@ export class HomePage {
     this.kpiComponent = new KPIHistoryCardComponent(kpiContainer);
     this.kpiComponent.render({});
 
-    // 4. Overnight Strip
+    // 4. Overnight Strip — big numbers
     const overnightContainer = this.container.querySelector('#home-overnight-container');
     this.overnightComponent = new OvernightStripComponent(overnightContainer);
     this.overnightComponent.render();
 
-    // 5. VIX Card
-    const vixContainer = this.container.querySelector('#home-vix-container');
-    this.vixComponent = new VixCardComponent(vixContainer);
-    this.vixComponent.render();
-
-    // 6. NIFTY Chart
+    // 5. NIFTY Chart — full-width, interactive tabs
     const niftyContainer = this.container.querySelector('#home-nifty-container');
     this.niftyChartComponent = new NiftyChartCardComponent(niftyContainer);
     this.niftyChartComponent.render();
+
+    // 6. India VIX — own row with percentile band
+    const vixContainer = this.container.querySelector('#home-vix-container');
+    this.vixComponent = new VixCardComponent(vixContainer);
+    this.vixComponent.render();
 
     // 7. Macro Events
     const macroContainer = this.container.querySelector('#home-macro-container');
@@ -121,7 +123,7 @@ export class HomePage {
     this.readingQueueComponent = new ReadingQueueCardComponent(readingContainer);
     this.readingQueueComponent.render();
 
-    // 9. AI Brief Card
+    // 9. AI Brief Card — markdown rendered
     const briefContainer = this.container.querySelector('#home-ai-brief-container');
     this.aiBriefComponent = new AIBriefCardComponent(briefContainer, {
       onOpenAIDrawer: () => {
@@ -137,6 +139,7 @@ export class HomePage {
     await Promise.allSettled([
       this.loadKpiData(),
       this.loadAIBrief(),
+      this.loadVixData(),
     ]);
   }
 
@@ -148,6 +151,17 @@ export class HomePage {
       }
     } catch (err) {
       console.warn('Could not fetch readiness KPIs:', err);
+    }
+  }
+
+  async loadVixData() {
+    try {
+      const vixData = await api.getVixHistory();
+      if (this.vixComponent && vixData) {
+        this.vixComponent.render(vixData);
+      }
+    } catch (err) {
+      console.warn('Could not load VIX history, using defaults:', err);
     }
   }
 
@@ -175,7 +189,8 @@ export class HomePage {
           this.overnightComponent.render(mapped);
         }
         if (brief.india_vix && this.vixComponent) {
-          this.vixComponent.render(brief.india_vix);
+          // AI brief may include a simplified vix snapshot — only use if no full history loaded
+          // (loadVixData runs in parallel and takes priority)
         }
       }
     } catch (err) {
@@ -201,13 +216,11 @@ export class HomePage {
 
       let diff = target.getTime() - istDate.getTime();
       if (diff < 0) {
-        // Market is open or closed for the day
         if (istDate.getHours() < 15 || (istDate.getHours() === 15 && istDate.getMinutes() <= 30)) {
           el.textContent = 'MARKET OPEN · CLOSES 15:30 IST';
           el.style.color = 'var(--accent-sage)';
           return;
         } else {
-          // Closed, target tomorrow 09:15
           target.setDate(target.getDate() + 1);
           diff = target.getTime() - istDate.getTime();
         }
