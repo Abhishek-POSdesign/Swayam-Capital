@@ -128,6 +128,35 @@ class LocalDB:
             SELECT {col_str} FROM incoming_df;
         """)
         conn.unregister("incoming_df")
+
+        # Also populate nifty_daily_bars if underlying_spot is available for NIFTY
+        if "underlying_spot" in insert_df.columns and "trade_date" in insert_df.columns:
+            try:
+                spots = insert_df[
+                    insert_df["underlying_spot"].notna() & (insert_df["underlying_spot"] > 0)
+                ]
+                if not spots.empty:
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS nifty_daily_bars (
+                            trade_date DATE NOT NULL,
+                            symbol TEXT NOT NULL,
+                            open DOUBLE,
+                            high DOUBLE,
+                            low DOUBLE,
+                            close DOUBLE NOT NULL,
+                            volume BIGINT,
+                            PRIMARY KEY (trade_date, symbol)
+                        );
+                    """)
+                    daily_closes = spots.groupby("trade_date")["underlying_spot"].max().reset_index()
+                    for _, row in daily_closes.iterrows():
+                        conn.execute("""
+                            INSERT OR REPLACE INTO nifty_daily_bars (trade_date, symbol, open, high, low, close, volume)
+                            VALUES (?, 'NIFTY', NULL, NULL, NULL, ?, 0);
+                        """, [row["trade_date"], float(row["underlying_spot"])])
+            except Exception:
+                pass
+
         return len(insert_df)
 
     def get_table_count(self) -> int:
