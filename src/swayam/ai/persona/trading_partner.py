@@ -195,17 +195,27 @@ def _format_positions_for_ai(positions: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _list_recent_journal_entries(n: int = 5) -> list[str]:
-    """Reads the last N journal markdown files from the vault journal directory."""
+def _list_recent_journal_entries(n: int = 7) -> list[str]:
+    """Reads the last N journal markdown files from the vault journal directory.
+    Last 3 in full body; days 4-7 as concise one-line summaries.
+    """
     from swayam.config import settings
     journal_dir = settings.vault_path / "02 - Projects" / "Trading" / "04 - Journal"
     try:
+        if not journal_dir.exists():
+            return []
         md_files = sorted(journal_dir.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True)
         entries = []
-        for f in md_files[:n]:
-            content = _safe_read_file(f, max_chars=1500)
-            if content:
-                entries.append(f"### {f.stem}\n{content}")
+        for idx, f in enumerate(md_files[:n]):
+            if idx < 3:
+                content = _safe_read_file(f, max_chars=3000)
+                if content:
+                    entries.append(f"### {f.stem} (Full Entry)\n{content}")
+            else:
+                content = _safe_read_file(f, max_chars=140)
+                if content:
+                    summary_line = content.replace("\n", " ").strip()
+                    entries.append(f"- **{f.stem}**: {summary_line}")
         return entries
     except Exception as exc:
         logger.warning("Could not list journal entries: %s", exc)
@@ -247,6 +257,53 @@ def _load_historical_swing_trades_summary() -> str:
     )
     content = _safe_read_file(path, max_chars=3000)
     return content or "(Swing Trades Overview not available)"
+
+
+def _load_influences_summary() -> str:
+    """Reads summaries of the 4 key trading influences from the vault."""
+    from swayam.config import settings
+    inf_dir = settings.vault_path / "02 - Projects" / "Trading" / "00 - Reference" / "Influences"
+    if not inf_dir.exists():
+        return "(Influences reference directory not found)"
+    items = [
+        "Tom Hougaard - Best Loser Wins.md",
+        "Mark Minervini - Discipline and Mindset.md",
+        "Theta Gainer - Options Selling.md",
+        "Subasish Pani - Power of Stocks.md",
+    ]
+    parts = []
+    for fname in items:
+        f = inf_dir / fname
+        if f.exists():
+            content = _safe_read_file(f, max_chars=1200)
+            if content:
+                parts.append(f"### {f.stem}\n{content}")
+    return "\n\n".join(parts) if parts else "(No influences notes found)"
+
+
+def _load_recent_backtest_runs_summary(limit: int = 5) -> str:
+    """Loads the last N backtest runs from swayam_backtest_runs table."""
+    try:
+        res = (
+            db.client.table("swayam_backtest_runs")
+            .select("run_at, strategy_name, win_rate, avg_rr, expectancy_inr, max_drawdown_pct")
+            .order("run_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        runs = res.data or []
+        if not runs:
+            return "(No recent backtest runs recorded)"
+        lines = []
+        for r in runs:
+            strat = r.get("strategy_name", "?")
+            wr = f"{float(r['win_rate']) * 100:.1f}%" if r.get("win_rate") is not None else "N/A"
+            rr = f"1:{float(r['avg_rr']):.2f}" if r.get("avg_rr") is not None else "N/A"
+            exp = f"₹{float(r['expectancy_inr']):,.0f}" if r.get("expectancy_inr") is not None else "N/A"
+            lines.append(f"- {strat}: Win Rate {wr}, Avg R:R {rr}, Expectancy {exp}")
+        return "\n".join(lines)
+    except Exception as exc:
+        return f"(Could not load backtest runs: {exc})"
 
 
 def assemble_context(conversation_id: Optional[str] = None) -> tuple[str, dict]:
@@ -374,6 +431,42 @@ def assemble_context(conversation_id: Optional[str] = None) -> tuple[str, dict]:
     # 9. Historical Swing Trades summary
     swing = _load_historical_swing_trades_summary()
     parts.append(f"# Historical Swing Trades Summary\n{swing}")
+
+    # 10. Persistent Memory (Layer 3: Pinned rules & Notebook)
+    try:
+        from swayam.ai.memory import load_persistent_memory
+        mem = load_persistent_memory()
+        pinned = mem.get("pinned_rules", [])
+        notes = mem.get("notebook_entries", [])
+        if pinned:
+            parts.append("# Pinned Trading Rules & Directives (Permanent)\n" + "\n".join([f"- {r}" for r in pinned]))
+        if notes:
+            note_lines = [f"- [{n['created_at'][:10]}] {n['entry_text']}" for n in notes]
+            parts.append("# Memory Notebook (Key Insights)\n" + "\n".join(note_lines))
+    except Exception as exc:
+        logger.warning("Could not load persistent memory for context: %s", exc)
+
+    # 11. Recent Session Summaries (Layer 2)
+    try:
+        from swayam.ai.memory import load_recent_session_summaries
+        summaries = load_recent_session_summaries(days=30)
+        if summaries:
+            sum_lines = []
+            for s in summaries[:5]:
+                blk = s.get("summary_block", {})
+                sum_text = blk.get("summary", "") if isinstance(blk, dict) else str(blk)
+                sum_lines.append(f"- **{s['session_date']}**: {sum_text}")
+            parts.append("# Recent Session Summaries (Last 30 Days)\n" + "\n".join(sum_lines))
+    except Exception as exc:
+        logger.warning("Could not load session summaries for context: %s", exc)
+
+    # 12. Trading Influences & Mentors
+    influences = _load_influences_summary()
+    parts.append(f"# Trading Influences & Mentors\n{influences}")
+
+    # 13. Recent Backtest Runs
+    backtests = _load_recent_backtest_runs_summary(limit=5)
+    parts.append(f"# Recent Backtest Runs\n{backtests}")
 
     context_text = "\n\n".join(parts)
     return context_text, snapshot
