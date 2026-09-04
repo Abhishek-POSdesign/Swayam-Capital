@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Lightweight in-memory DOM simulation for fast headless Vitest execution in Node.js.
  */
 
@@ -39,10 +39,6 @@ export function setupTestDOM() {
   }
 
   function createMockElement(tagName = 'div', id = null) {
-    if (id && elementsById.has(id)) {
-      return elementsById.get(id);
-    }
-
     let _val = '';
     const el = {
       tagName: tagName.toUpperCase(),
@@ -103,18 +99,16 @@ export function setupTestDOM() {
         this.eventListeners[evt].push(handler);
       },
       click() {
-        if (this.eventListeners['click']) {
-          for (const h of this.eventListeners['click']) {
-            h({ target: this });
-          }
+        const handlers = [...(this.eventListeners['click'] || [])];
+        for (const h of handlers) {
+          h({ target: this });
         }
       },
       dispatchEvent(evt) {
         const type = typeof evt === 'string' ? evt : evt.type;
-        if (this.eventListeners[type]) {
-          for (const h of this.eventListeners[type]) {
-            h({ target: this });
-          }
+        const handlers = [...(this.eventListeners[type] || [])];
+        for (const h of handlers) {
+          h({ target: this });
         }
       },
       get innerHTML() {
@@ -123,6 +117,7 @@ export function setupTestDOM() {
       set innerHTML(html) {
         this._innerHTML = html;
         this._textContent = null;
+        this._queryCache = new Map();
       },
       get textContent() {
         if (this._textContent !== null) return this._textContent;
@@ -131,53 +126,74 @@ export function setupTestDOM() {
       set textContent(val) {
         this._textContent = String(val);
         this._innerHTML = String(val);
+        this._queryCache = new Map();
       },
       querySelector(selector) {
+        if (!this._queryCache) this._queryCache = new Map();
+        if (this._queryCache.has(selector)) return this._queryCache.get(selector);
+
+        const recordResult = (found) => {
+          if (found && this._queryCache) this._queryCache.set(selector, found);
+          return found;
+        };
+
         if (selector.startsWith('#')) {
           const targetId = selector.slice(1);
-          if (this.attributes['id'] === targetId) return this;
-          if (elementsById.has(targetId)) return elementsById.get(targetId);
+          if (this.attributes['id'] === targetId) return recordResult(this);
+          if (elementsById.has(targetId)) return recordResult(elementsById.get(targetId));
 
-          const tagMatch = this._innerHTML.match(new RegExp(`<([a-zA-Z0-9_-]+)\\b([^>]*id=["']${targetId}["'][^>]*)>([\\s\\S]*?)<\\/\\1>`, 'i'));
-          const voidMatch = this._innerHTML.match(new RegExp(`<([a-zA-Z0-9_-]+)\\b([^>]*id=["']${targetId}["'][^>]*)\\/?>`, 'i'));
-          const match = tagMatch || voidMatch;
-          if (match) {
-            const found = createMockElement(match[1], targetId);
-            if (tagMatch) found.innerHTML = tagMatch[3];
+          const openTagRegex = new RegExp(`<([a-zA-Z0-9_-]+)\\s+([^>]*\\bid=["']${targetId}["'][^>]*)>`, 'i');
+          const openMatch = this._innerHTML.match(openTagRegex);
+          if (openMatch) {
+            const tagName = openMatch[1];
+            const attrs = openMatch[2];
+            const found = createMockElement(tagName, targetId);
+            const afterOpen = this._innerHTML.slice(openMatch.index + openMatch[0].length);
+            const closeIdx = afterOpen.indexOf(`</${tagName}>`);
+            if (closeIdx !== -1) {
+              found.innerHTML = afterOpen.slice(0, closeIdx);
+            }
             const attrRegex = /([a-zA-Z0-9_-]+)=["']([^"']*)["']/g;
             let m;
-            while ((m = attrRegex.exec(match[2])) !== null) {
+            while ((m = attrRegex.exec(attrs)) !== null) {
               found.setAttribute(m[1], m[2]);
               if (m[1] === 'class') {
                 m[2].split(/\s+/).filter(Boolean).forEach(c => found.classList.add(c));
               }
             }
-            return found;
+            return recordResult(found);
           }
 
           if (this._innerHTML.includes(`id="${targetId}"`) || this._innerHTML.includes(`id='${targetId}'`)) {
-            return createMockElement('div', targetId);
+            return recordResult(createMockElement('div', targetId));
           }
         }
 
         if (selector.startsWith('.')) {
           const cls = selector.slice(1);
-          const tagMatch = this._innerHTML.match(new RegExp(`<([a-zA-Z0-9_-]+)\\b([^>]*class=["'][^"']*${cls}[^"']*["'][^>]*)>([\\s\\S]*?)<\\/\\1>`, 'i'));
-          if (tagMatch) {
-            const found = createMockElement(tagMatch[1]);
-            found.innerHTML = tagMatch[3];
+          const openTagRegex = new RegExp(`<([a-zA-Z0-9_-]+)\\s+([^>]*\\bclass=["'][^"']*\\b${cls}\\b[^"']*["'][^>]*)>`, 'i');
+          const openMatch = this._innerHTML.match(openTagRegex);
+          if (openMatch) {
+            const tagName = openMatch[1];
+            const attrs = openMatch[2];
+            const found = createMockElement(tagName);
             found.classList.add(cls);
+            const afterOpen = this._innerHTML.slice(openMatch.index + openMatch[0].length);
+            const closeIdx = afterOpen.indexOf(`</${tagName}>`);
+            if (closeIdx !== -1) {
+              found.innerHTML = afterOpen.slice(0, closeIdx);
+            }
             const attrRegex = /([a-zA-Z0-9_-]+)=["']([^"']*)["']/g;
             let m;
-            while ((m = attrRegex.exec(tagMatch[2])) !== null) {
+            while ((m = attrRegex.exec(attrs)) !== null) {
               found.setAttribute(m[1], m[2]);
             }
-            return found;
+            return recordResult(found);
           }
           if (this._innerHTML.includes(cls)) {
             const found = createMockElement();
             found.classList.add(cls);
-            return found;
+            return recordResult(found);
           }
         }
 
@@ -185,35 +201,44 @@ export function setupTestDOM() {
         const attrSelectorMatch = selector.match(/^([a-zA-Z0-9_-]+)?\[([a-zA-Z0-9_-]+)([*^$])?=["']?([^"']*)["']?\]/);
         if (attrSelectorMatch) {
           const [, tag = '[a-zA-Z0-9_-]+', attrName, op, attrVal] = attrSelectorMatch;
-          const regStr = `<(${tag})\\b([^>]*${attrName}=["'][^"']*${attrVal}[^"']*["'][^>]*)>([\\s\\S]*?)<\\/\\1>|<(${tag})\\b([^>]*${attrName}=["'][^"']*${attrVal}[^"']*["'][^>]*)\\/?>`;
-          const match = this._innerHTML.match(new RegExp(regStr, 'i'));
-          if (match) {
-            const matchedTag = match[1] || match[4] || 'div';
-            const matchedAttrs = match[2] || match[5] || '';
-            const matchedBody = match[3] || '';
+          const openTagRegex = new RegExp(`<(${tag})\\s+([^>]*\\b${attrName}=["'][^"']*${attrVal}[^"']*["'][^>]*)>`, 'i');
+          const openMatch = this._innerHTML.match(openTagRegex);
+          if (openMatch) {
+            const matchedTag = openMatch[1] || 'div';
+            const matchedAttrs = openMatch[2] || '';
             const found = createMockElement(matchedTag);
-            found.innerHTML = matchedBody;
+            const afterOpen = this._innerHTML.slice(openMatch.index + openMatch[0].length);
+            const closeIdx = afterOpen.indexOf(`</${matchedTag}>`);
+            if (closeIdx !== -1) {
+              found.innerHTML = afterOpen.slice(0, closeIdx);
+            }
             const attrRegex = /([a-zA-Z0-9_-]+)=["']([^"']*)["']/g;
             let m;
             while ((m = attrRegex.exec(matchedAttrs)) !== null) {
               found.setAttribute(m[1], m[2]);
             }
-            return found;
+            return recordResult(found);
           }
         }
 
         // Match tag selectors e.g. strong, code, em, li
-        const tagRegex = new RegExp(`<(${selector})\\b([^>]*)>([\\s\\S]*?)<\\/\\1>`, 'i');
-        const match = this._innerHTML.match(tagRegex);
-        if (match) {
-          const found = createMockElement(match[1]);
-          found.innerHTML = match[3];
+        const tagRegex = new RegExp(`<(${selector})\\b([^>]*)>`, 'i');
+        const openMatch = this._innerHTML.match(tagRegex);
+        if (openMatch) {
+          const matchedTag = openMatch[1];
+          const matchedAttrs = openMatch[2] || '';
+          const found = createMockElement(matchedTag);
+          const afterOpen = this._innerHTML.slice(openMatch.index + openMatch[0].length);
+          const closeIdx = afterOpen.indexOf(`</${matchedTag}>`);
+          if (closeIdx !== -1) {
+            found.innerHTML = afterOpen.slice(0, closeIdx);
+          }
           const attrRegex = /([a-zA-Z0-9_-]+)=["']([^"']*)["']/g;
           let m;
-          while ((m = attrRegex.exec(match[2])) !== null) {
+          while ((m = attrRegex.exec(matchedAttrs)) !== null) {
             found.setAttribute(m[1], m[2]);
           }
-          return found;
+          return recordResult(found);
         }
         return null;
       },
@@ -264,9 +289,29 @@ export function setupTestDOM() {
     getElementById: (id) => createMockElement('div', id),
   };
 
+  const windowListeners = new Map();
   global.window = {
     document: global.document,
     localStorage: global.localStorage,
+    addEventListener: (evt, handler) => {
+      if (!windowListeners.has(evt)) windowListeners.set(evt, []);
+      windowListeners.get(evt).push(handler);
+    },
+    removeEventListener: (evt, handler) => {
+      if (windowListeners.has(evt)) {
+        const arr = windowListeners.get(evt);
+        const idx = arr.indexOf(handler);
+        if (idx !== -1) arr.splice(idx, 1);
+      }
+    },
+    dispatchEvent: (evt) => {
+      const type = typeof evt === 'string' ? evt : evt.type;
+      if (windowListeners.has(type)) {
+        for (const h of windowListeners.get(type)) {
+          h(evt);
+        }
+      }
+    },
 
     AudioContext: class {
       createOscillator() { return { type: '', frequency: { setValueAtTime: () => {} }, connect: () => {}, start: () => {}, stop: () => {} }; }
@@ -276,6 +321,20 @@ export function setupTestDOM() {
     },
   };
 
+  global.window.Plotly = {
+    react: () => Promise.resolve(),
+    newPlot: () => Promise.resolve(),
+    relayout: () => Promise.resolve(),
+    Plots: { resize: () => {} },
+  };
+
   global.self = global.window;
   global.Event = class { constructor(type) { this.type = type; } };
+
+  global.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ session_id: 'test-mock-session', id: 'test-mock-session', status: 'ok', spot: 24850.0 }),
+    text: async () => JSON.stringify({ session_id: 'test-mock-session', id: 'test-mock-session', status: 'ok' }),
+  });
 }

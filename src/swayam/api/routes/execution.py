@@ -10,13 +10,117 @@ import uuid
 from typing import Any
 from fastapi import APIRouter, HTTPException
 from swayam.api.journal_writer import write_new_trade_journal
-from swayam.api.models_api import ExecuteRequest
+from swayam.api.models_api import (
+    ExecuteRequest,
+    MultiLegPreviewRequest,
+    MultiLegPreviewResponse,
+    OrderedLegStep,
+)
 from swayam.api.routes.strategy import build_spread_from_request
 from swayam.api.routes.validation import audit_strategy_rules
 from swayam.db import db
 from swayam.options_math import compute_payoff_curve, compute_position_greeks
 
 router = APIRouter()
+
+
+@router.post("/api/execute/preview-order", response_model=MultiLegPreviewResponse)
+def preview_order_sequence(req: MultiLegPreviewRequest) -> MultiLegPreviewResponse:
+    """Pre-orders legs for margin safety: all BUY legs execute first, SELL legs execute last.
+
+    Calculates the margin sequence and estimated savings from hedged ordering.
+    """
+    buy_legs = [l for l in req.legs if l.direction.lower() == "buy"]
+    sell_legs = [l for l in req.legs if l.direction.lower() == "sell"]
+
+    sorted_legs = buy_legs + sell_legs
+    ordered_steps: list[OrderedLegStep] = []
+
+    cumulative_debit = 0.0
+    cumulative_credit = 0.0
+
+    for idx, leg in enumerate(sorted_legs):
+        seq = idx + 1
+        is_buy = leg.direction.lower() == "buy"
+        lot_size = leg.lot_size or 75
+        contracts = leg.quantity_lots * lot_size
+        cost = round(leg.entry_premium * contracts, 2)
+
+        if is_buy:
+            cumulative_debit += cost
+            step_margin = cost
+            note = f"Step {seq}: Buy hedge leg first. Locks premium debit ₹{cost:,.0f} and establishes margin cover."
+        else:
+            cumulative_credit += cost
+            # Hedged short margin ~ ₹32,000 per lot with hedge vs ₹1,15,000 naked
+            has_long_cover = len(buy_legs) > 0
+            step_margin = round(32000.0 * leg.quantity_lots if has_long_cover else 115000.0 * leg.quantity_lots, 2)
+            note = (
+                f"Step {seq}: Sell leg with hedged margin cover (₹{step_margin:,.0f} required). "
+                f"Collects ₹{cost:,.0f} credit."
+            )
+
+        ordered_steps.append(
+            OrderedLegStep(
+                sequence=seq,
+                strike=leg.strike,
+                option_type=leg.option_type,
+                direction=leg.direction.upper(),
+                quantity_lots=leg.quantity_lots,
+                lot_size=lot_size,
+                entry_premium=leg.entry_premium,
+                order_type=leg.order_type,
+                estimated_margin_inr=step_margin,
+                action_note=note,
+            )
+        )
+
+    net_debit_credit = round(cumulative_credit - cumulative_debit, 2)
+    initial_margin = round(cumulative_debit, 2)
+    # Hedged margin is lower when long wings are present
+    hedged_margin = round(
+        (len(sell_legs) * 32000.0) + (cumulative_debit if cumulative_debit > 0 else 0),
+        2
+    ) if sell_legs else round(cumulative_debit, 2)
+
+    naked_hypothetical_margin = round(len(sell_legs) * 115000.0 + cumulative_debit, 2)
+    margin_saved = max(0.0, round(naked_hypothetical_margin - hedged_margin, 2))
+
+    return MultiLegPreviewResponse(
+        ordered_legs=ordered_steps,
+        buy_count=len(buy_legs),
+        sell_count=len(sell_legs),
+        total_debit_credit_inr=net_debit_credit,
+        initial_margin_required_inr=initial_margin,
+        final_hedged_margin_inr=hedged_margin,
+        margin_saved_inr=margin_saved,
+    )
+
+
+@router.post("/api/execute/multi-leg")
+def execute_multi_leg(req: ExecuteRequest) -> dict[str, Any]:
+    """Executes a multi-leg paper trade with margin-safe ordering (buys first, sells last).
+
+    Atomic execution: all legs succeed or whole trade aborts.
+    """
+    if req.mode.lower() == "real":
+        raise HTTPException(
+            status_code=403,
+            detail="Real execution disabled until Phase 2 begins (per Personal Trading Brief roadmap)",
+        )
+
+    # Margin-safe re-ordering: Buys FIRST, Sells LAST
+    buy_legs = [l for l in req.legs if l.direction.lower() == "buy"]
+    sell_legs = [l for l in req.legs if l.direction.lower() == "sell"]
+    sorted_legs = buy_legs + sell_legs
+    req.legs = sorted_legs
+
+    if not req.iv_per_leg:
+        req.iv_per_leg = {"default": 0.14}
+    elif "default" not in req.iv_per_leg:
+        req.iv_per_leg["default"] = 0.14
+
+    return execute_trade(req)
 
 
 @router.post("/api/execute")
@@ -113,6 +217,10 @@ def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
         "status": "open",
         "mode": "paper",
         "opened_at": opened_at,
+        "notes": "; ".join(filter(None, [
+            f"session_id={req.session_id}" if req.session_id else None,
+            f"order_type={req.order_type}" if req.order_type else None,
+        ])) or None,
     }
     try:
         client = db.client

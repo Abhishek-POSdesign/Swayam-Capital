@@ -85,7 +85,12 @@ export class ChatSurfaceComponent {
     try {
       const params = new URLSearchParams(window.location.search);
       const s = params.get('session');
-      if (s) return s;
+      if (s) {
+        localStorage.setItem('swayam_active_session_id', s);
+        return s;
+      }
+      const stored = localStorage.getItem('swayam_active_session_id');
+      if (stored) return stored;
     } catch (_) {}
     return null;
   }
@@ -93,6 +98,7 @@ export class ChatSurfaceComponent {
   _setSessionParam(sessionId) {
     this.sessionId = sessionId;
     try {
+      localStorage.setItem('swayam_active_session_id', sessionId);
       const url = new URL(window.location.href);
       url.searchParams.set('session', sessionId);
       window.history.replaceState({}, '', url.toString());

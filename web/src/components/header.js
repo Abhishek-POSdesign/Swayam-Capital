@@ -118,6 +118,7 @@ export function initHeader(container, options = {}) {
       applyTheme(next);
       themeSwitcherBtn.innerHTML = THEME_ICONS[next];
       themeSwitcherBtn.title = `Theme: ${THEME_LABELS[next]}`;
+      window.dispatchEvent(new CustomEvent('swayam-theme-change', { detail: { theme: next } }));
     });
   }
 }

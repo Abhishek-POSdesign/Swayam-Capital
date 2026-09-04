@@ -52,6 +52,52 @@ class StrategyComputeRequest(BaseModel):
 class ExecuteRequest(StrategyComputeRequest):
     """Payload for executing a trade (paper or real)."""
     mode: str = Field(default="paper", description="Execution mode: 'paper' or 'real'")
+    order_type: str = Field(default="LIMIT", description="Order type: 'LIMIT' or 'MARKET'")
+    session_id: Optional[str] = Field(default=None, description="Active AI session ID to link to trade")
+
+
+class PreviewLegItem(BaseModel):
+    """Individual leg specification for pre-execution sequence preview."""
+    strike: float = Field(..., description="Strike price in rupees")
+    option_type: str = Field(..., description="CE or PE")
+    direction: str = Field(..., description="buy or sell")
+    quantity_lots: int = Field(default=1, ge=1, description="Quantity in lots")
+    entry_premium: float = Field(default=0.0, ge=0.0, description="Option premium per share")
+    expiry_date: str = Field(..., description="Expiration date YYYY-MM-DD")
+    lot_size: int = Field(default=75, ge=1, description="Lot size")
+    order_type: str = Field(default="LIMIT", description="LIMIT or MARKET")
+
+
+class MultiLegPreviewRequest(BaseModel):
+    """Request payload to simulate and order legs for margin safety."""
+    underlying: str = Field(default="NIFTY", description="Underlying symbol")
+    current_spot: float = Field(..., gt=0.0, description="Current spot price")
+    legs: list[PreviewLegItem] = Field(..., min_length=1, description="Strategy legs to order")
+
+
+class OrderedLegStep(BaseModel):
+    """Step in margin-safe execution order."""
+    sequence: int
+    strike: float
+    option_type: str
+    direction: str
+    quantity_lots: int
+    lot_size: int
+    entry_premium: float
+    order_type: str
+    estimated_margin_inr: float
+    action_note: str
+
+
+class MultiLegPreviewResponse(BaseModel):
+    """Output with legs sorted BUY first and margin analysis."""
+    ordered_legs: list[OrderedLegStep]
+    buy_count: int
+    sell_count: int
+    total_debit_credit_inr: float
+    initial_margin_required_inr: float
+    final_hedged_margin_inr: float
+    margin_saved_inr: float
 
 
 class ValidationCheck(BaseModel):

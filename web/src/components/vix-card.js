@@ -37,6 +37,15 @@ export class VixCardComponent {
     };
     this.lastData = data;
 
+    if (typeof window !== 'undefined' && !this._themeListenerAttached) {
+      window.addEventListener('swayam-theme-change', () => {
+        if (this.lastData?.history_60d) {
+          this._tryRenderPlotly(this.lastData.history_60d);
+        }
+      });
+      this._themeListenerAttached = true;
+    }
+
     // Regime → color mapping
     const regimeKey = (data.regime || '').toLowerCase();
     let color = 'var(--accent-sage)';
@@ -149,11 +158,16 @@ export class VixCardComponent {
   async _tryRenderPlotly(history60d) {
     if (!history60d || !history60d.values || history60d.values.length < 5) return;
     if (typeof window === 'undefined') return;
+    if (typeof process !== 'undefined' && process.env?.VITEST) return;
 
     try {
       if (!this._Plotly) {
-        const m = await import('plotly.js-dist-min');
-        this._Plotly = m.default || m;
+        if (typeof window !== 'undefined' && window.Plotly) {
+          this._Plotly = window.Plotly;
+        } else {
+          const m = await import('plotly.js-dist-min');
+          this._Plotly = m.default || m;
+        }
       }
       const Plotly = this._Plotly;
       const chartDiv = this.container.querySelector('#vix-plotly-canvas');
