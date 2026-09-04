@@ -183,4 +183,69 @@ Executes trade in paper mode. Re-validates rules, logs to database, and creates 
   ```
 
 ### `GET /api/positions`
-Returns active open paper/live positions.
+Returns active open paper/live positions from Supabase and local session cache.
+
+### `GET /api/positions/live`
+Returns active open positions with real-time mark-to-market valuation, unrealized P&L, % of max risk, and live Greeks recalculated against current FYERS option chain quotes (cached for 5 seconds).
+
+- **Response:**
+  ```json
+  [
+    {
+      "position_id": "abc-123-...",
+      "strategy_name": "Bear Put Spread",
+      "underlying": "NIFTY",
+      "opened_at": "2026-09-08T10:15:00Z",
+      "expiry_date": "2026-09-11",
+      "legs": [ ... ],
+      "entry_debit_credit_inr": -9000.0,
+      "max_loss_inr": 9000.0,
+      "max_profit_inr": 47250.0,
+      "current_spot": 24867.50,
+      "current_position_value_inr": 13500.0,
+      "unrealized_pnl_inr": 4500.0,
+      "unrealized_pnl_pct_of_risk": 0.50,
+      "current_greeks": {
+        "net_delta": -25.5,
+        "net_gamma": -0.0003,
+        "net_theta_per_day": -420.0,
+        "net_vega": -80.0
+      },
+      "days_held": 2,
+      "days_remaining_to_expiry": 3,
+      "journal_path": "02 - Projects/Trading/04 - Journal/2026-09-08-trade01.md",
+      "error": null
+    }
+  ]
+  ```
+
+### `POST /api/positions/{position_id}/close`
+Closes an open position using strict Database-before-Journal ordering:
+1. Calculates gross realized P&L and estimated exchange charges (`len(legs) * settings.estimated_charge_per_leg_inr`).
+2. Inserts closed trade record to `swayam_trade_history`.
+3. Updates status to `closed` in `swayam_positions`.
+4. Appends populated `## Exit` block and updates YAML frontmatter in the Obsidian journal note.
+
+- **Request Body:**
+  ```json
+  {
+    "close_reason": "target_hit",
+    "notes": "Target hit per plan",
+    "exit_legs": [
+      {"strike": 24850.0, "option_type": "PE", "exit_premium": 250.0},
+      {"strike": 24100.0, "option_type": "PE", "exit_premium": 30.0}
+    ]
+  }
+  ```
+  *(Note: If `exit_legs` is omitted, current LTPs are automatically fetched from the FYERS option chain).*
+- **Response:**
+  ```json
+  {
+    "position_id": "abc-123-...",
+    "status": "closed",
+    "realized_pnl_inr": 7200.0,
+    "total_charges_inr": 300.0,
+    "journal_path": "02 - Projects/Trading/04 - Journal/2026-09-08-trade01.md"
+  }
+  ```
+

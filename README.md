@@ -93,7 +93,8 @@ Swayam Capital/
 │   ├── deploy_recorder.py         # Automated GCP Cloud Function & Scheduler deployer
 │   ├── ingest_gcs_to_duckdb.py    # Local nightly GCS to DuckDB options ingest tool
 │   └── run_reconciler.py          # Windows task script for nightly readiness reconciliation
-├── tests/                         # Pytest automated test suite (160 tests + 6 vitest)
+├── tests/                         # Pytest automated test suite (176 tests + 6 vitest)
+
 │   ├── ai/                        # Vertex provider, persona, context assembly tests
 │   ├── api/                       # API route integration tests (including AI routes)
 │   ├── cloud/                     # Cloud recorder unit tests

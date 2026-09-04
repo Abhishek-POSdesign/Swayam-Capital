@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - BUILD-7 (2026-09-06)
+- **Live P&L & Valuation Endpoint (`GET /api/positions/live`)**: Computes real-time mark-to-market position valuations, unrealized P&L in rupees, % of risk, and updated Greeks from live FYERS option chain quotes, backed by 5-second in-memory caching to eliminate rate limit overhead.
+- **Position Exit Flow (`POST /api/positions/{id}/close`)**: Complete trade close endpoint implementing strict Database-before-Journal ordering (`swayam_trade_history` insert -> `swayam_positions` closed update -> Obsidian journal update). Realizes P&L and estimates transaction charges without hardcoded values.
+- **Obsidian Journal Exit Block Generator (`append_exit_block()`)**: Auto-updates the YAML frontmatter (`status: closed`, `closed_at`, `realized_pnl_inr`, `close_reason`) and cleanly replaces the placeholder section with a formatted exit table, realized P&L metrics, and post-trade reflection prompts.
+- **Interactive Active Trades Panel (`web/src/components/active-trades.js`)**: Real-time frontend component with 5s background polling, live P&L color changes (green/red), non-destructive stale quote banner on 503 errors, and an interactive Close modal with editable exit leg premiums.
+- **AI Model Region Resolution**: Enabled global routing (`GCP_AI_LOCATION=global`) for Google Cloud Vertex AI Gemini calls, unblocking `gemini-3.1-pro-preview` without requiring model downgrades.
+- **Test Suite Expansion**: Added 16 new automated tests across `tests/api/test_positions_live.py`, `tests/api/test_close_position.py`, and `tests/api/test_journal_exit_block.py`, bringing the automated test suite to 176 pytest + 6 vitest (182 total passing).
+
 ### Added - BUILD-6 (2026-09-06)
 - **AI Trading Partner (`src/swayam/ai/`)**: Purpose-built options specialist AI colleague powered by Google Cloud Vertex AI Gemini with Application Default Credentials (ADC) and zero JSON key files.
 - **3-Tier Model Router (`router.py`)**: Automatic multi-tier model fallback: Primary `gemini-3.1-pro-preview` for deep reasoning, fallback `gemini-2.5-pro` on rate limits or permissions, and lightweight `gemini-2.5-flash-lite` for quick widget calculations.
