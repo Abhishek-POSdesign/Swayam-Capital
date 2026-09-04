@@ -127,7 +127,7 @@ export class NiftyChartCardComponent {
     if (!chartDiv) return;
 
     // In headless / node test environments, render fallback directly
-    if (typeof window === 'undefined' || typeof self === 'undefined') {
+    if (typeof window === 'undefined' || typeof self === 'undefined' || (typeof process !== 'undefined' && process.env.VITEST)) {
       this.renderSvgFallback(chartDiv);
       return;
     }

@@ -32,7 +32,7 @@ steps:
       - '--cpu=1'
       - '--timeout=60s'
       - '--concurrency=40'
-      - '--set-env-vars=GCP_PROJECT_ID=swayam-capital,GCP_REGION=asia-southeast1,GCP_AI_LOCATION=global,GCS_OPTIONS_BUCKET=swayam-capital-options-data'
+      - '--set-env-vars=GCP_PROJECT_ID=swayam-capital,GCP_REGION=asia-southeast1,GCP_AI_LOCATION=global,GCS_OPTIONS_BUCKET=swayam-capital-options-data,TRADING_METHOD_PATH=/app/src/swayam/data/method_files,TRADING_BRIEF_PATH=/app/src/swayam/data/method_files/Personal Trading Brief.md'
       - '--set-secrets=SUPABASE_URL=swayam-supabase-url:latest,SUPABASE_ANON_KEY=swayam-supabase-anon-key:latest,SUPABASE_SERVICE_ROLE_KEY=swayam-supabase-service-role-key:latest,FYERS_ACCESS_TOKEN=fyers-access-token:latest,FYERS_CLIENT_ID=fyers-client-id:latest,FYERS_APP_ID=fyers-app-id:latest,FYERS_SECRET_KEY=fyers-secret-key:latest'
 
 

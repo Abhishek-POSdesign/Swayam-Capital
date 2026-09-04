@@ -16,3 +16,5 @@ migrations/
 scripts/
 *.md
 !README.md
+!src/swayam/data/method_files/*.md
+
