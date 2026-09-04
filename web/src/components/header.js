@@ -62,11 +62,11 @@ export function initHeader(container, options = {}) {
           <button type="button" class="nav-pill ${activePage === 'strategy' ? 'active' : ''}" data-page="strategy">
             Strategy Builder
           </button>
-          <button type="button" class="nav-pill ${activePage === 'backtest' ? 'active' : ''}" data-page="backtest" style="opacity: 0.6;" title="BUILD-11">
-            Backtesting Lab
+          <button type="button" class="nav-pill ${activePage === 'journal' ? 'active' : ''}" data-page="journal">
+            Trade Journal
           </button>
-          <button type="button" class="nav-pill ${activePage === 'journal' ? 'active' : ''}" data-page="journal" style="opacity: 0.6;" title="BUILD-12">
-            Journal &amp; Analytics
+          <button type="button" class="nav-pill ${activePage === 'backtest' ? 'active' : ''}" data-page="backtest" style="opacity: 0.5;" title="Upcoming: BUILD-12">
+            Backtest Lab
           </button>
         </nav>
 

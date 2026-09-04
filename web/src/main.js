@@ -14,36 +14,48 @@ import { SpotWebSocketClient } from './modules/ws-client.js';
 import { HomePage } from './pages/home.js';
 import { AISettingsDrawer } from './components/ai-settings-drawer.js';
 import { StrategyBuilderPage } from './pages/strategy-builder.js';
+import { JournalPage } from './pages/journal.js';
 
 class SwayamApp {
   constructor() {
     this.rules = null;
     this.activePositions = [];
     this.strategyPage = null;
+    this.journalPage = null;
     this.wsClient = null;
     this.homePage = null;
     this.aiChat = null;
     this.aiLauncher = null;
     this.settingsDrawer = null;
-    this.currentPage = (typeof window !== 'undefined' && window.location.pathname.includes('strategy')) ? 'strategy' : 'home';
+    const isStrategy = typeof window !== 'undefined' && window.location.pathname.includes('strategy');
+    const isJournal = typeof window !== 'undefined' && window.location.pathname.includes('journal');
+    this.currentPage = isStrategy ? 'strategy' : isJournal ? 'journal' : 'home';
     this.isAIDrawerOpen = false;
   }
 
   async init() {
-    console.log('Initializing Swayam Capital trading platform (BUILD-10)...');
+    console.log('Initializing Swayam Capital trading platform (BUILD-11)...');
 
     const isStrategy = typeof window !== 'undefined' && window.location.pathname.includes('strategy');
-    this.currentPage = isStrategy ? 'strategy' : 'home';
+    const isJournal = typeof window !== 'undefined' && window.location.pathname.includes('journal');
+    this.currentPage = isStrategy ? 'strategy' : isJournal ? 'journal' : 'home';
 
     // Synchronously enforce view visibility to prevent flash of wrong page on refresh
     const homeViewContainer = document.getElementById('home-view');
     const strategyContainer = document.getElementById('strategy-view');
-    if (isStrategy) {
+    const journalContainer = document.getElementById('journal-view');
+    if (this.currentPage === 'strategy') {
       if (homeViewContainer) homeViewContainer.style.display = 'none';
       if (strategyContainer) strategyContainer.style.display = 'block';
+      if (journalContainer) journalContainer.style.display = 'none';
+    } else if (this.currentPage === 'journal') {
+      if (homeViewContainer) homeViewContainer.style.display = 'none';
+      if (strategyContainer) strategyContainer.style.display = 'none';
+      if (journalContainer) journalContainer.style.display = 'block';
     } else {
       if (homeViewContainer) homeViewContainer.style.display = 'block';
       if (strategyContainer) strategyContainer.style.display = 'none';
+      if (journalContainer) journalContainer.style.display = 'none';
     }
 
     // 1. Initialize Navigation Header
@@ -73,6 +85,20 @@ class SwayamApp {
             if (this.settingsDrawer) {
               const sid = this.strategyPage?.sessionId;
               this.settingsDrawer.open(sid);
+            }
+          },
+          onNavigateStrategy: () => this.navigateTo('strategy'),
+        });
+        this.homePage.init();
+      }
+    } else if (isJournal) {
+      await this.initJournalView();
+      if (homeViewContainer) {
+        this.homePage = new HomePage(homeViewContainer, {
+          onOpenAIDrawer: () => this.openAIDrawer(),
+          onOpenSettings: () => {
+            if (this.settingsDrawer) {
+              this.settingsDrawer.open();
             }
           },
           onNavigateStrategy: () => this.navigateTo('strategy'),
@@ -110,7 +136,8 @@ class SwayamApp {
     // 5. Setup popstate listener for back/forward browser history
     if (typeof window !== 'undefined') {
       window.addEventListener('popstate', () => {
-        const page = window.location.pathname.includes('strategy') ? 'strategy' : 'home';
+        const p = window.location.pathname;
+        const page = p.includes('strategy') ? 'strategy' : p.includes('journal') ? 'journal' : 'home';
         this.navigateTo(page, false);
       });
     }
@@ -134,6 +161,16 @@ class SwayamApp {
         },
       });
       await this.strategyPage.init();
+    }
+  }
+
+  async initJournalView() {
+    const journalContainer = document.getElementById('journal-view');
+    if (journalContainer && !this.journalPage) {
+      this.journalPage = new JournalPage(journalContainer, {
+        onOpenAIDrawer: () => this.openAIDrawer(),
+      });
+      await this.journalPage.init();
     }
   }
 
@@ -199,6 +236,7 @@ class SwayamApp {
     this.currentPage = page;
     const homeView = document.getElementById('home-view');
     const strategyView = document.getElementById('strategy-view');
+    const journalView = document.getElementById('journal-view');
 
     // Update active state on nav pills
     const navPills = document.querySelectorAll('.nav-pill');
@@ -214,6 +252,7 @@ class SwayamApp {
     if (page === 'home') {
       if (homeView) homeView.style.display = 'block';
       if (strategyView) strategyView.style.display = 'none';
+      if (journalView) journalView.style.display = 'none';
       if (updateHistory && typeof window !== 'undefined') {
         try {
           const url = new URL(window.location.href);
@@ -224,6 +263,7 @@ class SwayamApp {
     } else if (page === 'strategy') {
       if (homeView) homeView.style.display = 'none';
       if (strategyView) strategyView.style.display = 'block';
+      if (journalView) journalView.style.display = 'none';
       if (updateHistory && typeof window !== 'undefined') {
         try {
           const url = new URL(window.location.href);
@@ -233,6 +273,22 @@ class SwayamApp {
       }
       if (this.strategyPage) {
         this.strategyPage.refreshPositions();
+      }
+    } else if (page === 'journal') {
+      if (homeView) homeView.style.display = 'none';
+      if (strategyView) strategyView.style.display = 'none';
+      if (journalView) journalView.style.display = 'block';
+      if (updateHistory && typeof window !== 'undefined') {
+        try {
+          const url = new URL(window.location.href);
+          url.pathname = '/journal';
+          window.history.pushState({}, '', url.toString());
+        } catch (_) {}
+      }
+      if (!this.journalPage) {
+        this.initJournalView();
+      } else {
+        this.journalPage.loadData();
       }
     }
   }

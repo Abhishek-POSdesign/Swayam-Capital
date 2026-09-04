@@ -89,5 +89,28 @@ export const api = {
     request(`/api/positions/naked-shorts?at_time=${encodeURIComponent(atTime)}`),
   getSessionContextSummary: (sessionId) =>
     request(`/api/ai/session/${sessionId}/context-summary`),
+  getJournalTrades: (params = {}) => {
+    const q = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') q.append(k, v);
+    });
+    const qs = q.toString();
+    return request(`/api/journal/trades${qs ? `?${qs}` : ''}`);
+  },
+  getJournalTradeDetail: (positionId) => request(`/api/journal/trade/${positionId}`),
+  getJournalAnalytics: (params = {}) => {
+    const q = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') q.append(k, v);
+    });
+    const qs = q.toString();
+    return request(`/api/journal/analytics${qs ? `?${qs}` : ''}`);
+  },
+  generateLesson: (positionId) => request(`/api/lessons/generate/${positionId}`, { method: 'POST' }),
+  updateLesson: (lessonId, lessonText) =>
+    request(`/api/lessons/${lessonId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ lesson_text: lessonText }),
+    }),
 };
 

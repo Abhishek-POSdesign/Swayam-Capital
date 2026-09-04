@@ -8,7 +8,7 @@
 > **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-southeast1` [Singapore], AI Location: `global`)  
 > **Supabase Database:** `wxijlrwoiaeaupaaqecc` (`https://wxijlrwoiaeaupaaqecc.supabase.co`)  
 > **Broker Integration:** FYERS API v3 (Client ID: `YA38914`)  
-> **Status:** Phase 1 Complete (BUILDs 1–10 + BUILD-9-FIXES-A/B/C + BUILD-10-FIXES-A Shipped). 326 automated tests passing (258 pytest + 68 vitest, 0 failures). Strategy Builder & Trading Terminal integrated on single-page canvas (`/strategy`) with 8 presets, AI import, margin-safe order sequencing, overnight naked short auto-block modal, loud 503 safety endpoint failures, and honest empty states. Deployed to Google Cloud Run in Singapore (`asia-southeast1`) behind custom subdomain `https://swayam.abhisheksikka.com`.
+> **Status:** Phase 1 Complete (BUILDs 1–11 + BUILD-9-FIXES-A/B/C + BUILD-10-FIXES-A Shipped). 342 automated tests passing (267 pytest + 75 vitest, 0 failures). Strategy Builder (`/strategy`) and Trade Journal & Performance Analytics (`/journal`) integrated with 8 presets, AI import, margin-safe order sequencing, overnight naked short auto-block modal, 7-tile KPI strip, Plotly analytics curves, automated single-sentence AI lessons, and loud 503 safety endpoint failures. Deployed to Google Cloud Run in Singapore (`asia-southeast1`) behind custom subdomain `https://swayam.abhisheksikka.com`.
 
 ---
 

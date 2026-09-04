@@ -332,3 +332,56 @@ def append_exit_block(
 
     return target_path
 
+
+def append_or_update_lesson_block(
+    journal_rel_path: str,
+    lesson_text: str,
+    lesson_source: str = "ai_generated",
+    vault_path: Optional[Path] = None,
+) -> Optional[Path]:
+    """Appends or updates the ## Lesson block in an Obsidian trade note.
+
+    Args:
+        journal_rel_path: Relative path within vault (e.g. '02 - Projects/Trading/04 - Journal/2026-09-04-trade01.md').
+        lesson_text: Single-sentence grounded lesson text.
+        lesson_source: 'ai_generated', 'user_edited', or 'ai_failed'.
+        vault_path: Optional vault path override for tests.
+
+    Returns:
+        Path to updated file or None if note not found.
+    """
+    base = vault_path or settings.vault_path
+    target_path = base / journal_rel_path
+    if not target_path.exists():
+        return None
+
+    try:
+        content = target_path.read_text(encoding="utf-8")
+    except Exception:
+        return None
+
+    lesson_block = f"## Lesson\n\n> **Lesson ({lesson_source})**: {lesson_text}\n"
+
+    if "## Lesson" in content:
+        # Replace existing Lesson block
+        parts = content.split("## Lesson")
+        prefix = parts[0].rstrip()
+        rest = parts[1]
+        # Find if there is any subsequent ## heading
+        next_heading_idx = -1
+        lines = rest.splitlines()
+        for idx_line, line in enumerate(lines):
+            if idx_line > 0 and line.strip().startswith("## "):
+                next_heading_idx = rest.find(line)
+                break
+        suffix = rest[next_heading_idx:] if next_heading_idx != -1 else ""
+        content = f"{prefix}\n\n{lesson_block}\n{suffix}".rstrip() + "\n"
+    else:
+        content = content.rstrip() + f"\n\n---\n\n{lesson_block}\n"
+
+    try:
+        target_path.write_text(content, encoding="utf-8")
+        return target_path
+    except Exception:
+        return None
+
