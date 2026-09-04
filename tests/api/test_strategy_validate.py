@@ -2,13 +2,37 @@
 Tests for Method rule validation endpoint in Swayam Capital.
 """
 
+import pytest
+from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from swayam.api import app
 
 client = TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def mock_readiness_allowed():
+    """Ensures strategy validation tests run with clear readiness status."""
+    from swayam.db import db
+    try:
+        orig_table = db.client.table
+
+        def table_router(name):
+            if name == "swayam_readiness_log":
+                mock_t = MagicMock()
+                mock_t.select.return_value.eq.return_value.execute.return_value.data = []
+                return mock_t
+            return orig_table(name)
+
+        with patch.object(db.client, "table", side_effect=table_router):
+            yield
+    except Exception:
+        yield
+
+
+
 def test_validate_compliant_spread_passes() -> None:
+
     payload = {
         "strategy_name": "Valid Spread",
         "underlying": "NIFTY",

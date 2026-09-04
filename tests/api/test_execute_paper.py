@@ -3,8 +3,10 @@ Tests for trade execution endpoint in Swayam Capital.
 """
 
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from swayam.api import app
+
 
 client = TestClient(app)
 
@@ -117,9 +119,13 @@ def test_execute_paper_mode_creates_journal_and_position(tmp_path: Path) -> None
     }
 
     try:
-        response = client.post("/api/execute", json=payload)
+        with patch("swayam.api.routes.validation.db") as mock_val_db:
+            mock_val_db.get_margin_base_inr.return_value = 850000.0
+            mock_val_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
+            response = client.post("/api/execute", json=payload)
         assert response.status_code == 200
         data = response.json()
+
 
         assert data["status"] == "opened"
         assert "journal_path" in data
