@@ -153,6 +153,9 @@ export class StrategyBuilderPage {
             </div>
           </div>
 
+          <!-- Safety Critical Warning Banner (Shown if database is unreachable) -->
+          <div id="safety-warning-banner-mount" style="display: none; width: 100%;"></div>
+
           <!-- Row 1: Strategy Presets Bar -->
           <div id="strategy-presets-container" class="span-12"></div>
 
@@ -350,7 +353,11 @@ export class StrategyBuilderPage {
           tickerPnl.style.color = isPos ? 'var(--accent-sage)' : 'var(--accent-coral)';
         }
       }
-    } catch (_) {}
+    } catch (err) {
+      if (this.miniPositions) {
+        this.miniPositions.renderError('Positions unavailable — Supabase unreachable. Check broker terminal.');
+      }
+    }
   }
 
   handlePresetSelected(name, legs) {
@@ -537,17 +544,45 @@ export class StrategyBuilderPage {
     }
   }
 
+  _showSafetyWarningBanner(message) {
+    const banner = this.container.querySelector('#safety-warning-banner-mount');
+    if (banner) {
+      banner.innerHTML = `
+        <div style="background: rgba(221, 129, 112, 0.15); border: 1px solid var(--accent-coral); border-radius: var(--radius-card); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 0.82rem; color: var(--accent-coral);">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1rem;">⚠️</span>
+            <span style="font-weight: 500;">${message}</span>
+          </div>
+        </div>
+      `;
+      banner.style.display = 'block';
+    }
+  }
+
+  _clearSafetyWarningBanner() {
+    const banner = this.container.querySelector('#safety-warning-banner-mount');
+    if (banner) {
+      banner.innerHTML = '';
+      banner.style.display = 'none';
+    }
+  }
+
   startOvernightCronCheck() {
     // Check every 30 seconds if open positions have naked shorts
     this.cronTimer = setInterval(async () => {
       try {
         const res = await api.detectNakedShorts('15:20');
+        this._clearSafetyWarningBanner();
         if (res && res.has_naked_shorts && res.violations && res.violations.length > 0) {
           if (this.overnightModal && !this.overnightModal.isOpen) {
             this.overnightModal.show(res.violations[0]);
           }
         }
-      } catch (_) {}
+      } catch (err) {
+        this._showSafetyWarningBanner(
+          'Overnight-naked safety check unavailable — Supabase unreachable. Inspect open positions manually before market close.'
+        );
+      }
     }, 30000);
     if (this.cronTimer && typeof this.cronTimer.unref === 'function') {
       this.cronTimer.unref();

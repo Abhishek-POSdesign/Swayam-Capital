@@ -88,6 +88,28 @@ export class MiniPositionsListComponent {
     this.attachEvents();
   }
 
+  renderError(message = 'Positions unavailable — Supabase unreachable. Check broker terminal.') {
+    this.container.innerHTML = `
+      <div class="mini-positions-container" style="
+        background: var(--dl-card);
+        border: 1px solid rgba(221, 129, 112, 0.4);
+        border-radius: var(--radius-card);
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      ">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span class="eyebrow" style="color: var(--accent-coral);">ACTIVE TRADES</span>
+          <span style="font-size: 0.68rem; color: var(--accent-coral); font-family: var(--font-mono); font-weight: 600;">UNAVAILABLE</span>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--accent-coral); line-height: 1.4;">
+          ⚠️ ${message}
+        </div>
+      </div>
+    `;
+  }
+
   attachEvents() {
     this.container.querySelectorAll('.mini-pos-item').forEach((el) => {
       el.addEventListener('click', () => {

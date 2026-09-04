@@ -37,7 +37,11 @@ _chain_cache: dict[str, dict[str, Any]] = {}
 
 
 def record_local_paper_position(pos: dict[str, Any]) -> None:
-    """Stores a paper position locally when database is in offline or mock mode."""
+    """Adds a paper position to the in-memory session cache after a successful Supabase insert.
+
+    Merged with the Supabase read in get_positions() so a container without a warm DB
+    connection still sees positions opened during this session.
+    """
     _local_paper_positions.append(pos)
 
 
@@ -185,7 +189,15 @@ def get_positions(status: str = Query(default="open")) -> list[PositionResponse]
         if res.data:
             positions_data.extend(res.data)
     except Exception as exc:
-        logger.warning("Could not fetch positions from Supabase: %s", exc)
+        logger.error("Could not fetch positions from Supabase: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Positions service unavailable: cannot reach Supabase to fetch positions. "
+                "Do not assume 'no positions' when database is unreachable. "
+                f"Underlying error: {exc}"
+            ),
+        ) from exc
 
     # Merge with local session paper trades if not already present
     existing_ids = {p.get("id") for p in positions_data}
@@ -632,7 +644,16 @@ def detect_naked_shorts(
         if res.data:
             open_positions.extend(res.data)
     except Exception as exc:
-        logger.warning("Could not query open positions from Supabase: %s", exc)
+        logger.error("Naked-shorts safety check failed: Supabase unreachable: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Naked-shorts safety check unavailable: cannot reach Supabase to enumerate open positions. "
+                "This is a safety-critical endpoint — do not assume 'no naked shorts' when the database is unreachable. "
+                "Retry when Supabase is reachable, or manually inspect open positions from your broker terminal. "
+                f"Underlying error: {exc}"
+            ),
+        ) from exc
 
     # 2. Append local in-memory paper positions
     seen_ids = {str(p.get("id")) for p in open_positions}

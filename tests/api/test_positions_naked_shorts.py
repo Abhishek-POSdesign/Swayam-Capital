@@ -54,3 +54,25 @@ def test_detect_naked_shorts_with_unhedged_short():
     assert v["suggested_hedges"][0]["action"] == "BUY"
     assert v["suggested_hedges"][0]["option_type"] == "PE"
     assert "Risk Management Rules § 10a" in v["rule_citation"]
+
+
+def test_detect_naked_shorts_supabase_failure_raises_503(monkeypatch):
+    _local_paper_positions.clear()
+
+    class MockTable:
+        def select(self, *args, **kwargs):
+            raise Exception("Database connection lost")
+
+    class MockClient:
+        def table(self, *args, **kwargs):
+            return MockTable()
+
+    from swayam.db import db
+    monkeypatch.setattr(db, "_client", MockClient())
+
+    res = client.get("/api/positions/naked-shorts?at_time=15:20")
+    assert res.status_code == 503
+    data = res.json()
+    assert "Naked-shorts safety check unavailable" in data["detail"]
+    assert "safety-critical endpoint" in data["detail"]
+
