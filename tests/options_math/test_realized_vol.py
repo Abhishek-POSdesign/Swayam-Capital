@@ -94,17 +94,6 @@ def test_compute_realized_vol_cache_hit(tmp_path):
     closes = [24000.0 + i * 15 for i in range(20)]
     db = _setup_test_db_with_bars(tmp_path, closes)
     conn = db.get_connection()
-    conn.execute("""
-        CREATE TABLE realized_vol_cache (
-            symbol TEXT,
-            as_of_date DATE,
-            window_days INTEGER,
-            annualized_vol DOUBLE,
-            computed_at TIMESTAMP,
-            bar_count INTEGER,
-            PRIMARY KEY (symbol, as_of_date, window_days)
-        );
-    """)
     last_date = conn.execute("SELECT MAX(trade_date) FROM nifty_daily_bars;").fetchone()[0]
 
     # First call: computes and writes to cache

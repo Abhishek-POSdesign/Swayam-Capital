@@ -240,31 +240,41 @@ def compute_payoff_curve(
 def pnl_at_spot(
     legs: list[Leg],
     target_spot: float,
-    days_to_expiry: int = 1,
+    days_to_expiry: Optional[int] = None,
     current_iv_per_leg: Optional[dict[Leg, float]] = None,
     r: Optional[float] = None,
+    as_of_date: Optional[date] = None,
 ) -> float:
     """Calculates aggregate P&L in rupees across option legs at a target spot price.
 
     Uses intrinsic value if days_to_expiry is 0 (at expiration), or Black-Scholes
-    pricing if days_to_expiry > 0.
+    pricing if days_to_expiry > 0. If days_to_expiry is None, dynamically computes
+    remaining days from each leg's expiry_date evaluated at T+1 overnight.
 
     Args:
         legs: Collection of option legs.
         target_spot: Underlying spot price to evaluate.
-        days_to_expiry: Remaining calendar days to expiration (default: 1).
+        days_to_expiry: Remaining calendar days to expiration (optional).
         current_iv_per_leg: Optional map of leg to implied volatility decimal.
         r: Optional risk-free interest rate (defaults to settings.risk_free_rate).
+        as_of_date: Reference evaluation date (defaults to date.today()).
 
     Returns:
         float: Total P&L in rupees (positive = gain, negative = loss).
     """
     total_pnl = 0.0
-    tte_years = max(days_to_expiry, 0) / 365.0
+    ref_date = as_of_date or date.today()
 
     for leg in legs:
         qty_shares = leg.quantity_lots * leg.lot_size
-        if days_to_expiry == 0 or tte_years == 0.0:
+        if days_to_expiry is not None:
+            leg_days = max(days_to_expiry, 0)
+        else:
+            leg_days = max((leg.expiry_date - ref_date).days - 1, 0)
+
+        tte_years = leg_days / 365.0
+
+        if leg_days == 0 or tte_years == 0.0:
             current_value = _leg_intrinsic_value(leg, target_spot)
         else:
             iv = 0.15
@@ -285,4 +295,3 @@ def pnl_at_spot(
             total_pnl += (leg.entry_premium - current_value) * qty_shares
 
     return total_pnl
-
