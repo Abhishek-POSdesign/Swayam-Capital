@@ -2,8 +2,9 @@
  * Canonical reference: D:\Claude\POS\Atlas\Deploy\css\tokens.css & primitives.css
  */
 
-:root {
-  /* ===== ATLAS DAYLIGHT DARK CANVAS ===== */
+/* ===== DARK CANVAS (default — Charcoal Muse) ===== */
+:root,
+:root[data-theme="dark"] {
   --dl-bg: #101116;
   --dl-card: #191b21;
   --dl-card-2: #20232b;
@@ -16,46 +17,35 @@
   --dl-track: #2f333d;
   --dl-ink-tile: #13151a;
 
-  /* ===== SWAYAM SEMANTIC PALETTE (Locked Meanings) ===== */
-  /* Done / Long / Profit / Rule PASS */
   --accent-sage: #86ab92;
   --accent-sage-tint: rgba(134, 171, 146, 0.17);
   --accent-sage-tint-hover: rgba(134, 171, 146, 0.32);
-  --dl-done: #b6ecd2;
-  --dl-done-on: #0a5c3c;
-  --dl-done-mark: #b6ecd2;
+  --dl-done: #b6ecd2;  --dl-done-on: #0a5c3c;  --dl-done-mark: #b6ecd2;
 
-  /* Task / Neutral info / Buy leg / Ideal setup */
   --accent-blue: #759ad0;
   --accent-blue-tint: rgba(117, 154, 208, 0.17);
   --accent-blue-tint-hover: rgba(117, 154, 208, 0.32);
-  --dl-task: #c3dcff;
-  --dl-task-on: #0f4680;
-  --dl-task-mark: #c3dcff;
+  --dl-task: #c3dcff;  --dl-task-on: #0f4680;  --dl-task-mark: #c3dcff;
 
-  /* Project / AI Trading Partner / Greeks */
   --accent-lilac: #ac9fd2;
   --accent-lilac-tint: rgba(172, 159, 210, 0.17);
   --accent-lilac-tint-hover: rgba(172, 159, 210, 0.32);
-  --dl-project: #d8ccff;
-  --dl-project-on: #4a2a8a;
-  --dl-project-mark: #d8ccff;
+  --dl-project: #d8ccff;  --dl-project-on: #4a2a8a;  --dl-project-mark: #d8ccff;
 
-  /* Alert / Short / Loss / Rule violation / Overnight naked */
   --accent-coral: #dd8170;
   --accent-coral-tint: rgba(221, 129, 112, 0.17);
   --accent-coral-tint-hover: rgba(221, 129, 112, 0.32);
-  --dl-alert: #ffd0c6;
-  --dl-alert-on: #8d2d13;
-  --dl-alert-mark: #ffd0c6;
+  --dl-alert: #ffd0c6;  --dl-alert-on: #8d2d13;  --dl-alert-mark: #ffd0c6;
 
-  /* Skip / ATM strike / Warning / Volatility spike */
   --accent-amber: #c9a04a;
   --accent-amber-tint: rgba(201, 160, 74, 0.17);
   --accent-amber-tint-hover: rgba(201, 160, 74, 0.32);
-  --dl-skip: #ffe6ac;
-  --dl-skip-on: #6f4b06;
-  --dl-skip-mark: #ffe6ac;
+  --dl-skip: #ffe6ac;  --dl-skip-on: #6f4b06;  --dl-skip-mark: #ffe6ac;
+
+  --dl-shadow: 0 1px 2px rgba(0,0,0,0.5), 0 10px 26px rgba(0,0,0,0.4);
+  --theme-switcher-bg: rgba(255,255,255,0.06);
+  --plotly-bg: #191b21;
+  --plotly-grid: #272a33;
 
   /* Typography */
   --font-serif: Georgia, 'Times New Roman', serif;
@@ -70,6 +60,69 @@
   --radius-card: 16px;
   --radius-sm: 9px;
   --radius-pill: 999px;
+}
+
+/* ===== LIGHT CANVAS (Paper Studio) — matches Atlas data-theme="light" verbatim ===== */
+:root[data-theme="light"] {
+  --dl-bg: #f1f3f7;
+  --dl-card: #ffffff;
+  --dl-card-2: #f6f8fb;
+  --dl-rail: #ffffff;
+  --dl-line: #e4e7ee;
+  --dl-line-2: #eef1f6;
+  --dl-fg: #15171c;
+  --dl-fg-2: #474c57;
+  --dl-fg-3: #666c79;
+  --dl-track: #dbe0e9;
+  --dl-ink-tile: #15171c;
+
+  --accent-sage: #6f8f65;
+  --accent-sage-tint: rgba(111, 143, 101, 0.14);
+  --accent-sage-tint-hover: rgba(111, 143, 101, 0.24);
+  --dl-done: #cdf3e0;  --dl-done-on: #0a6a45;  --dl-done-mark: #0a6a45;
+
+  --accent-blue: #5e7fb0;
+  --accent-blue-tint: rgba(94, 127, 176, 0.14);
+  --accent-blue-tint-hover: rgba(94, 127, 176, 0.24);
+  --dl-task: #d5e6ff;  --dl-task-on: #12508f;  --dl-task-mark: #12508f;
+
+  --accent-lilac: #8776a8;
+  --accent-lilac-tint: rgba(135, 118, 168, 0.14);
+  --accent-lilac-tint-hover: rgba(135, 118, 168, 0.24);
+  --dl-project: #e3dbff;  --dl-project-on: #543099;  --dl-project-mark: #543099;
+
+  --accent-coral: #b56b5d;
+  --accent-coral-tint: rgba(181, 107, 93, 0.14);
+  --accent-coral-tint-hover: rgba(181, 107, 93, 0.24);
+  --dl-alert: #ffdfd8;  --dl-alert-on: #9e3418;  --dl-alert-mark: #9e3418;
+
+  --accent-amber: #b89a44;
+  --accent-amber-tint: rgba(184, 154, 68, 0.14);
+  --accent-amber-tint-hover: rgba(184, 154, 68, 0.24);
+  --dl-skip: #ffeec4;  --dl-skip-on: #82590a;  --dl-skip-mark: #82590a;
+
+  --dl-shadow: 0 1px 2px rgba(21,23,28,0.04), 0 10px 26px rgba(21,23,28,0.07);
+  --theme-switcher-bg: rgba(0,0,0,0.06);
+  --plotly-bg: #ffffff;
+  --plotly-grid: #e4e7ee;
+}
+
+/* ===== AUTO (follows OS preference) ===== */
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] {
+    --dl-bg: #f1f3f7;  --dl-card: #ffffff;  --dl-card-2: #f6f8fb;
+    --dl-rail: #ffffff;  --dl-line: #e4e7ee;  --dl-line-2: #eef1f6;
+    --dl-fg: #15171c;  --dl-fg-2: #474c57;  --dl-fg-3: #666c79;
+    --dl-track: #dbe0e9;  --dl-ink-tile: #15171c;
+    --accent-sage: #6f8f65;  --accent-sage-tint: rgba(111,143,101,0.14);  --accent-sage-tint-hover: rgba(111,143,101,0.24);
+    --accent-blue: #5e7fb0;  --accent-blue-tint: rgba(94,127,176,0.14);
+    --accent-lilac: #8776a8;  --accent-lilac-tint: rgba(135,118,168,0.14);
+    --accent-coral: #b56b5d;  --accent-coral-tint: rgba(181,107,93,0.14);
+    --accent-amber: #b89a44;  --accent-amber-tint: rgba(184,154,68,0.14);
+    --dl-shadow: 0 1px 2px rgba(21,23,28,0.04), 0 10px 26px rgba(21,23,28,0.07);
+    --theme-switcher-bg: rgba(0,0,0,0.06);
+    --plotly-bg: #ffffff;  --plotly-grid: #e4e7ee;
+  }
 }
 
 /* Base Body Application */
