@@ -99,8 +99,8 @@ export function initHeader(container, options = {}) {
   container.querySelectorAll('.nav-pill').forEach(btn => {
     btn.addEventListener('click', () => {
       const page = btn.getAttribute('data-page');
-      if (page === 'backtest' || page === 'journal') {
-        alert(`${page === 'backtest' ? 'Backtesting Lab' : 'Journal & Analytics'} will arrive in BUILD-11/12.`);
+      if (page === 'backtest') {
+        alert('Backtesting Lab will arrive in BUILD-12.');
         return;
       }
       container.querySelectorAll('.nav-pill').forEach(b => b.classList.remove('active'));
