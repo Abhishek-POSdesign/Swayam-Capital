@@ -145,7 +145,7 @@ class SwayamApp {
   closeAIDrawer() {
     const drawer = document.getElementById('ai-sidebar-container');
     if (drawer) {
-      drawer.style.right = '-420px';
+      drawer.style.right = '-450px';
       try { document.body.classList.remove('ai-panel-open'); } catch (_) {}
       this.isAIDrawerOpen = false;
     }

@@ -12,6 +12,13 @@
 
 import { createTTSButton } from './tts-player.js';
 
+const PREMARKET_STARTER_PROMPTS = [
+  "Walk me through today's market open — what's setting up?",
+  "India VIX is in the 8th percentile — what does that regime favor?",
+  "RBI Monday — what should I NOT trade before then?",
+  "Based on my last 5 paper trades, what pattern am I repeating?",
+];
+
 function parseMarkdown(text) {
   if (!text) return '';
   const escaped = text
@@ -115,7 +122,7 @@ export class ChatSurfaceComponent {
 
     if (errorMessage) {
       this.container.innerHTML = `
-        <div class="ai-trading-partner-workspace" style="width: 100%; box-sizing: border-box; border-left: 2px solid var(--accent-coral); background: var(--dl-card); border-radius: 12px; display: flex; flex-direction: column; gap: 10px; padding: 20px 24px;">
+        <div class="ai-trading-partner-workspace" style="width: 100%; box-sizing: border-box; border: 1px solid var(--accent-coral); background: var(--dl-card); border-radius: 12px; display: flex; flex-direction: column; gap: 10px; padding: 20px 24px;">
           <span class="eyebrow" style="color: var(--accent-coral); font-weight: 700;">WHAT MATTERS TODAY · AI UNAVAILABLE</span>
           <p style="font-size: 0.92rem; color: var(--dl-fg-2); margin: 0; line-height: 1.5;">
             AI Trading Partner briefing could not be generated: <strong style="color: var(--accent-coral);">${errorMessage}</strong>
@@ -128,7 +135,7 @@ export class ChatSurfaceComponent {
     const shortSession = this.sessionId ? `swayam-${this.sessionId.slice(0, 6)}` : 'initializing...';
 
     this.container.innerHTML = `
-      <div class="ai-trading-partner-workspace" style="width: 100%; box-sizing: border-box; border-left: 2px solid var(--accent-lilac); background: var(--dl-card); border-radius: 12px; display: flex; flex-direction: column; gap: 16px; padding: 22px 28px; position: relative;">
+      <div class="ai-trading-partner-workspace" style="width: 100%; box-sizing: border-box; border: 1px solid var(--dl-line); background: var(--dl-card); border-radius: 12px; display: flex; flex-direction: column; gap: 16px; padding: 22px 28px; position: relative;">
         
         <!-- Header -->
         <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 2px;">
@@ -168,11 +175,9 @@ export class ChatSurfaceComponent {
         <div style="height: 1px; background: var(--dl-line); width: 100%; margin: 2px 0;"></div>
 
         <!-- Conversation Message History Container (Spacious Full-Width) -->
-        <div id="chat-messages-container" style="min-height: 300px; max-height: 520px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 4px 2px;">
-          <!-- Empty State when no dialogue yet -->
-          <div id="chat-empty-state" style="padding: 24px; text-align: center; color: var(--dl-fg-3); font-size: 0.88rem; border: 1px dashed var(--dl-line); border-radius: 10px; background: rgba(0,0,0,0.02);">
-            Start the conversation below with a question, observation, or challenge to the brief above.
-          </div>
+        <div id="chat-messages-container" style="min-height: 280px; max-height: 520px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 4px 2px;">
+          <!-- Empty State with 2x2 Quick-Prompt Cards (Bug 5) -->
+          ${this._renderEmptyStateHTML()}
         </div>
 
         <!-- Full-Width Composer Section -->
@@ -311,6 +316,54 @@ export class ChatSurfaceComponent {
         }
       });
     }
+
+    // Attach prompt card click handlers
+    this._attachEmptyStateListeners();
+  }
+
+  _renderEmptyStateHTML() {
+    return `
+      <div id="chat-empty-state" style="display: flex; flex-direction: column; gap: 12px; padding: 18px 6px; width: 100%;">
+        <div style="font-size: 0.76rem; color: var(--dl-fg-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 6px;">
+          <span>Suggested Questions</span>
+          <span style="font-weight: 400; text-transform: none; color: var(--dl-fg-3);">— Click any prompt to ask your trading partner</span>
+        </div>
+        <div class="chat-prompt-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%;">
+          ${PREMARKET_STARTER_PROMPTS.map((p) => `
+            <div class="chat-quick-prompt-card" data-prompt="${p.replace(/"/g, '&quot;')}" style="background: var(--dl-card-2); border: 1px solid var(--dl-line); border-radius: 10px; padding: 12px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.15s ease; box-sizing: border-box;">
+              <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--accent-lilac-tint); color: var(--accent-lilac); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.75rem; font-weight: 700;">
+                ✦
+              </div>
+              <span style="font-size: 0.84rem; color: var(--dl-fg); line-height: 1.35; font-weight: 500;">
+                ${p}
+              </span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  _attachEmptyStateListeners() {
+    const cards = this.container.querySelectorAll('.chat-quick-prompt-card');
+    cards.forEach((card) => {
+      card.addEventListener('mouseenter', () => {
+        card.style.borderColor = 'var(--accent-lilac)';
+        card.style.transform = 'translateY(-1px)';
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.borderColor = 'var(--dl-line)';
+        card.style.transform = 'translateY(0)';
+      });
+      card.addEventListener('click', () => {
+        const prompt = card.getAttribute('data-prompt');
+        const textarea = this.container.querySelector('#chat-textarea');
+        if (textarea && prompt) {
+          textarea.value = prompt;
+          this.sendMessage();
+        }
+      });
+    });
   }
 
   async _ensureSession() {
@@ -334,11 +387,8 @@ export class ChatSurfaceComponent {
       this.messages = [];
       const messagesContainer = this.container.querySelector('#chat-messages-container');
       if (messagesContainer) {
-        messagesContainer.innerHTML = `
-          <div id="chat-empty-state" style="padding: 18px; text-align: center; color: var(--dl-fg-3); font-size: 0.85rem; border: 1px dashed var(--dl-line); border-radius: 10px; background: rgba(0,0,0,0.02);">
-            Start the conversation below with a question, observation, or challenge to the brief above.
-          </div>
-        `;
+        messagesContainer.innerHTML = this._renderEmptyStateHTML();
+        this._attachEmptyStateListeners();
       }
     } catch (err) {
       console.error('Failed to create new session:', err);
@@ -358,11 +408,8 @@ export class ChatSurfaceComponent {
 
       container.innerHTML = '';
       if (msgs.length === 0) {
-        container.innerHTML = `
-          <div id="chat-empty-state" style="padding: 18px; text-align: center; color: var(--dl-fg-3); font-size: 0.85rem; border: 1px dashed var(--dl-line); border-radius: 10px; background: rgba(0,0,0,0.02);">
-            Start the conversation below with a question, observation, or challenge to the brief above.
-          </div>
-        `;
+        container.innerHTML = this._renderEmptyStateHTML();
+        this._attachEmptyStateListeners();
       } else {
         msgs.forEach((m) => this.appendMessageDOM(m.role, m.content, m.id));
       }

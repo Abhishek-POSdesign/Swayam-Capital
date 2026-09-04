@@ -31,36 +31,67 @@ export class HomePage {
 
   render() {
     this.container.innerHTML = `
-      <div class="home-canvas" style="max-width: 1720px; margin: 0 auto; padding: 20px 24px; display: flex; gap: 20px; align-items: flex-start; transition: all var(--dur-base, 200ms) ease;">
-        <!-- LEFT COLUMN: Readiness Ritual & History — Foldable/Collapsible (Fix A7) -->
-        <aside class="home-left-col" id="home-left-sidebar" style="flex: 0 0 360px; width: 360px; display: flex; flex-direction: column; gap: 13px; transition: flex-basis 0.22s ease, width 0.22s ease; position: relative;">
+      <div class="home-canvas" style="display: flex; gap: 24px; align-items: stretch; min-height: calc(100vh - 56px); transition: all var(--dur-base, 180ms) ease;">
+        <!-- LEFT COLUMN: Readiness Ritual & History — Solid Full-Height Rail (Atlas Design) -->
+        <aside class="swayam-rail home-left-col" id="home-left-sidebar" style="flex: 0 0 380px; width: 380px; background: var(--dl-rail); border-right: 1px solid var(--dl-line); min-height: calc(100vh - 56px); position: sticky; top: 56px; overflow-y: auto; display: flex; flex-direction: column; transition: flex-basis 0.22s ease, width 0.22s ease; box-sizing: border-box;">
           
-          <!-- Collapsed thin bar strip (shown when collapsed) -->
-          <div id="left-col-collapsed-strip" style="display: none; width: 56px; height: 500px; background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: 12px; flex-direction: column; align-items: center; padding: 14px 6px; cursor: pointer;" title="Expand Morning Ritual">
-            <button id="btn-expand-ritual" type="button" style="background: var(--dl-card-2); border: 1px solid var(--dl-line); color: var(--dl-fg); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.85rem;" title="Expand Sidebar">
-              ▶
-            </button>
-            <div style="writing-mode: vertical-rl; transform: rotate(180deg); margin-top: 24px; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.1em; color: var(--accent-sage); font-weight: 700; white-space: nowrap;">
-              MORNING RITUAL · READY
+          <!-- Collapsed rich status strip (shown when collapsed, 72px wide) -->
+          <div id="left-col-collapsed-strip" style="display: none; width: 72px; min-width: 72px; height: 100%; min-height: 520px; flex-direction: column; align-items: center; justify-content: space-between; padding: 16px 8px; box-sizing: border-box; cursor: pointer;" title="Click to expand Morning Ritual">
+            <!-- Top section: expand button, verdict bar, 6 factor icons, streak -->
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%;">
+              <button id="btn-expand-ritual" type="button" style="background: var(--dl-card-2); border: 1px solid var(--dl-line); color: var(--dl-fg); width: 38px; height: 38px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;" title="Expand Morning Ritual">
+                ▶
+              </button>
+
+              <!-- 32px Verdict color bar -->
+              <div id="collapsed-verdict-bar" style="width: 36px; height: 8px; border-radius: 4px; background: var(--accent-sage); transition: background 0.2s ease;" title="Verdict: READY"></div>
+
+              <!-- 6 Ritual factor icons stacked vertically -->
+              <div id="collapsed-ritual-factors" style="display: flex; flex-direction: column; gap: 8px; align-items: center; margin-top: 4px;">
+                <div id="factor-icon-meditation" title="Meditation" style="display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-sage-tint); color: var(--accent-sage); font-size: 0.72rem; font-weight: 700;">✓</div>
+                <div id="factor-icon-sleep" title="Sleep (7h+)" style="display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-sage-tint); color: var(--accent-sage); font-size: 0.72rem; font-weight: 700;">✓</div>
+                <div id="factor-icon-alcohol" title="Alcohol-free" style="display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-sage-tint); color: var(--accent-sage); font-size: 0.72rem; font-weight: 700;">✓</div>
+                <div id="factor-icon-workout" title="Workout" style="display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-sage-tint); color: var(--accent-sage); font-size: 0.72rem; font-weight: 700;">✓</div>
+                <div id="factor-icon-mood" title="Clear Head / Mood" style="display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-sage-tint); color: var(--accent-sage); font-size: 0.72rem; font-weight: 700;">✓</div>
+                <div id="factor-icon-stressor" title="No Stressor" style="display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-sage-tint); color: var(--accent-sage); font-size: 0.72rem; font-weight: 700;">✓</div>
+              </div>
+
+              <!-- Streak count -->
+              <div style="margin-top: 4px; text-align: center;">
+                <div id="collapsed-streak-count" style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; color: var(--accent-sage);">103d</div>
+                <div style="font-size: 0.58rem; color: var(--dl-fg-3); text-transform: uppercase; letter-spacing: 0.05em;">streak</div>
+              </div>
+            </div>
+
+            <!-- Bottom rotated label -->
+            <div style="writing-mode: vertical-rl; transform: rotate(180deg); margin-bottom: 14px; font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.1em; color: var(--dl-fg-3); font-weight: 600; white-space: nowrap;">
+              MORNING RITUAL
             </div>
           </div>
 
           <!-- Expanded content wrapper -->
-          <div id="left-col-expanded-content" style="display: flex; flex-direction: column; gap: 13px; width: 100%;">
-            <!-- Header bar with collapse chevron -->
-            <div style="display: flex; justify-content: flex-end; padding-right: 2px;">
-              <button id="btn-collapse-ritual" type="button" title="Collapse Morning Ritual to slim strip" style="background: var(--dl-card-2); border: 1px solid var(--dl-line); color: var(--dl-fg-2); border-radius: 6px; padding: 3px 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+          <div id="left-col-expanded-content" style="display: flex; flex-direction: column; gap: 14px; width: 100%; padding: 18px 20px 24px 20px; box-sizing: border-box; flex: 1;">
+            <!-- Header bar with title and fold button -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--dl-line);">
+              <span class="eyebrow" style="color: var(--dl-fg-2); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em;">MORNING RITUAL</span>
+              <button id="btn-collapse-ritual" type="button" title="Collapse Morning Ritual to compact status rail" style="background: var(--dl-card-2); border: 1px solid var(--dl-line); color: var(--dl-fg-2); border-radius: 6px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 4px;">
                 <span>Fold</span> ◀
               </button>
             </div>
             <div id="home-ritual-container"></div>
             <div id="home-verdict-container"></div>
             <div id="home-kpi-container" style="display: flex; flex-direction: column; gap: 13px;"></div>
+
+            <!-- Rail sticky footer (Atlas pattern) -->
+            <div class="swayam-rail-footer" style="margin-top: auto; padding-top: 24px; border-top: 1px solid var(--dl-line); display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--dl-fg-3);">
+              <span>Swayam v0.3</span>
+              <a href="/logout" style="color: var(--dl-fg-3); text-decoration: none; transition: color 0.15s;" onmouseover="this.style.color='var(--dl-fg)'" onmouseout="this.style.color='var(--dl-fg-3)'">Sign out</a>
+            </div>
           </div>
         </aside>
 
         <!-- RIGHT COLUMN (Flex grow): Market Prep & Intelligence -->
-        <main class="home-right-col" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+        <main class="home-right-col" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px; padding: 18px 24px 32px 0;">
           <!-- Section Header with Countdown -->
           <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 2px;">
             <h1 style="font-family: var(--font-serif); font-size: 1.45rem; font-weight: 500; color: var(--dl-fg); margin: 0;">
@@ -105,14 +136,14 @@ export class HomePage {
 
     const setCollapsed = (collapsed) => {
       if (collapsed) {
-        sidebar.style.flex = '0 0 56px';
-        sidebar.style.width = '56px';
+        sidebar.style.flex = '0 0 72px';
+        sidebar.style.width = '72px';
         expandedContent.style.display = 'none';
         collapsedStrip.style.display = 'flex';
         try { localStorage.setItem('swayam_ritual_collapsed', 'true'); } catch (_) {}
       } else {
-        sidebar.style.flex = '0 0 360px';
-        sidebar.style.width = '360px';
+        sidebar.style.flex = '0 0 380px';
+        sidebar.style.width = '380px';
         expandedContent.style.display = 'flex';
         collapsedStrip.style.display = 'none';
         try { localStorage.setItem('swayam_ritual_collapsed', 'false'); } catch (_) {}
@@ -121,7 +152,11 @@ export class HomePage {
 
     if (btnCollapse) btnCollapse.addEventListener('click', () => setCollapsed(true));
     if (btnExpand) btnExpand.addEventListener('click', () => setCollapsed(false));
-    if (collapsedStrip) collapsedStrip.addEventListener('click', () => setCollapsed(false));
+    if (collapsedStrip) collapsedStrip.addEventListener('click', (e) => {
+      if (e.target !== btnExpand && !btnExpand.contains(e.target)) {
+        setCollapsed(false);
+      }
+    });
 
     // Restore saved state
     try {
@@ -132,6 +167,63 @@ export class HomePage {
     } catch (_) {}
   }
 
+  _updateCollapsedStatus(verdictInfo = null, kpiInfo = null) {
+    if (verdictInfo) {
+      const v = typeof verdictInfo === 'string' ? verdictInfo : (verdictInfo.verdict || 'GREEN');
+      const bar = this.container.querySelector('#collapsed-verdict-bar');
+      if (bar) {
+        if (v === 'GREEN') {
+          bar.style.background = 'var(--accent-sage)';
+          bar.title = 'Verdict: GREEN · Trading Permitted';
+        } else if (v === 'YELLOW') {
+          bar.style.background = 'var(--accent-amber)';
+          bar.title = 'Verdict: YELLOW · Caution / Sized Down';
+        } else {
+          bar.style.background = 'var(--accent-coral)';
+          bar.title = 'Verdict: RED · Trading Blocked';
+        }
+      }
+
+      if (verdictInfo.per_factor_verdicts) {
+        const pf = verdictInfo.per_factor_verdicts;
+        const factorMap = [
+          { key: 'meditation', id: 'factor-icon-meditation' },
+          { key: 'sleep_hours_bucket', id: 'factor-icon-sleep' },
+          { key: 'alcohol_yesterday', id: 'factor-icon-alcohol' },
+          { key: 'workout_in_last_48h', id: 'factor-icon-workout' },
+          { key: 'journal_mood', id: 'factor-icon-mood' },
+          { key: 'life_stressor', id: 'factor-icon-stressor' },
+        ];
+        factorMap.forEach(({ key, id }) => {
+          const el = this.container.querySelector(`#${id}`);
+          if (el && pf[key]) {
+            const status = pf[key].verdict;
+            if (status === 'GREEN') {
+              el.style.color = 'var(--accent-sage)';
+              el.style.background = 'var(--accent-sage-tint)';
+              el.textContent = '✓';
+            } else if (status === 'YELLOW') {
+              el.style.color = 'var(--accent-amber)';
+              el.style.background = 'var(--accent-amber-tint)';
+              el.textContent = '●';
+            } else {
+              el.style.color = 'var(--accent-coral)';
+              el.style.background = 'var(--accent-coral-tint)';
+              el.textContent = '✕';
+            }
+          }
+        });
+      }
+    }
+
+    if (kpiInfo && kpiInfo.alcohol_streak_days !== undefined) {
+      const streakEl = this.container.querySelector('#collapsed-streak-count');
+      if (streakEl) {
+        streakEl.textContent = `${kpiInfo.alcohol_streak_days}d`;
+      }
+    }
+  }
+
   mountComponents() {
     // 1. Readiness Ritual
     const ritualContainer = this.container.querySelector('#home-ritual-container');
@@ -140,6 +232,7 @@ export class HomePage {
         if (this.verdictComponent) {
           this.verdictComponent.setVerdict(verdict);
         }
+        this._updateCollapsedStatus(verdict);
       },
       onSubmitted: async () => {
         await this.loadKpiData();
@@ -216,6 +309,9 @@ export class HomePage {
       const kpis = await api.getReadinessKPIs();
       if (this.kpiComponent && kpis) {
         this.kpiComponent.render(kpis);
+      }
+      if (kpis) {
+        this._updateCollapsedStatus(null, kpis);
       }
     } catch (err) {
       console.warn('Could not fetch readiness KPIs:', err);

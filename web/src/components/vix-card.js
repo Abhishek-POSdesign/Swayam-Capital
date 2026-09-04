@@ -35,6 +35,7 @@ export class VixCardComponent {
         values: vixData?.history_60d?.values || vixData?.sparkline_20d || defaultVals,
       },
     };
+    this.lastData = data;
 
     // Regime → color mapping
     const regimeKey = (data.regime || '').toLowerCase();
@@ -163,30 +164,108 @@ export class VixCardComponent {
       const gridColor = style.getPropertyValue('--plotly-grid').trim() || '#272a33';
       const textColor = style.getPropertyValue('--dl-fg-3').trim() || '#8a91a0';
 
-      const trace = {
-        x: history60d.dates && history60d.dates.length ? history60d.dates : history60d.values.map((_, i) => i),
-        y: history60d.values,
+      const dates = history60d.dates && history60d.dates.length ? history60d.dates : history60d.values.map((_, i) => i);
+      const vals = (history60d.values || []).map(Number);
+      const minVal = Math.min(...vals);
+      const maxVal = Math.max(...vals);
+      const range = (maxVal - minVal) || 1.0;
+      const pad = Math.max(range * 0.10, 0.35);
+
+      const lineTrace = {
+        x: dates,
+        y: vals,
         type: 'scatter',
         mode: 'lines',
         line: { color: '#86ab92', width: 2 },
-        fill: 'tozeroy',
-        fillcolor: 'rgba(134,171,146,0.08)',
-        hoverinfo: 'y',
+        hoverinfo: 'y+x',
         showlegend: false,
       };
 
+      // Identify 3 highest and 3 lowest points for regime visual guidance
+      const indexed = vals.map((v, i) => ({ val: v, idx: i }));
+      indexed.sort((a, b) => a.val - b.val);
+      const lowest3 = indexed.slice(0, Math.min(3, indexed.length));
+      const highest3 = indexed.slice(-Math.min(3, indexed.length));
+
+      const highMarkerTrace = {
+        x: highest3.map((item) => dates[item.idx]),
+        y: highest3.map((item) => item.val),
+        type: 'scatter',
+        mode: 'markers',
+        marker: { color: '#dd8170', size: 5, symbol: 'circle' },
+        hoverinfo: 'y',
+        name: 'High',
+        showlegend: false,
+      };
+
+      const lowMarkerTrace = {
+        x: lowest3.map((item) => dates[item.idx]),
+        y: lowest3.map((item) => item.val),
+        type: 'scatter',
+        mode: 'markers',
+        marker: { color: '#86ab92', size: 5, symbol: 'circle' },
+        hoverinfo: 'y',
+        name: 'Low',
+        showlegend: false,
+      };
+
+      const shapes = [];
+      const annotations = [];
+      const medianVal = this.lastData?.p50 || (vals.slice().sort((a, b) => a - b)[Math.floor(vals.length / 2)]);
+      if (medianVal) {
+        shapes.push({
+          type: 'line',
+          xref: 'paper',
+          x0: 0,
+          x1: 1,
+          yref: 'y',
+          y0: medianVal,
+          y1: medianVal,
+          line: {
+            color: 'rgba(138, 145, 160, 0.4)',
+            width: 1,
+            dash: 'dash',
+          },
+        });
+        annotations.push({
+          xref: 'paper',
+          x: 0.99,
+          yref: 'y',
+          y: medianVal,
+          text: `1y median ${Number(medianVal).toFixed(1)}`,
+          showarrow: false,
+          xanchor: 'right',
+          yanchor: 'bottom',
+          font: { color: textColor, size: 8, family: 'var(--font-mono)' },
+        });
+      }
+
       const layout = {
-        margin: { l: 28, r: 8, t: 4, b: 20 },
+        margin: { l: 28, r: 8, t: 8, b: 20 },
         paper_bgcolor: bgColor,
         plot_bgcolor: bgColor,
         showlegend: false,
         dragmode: false,
-        xaxis: { showgrid: false, zeroline: false, tickfont: { color: textColor, size: 8 }, showticklabels: true },
-        yaxis: { showgrid: true, gridcolor: gridColor, zeroline: false, tickfont: { color: textColor, size: 8 } },
+        xaxis: {
+          showgrid: false,
+          zeroline: false,
+          tickfont: { color: textColor, size: 8 },
+          showticklabels: true,
+        },
+        yaxis: {
+          showgrid: true,
+          gridcolor: gridColor,
+          zeroline: false,
+          tickfont: { color: textColor, size: 8 },
+          autorange: false,
+          range: [Math.max(0, minVal - pad), maxVal + pad],
+        },
+        shapes,
+        annotations,
       };
 
       chartDiv.innerHTML = '';
-      await Plotly.newPlot(chartDiv, [trace], layout, { responsive: true, displayModeBar: false });
+      await Plotly.newPlot(chartDiv, [lineTrace, highMarkerTrace, lowMarkerTrace], layout, { responsive: true, displayModeBar: false });
     } catch (e) {
       // SVG fallback already rendered — silent fail
     }

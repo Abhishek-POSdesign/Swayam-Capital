@@ -227,7 +227,7 @@ export class NiftyChartCardComponent {
       })));
 
       const layout = {
-        dragmode: false,
+        dragmode: 'pan',
         margin: { l: 36, r: 60, t: 8, b: 24 },
         paper_bgcolor: bgColor,
         plot_bgcolor: bgColor,
@@ -249,7 +249,13 @@ export class NiftyChartCardComponent {
         annotations,
       };
 
-      const config = { responsive: true, displayModeBar: false };
+      const config = {
+        responsive: true,
+        scrollZoom: true,
+        displayModeBar: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+      };
 
       // Use react() for smooth tab switching (no flicker), newPlot on first render
       if (this._plotlyLoaded && chartDiv._plotlyLoaded) {
