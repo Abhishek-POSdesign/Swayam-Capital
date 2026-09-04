@@ -28,6 +28,16 @@ To guarantee multi-year sustainability and protect against system drift, every c
 
 ---
 
+## 🛡️ Two-Tier Risk Model
+
+Swayam Capital implements Abhishek's **Two-Tier Risk Model** (see `02 - Projects/Trading/01 - Method/Risk Management Rules.md` in the Obsidian vault):
+- **Tier 1 (Realistic Risk Cap — 1.0% of margin base):** The primary daily sizing gate. Measures expected loss under a 2σ adverse move in NIFTY based on trailing 20-day realized volatility. This ensures spreads like Bear Put Spreads are judged fairly on typical day-to-day moves rather than impossible gap assumptions.
+- **Tier 2 (Blast Radius Fuse — 3.0% of margin base):** The emergency black-swan ceiling. Measures absolute mathematical maximum loss (`max_loss_inr`) across the entire price spectrum ($0$ to $\infty$). This prevents catastrophic tail risk and runaway naked options.
+
+Both caps are evaluated side-by-side in the Strategy Builder, and both must pass for a trade to validate.
+
+---
+
 ## 📁 Repository Layout
 
 ```
@@ -93,12 +103,13 @@ Swayam Capital/
 │   ├── deploy_recorder.py         # Automated GCP Cloud Function & Scheduler deployer
 │   ├── ingest_gcs_to_duckdb.py    # Local nightly GCS to DuckDB options ingest tool
 │   └── run_reconciler.py          # Windows task script for nightly readiness reconciliation
-├── tests/                         # Pytest automated test suite (176 tests + 6 vitest)
-
+├── tests/                         # Automated test suite (207 pytest + 10 vitest = 217 total passing)
 │   ├── ai/                        # Vertex provider, persona, context assembly tests
 │   ├── api/                       # API route integration tests (including AI routes)
 │   ├── cloud/                     # Cloud recorder unit tests
+│   ├── options_math/              # Realized vol and payoff at spot tests
 │   ├── readiness/                 # Readiness engine and reconciler tests
+│   ├── rule_engine/               # Statistical risk and two-tier cap tests
 │   ├── scripts/                   # CLI and ingest script tests
 │   └── ...                        # Core unit and mock tests
 ├── data/                          # Local data cache (gitignored)

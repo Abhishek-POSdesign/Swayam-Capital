@@ -118,6 +118,27 @@ def run_smoketest(skip_web: bool = False) -> bool:
         print(f"[FAIL] DuckDB       — failed to open DuckDB: {e}")
         all_passed = False
 
+    # 7b. Realized Volatility Check (20-day NIFTY)
+    try:
+        from datetime import date
+        from swayam.options_math.realized_vol import (
+            compute_realized_vol,
+            InsufficientHistoryError,
+            HistoricalDataUnavailableError,
+        )
+        today = date.today()
+        ann_vol = compute_realized_vol(symbol="NIFTY", as_of_date=today, window_days=20)
+        print(f"[OK] Realized Vol — computed NIFTY 20d annualized vol: {ann_vol * 100:.1f}% (as of {today.isoformat()})")
+    except InsufficientHistoryError as e:
+        print(f"[FAIL] Realized Vol — insufficient NIFTY history ({e.available}/{e.needed} bars). Run: {e.backfill_command}")
+        all_passed = False
+    except HistoricalDataUnavailableError as e:
+        print(f"[FAIL] Realized Vol — table nifty_daily_bars missing. Run: python scripts/backfill_bhavcopy.py --days 30")
+        all_passed = False
+    except Exception as e:
+        print(f"[FAIL] Realized Vol — {e}")
+        all_passed = False
+
     # 8. AI Provider — Vertex AI Gemini reachability
     try:
         from swayam.ai.providers.vertex import VertexAIProvider
