@@ -415,29 +415,54 @@ td {
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* Multi-page initial state routing guards */
+#home-view { display: block; }
+#strategy-view { display: none; }
+html[data-initial-page="strategy"] #home-view { display: none !important; }
+html[data-initial-page="strategy"] #strategy-view { display: block !important; }
+
 /* Fix A4 & Fix C Bug 4 — AI drawer 400px content-shift layout pattern (Atlas pattern) */
 body:has(.ai-panel-open) .home-canvas,
 body:has(.ai-panel-open) .dashboard-container,
 body:has(.ai-panel-open) #header-container,
+body:has(.ai-panel-open) #strategy-builder-layout,
 body.ai-panel-open .home-canvas,
 body.ai-panel-open .dashboard-container,
-body.ai-panel-open #header-container {
+body.ai-panel-open #header-container,
+body.ai-panel-open #strategy-builder-layout {
   margin-right: 400px;
   transition: margin-right var(--dur-base, 180ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+/* Auto-collapse Strategy Builder left rail when AI drawer opens to give full space to builder and charts */
+body:has(.ai-panel-open) #strategy-left-rail,
+body.ai-panel-open #strategy-left-rail {
+  flex: 0 0 0px !important;
+  width: 0px !important;
+  min-width: 0px !important;
+  max-width: 0px !important;
+  padding: 0px !important;
+  border-right: none !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: all var(--dur-base, 180ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 @media (max-width: 900px) {
   body:has(.ai-panel-open) .home-canvas,
   body:has(.ai-panel-open) .dashboard-container,
   body:has(.ai-panel-open) #header-container,
+  body:has(.ai-panel-open) #strategy-builder-layout,
   body.ai-panel-open .home-canvas,
   body.ai-panel-open .dashboard-container,
-  body.ai-panel-open #header-container {
+  body.ai-panel-open #header-container,
+  body.ai-panel-open #strategy-builder-layout {
     margin-right: 0;
   }
 }
 
-.home-canvas, .dashboard-container, #header-container {
+.home-canvas, .dashboard-container, #header-container, #strategy-builder-layout {
   transition: margin-right var(--dur-base, 180ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 

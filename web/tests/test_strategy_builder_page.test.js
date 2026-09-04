@@ -11,18 +11,18 @@ describe('StrategyBuilderPage (Page Controller)', () => {
     document.body.appendChild(container);
   });
 
-  it('renders all sections: sidebar rail, presets, builder, payoff chart, validation, execute row, AI chat', () => {
+  it('renders all sections: sidebar rail, presets, builder, payoff chart, validation, execute row', () => {
     const page = new StrategyBuilderPage(container);
     page.renderLayout();
     page.initSubComponents();
 
     expect(container.querySelector('#strategy-left-rail')).not.toBeNull();
+    expect(container.querySelector('#strategy-builder-layout')).not.toBeNull();
     expect(container.querySelector('#strategy-presets-container')).not.toBeNull();
     expect(container.querySelector('#leg-builder-mount')).not.toBeNull();
     expect(container.querySelector('#payoff-chart-mount')).not.toBeNull();
     expect(container.querySelector('#rule-validation-mount')).not.toBeNull();
     expect(container.querySelector('#execute-row-mount')).not.toBeNull();
-    expect(container.querySelector('#strategy-ai-chat-mount')).not.toBeNull();
     expect(container.querySelector('#strategy-sticky-ticker')).not.toBeNull();
     expect(container.querySelector('#btn-back-to-home')).not.toBeNull();
   });

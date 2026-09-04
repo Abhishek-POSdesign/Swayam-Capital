@@ -74,7 +74,7 @@ export class StrategyBuilderPage {
     const shortSid = this.sessionId ? this.sessionId.slice(0, 8) : 'new';
 
     this.container.innerHTML = `
-      <div class="swayam-layout" style="display: flex; min-height: calc(100vh - var(--header-h, 56px));">
+      <div id="strategy-builder-layout" class="swayam-layout" style="display: flex; min-height: calc(100vh - var(--header-h, 56px)); transition: margin-right 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
         <!-- LEFT SIDEBAR RAIL (Atlas design system) -->
         <aside id="strategy-left-rail" style="
           flex: 0 0 320px;
@@ -86,6 +86,7 @@ export class StrategyBuilderPage {
           padding: 20px 16px;
           gap: 16px;
           min-height: 100%;
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         ">
           <!-- Back to Home Link -->
           <button
@@ -155,8 +156,8 @@ export class StrategyBuilderPage {
           <!-- Row 1: Strategy Presets Bar -->
           <div id="strategy-presets-container" class="span-12"></div>
 
-          <!-- Row 2: Multi-leg Builder (span-8) + Payoff Chart (span-4) -->
-          <div class="builder-chart-grid" style="display: grid; grid-template-columns: 8fr 4fr; gap: 16px; align-items: start;">
+          <!-- Row 2: Multi-leg Builder (span-7) + Payoff Chart (span-5) -->
+          <div class="builder-chart-grid" style="display: grid; grid-template-columns: 7fr 5fr; gap: 16px; align-items: start;">
             <div id="leg-builder-mount"></div>
             <div id="payoff-chart-mount" style="height: 100%;"></div>
           </div>
@@ -166,9 +167,6 @@ export class StrategyBuilderPage {
 
           <!-- Row 4: Execute Row (span-12) -->
           <div id="execute-row-mount" class="span-12"></div>
-
-          <!-- Row 5: Full-Width AI Chat Surface (same pattern as Home) -->
-          <section id="strategy-ai-chat-mount" style="width: 100%; min-width: 0; margin-top: 10px;"></section>
         </main>
       </div>
 
@@ -283,15 +281,6 @@ export class StrategyBuilderPage {
     if (recapMount) {
       this.sessionRecap = new SessionRecapComponent(recapMount);
       this.sessionRecap.render();
-    }
-
-    // 7. Full-Width AI Chat Surface
-    const chatMount = this.container.querySelector('#strategy-ai-chat-mount');
-    if (chatMount) {
-      this.chatSurface = new ChatSurfaceComponent(chatMount, {
-        onOpenSettings: this.options.onOpenSettings,
-      });
-      this.chatSurface.init();
     }
 
     // 8. Overnight Modal
@@ -428,6 +417,7 @@ export class StrategyBuilderPage {
         strategy_name: this.strategyName,
         underlying: 'NIFTY',
         current_spot: this.currentSpot,
+        iv_per_leg: { default: 0.135 },
         legs: legs.map((l) => ({
           strike: l.strike,
           option_type: l.option_type,
@@ -460,6 +450,7 @@ export class StrategyBuilderPage {
         strategy_name: this.strategyName,
         underlying: 'NIFTY',
         current_spot: this.currentSpot,
+        iv_per_leg: { default: 0.135 },
         legs: legs.map((l) => ({
           strike: l.strike,
           option_type: l.option_type,

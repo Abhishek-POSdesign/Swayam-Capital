@@ -5,16 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Swayam Capital — Options Trading Platform</title>
     <link rel="stylesheet" href="/src/styles.css" />
+    <script>
+      (function() {
+        if (window.location.pathname.includes('strategy')) {
+          document.documentElement.setAttribute('data-initial-page', 'strategy');
+        }
+      })();
+    </script>
   </head>
   <body>
     <!-- Header -->
     <div id="header-container"></div>
 
     <!-- Home Page View (BUILD-9 Default) -->
-    <div id="home-view" style="display: block;"></div>
+    <div id="home-view"></div>
 
     <!-- Strategy Builder View (Multi-page navigation, BUILD-10) -->
-    <div id="strategy-view" style="display: none;"></div>
+    <div id="strategy-view"></div>
 
     <!-- Persistent AI Trading Partner Sidebar Drawer -->
     <aside class="ai-sidebar-drawer" id="ai-sidebar-container" style="position: fixed; right: -450px; top: 0; bottom: 0; width: 400px; max-width: 92vw; z-index: 1000; background: var(--dl-card, #191b21); border-left: 2px solid var(--accent-lilac, #ac9fd2); transition: right 0.25s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: -10px 0 30px rgba(0,0,0,0.5);"></aside>
