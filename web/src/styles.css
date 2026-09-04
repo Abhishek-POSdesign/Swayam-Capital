@@ -1,3 +1,5 @@
+@import './styles/swayam-tokens.css';
+
 :root {
   --bg-primary: #0f1419;
   --bg-panel: #1a1f2e;

@@ -1,0 +1,281 @@
+/* Swayam Capital Design System — Inherited from Atlas (POS)
+ * Canonical reference: D:\Claude\POS\Atlas\Deploy\css\tokens.css & primitives.css
+ */
+
+:root {
+  /* ===== ATLAS DAYLIGHT DARK CANVAS ===== */
+  --dl-bg: #101116;
+  --dl-card: #191b21;
+  --dl-card-2: #20232b;
+  --dl-rail: #16171c;
+  --dl-line: #272a33;
+  --dl-line-2: #20232a;
+  --dl-fg: #edeff4;
+  --dl-fg-2: #a9afbd;
+  --dl-fg-3: #8a91a0;
+  --dl-track: #2f333d;
+  --dl-ink-tile: #13151a;
+
+  /* ===== SWAYAM SEMANTIC PALETTE (Locked Meanings) ===== */
+  /* Done / Long / Profit / Rule PASS */
+  --accent-sage: #86ab92;
+  --accent-sage-tint: rgba(134, 171, 146, 0.17);
+  --accent-sage-tint-hover: rgba(134, 171, 146, 0.32);
+  --dl-done: #b6ecd2;
+  --dl-done-on: #0a5c3c;
+  --dl-done-mark: #b6ecd2;
+
+  /* Task / Neutral info / Buy leg / Ideal setup */
+  --accent-blue: #759ad0;
+  --accent-blue-tint: rgba(117, 154, 208, 0.17);
+  --accent-blue-tint-hover: rgba(117, 154, 208, 0.32);
+  --dl-task: #c3dcff;
+  --dl-task-on: #0f4680;
+  --dl-task-mark: #c3dcff;
+
+  /* Project / AI Trading Partner / Greeks */
+  --accent-lilac: #ac9fd2;
+  --accent-lilac-tint: rgba(172, 159, 210, 0.17);
+  --accent-lilac-tint-hover: rgba(172, 159, 210, 0.32);
+  --dl-project: #d8ccff;
+  --dl-project-on: #4a2a8a;
+  --dl-project-mark: #d8ccff;
+
+  /* Alert / Short / Loss / Rule violation / Overnight naked */
+  --accent-coral: #dd8170;
+  --accent-coral-tint: rgba(221, 129, 112, 0.17);
+  --accent-coral-tint-hover: rgba(221, 129, 112, 0.32);
+  --dl-alert: #ffd0c6;
+  --dl-alert-on: #8d2d13;
+  --dl-alert-mark: #ffd0c6;
+
+  /* Skip / ATM strike / Warning / Volatility spike */
+  --accent-amber: #c9a04a;
+  --accent-amber-tint: rgba(201, 160, 74, 0.17);
+  --accent-amber-tint-hover: rgba(201, 160, 74, 0.32);
+  --dl-skip: #ffe6ac;
+  --dl-skip-on: #6f4b06;
+  --dl-skip-mark: #ffe6ac;
+
+  /* Typography */
+  --font-serif: Georgia, 'Times New Roman', serif;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  /* Motion & Rhythm */
+  --dur-fast: 100ms;
+  --dur-base: 180ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --gap-grid: 13px;
+  --radius-card: 16px;
+  --radius-sm: 9px;
+  --radius-pill: 999px;
+}
+
+/* Base Body Application */
+body {
+  background-color: var(--dl-bg);
+  color: var(--dl-fg);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* Typography Helpers */
+.serif-fig {
+  font-family: var(--font-serif);
+}
+
+.mono-nums {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.075em;
+  color: var(--dl-fg-2);
+}
+
+.fig-xl {
+  font-family: var(--font-serif);
+  font-size: 2.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--dl-fg);
+}
+
+.fig-lg {
+  font-family: var(--font-serif);
+  font-size: 2.125rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--dl-fg);
+}
+
+.fig-md {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--dl-fg);
+}
+
+/* Cards & Bento Grid */
+.tile {
+  background: var(--dl-card);
+  border: 1px solid var(--dl-line);
+  border-radius: var(--radius-card);
+  padding: 17px 18px;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
+}
+
+.tile:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* 12-Column Bento Grid */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--gap-grid);
+  align-items: stretch;
+}
+
+.span-12 { grid-column: span 12 / span 12; }
+.span-8 { grid-column: span 8 / span 8; }
+.span-6 { grid-column: span 6 / span 6; }
+.span-4 { grid-column: span 4 / span 4; }
+.span-3 { grid-column: span 3 / span 3; }
+
+/* Responsive breakdown below 1260px */
+@media (max-width: 1260px) {
+  .span-8, .span-6, .span-4, .span-3 {
+    grid-column: span 12 / span 12;
+  }
+}
+
+/* Top App Header */
+.swayam-header {
+  height: 56px;
+  background: var(--dl-rail);
+  border-bottom: 1px solid var(--dl-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.swayam-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+  color: var(--dl-fg);
+}
+
+.swayam-logo-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-sage);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-spot-pill {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.88rem;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--dl-line);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-pill-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-pill {
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--dl-fg-2);
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--dur-fast) ease;
+}
+
+.nav-pill:hover {
+  color: var(--dl-fg);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-pill.active {
+  background: var(--accent-sage-tint);
+  color: var(--accent-sage);
+  border-color: rgba(134, 171, 146, 0.3);
+  font-weight: 600;
+}
+
+.user-avatar-pill {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-sage-tint);
+  border: 1px solid var(--accent-sage);
+  color: var(--accent-sage);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-left: 0.5rem;
+}
+
+/* Floating AI Launcher Button */
+.ai-floating-launcher {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent-lilac);
+  color: #101116;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px rgba(172, 159, 210, 0.4);
+  cursor: pointer;
+  z-index: 999;
+  transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+}
+
+.ai-floating-launcher:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 24px rgba(172, 159, 210, 0.6);
+}
