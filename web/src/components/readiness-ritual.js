@@ -171,6 +171,30 @@ export class ReadinessRitualComponent {
         <button id="btn-confirm-readiness" style="margin-top: 2px; height: 34px; background: var(--accent-sage); color: #101116; border: none; border-radius: 9px; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.02em; cursor: pointer; transition: opacity var(--dur-fast) ease;">
           Confirm Readiness
         </button>
+
+        <!-- Double confirmation modal for alcohol streak protection -->
+        <div id="alcohol-streak-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+          <div style="background: var(--dl-card, #191b21); border: 2px solid var(--accent-coral, #b56b5d); border-radius: 14px; max-width: 440px; width: 90%; padding: 22px 24px; box-shadow: var(--dl-shadow); display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.3rem;">⚠️</span>
+              <span style="font-weight: 700; font-size: 1.05rem; color: var(--accent-coral);">Streak Protection Warning</span>
+            </div>
+            <p style="font-size: 0.88rem; color: var(--dl-fg); line-height: 1.5; margin: 0;">
+              You're about to log alcohol consumption. This locks Swayam for <strong>90 days</strong> and resets your streak from <strong>103 days back to 0</strong>.
+            </p>
+            <p style="font-size: 0.85rem; color: var(--dl-fg-2); margin: 0; font-weight: 500;">
+              Are you sure this is accurate?
+            </p>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px;">
+              <button id="btn-alcohol-cancel" type="button" style="background: transparent; border: 1px solid var(--dl-line); color: var(--dl-fg); padding: 8px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer;">
+                Cancel
+              </button>
+              <button id="btn-alcohol-confirm" type="button" style="background: var(--accent-coral); color: #ffffff; border: none; padding: 8px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700; cursor: pointer;">
+                Yes, I drank yesterday — reset my streak
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -210,12 +234,69 @@ export class ReadinessRitualComponent {
     }
 
     // 3 & 4. Toggle buttons (Alcohol & Workout)
+    const modal = this.container.querySelector('#alcohol-streak-modal');
+    const btnAlcoholCancel = this.container.querySelector('#btn-alcohol-cancel');
+    const btnAlcoholConfirm = this.container.querySelector('#btn-alcohol-confirm');
+    let pendingAlcoholBtn = null;
+
+    if (btnAlcoholCancel && modal) {
+      btnAlcoholCancel.addEventListener('click', () => {
+        modal.style.display = 'none';
+        pendingAlcoholBtn = null;
+        // Keep or revert to No
+        this.formData.alcohol_yesterday = false;
+        const noBtn = this.container.querySelector('.pill-toggle[data-field="alcohol"][data-val="false"]');
+        if (noBtn) {
+          noBtn.parentElement.querySelectorAll('.pill-toggle').forEach((s) => {
+            s.classList.remove('active');
+            s.style.background = 'transparent';
+            s.style.color = 'var(--dl-fg-2)';
+            s.style.borderColor = 'var(--dl-line)';
+            s.style.fontWeight = '500';
+          });
+          noBtn.classList.add('active');
+          noBtn.style.background = 'var(--accent-sage-tint)';
+          noBtn.style.color = 'var(--accent-sage)';
+          noBtn.style.borderColor = 'rgba(134,171,146,0.3)';
+          noBtn.style.fontWeight = '600';
+        }
+      });
+    }
+
+    if (btnAlcoholConfirm && modal) {
+      btnAlcoholConfirm.addEventListener('click', () => {
+        modal.style.display = 'none';
+        this.formData.alcohol_yesterday = true;
+        if (pendingAlcoholBtn) {
+          pendingAlcoholBtn.parentElement.querySelectorAll('.pill-toggle').forEach((s) => {
+            s.classList.remove('active');
+            s.style.background = 'transparent';
+            s.style.color = 'var(--dl-fg-2)';
+            s.style.borderColor = 'var(--dl-line)';
+            s.style.fontWeight = '500';
+          });
+          pendingAlcoholBtn.classList.add('active');
+          pendingAlcoholBtn.style.background = 'var(--accent-coral-tint, rgba(181, 107, 93, 0.14))';
+          pendingAlcoholBtn.style.color = 'var(--accent-coral)';
+          pendingAlcoholBtn.style.borderColor = 'var(--accent-coral)';
+          pendingAlcoholBtn.style.fontWeight = '700';
+        }
+        pendingAlcoholBtn = null;
+      });
+    }
+
     this.container.querySelectorAll('.pill-toggle').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const field = btn.getAttribute('data-field');
         const val = btn.getAttribute('data-val') === 'true';
         if (field === 'alcohol') {
-          this.formData.alcohol_yesterday = val;
+          if (val === true) {
+            // Require explicit double-confirmation before logging alcohol
+            pendingAlcoholBtn = btn;
+            if (modal) modal.style.display = 'flex';
+            return;
+          }
+          this.formData.alcohol_yesterday = false;
         } else if (field === 'workout') {
           this.formData.workout_in_last_48h = val;
         }

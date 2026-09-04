@@ -12,6 +12,7 @@ import { renderRulePanel } from './components/rule-panel.js';
 import { StrategyBuilder } from './components/strategy-builder.js';
 import { SpotWebSocketClient } from './modules/ws-client.js';
 import { HomePage } from './pages/home.js';
+import { AISettingsDrawer } from './components/ai-settings-drawer.js';
 
 class SwayamApp {
   constructor() {
@@ -22,6 +23,7 @@ class SwayamApp {
     this.homePage = null;
     this.aiChat = null;
     this.aiLauncher = null;
+    this.settingsDrawer = null;
     this.activeTradesComponent = null;
     this.currentPage = 'home';
     this.isAIDrawerOpen = false;
@@ -40,11 +42,27 @@ class SwayamApp {
       });
     }
 
+    // 1b. Initialize AI Voice & Memory Settings Drawer
+    const settingsContainer = document.getElementById('ai-settings-drawer-container');
+    if (settingsContainer) {
+      this.settingsDrawer = new AISettingsDrawer(settingsContainer);
+      this.settingsDrawer.init();
+    }
+
     // 2. Initialize Home Page (Default landing view)
     const homeViewContainer = document.getElementById('home-view');
     if (homeViewContainer) {
       this.homePage = new HomePage(homeViewContainer, {
         onOpenAIDrawer: () => this.openAIDrawer(),
+        onOpenSettings: () => {
+          if (this.settingsDrawer) {
+            const sid = this.homePage?.aiBriefComponent?.sessionId;
+            this.settingsDrawer.open(sid);
+          }
+        },
+        onNavigateStrategy: () => {
+          this.navigateTo('strategy');
+        },
       });
       await this.homePage.init();
     }
@@ -119,6 +137,7 @@ class SwayamApp {
     const drawer = document.getElementById('ai-sidebar-container');
     if (drawer) {
       drawer.style.right = '0px';
+      try { document.body.classList.add('ai-panel-open'); } catch (_) {}
       this.isAIDrawerOpen = true;
     }
   }
@@ -127,6 +146,7 @@ class SwayamApp {
     const drawer = document.getElementById('ai-sidebar-container');
     if (drawer) {
       drawer.style.right = '-420px';
+      try { document.body.classList.remove('ai-panel-open'); } catch (_) {}
       this.isAIDrawerOpen = false;
     }
   }

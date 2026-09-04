@@ -411,3 +411,26 @@ td {
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+
+/* Fix A4 — AI drawer content-shift layout pattern (Atlas pattern) */
+body:has(.ai-panel-open) .home-canvas,
+body:has(.ai-panel-open) .dashboard-container,
+body.ai-panel-open .home-canvas,
+body.ai-panel-open .dashboard-container {
+  margin-right: 370px;
+  transition: margin-right var(--dur-base, 200ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+@media (max-width: 900px) {
+  body:has(.ai-panel-open) .home-canvas,
+  body:has(.ai-panel-open) .dashboard-container,
+  body.ai-panel-open .home-canvas,
+  body.ai-panel-open .dashboard-container {
+    margin-right: 0;
+  }
+}
+
+.home-canvas, .dashboard-container {
+  transition: margin-right var(--dur-base, 200ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+

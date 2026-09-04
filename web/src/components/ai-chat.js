@@ -11,13 +11,13 @@
  * Markdown: bold, italic, code, lists rendered via simple inline parser.
  */
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = '';
 
 const STARTER_PROMPTS = [
-  'Read the current setup and tell me what you see',
-  'What historical trade does this most resemble?',
-  'What could go wrong with this spread this week?',
-  "What's my readiness verdict today and does this trade fit it?",
+  "Walk me through today's market open — what's setting up?",
+  "Given India VIX is at the 8th percentile, what setups favor this regime?",
+  "Anything on the calendar this week I should NOT trade around?",
+  "Based on my last 5 trades, what mistake am I repeating?",
 ];
 
 /** Minimal markdown-to-HTML renderer for AI responses. */
@@ -338,17 +338,21 @@ export class AIChatPanel {
   async _loadCostFooter() {
     try {
       const resp = await fetch(`${API_BASE}/api/ai/usage/today`);
-      if (!resp.ok) return;
-      const data = await resp.json();
       const el = document.getElementById('ai-cost-display');
+      if (!resp.ok) {
+        if (el) el.innerHTML = `<span style="color: var(--accent-coral);">Usage unavailable (${resp.status})</span>`;
+        return;
+      }
+      const data = await resp.json();
       if (el) {
         el.textContent =
           data.request_count > 0
             ? `Today's AI spend: ₹${data.estimated_cost_inr.toFixed(2)} (${data.request_count} requests)`
             : `Today's AI spend: ₹0.00 (0 requests)`;
       }
-    } catch (_) {
-      // Non-fatal
+    } catch (err) {
+      const el = document.getElementById('ai-cost-display');
+      if (el) el.innerHTML = `<span style="color: var(--accent-coral);">Usage error: ${err.message}</span>`;
     }
   }
 
@@ -427,28 +431,28 @@ export class AIChatPanel {
         display: flex;
         flex-direction: column;
         height: 100%;
-        background: var(--bg-secondary, #1a1a2e);
-        border-left: 1px solid var(--border-color, #2a2a4a);
-        font-family: var(--font-body, system-ui, sans-serif);
+        background: var(--dl-card, #191b21);
+        border-left: 2px solid var(--accent-lilac, #ac9fd2);
+        font-family: var(--font-sans, system-ui, sans-serif);
         font-size: 13px;
-        color: var(--text-primary, #e8e8f0);
+        color: var(--dl-fg, #e8e8f0);
       }
       .ai-panel__header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding: 10px 12px;
-        border-bottom: 1px solid var(--border-color, #2a2a4a);
-        background: var(--bg-tertiary, #16213e);
+        border-bottom: 1px solid var(--dl-line, #2a2a4a);
+        background: var(--dl-rail, #16171c);
         flex-shrink: 0;
       }
       .ai-panel__header-left { display: flex; align-items: center; gap: 6px; }
       .ai-panel__header-right { display: flex; align-items: center; gap: 4px; }
-      .ai-panel__icon { font-size: 16px; }
-      .ai-panel__title { font-weight: 600; font-size: 14px; }
+      .ai-panel__icon { font-size: 16px; color: var(--accent-lilac, #ac9fd2); }
+      .ai-panel__title { font-weight: 600; font-size: 14px; color: var(--dl-fg, #e8e8f0); }
       .ai-panel__conv-title {
         font-size: 11px;
-        color: var(--text-secondary, #8888aa);
+        color: var(--dl-fg-3, #8888aa);
         max-width: 120px;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -460,6 +464,7 @@ export class AIChatPanel {
         display: flex;
         flex-direction: column;
         min-height: 0;
+        background: var(--dl-card, #191b21);
       }
       .ai-messages {
         flex: 1;
@@ -481,13 +486,15 @@ export class AIChatPanel {
         word-break: break-word;
       }
       .ai-message--user .ai-message__content {
-        background: var(--accent, #4f46e5);
-        color: #fff;
+        background: var(--accent-lilac, #ac9fd2);
+        color: #101116;
         border-bottom-right-radius: 3px;
+        font-weight: 500;
       }
       .ai-message--assistant .ai-message__content {
-        background: var(--bg-tertiary, #16213e);
-        color: var(--text-primary, #e8e8f0);
+        background: var(--dl-card-2, #20232b);
+        color: var(--dl-fg, #e8e8f0);
+        border: 1px solid var(--dl-line, #2a2a4a);
         border-bottom-left-radius: 3px;
       }
       .ai-message__content code {
@@ -590,12 +597,12 @@ export class AIChatPanel {
       .ai-btn--sm { padding: 3px 7px; font-size: 11px; }
       .ai-btn--ghost { background: transparent; border-color: transparent; }
       .ai-btn--primary {
-        background: var(--accent, #4f46e5);
-        border-color: var(--accent, #4f46e5);
-        color: #fff;
-        font-weight: 600;
+        background: var(--accent-lilac, #ac9fd2);
+        border-color: var(--accent-lilac, #ac9fd2);
+        color: #101116;
+        font-weight: 700;
       }
-      .ai-btn--primary:hover { background: #3730a3; }
+      .ai-btn--primary:hover { opacity: 0.9; }
       .ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
       .ai-history-drawer {
         position: absolute;

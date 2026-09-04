@@ -64,17 +64,27 @@
 
 /* ===== LIGHT CANVAS (Paper Studio) — matches Atlas data-theme="light" verbatim ===== */
 :root[data-theme="light"] {
-  --dl-bg: #f1f3f7;
+  --surface-0: #ebe8e1;
+  --surface-1: #f8f6f2;
+  --surface-1-hover: #ffffff;
+  --surface-2: #fdfbf7;
+  --border: rgba(0, 0, 0, 0.07);
+  --border-hover: rgba(0, 0, 0, 0.12);
+  --text-primary: #1a1a1c;
+  --text-secondary: #6c6b68;
+  --text-muted: #94928e;
+
+  --dl-bg: #ebe8e1;
   --dl-card: #ffffff;
-  --dl-card-2: #f6f8fb;
-  --dl-rail: #ffffff;
-  --dl-line: #e4e7ee;
-  --dl-line-2: #eef1f6;
-  --dl-fg: #15171c;
-  --dl-fg-2: #474c57;
-  --dl-fg-3: #666c79;
+  --dl-card-2: #f8f6f2;
+  --dl-rail: #f8f6f2;
+  --dl-line: rgba(0, 0, 0, 0.08);
+  --dl-line-2: rgba(0, 0, 0, 0.05);
+  --dl-fg: #1a1a1c;
+  --dl-fg-2: #525660;
+  --dl-fg-3: #757c8a;
   --dl-track: #dbe0e9;
-  --dl-ink-tile: #15171c;
+  --dl-ink-tile: #1a1a1c;
 
   --accent-sage: #6f8f65;
   --accent-sage-tint: rgba(111, 143, 101, 0.14);
@@ -101,27 +111,30 @@
   --accent-amber-tint-hover: rgba(184, 154, 68, 0.24);
   --dl-skip: #ffeec4;  --dl-skip-on: #82590a;  --dl-skip-mark: #82590a;
 
-  --dl-shadow: 0 1px 2px rgba(21,23,28,0.04), 0 10px 26px rgba(21,23,28,0.07);
-  --theme-switcher-bg: rgba(0,0,0,0.06);
+  --dl-shadow: 0 1px 2px rgba(30, 25, 15, 0.04), 0 10px 26px rgba(30, 25, 15, 0.07);
+  --dl-shadow-2: 0 2px 6px rgba(30, 25, 15, 0.06), 0 18px 44px rgba(30, 25, 15, 0.10);
+  --theme-switcher-bg: rgba(0, 0, 0, 0.06);
   --plotly-bg: #ffffff;
-  --plotly-grid: #e4e7ee;
+  --plotly-grid: rgba(0, 0, 0, 0.08);
 }
 
 /* ===== AUTO (follows OS preference) ===== */
 @media (prefers-color-scheme: light) {
   :root[data-theme="auto"] {
-    --dl-bg: #f1f3f7;  --dl-card: #ffffff;  --dl-card-2: #f6f8fb;
-    --dl-rail: #ffffff;  --dl-line: #e4e7ee;  --dl-line-2: #eef1f6;
-    --dl-fg: #15171c;  --dl-fg-2: #474c57;  --dl-fg-3: #666c79;
-    --dl-track: #dbe0e9;  --dl-ink-tile: #15171c;
-    --accent-sage: #6f8f65;  --accent-sage-tint: rgba(111,143,101,0.14);  --accent-sage-tint-hover: rgba(111,143,101,0.24);
-    --accent-blue: #5e7fb0;  --accent-blue-tint: rgba(94,127,176,0.14);
-    --accent-lilac: #8776a8;  --accent-lilac-tint: rgba(135,118,168,0.14);
-    --accent-coral: #b56b5d;  --accent-coral-tint: rgba(181,107,93,0.14);
-    --accent-amber: #b89a44;  --accent-amber-tint: rgba(184,154,68,0.14);
-    --dl-shadow: 0 1px 2px rgba(21,23,28,0.04), 0 10px 26px rgba(21,23,28,0.07);
-    --theme-switcher-bg: rgba(0,0,0,0.06);
-    --plotly-bg: #ffffff;  --plotly-grid: #e4e7ee;
+    --surface-0: #ebe8e1;  --surface-1: #f8f6f2;  --surface-1-hover: #ffffff;
+    --border: rgba(0, 0, 0, 0.07);  --text-primary: #1a1a1c;
+    --dl-bg: #ebe8e1;  --dl-card: #ffffff;  --dl-card-2: #f8f6f2;
+    --dl-rail: #f8f6f2;  --dl-line: rgba(0, 0, 0, 0.08);  --dl-line-2: rgba(0, 0, 0, 0.05);
+    --dl-fg: #1a1a1c;  --dl-fg-2: #525660;  --dl-fg-3: #757c8a;
+    --dl-track: #dbe0e9;  --dl-ink-tile: #1a1a1c;
+    --accent-sage: #6f8f65;  --accent-sage-tint: rgba(111, 143, 101, 0.14);
+    --accent-blue: #5e7fb0;  --accent-blue-tint: rgba(94, 127, 176, 0.14);
+    --accent-lilac: #8776a8;  --accent-lilac-tint: rgba(135, 118, 168, 0.14);
+    --accent-coral: #b56b5d;  --accent-coral-tint: rgba(181, 107, 93, 0.14);
+    --accent-amber: #b89a44;  --accent-amber-tint: rgba(184, 154, 68, 0.14);
+    --dl-shadow: 0 1px 2px rgba(30, 25, 15, 0.04), 0 10px 26px rgba(30, 25, 15, 0.07);
+    --theme-switcher-bg: rgba(0, 0, 0, 0.06);
+    --plotly-bg: #ffffff;  --plotly-grid: rgba(0, 0, 0, 0.08);
   }
 }
 
