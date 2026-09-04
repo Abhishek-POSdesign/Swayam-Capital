@@ -1,19 +1,30 @@
 .gcloudignore
 .git
 .gitignore
+
+# Virtual environments & node modules
 .venv/
 node_modules/
 web/node_modules/
 web/dist/
-data/
-*.pyc
+
+# Python cache
 __pycache__/
+*.py[cod]
+
+# Only top-level data cache directory (DuckDB & Bhavcopy)
+/data/
+
+# Tests & temporary caches
 .pytest_cache/
-.env
-.env.*
-*.env
-docs/
 tests/
 web/tests/
-migrations/
-scripts/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Documentation & logs
+docs/
+*.log

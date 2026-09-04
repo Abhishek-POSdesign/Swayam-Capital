@@ -2,7 +2,7 @@
 node_modules/
 web/node_modules/
 web/dist/
-data/
+/data/
 *.pyc
 __pycache__/
 .pytest_cache/
@@ -14,7 +14,7 @@ tests/
 web/tests/
 migrations/
 scripts/
-*.md
+/*.md
 !README.md
-!src/swayam/data/method_files/*.md
+
 
