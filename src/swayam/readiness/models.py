@@ -16,6 +16,7 @@ class ReadinessInput(BaseModel):
     journal_mood: Literal["focused", "neutral", "tired", "off", "angry_grief"]
     life_stressor: Literal["none", "family", "work", "financial", "other"]
     stressor_note: Optional[str] = None
+    meditation_completed_at: Optional[datetime] = None
     logged_at: Optional[datetime] = None
 
 
