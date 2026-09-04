@@ -5,10 +5,10 @@
 > **Primary AI Architect:** Antigravity (Gemini)  
 > **Code Repository:** `D:\Claude\POS\Trading-Platform\Swayam Capital`  
 > **Obsidian Vault (Method & Truth):** `G:\My Drive\Second Brain\02 - Projects\Trading\`  
-> **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-south1`, AI Location: `global`)  
+> **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-southeast1` [Singapore], AI Location: `global`)  
 > **Supabase Database:** `wxijlrwoiaeaupaaqecc` (`https://wxijlrwoiaeaupaaqecc.supabase.co`)  
 > **Broker Integration:** FYERS API v3 (Client ID: `YA38914`)  
-> **Status:** Phase 1 Complete (BUILDs 1–9.5 + BUILD-9-FIXES-B Shipped). 286 automated tests passing (242 pytest + 44 vitest, 0 failures). Conversational AI partner, Indian English TTS (ADC), 3-tier memory engine, and Atlas UI improvements integrated. Deployed to Cloud Run behind custom subdomain `https://swayam.abhisheksikka.com` with Google Identity-Aware Proxy (IAP). Ready for BUILD-10.
+> **Status:** Phase 1 Complete (BUILDs 1–9.5 + BUILD-9-FIXES-A/B/C Shipped). 290 automated tests passing (246 pytest + 44 vitest, 0 failures). Conversational AI partner, Indian English TTS (ADC), 3-tier memory engine, and Atlas Paper Studio UI parity integrated. Deployed to Google Cloud Run in Singapore (`asia-southeast1`) behind custom subdomain `https://swayam.abhisheksikka.com` with Google Identity-Aware Proxy (IAP). Ready for BUILD-10.
 
 ---
 
@@ -145,14 +145,22 @@
 - **Google Cloud Run Deployments:** Deployed service `swayam-dashboard` with automated 0-to-3 auto-scaling (scale-to-zero when idle ensures $0 baseline cost).
 - **Google Secret Manager Integration:** Synchronized 7 sensitive configuration variables (`swayam-supabase-url`, `swayam-supabase-anon-key`, `swayam-supabase-service-role-key`, `fyers-access-token`, `fyers-client-id`, `fyers-app-id`, `fyers-secret-key`) injected directly into Cloud Run at runtime.
 - **Security & Access Control:** Protected via Google Identity-Aware Proxy (IAP) and IAM invoker policy restricted strictly to `abhisheksikka99.99@gmail.com`.
-- **Custom Subdomain Mapping (`swayam.abhisheksikka.com`):** Configured Cloud Run domain mapping pointing to `ghs.googlehosted.com.` with automatic SSL certificate management.
+- **Custom Subdomain Mapping (`swayam.abhisheksikka.com`):** Configured Cloud Run domain mapping in `asia-southeast1` (Singapore) pointing to `ghs.googlehosted.com.` with automatic SSL certificate management.
 - **Operations & Runbooks:** Full deployment runbook (`docs/DEPLOY.md`) and operational troubleshooting cheatsheet (`docs/RUNBOOK.md`).
+
+### ✅ BUILD-9-FIXES-C: Atlas Parity & Interaction Fixes
+- **Atlas Design Parity Wholesale:** Full-height sidebar rail (`<aside class="swayam-rail">`), Atlas Paper Studio light theme tokens (`#ebe8e1` canvas, `#ffffff` rail, `#f8f6f2` cards, near-black high-contrast text and nav pills).
+- **Rich Collapsed Status Strip:** 72px rail strip with 32px verdict bar, 6 factor checkmarks, and 103d streak indicator. Main content expands with 0 dead gap when folded.
+- **AI Drawer & Chat Surface:** 400px AI drawer with desktop content shift (no navbar clipping) and lilac branding. Removed 2px lilac border on workspace chat; added 2×2 grid of 4 pre-market prompt cards in empty conversation state.
+- **Adaptive VIX Chart:** Dynamic 10% data-bounded range, 1-year median reference line, and peak marker dots.
+- **Market Data Fallbacks in Cloud Run:** Added Supabase database fallbacks (`swayam_nifty_daily_bars` with 22 bars, `swayam_bhavcopy` with 262 days) to `get_nifty_candles` and `get_vix_history` when FYERS token is expired or market is closed. All timeframe tabs (`15m`, `1h`, `1d`) return 200 OK without crashing.
+- **All 290 Tests Passing:** 246 backend pytest + 44 frontend vitest tests pass cleanly with 0 failures.
 
 ---
 
 ## 📊 3. Database Schema Overview (Supabase: `wxijlrwoiaeaupaaqecc`)
 
-All 10 tables have Row Level Security (RLS) disabled for platform service key / anon access:
+All tables have Row Level Security (RLS) disabled for platform service key / anon access:
 
 | Table | Purpose | Key Fields |
 |:---|:---|:---|
@@ -166,6 +174,8 @@ All 10 tables have Row Level Security (RLS) disabled for platform service key / 
 | `swayam_ai_messages` | Individual turns within an AI conversation | `id` (PK), `conversation_id`, `role`, `content`, `model_used`, `tokens_in`, `tokens_out` |
 | `swayam_ai_usage_daily` | Daily token and cost tracking for Vertex AI | `usage_date` (PK), `model`, `request_count`, `input_tokens`, `output_tokens`, `cost_inr` |
 | `swayam_rule_evolution_log` | History of rule adjustments and backtest proposals | `id` (PK), `rule_name`, `old_value`, `new_value`, `reason`, `backtest_id` |
+| `swayam_nifty_daily_bars` | NIFTY 50 daily OHLC history (Cloud Run fallback) | `trade_date` (PK), `symbol`, `open`, `high`, `low`, `close`, `volume` |
+| `swayam_bhavcopy` | Daily NSE bhavcopy India VIX history | `date` (PK), `vix_open`, `vix_high`, `vix_low`, `vix_close` |
 
 ---
 
