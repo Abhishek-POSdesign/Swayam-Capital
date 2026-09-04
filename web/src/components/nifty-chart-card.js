@@ -4,8 +4,6 @@
  * Features safe fallback for headless test environments.
  */
 
-import Plotly from 'plotly.js-dist-min';
-
 export class NiftyChartCardComponent {
   constructor(container, options = {}) {
     this.container = container;
@@ -13,7 +11,7 @@ export class NiftyChartCardComponent {
     this.activeTimeframe = '1D';
   }
 
-  render(candleData = null) {
+  async render(candleData = null) {
     this.container.innerHTML = `
       <div class="tile nifty-chart-tile" style="display: flex; flex-direction: column; height: 100%; min-height: 220px; gap: 8px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -33,140 +31,150 @@ export class NiftyChartCardComponent {
     `;
 
     this.attachTabs();
-    this.renderPlot(candleData);
+    await this.renderPlot(candleData);
   }
 
   attachTabs() {
-    this.container.querySelectorAll('.tab-tf').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.container.querySelectorAll('.tab-tf').forEach(b => {
-          b.classList.remove('active');
-          b.style.background = 'transparent';
-          b.style.color = 'var(--dl-fg-3)';
-          b.style.borderColor = 'transparent';
-          b.style.fontWeight = 'normal';
+    if (!this.container.querySelectorAll) return;
+    const tabs = this.container.querySelectorAll('.tab-tf');
+    if (!tabs || !tabs.forEach) return;
+
+    tabs.forEach(btn => {
+      if (btn.addEventListener) {
+        btn.addEventListener('click', () => {
+          tabs.forEach(b => {
+            if (b.classList) b.classList.remove('active');
+            b.style.background = 'transparent';
+            b.style.color = 'var(--dl-fg-3)';
+            b.style.borderColor = 'transparent';
+            b.style.fontWeight = 'normal';
+          });
+          if (btn.classList) btn.classList.add('active');
+          btn.style.background = 'var(--accent-sage-tint)';
+          btn.style.color = 'var(--accent-sage)';
+          btn.style.borderColor = 'rgba(134,171,146,0.3)';
+          btn.style.fontWeight = '600';
+          if (btn.getAttribute) {
+            this.activeTimeframe = btn.getAttribute('data-tf');
+          }
         });
-        btn.classList.add('active');
-        btn.style.background = 'var(--accent-sage-tint)';
-        btn.style.color = 'var(--accent-sage)';
-        btn.style.borderColor = 'rgba(134,171,146,0.3)';
-        btn.style.fontWeight = '600';
-        this.activeTimeframe = btn.getAttribute('data-tf');
-      });
+      }
     });
   }
 
-  renderPlot(candleData) {
+  async renderPlot(candleData) {
+    if (!this.container.querySelector) return;
     const chartDiv = this.container.querySelector('#nifty-plotly-canvas');
     if (!chartDiv) return;
 
-    // Generate 30 sample trading days leading up to spot ~24,842
-    const dates = [];
-    const open = [];
-    const high = [];
-    const low = [];
-    const close = [];
-    const ema20 = [];
-
-    let cur = 24600;
-    for (let i = 30; i >= 1; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      dates.push(d.toISOString().split('T')[0]);
-
-      const change = (Math.sin(i * 0.7) * 90) + (i < 10 ? 30 : -10);
-      const o = cur;
-      const c = cur + change;
-      const h = Math.max(o, c) + Math.abs(Math.cos(i) * 60) + 20;
-      const l = Math.min(o, c) - Math.abs(Math.sin(i) * 50) - 15;
-      open.push(o);
-      high.push(h);
-      low.push(l);
-      close.push(c);
-      ema20.push(24650 + (30 - i) * 7);
-      cur = c;
+    // In headless / node test environments, render fallback directly
+    if (typeof window === 'undefined' || typeof self === 'undefined') {
+      this.renderSvgFallback(chartDiv);
+      return;
     }
 
-    const candleTrace = {
-      x: dates,
-      open: open,
-      high: high,
-      low: low,
-      close: close,
-      type: 'candlestick',
-      name: 'NIFTY 50',
-      increasing: { line: { color: '#86ab92', width: 1 }, fillcolor: '#86ab92' },
-      decreasing: { line: { color: '#dd8170', width: 1 }, fillcolor: '#dd8170' },
-      showlegend: false,
-    };
-
-    const emaTrace = {
-      x: dates,
-      y: ema20,
-      type: 'scatter',
-      mode: 'lines',
-      name: '20 EMA',
-      line: { color: '#86ab92', width: 1.5 },
-      hoverinfo: 'none',
-      showlegend: false,
-    };
-
-    const layout = {
-      dragmode: false,
-      margin: { l: 36, r: 24, t: 10, b: 24 },
-      paper_bgcolor: '#191b21',
-      plot_bgcolor: '#191b21',
-      showlegend: false,
-      xaxis: {
-        rangeslider: { visible: false },
-        showgrid: false,
-        zeroline: false,
-        tickfont: { color: '#8a91a0', size: 9 },
-      },
-      yaxis: {
-        showgrid: true,
-        gridcolor: '#272a33',
-        zeroline: false,
-        tickfont: { color: '#8a91a0', size: 9 },
-        side: 'right',
-      },
-      shapes: [
-        {
-          type: 'line',
-          xref: 'paper',
-          x0: 0,
-          x1: 1,
-          y0: 24700,
-          y1: 24700,
-          line: { color: '#c9a04a', width: 1.5, dash: 'dash' },
-        },
-      ],
-      annotations: [
-        {
-          xref: 'paper',
-          x: 0.98,
-          y: 24700,
-          text: 'S: 24,700',
-          showarrow: false,
-          font: { color: '#c9a04a', size: 10, family: 'JetBrains Mono, monospace' },
-          bgcolor: '#191b21',
-          bordercolor: '#c9a04a',
-          borderwidth: 1,
-          borderpad: 2,
-        },
-      ],
-    };
-
-    const config = { responsive: true, displayModeBar: false };
-
     try {
-      if (Plotly && typeof Plotly.newPlot === 'function') {
-        Plotly.newPlot(chartDiv, [candleTrace, emaTrace], layout, config).catch(() => {
-          this.renderSvgFallback(chartDiv);
-        });
-      } else {
-        this.renderSvgFallback(chartDiv);
+      const plotlyModule = await import('plotly.js-dist-min');
+      const Plotly = plotlyModule.default || plotlyModule;
+
+      const dates = [];
+      const open = [];
+      const high = [];
+      const low = [];
+      const close = [];
+      const ema20 = [];
+
+      let cur = 24600;
+      for (let i = 30; i >= 1; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        dates.push(d.toISOString().split('T')[0]);
+
+        const change = (Math.sin(i * 0.7) * 90) + (i < 10 ? 30 : -10);
+        const o = cur;
+        const c = cur + change;
+        const h = Math.max(o, c) + Math.abs(Math.cos(i) * 60) + 20;
+        const l = Math.min(o, c) - Math.abs(Math.sin(i) * 50) - 15;
+        open.push(o);
+        high.push(h);
+        low.push(l);
+        close.push(c);
+        ema20.push(24650 + (30 - i) * 7);
+        cur = c;
       }
+
+      const candleTrace = {
+        x: dates,
+        open,
+        high,
+        low,
+        close,
+        type: 'candlestick',
+        name: 'NIFTY 50',
+        increasing: { line: { color: '#86ab92', width: 1 }, fillcolor: '#86ab92' },
+        decreasing: { line: { color: '#dd8170', width: 1 }, fillcolor: '#dd8170' },
+        showlegend: false,
+      };
+
+      const emaTrace = {
+        x: dates,
+        y: ema20,
+        type: 'scatter',
+        mode: 'lines',
+        name: '20 EMA',
+        line: { color: '#86ab92', width: 1.5 },
+        hoverinfo: 'none',
+        showlegend: false,
+      };
+
+      const layout = {
+        dragmode: false,
+        margin: { l: 36, r: 24, t: 10, b: 24 },
+        paper_bgcolor: '#191b21',
+        plot_bgcolor: '#191b21',
+        showlegend: false,
+        xaxis: {
+          rangeslider: { visible: false },
+          showgrid: false,
+          zeroline: false,
+          tickfont: { color: '#8a91a0', size: 9 },
+        },
+        yaxis: {
+          showgrid: true,
+          gridcolor: '#272a33',
+          zeroline: false,
+          tickfont: { color: '#8a91a0', size: 9 },
+          side: 'right',
+        },
+        shapes: [
+          {
+            type: 'line',
+            xref: 'paper',
+            x0: 0,
+            x1: 1,
+            y0: 24700,
+            y1: 24700,
+            line: { color: '#c9a04a', width: 1.5, dash: 'dash' },
+          },
+        ],
+        annotations: [
+          {
+            xref: 'paper',
+            x: 0.98,
+            y: 24700,
+            text: 'S: 24,700',
+            showarrow: false,
+            font: { color: '#c9a04a', size: 10, family: 'JetBrains Mono, monospace' },
+            bgcolor: '#191b21',
+            bordercolor: '#c9a04a',
+            borderwidth: 1,
+            borderpad: 2,
+          },
+        ],
+      };
+
+      const config = { responsive: true, displayModeBar: false };
+      await Plotly.newPlot(chartDiv, [candleTrace, emaTrace], layout, config);
     } catch {
       this.renderSvgFallback(chartDiv);
     }
