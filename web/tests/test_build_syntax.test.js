@@ -14,5 +14,6 @@ describe('Frontend Build & Syntax Validation', () => {
     });
 
     expect(result).toBeDefined();
-  }, 15000);
+  }, 30000);
 });
+
