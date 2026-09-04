@@ -13,24 +13,38 @@ import { StrategyBuilder } from './components/strategy-builder.js';
 import { SpotWebSocketClient } from './modules/ws-client.js';
 import { HomePage } from './pages/home.js';
 import { AISettingsDrawer } from './components/ai-settings-drawer.js';
+import { StrategyBuilderPage } from './pages/strategy-builder.js';
 
 class SwayamApp {
   constructor() {
     this.rules = null;
     this.activePositions = [];
-    this.builder = null;
+    this.strategyPage = null;
     this.wsClient = null;
     this.homePage = null;
     this.aiChat = null;
     this.aiLauncher = null;
     this.settingsDrawer = null;
-    this.activeTradesComponent = null;
-    this.currentPage = 'home';
+    this.currentPage = (typeof window !== 'undefined' && window.location.pathname.includes('strategy')) ? 'strategy' : 'home';
     this.isAIDrawerOpen = false;
   }
 
   async init() {
-    console.log('Initializing Swayam Capital trading platform (BUILD-9)...');
+    console.log('Initializing Swayam Capital trading platform (BUILD-10)...');
+
+    const isStrategy = typeof window !== 'undefined' && window.location.pathname.includes('strategy');
+    this.currentPage = isStrategy ? 'strategy' : 'home';
+
+    // Synchronously enforce view visibility to prevent flash of wrong page on refresh
+    const homeViewContainer = document.getElementById('home-view');
+    const strategyContainer = document.getElementById('strategy-view');
+    if (isStrategy) {
+      if (homeViewContainer) homeViewContainer.style.display = 'none';
+      if (strategyContainer) strategyContainer.style.display = 'block';
+    } else {
+      if (homeViewContainer) homeViewContainer.style.display = 'block';
+      if (strategyContainer) strategyContainer.style.display = 'none';
+    }
 
     // 1. Initialize Navigation Header
     const headerContainer = document.getElementById('header-container');
@@ -49,28 +63,40 @@ class SwayamApp {
       this.settingsDrawer.init();
     }
 
-    // 2. Initialize Home Page (Default landing view)
-    const homeViewContainer = document.getElementById('home-view');
-    if (homeViewContainer) {
-      this.homePage = new HomePage(homeViewContainer, {
-        onOpenAIDrawer: () => this.openAIDrawer(),
-        onOpenSettings: () => {
-          if (this.settingsDrawer) {
-            const sid = this.homePage?.aiBriefComponent?.sessionId;
-            this.settingsDrawer.open(sid);
-          }
-        },
-        onNavigateStrategy: () => {
-          this.navigateTo('strategy');
-        },
-      });
-      await this.homePage.init();
+    // 2. Initialize current active view first
+    if (isStrategy) {
+      await this.initStrategyView();
+      if (homeViewContainer) {
+        this.homePage = new HomePage(homeViewContainer, {
+          onOpenAIDrawer: () => this.openAIDrawer(),
+          onOpenSettings: () => {
+            if (this.settingsDrawer) {
+              const sid = this.strategyPage?.sessionId;
+              this.settingsDrawer.open(sid);
+            }
+          },
+          onNavigateStrategy: () => this.navigateTo('strategy'),
+        });
+        this.homePage.init();
+      }
+    } else {
+      if (homeViewContainer) {
+        this.homePage = new HomePage(homeViewContainer, {
+          onOpenAIDrawer: () => this.openAIDrawer(),
+          onOpenSettings: () => {
+            if (this.settingsDrawer) {
+              const sid = this.homePage?.aiBriefComponent?.sessionId;
+              this.settingsDrawer.open(sid);
+            }
+          },
+          onNavigateStrategy: () => this.navigateTo('strategy'),
+        });
+        await this.homePage.init();
+      }
+      this.initStrategyView();
     }
 
-    // 3. Initialize Strategy Builder View
-    await this.initStrategyView();
-
-    // 4. Connect WebSocket for live NIFTY Spot ticks
+    // 3. Connect WebSocket for live NIFTY Spot ticks
     this.wsClient = new SpotWebSocketClient((spot) => {
       updateHeaderSpot(spot);
       if (this.builder) this.builder.setSpot(spot);
@@ -78,35 +104,37 @@ class SwayamApp {
     this.wsClient.connect();
     this.pollSpot();
 
-    // 5. Initialize AI Trading Partner Drawer & Persistent Launcher Orb
+    // 4. Initialize AI Trading Partner Drawer & Persistent Launcher Orb
     await this.initAIDrawer();
+
+    // 5. Setup popstate listener for back/forward browser history
+    if (typeof window !== 'undefined') {
+      window.addEventListener('popstate', () => {
+        const page = window.location.pathname.includes('strategy') ? 'strategy' : 'home';
+        this.navigateTo(page, false);
+      });
+    }
+
+    // 6. Ensure correct view is displayed based on current route
+    this.navigateTo(this.currentPage, false);
   }
 
   async initStrategyView() {
     await this.loadRules();
 
-    const builderContainer = document.getElementById('builder-container');
-    if (builderContainer) {
-      this.builder = new StrategyBuilder(builderContainer, {
-        onTradeExecuted: () => this.loadPositions(),
-      });
-      if (this.rules) {
-        this.builder.setMarginBase(this.rules.margin_base_inr);
-      }
-      await this.builder.init();
-    }
-
-    const activeContainer = document.getElementById('active-trades-container');
-    if (activeContainer) {
-      this.activeTradesComponent = new ActiveTradesComponent(activeContainer, {
-        onTradeClosed: () => {
-          if (this.builder) this.builder.recomputeAndValidate();
+    const strategyContainer = document.getElementById('strategy-view');
+    if (strategyContainer && !this.strategyPage) {
+      this.strategyPage = new StrategyBuilderPage(strategyContainer, {
+        onNavigateHome: () => this.navigateTo('home'),
+        onOpenSettings: () => {
+          if (this.settingsDrawer) {
+            const sid = this.strategyPage?.sessionId;
+            this.settingsDrawer.open(sid);
+          }
         },
       });
-      await this.activeTradesComponent.init();
+      await this.strategyPage.init();
     }
-
-    this.setupModal();
   }
 
   async initAIDrawer() {
@@ -139,6 +167,10 @@ class SwayamApp {
       drawer.style.right = '0px';
       try { document.body.classList.add('ai-panel-open'); } catch (_) {}
       this.isAIDrawerOpen = true;
+      setTimeout(() => {
+        if (typeof window !== 'undefined') window.dispatchEvent(new Event('resize'));
+        if (this.strategyPage?.payoffChart) this.strategyPage.payoffChart.retheme();
+      }, 250);
     }
   }
 
@@ -148,6 +180,10 @@ class SwayamApp {
       drawer.style.right = '-450px';
       try { document.body.classList.remove('ai-panel-open'); } catch (_) {}
       this.isAIDrawerOpen = false;
+      setTimeout(() => {
+        if (typeof window !== 'undefined') window.dispatchEvent(new Event('resize'));
+        if (this.strategyPage?.payoffChart) this.strategyPage.payoffChart.retheme();
+      }, 250);
     }
   }
 
@@ -159,19 +195,44 @@ class SwayamApp {
     }
   }
 
-  navigateTo(page) {
+  navigateTo(page, updateHistory = true) {
     this.currentPage = page;
     const homeView = document.getElementById('home-view');
     const strategyView = document.getElementById('strategy-view');
 
+    // Update active state on nav pills
+    const navPills = document.querySelectorAll('.nav-pill');
+    navPills.forEach((btn) => {
+      const p = btn.getAttribute('data-page');
+      if (p === page) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
     if (page === 'home') {
       if (homeView) homeView.style.display = 'block';
       if (strategyView) strategyView.style.display = 'none';
+      if (updateHistory && typeof window !== 'undefined') {
+        try {
+          const url = new URL(window.location.href);
+          url.pathname = '/';
+          window.history.pushState({}, '', url.toString());
+        } catch (_) {}
+      }
     } else if (page === 'strategy') {
       if (homeView) homeView.style.display = 'none';
       if (strategyView) strategyView.style.display = 'block';
-      if (this.builder) {
-        this.builder.recomputeAndValidate();
+      if (updateHistory && typeof window !== 'undefined') {
+        try {
+          const url = new URL(window.location.href);
+          url.pathname = '/strategy';
+          window.history.pushState({}, '', url.toString());
+        } catch (_) {}
+      }
+      if (this.strategyPage) {
+        this.strategyPage.refreshPositions();
       }
     }
   }

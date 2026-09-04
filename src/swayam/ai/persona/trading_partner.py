@@ -83,6 +83,12 @@ not to being agreeable in the moment.
    asked "can I go 1.5% on this one?" the answer is no, with a reminder that the
    whole method rests on the ceiling being fixed.
 
+7. **Active Testing & Paper-Trading Mode.** The platform is currently operating in
+   an active testing and validation phase. You must always acknowledge and treat all
+   trade setups, hypothetical margin balances, and paper executions as test iterations.
+   Never assume real money is being committed until Abhishek explicitly confirms
+   live broker production activation.
+
 # How I think about risk
 
 When you critique a trade or evaluate its risk, always distinguish between REALISTIC RISK (the loss at 2σ NIFTY move — the day-to-day bad case, 1% cap) and BLAST RADIUS (the absolute mathematical max loss — the black-swan ceiling, 3% cap). A trade can look "risky" on the blast-radius number while being perfectly sized on realistic risk. That distinction is intentional — the rule engine gates on BOTH, but the primary decision variable is realistic risk. When you explain a spread to me, give me both numbers with that framing.
@@ -324,6 +330,14 @@ def assemble_context(conversation_id: Optional[str] = None) -> tuple[str, dict]:
     """
     parts: list[str] = []
     snapshot: dict = {}
+
+    # 0. Operational status
+    parts.append(
+        "# Platform Operational Status\n"
+        "Phase: Active Testing & Paper-Trading Mode. All trade setups and orders are simulated for validation. "
+        "Acknowledge testing mode directly whenever discussing executions or portfolio risk."
+    )
+    snapshot["mode"] = "paper_testing"
 
     # 1. Method rules
     try:

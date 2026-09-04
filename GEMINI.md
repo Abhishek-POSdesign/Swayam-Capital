@@ -5,10 +5,10 @@
 > **Primary AI Architect:** Antigravity (Gemini)  
 > **Code Repository:** `D:\Claude\POS\Trading-Platform\Swayam Capital`  
 > **Obsidian Vault (Method & Truth):** `G:\My Drive\Second Brain\02 - Projects\Trading\`  
-> **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-south1`, AI Location: `global`)  
+> **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-southeast1` [Singapore], AI Location: `global`)  
 > **Supabase Database:** `wxijlrwoiaeaupaaqecc` (`https://wxijlrwoiaeaupaaqecc.supabase.co`)  
 > **Broker Integration:** FYERS API v3 (Client ID: `YA38914`)  
-> **Status:** Phase 1 Complete (BUILDs 1–9.5 + BUILD-9-FIXES-B Shipped). 286 automated tests passing (242 pytest + 44 vitest, 0 failures). Conversational AI partner, Indian English TTS (ADC), 3-tier memory engine, and Atlas UI improvements integrated. Deployed to Cloud Run behind custom subdomain `https://swayam.abhisheksikka.com` with Google Identity-Aware Proxy (IAP). Ready for BUILD-10.
+> **Status:** Phase 1 Complete (BUILDs 1–10 + BUILD-9-FIXES-A/B/C + BUILD-10-FIXES-A Shipped). 326 automated tests passing (258 pytest + 68 vitest, 0 failures). Strategy Builder & Trading Terminal integrated on single-page canvas (`/strategy`) with 8 presets, AI import, margin-safe order sequencing, overnight naked short auto-block modal, loud 503 safety endpoint failures, and honest empty states. Deployed to Google Cloud Run in Singapore (`asia-southeast1`) behind custom subdomain `https://swayam.abhisheksikka.com`.
 
 ---
 
@@ -145,14 +145,60 @@
 - **Google Cloud Run Deployments:** Deployed service `swayam-dashboard` with automated 0-to-3 auto-scaling (scale-to-zero when idle ensures $0 baseline cost).
 - **Google Secret Manager Integration:** Synchronized 7 sensitive configuration variables (`swayam-supabase-url`, `swayam-supabase-anon-key`, `swayam-supabase-service-role-key`, `fyers-access-token`, `fyers-client-id`, `fyers-app-id`, `fyers-secret-key`) injected directly into Cloud Run at runtime.
 - **Security & Access Control:** Protected via Google Identity-Aware Proxy (IAP) and IAM invoker policy restricted strictly to `abhisheksikka99.99@gmail.com`.
-- **Custom Subdomain Mapping (`swayam.abhisheksikka.com`):** Configured Cloud Run domain mapping pointing to `ghs.googlehosted.com.` with automatic SSL certificate management.
+- **Custom Subdomain Mapping (`swayam.abhisheksikka.com`):** Configured Cloud Run domain mapping in `asia-southeast1` (Singapore) pointing to `ghs.googlehosted.com.` with automatic SSL certificate management.
 - **Operations & Runbooks:** Full deployment runbook (`docs/DEPLOY.md`) and operational troubleshooting cheatsheet (`docs/RUNBOOK.md`).
+
+### ✅ BUILD-9-FIXES-C: Atlas Parity & Interaction Fixes
+- **Atlas Design Parity Wholesale:** Full-height sidebar rail (`<aside class="swayam-rail">`), Atlas Paper Studio light theme tokens (`#ebe8e1` canvas, `#ffffff` rail, `#f8f6f2` cards, near-black high-contrast text and nav pills).
+- **Rich Collapsed Status Strip:** 72px rail strip with 32px verdict bar, 6 factor checkmarks, and 103d streak indicator. Main content expands with 0 dead gap when folded.
+- **AI Drawer & Chat Surface:** 400px AI drawer with desktop content shift (no navbar clipping) and lilac branding. Removed 2px lilac border on workspace chat; added 2×2 grid of 4 pre-market prompt cards in empty conversation state.
+- **Adaptive VIX Chart:** Dynamic 10% data-bounded range, 1-year median reference line, and peak marker dots.
+- **Market Data Fallbacks in Cloud Run:** Added Supabase database fallbacks (`swayam_nifty_daily_bars` with 22 bars, `swayam_bhavcopy` with 262 days) to `get_nifty_candles` and `get_vix_history` when FYERS token is expired or market is closed. All timeframe tabs (`15m`, `1h`, `1d`) return 200 OK without crashing.
+- **All 290 Tests Passing:** 246 backend pytest + 44 frontend vitest tests pass cleanly with 0 failures.
+
+### ✅ BUILD-10: Strategy Builder + Trading Terminal (Single-Page Canvas)
+- **Unified Single-Page Canvas (`/strategy`):**
+  - **Left Rail (320px):** Mini Readiness Card (reflects today's sleep, alcohol streak, live size cap), Open Positions Mini-List (live P&L badges with quick exit triggers), and AI Session Recap Card (bullets synthesized from chat history).
+  - **Center Canvas (Flexible):**
+    - **Preset Bar (`preset-bar.js`):** Chip selector for 8 core strategies (Bear Put, Bull Call, Iron Condor, Short Strangle, Calendar, Ratio, Straddle, Jade Lizard) + "Import from AI conversation" button.
+    - **Leg Builder Container (`leg-builder.js`):** Net Debit/Credit big numbers with live calculation, visual safety divider (`↑ Buys execute first (margin-safe)`), and `+ Add Leg` button.
+    - **Leg Card Component (`leg-card.js`):** B/S badge button with color inversion, CE/PE toggle, expiry picker, snap-to-50 strike input, lot stepper, real-time LTP quote display, and Greek pills (Δ, θ, ν).
+    - **Plotly Payoff Chart (`payoff-chart.js`):** Dual curves (Expiry in sage green & T+0 in dashed slate), vertical amber spot line at 24,850, red breakeven markers, and 2σ / Blast Radius threshold lines.
+    - **Rule Validation Panel (`rule-validation-panel.js`):** Side-by-side cards for Realistic Risk (2σ) & Blast Radius (max theoretical loss) with threshold checks against Method capital limits, plus secondary rule checks (R:R, Headroom, Hedge structure).
+    - **Execute Row (`execute-row.js`):** Order type selector (Limit default vs Market), order execution sequence preview button, `[Execute All Legs]` button, and `[⚡ AI-order the legs]` button.
+  - **Bottom Sticky Bar:** Live spot ticker (NIFTY 50), India VIX, and active order mode indicator.
+- **Strict Execution Ordering & Margin Safety (§ 10a):**
+  - Order preview (`POST /api/execute/preview-order`) enforces sequence: BUY legs placed first, SELL legs placed last.
+  - Calculates hedged margin vs naked margin and reports exact margin savings in rupees.
+  - Paper trade execution endpoint (`POST /api/execute/multi-leg`) creates atomic records in `swayam_positions` with `order_type` and `session_id` notes.
+- **Overnight Naked Short Auto-Block Modal (`overnight-block-modal.js`):**
+  - Detects unhedged short positions (`GET /api/positions/naked-shorts`).
+  - At 15:20 IST, if any naked short exists, locks the entire UI with an unclosable coral scrim modal (Escape key disabled).
+  - Offers only two actionable escape paths: `[Add Hedge Now]` (appends protective wings) or `[Exit Position Instead]` (liquidates position).
+- **Bundled User Fixes:**
+  1. **NIFTY 15m Chart Wicks:** Fixed `_get_nifty_candle_fallback` so 15m candles render realistic high/low wicks (`day_range * 0.18 + 6.0`) and wave dynamics instead of a flat line with dots.
+  2. **Dark/Light Chart Theme Sync:** Dispatches `swayam-theme-change` CustomEvent from header; NIFTY chart, VIX chart, and Payoff chart listen and call `Plotly.relayout` or re-render canvas immediately.
+  3. **AI Chat Testing Mode Memory:** Persists `swayam_active_session_id` in `localStorage`; `trading_partner.py` permanently enforces Constraint 7 ("Paper Trading / Testing Phase active: all execution is strictly paper simulation") in system instructions and context assembly.
+  4. **Fast Headless Test DOM:** Resolved regex catastrophic backtracking and event handler recursion in test environment, achieving 65 passing frontend tests in under 30s.
+- **Post-Build-10 User Refinements:**
+  1. **Database Test Trades Cleanup:** Archived 51 legacy test paper trades in Supabase `swayam_positions` from earlier automated tests, resetting active trades count to 0.
+  2. **Strategy Payoff Chart Enhancement:** Fixed missing IV parameter causing 400 error and blank chart. Added green (+profit) and red (-loss) shaded regions, prominent breakeven markers, spot indicator, and top metric chips (Max Profit, Max Loss, Breakeven).
+  3. **Push Layout for AI Panel:** Opening AI drawer now auto-collapses `#strategy-left-rail` (0px) and shifts main layout 400px left, eliminating overlay occlusion on top of the Strategy Payoff chart.
+  4. **Browser Refresh Persistence:** Route detection now checks `window.location.pathname` synchronously with `data-initial-page` attribute and popstate listener. Refreshing on `/strategy` stays on `/strategy` without flashing or redirecting to Home.
+  5. **Reclaimed Screen Space:** Removed bottom full-width AI chat box from Strategy Builder, giving full vertical and horizontal focus to builder legs, payoff chart, and execution data.
+- **BUILD-10-FIXES-A (Safety Hardening & Honest Empty States):**
+  1. **Safety Endpoint Loud Failures:** `GET /api/positions/naked-shorts` and `GET /api/positions` now raise `HTTPException(503)` when Supabase is unreachable instead of silently returning empty lists. Prevents the 15:20 IST overnight safety modal from being skipped during a DB outage.
+  2. **Frontend Safety Alarm Banner:** In `strategy-builder.js`, if the 15:20 check encounters a 503 or network failure, renders a prominent coral alarm banner (`⚠️ Overnight-naked safety check unavailable — Supabase unreachable. Inspect open positions manually before market close.`).
+  3. **Positions List Outage Card:** In `mini-positions-list.js`, `renderError` displays a coral alert card instead of an empty list when the database cannot be reached.
+  4. **Honest Session Recap Empty State:** `session-recap.js` replaces hardcoded placeholder bullets with an honest empty-state card ("No prior session context yet...") on fresh sessions.
+  5. **Docstring Correction:** Updated `record_local_paper_position` docstring in `positions.py` to accurately document the in-memory session cache merged with Supabase.
+- **All 326 Tests Passing:** 258 backend pytest + 68 frontend vitest tests pass cleanly with 0 failures.
 
 ---
 
 ## 📊 3. Database Schema Overview (Supabase: `wxijlrwoiaeaupaaqecc`)
 
-All 10 tables have Row Level Security (RLS) disabled for platform service key / anon access:
+All tables have Row Level Security (RLS) disabled for platform service key / anon access:
 
 | Table | Purpose | Key Fields |
 |:---|:---|:---|
@@ -166,6 +212,8 @@ All 10 tables have Row Level Security (RLS) disabled for platform service key / 
 | `swayam_ai_messages` | Individual turns within an AI conversation | `id` (PK), `conversation_id`, `role`, `content`, `model_used`, `tokens_in`, `tokens_out` |
 | `swayam_ai_usage_daily` | Daily token and cost tracking for Vertex AI | `usage_date` (PK), `model`, `request_count`, `input_tokens`, `output_tokens`, `cost_inr` |
 | `swayam_rule_evolution_log` | History of rule adjustments and backtest proposals | `id` (PK), `rule_name`, `old_value`, `new_value`, `reason`, `backtest_id` |
+| `swayam_nifty_daily_bars` | NIFTY 50 daily OHLC history (Cloud Run fallback) | `trade_date` (PK), `symbol`, `open`, `high`, `low`, `close`, `volume` |
+| `swayam_bhavcopy` | Daily NSE bhavcopy India VIX history | `date` (PK), `vix_open`, `vix_high`, `vix_low`, `vix_close` |
 
 ---
 

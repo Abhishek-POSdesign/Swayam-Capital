@@ -37,7 +37,11 @@ _chain_cache: dict[str, dict[str, Any]] = {}
 
 
 def record_local_paper_position(pos: dict[str, Any]) -> None:
-    """Stores a paper position locally when database is in offline or mock mode."""
+    """Adds a paper position to the in-memory session cache after a successful Supabase insert.
+
+    Merged with the Supabase read in get_positions() so a container without a warm DB
+    connection still sees positions opened during this session.
+    """
     _local_paper_positions.append(pos)
 
 
@@ -185,7 +189,15 @@ def get_positions(status: str = Query(default="open")) -> list[PositionResponse]
         if res.data:
             positions_data.extend(res.data)
     except Exception as exc:
-        logger.warning("Could not fetch positions from Supabase: %s", exc)
+        logger.error("Could not fetch positions from Supabase: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Positions service unavailable: cannot reach Supabase to fetch positions. "
+                "Do not assume 'no positions' when database is unreachable. "
+                f"Underlying error: {exc}"
+            ),
+        ) from exc
 
     # Merge with local session paper trades if not already present
     existing_ids = {p.get("id") for p in positions_data}
@@ -613,3 +625,120 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
         total_charges_inr=round(total_charges_inr, 2),
         journal_path=journal_path,
     )
+
+
+@router.get("/api/positions/naked-shorts")
+def detect_naked_shorts(
+    at_time: str = Query(default="15:20", description="Evaluation time in IST (e.g. 15:20)"),
+) -> dict[str, Any]:
+    """Evaluates open positions for unhedged/naked short legs.
+
+    Enforces Risk Management Rules § 10a (No overnight naked shorts).
+    Fires block modal on frontend at 15:20 IST.
+    """
+    open_positions: list[dict[str, Any]] = []
+
+    # 1. Fetch from Supabase
+    try:
+        res = db.client.table("swayam_positions").select("*").eq("status", "open").execute()
+        if res.data:
+            open_positions.extend(res.data)
+    except Exception as exc:
+        logger.error("Naked-shorts safety check failed: Supabase unreachable: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Naked-shorts safety check unavailable: cannot reach Supabase to enumerate open positions. "
+                "This is a safety-critical endpoint — do not assume 'no naked shorts' when the database is unreachable. "
+                "Retry when Supabase is reachable, or manually inspect open positions from your broker terminal. "
+                f"Underlying error: {exc}"
+            ),
+        ) from exc
+
+    # 2. Append local in-memory paper positions
+    seen_ids = {str(p.get("id")) for p in open_positions}
+    for p in _local_paper_positions:
+        p_id = str(p.get("id"))
+        if p.get("status") == "open" and p_id not in seen_ids:
+            open_positions.append(p)
+            seen_ids.add(p_id)
+
+    violations: list[dict[str, Any]] = []
+
+    for pos in open_positions:
+        legs = pos.get("legs", [])
+        if not isinstance(legs, list) or not legs:
+            continue
+
+        sold_calls: list[dict[str, Any]] = []
+        bought_calls: list[dict[str, Any]] = []
+        sold_puts: list[dict[str, Any]] = []
+        bought_puts: list[dict[str, Any]] = []
+
+        for leg in legs:
+            d = str(leg.get("direction", "")).lower()
+            t = str(leg.get("option_type", "")).upper()
+            qty = int(leg.get("quantity_lots", 1) or 1)
+
+            if d == "sell":
+                if t in ("CE", "CALL"):
+                    sold_calls.append(leg)
+                elif t in ("PE", "PUT"):
+                    sold_puts.append(leg)
+            elif d == "buy":
+                if t in ("CE", "CALL"):
+                    bought_calls.append(leg)
+                elif t in ("PE", "PUT"):
+                    bought_puts.append(leg)
+
+        total_sold_call_qty = sum(int(l.get("quantity_lots", 1) or 1) for l in sold_calls)
+        total_bought_call_qty = sum(int(l.get("quantity_lots", 1) or 1) for l in bought_calls)
+        total_sold_put_qty = sum(int(l.get("quantity_lots", 1) or 1) for l in sold_puts)
+        total_bought_put_qty = sum(int(l.get("quantity_lots", 1) or 1) for l in bought_puts)
+
+        naked_short_legs: list[dict[str, Any]] = []
+        suggested_hedges: list[dict[str, Any]] = []
+
+        # Unhedged Calls check
+        if total_sold_call_qty > total_bought_call_qty:
+            diff = total_sold_call_qty - total_bought_call_qty
+            naked_short_legs.extend(sold_calls)
+            max_call_strike = max((float(l.get("strike", 25000)) for l in sold_calls), default=25000)
+            suggested_hedges.append({
+                "action": "BUY",
+                "option_type": "CE",
+                "strike": max_call_strike + 150.0,
+                "quantity_lots": diff,
+                "expiry_date": sold_calls[0].get("expiry_date", str(date.today())),
+                "rationale": f"Hedge short call risk with OTM call wing at {max_call_strike + 150.0}",
+            })
+
+        # Unhedged Puts check
+        if total_sold_put_qty > total_bought_put_qty:
+            diff = total_sold_put_qty - total_bought_put_qty
+            naked_short_legs.extend(sold_puts)
+            min_put_strike = min((float(l.get("strike", 24500)) for l in sold_puts), default=24500)
+            suggested_hedges.append({
+                "action": "BUY",
+                "option_type": "PE",
+                "strike": max(50.0, min_put_strike - 150.0),
+                "quantity_lots": diff,
+                "expiry_date": sold_puts[0].get("expiry_date", str(date.today())),
+                "rationale": f"Hedge short put downside risk with OTM put wing at {min_put_strike - 150.0}",
+            })
+
+        if naked_short_legs:
+            violations.append({
+                "position_id": str(pos.get("id")),
+                "strategy_name": pos.get("strategy_name", "Open Spread"),
+                "underlying": pos.get("underlying", "NIFTY"),
+                "naked_legs": naked_short_legs,
+                "suggested_hedges": suggested_hedges,
+                "rule_citation": "Risk Management Rules § 10a — no overnight naked. Overnight hedge cap: 2% of margin base.",
+            })
+
+    return {
+        "at_time": at_time,
+        "has_naked_shorts": len(violations) > 0,
+        "violations": violations,
+    }

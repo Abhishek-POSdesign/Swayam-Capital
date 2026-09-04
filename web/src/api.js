@@ -73,5 +73,21 @@ export const api = {
   getAIBrief: () => request('/api/ai/brief/today'),
   getNiftyCandles: (timeframe = '1d') => request(`/api/market/nifty/candles?timeframe=${timeframe}`),
   getVixHistory: (days = 365) => request(`/api/market/vix/history?days=${days}`),
+  getOptionQuote: ({ strike, expiry, type, symbol = 'NSE:NIFTY50-INDEX' }) =>
+    request(`/api/market/option/quote?strike=${strike}&expiry=${expiry}&type=${type}&symbol=${symbol}`),
+  previewOrder: (payload) =>
+    request('/api/execute/preview-order', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  executeMultiLeg: (payload) =>
+    request('/api/execute/multi-leg', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  detectNakedShorts: (atTime = '15:20') =>
+    request(`/api/positions/naked-shorts?at_time=${encodeURIComponent(atTime)}`),
+  getSessionContextSummary: (sessionId) =>
+    request(`/api/ai/session/${sessionId}/context-summary`),
 };
 

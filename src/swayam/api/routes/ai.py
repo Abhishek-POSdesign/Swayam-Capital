@@ -26,7 +26,7 @@ import json
 import logging
 import time
 from datetime import date, datetime, timezone
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
@@ -505,3 +505,59 @@ def get_today_ai_brief() -> dict:
         "overnight_global": overnight_global,
         "india_vix": india_vix,
     }
+
+
+@router.get("/session/{session_id}/context-summary")
+def get_session_context_summary(session_id: str) -> dict[str, Any]:
+    """Returns key context recap bullets from an existing session for Strategy Builder continuity."""
+    try:
+        res = (
+            db.client.table("swayam_ai_messages")
+            .select("role, content, created_at")
+            .eq("conversation_id", session_id)
+            .order("created_at", desc=False)
+            .limit(20)
+            .execute()
+        )
+        msgs = res.data or []
+        if not msgs:
+            return {
+                "session_id": session_id,
+                "has_context": False,
+                "bullets": [
+                    "Fresh session initialized.",
+                    "No prior conversation recorded on Home screen.",
+                    "Build or select a strategy preset above.",
+                ],
+            }
+
+        bullets: list[str] = []
+        user_turns = [m["content"] for m in msgs if m["role"] == "user"]
+        asst_turns = [m["content"] for m in msgs if m["role"] == "assistant"]
+
+        if user_turns:
+            last_u = user_turns[-1].strip().replace("\n", " ")
+            snippet = f"{last_u[:70]}..." if len(last_u) > 70 else last_u
+            bullets.append(f"Focus: \"{snippet}\"")
+        if asst_turns:
+            last_a = asst_turns[-1].strip().replace("\n", " ")
+            first_sent = last_a.split(".")[0].strip()
+            if first_sent:
+                snippet_a = f"{first_sent[:85]}..." if len(first_sent) > 85 else first_sent
+                bullets.append(f"AI: {snippet_a}")
+
+        bullets.append(f"Active dialogue: {len(msgs)} turns recorded")
+
+        return {
+            "session_id": session_id,
+            "has_context": True,
+            "bullets": bullets,
+        }
+    except Exception as exc:
+        logger.warning("Could not fetch session context summary: %s", exc)
+        return {
+            "session_id": session_id,
+            "has_context": False,
+            "bullets": ["Session context currently unavailable."],
+        }
+

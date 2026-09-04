@@ -49,7 +49,30 @@ export class NiftyChartCardComponent {
     }
 
     this.attachTabs();
+    if (!this._themeListenerAttached && typeof window !== 'undefined') {
+      window.addEventListener('swayam-theme-change', () => this.retheme());
+      this._themeListenerAttached = true;
+    }
     await this.renderPlot(candleData);
+  }
+
+  retheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    const bgColor = isDark ? '#191b21' : '#f8f8f7';
+    const textColor = isDark ? '#8b8e9b' : '#6b6e7b';
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+    const chartDiv = this.container.querySelector('#nifty-plotly-canvas');
+    if (chartDiv && this._Plotly) {
+      try {
+        this._Plotly.relayout(chartDiv, {
+          paper_bgcolor: bgColor,
+          plot_bgcolor: bgColor,
+          'xaxis.tickfont.color': textColor,
+          'yaxis.tickfont.color': textColor,
+          'yaxis.gridcolor': gridColor,
+        });
+      } catch (_) {}
+    }
   }
 
   attachTabs() {
