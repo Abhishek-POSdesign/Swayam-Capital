@@ -82,6 +82,24 @@ class LocalDB:
                 ON options_history(underlying, expiry_date, trade_date);
         """)
 
+        # Execute pending DuckDB SQL migrations
+        try:
+            from scripts.apply_duckdb_migrations import apply_duckdb_migrations
+            apply_duckdb_migrations(active_conn)
+        except Exception:
+            # Table fallback if script run from non-standard path
+            active_conn.execute("""
+                CREATE TABLE IF NOT EXISTS realized_vol_cache (
+                    symbol TEXT NOT NULL,
+                    as_of_date DATE NOT NULL,
+                    window_days INTEGER NOT NULL,
+                    annualized_vol DOUBLE NOT NULL,
+                    computed_at TIMESTAMP NOT NULL,
+                    bar_count INTEGER NOT NULL,
+                    PRIMARY KEY (symbol, as_of_date, window_days)
+                );
+            """)
+
     def insert_options_df(self, df: pd.DataFrame) -> int:
         """Ingests a cleaned pandas DataFrame of options data into DuckDB.
 
