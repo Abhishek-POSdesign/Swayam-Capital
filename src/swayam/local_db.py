@@ -44,7 +44,7 @@ class LocalDB:
                 close NUMERIC(10, 2) NOT NULL,
                 settle_price NUMERIC(10, 2),
                 volume BIGINT,
-                turnover_inr NUMERIC(15, 2),
+                turnover_inr NUMERIC(24, 2),
                 open_interest BIGINT,
                 change_in_oi BIGINT,
                 underlying_spot NUMERIC(10, 2),
@@ -82,6 +82,24 @@ class LocalDB:
                 ON options_history(underlying, expiry_date, trade_date);
         """)
 
+        # Execute pending DuckDB SQL migrations
+        try:
+            from scripts.apply_duckdb_migrations import apply_duckdb_migrations
+            apply_duckdb_migrations(active_conn)
+        except Exception:
+            # Table fallback if script run from non-standard path
+            active_conn.execute("""
+                CREATE TABLE IF NOT EXISTS realized_vol_cache (
+                    symbol TEXT NOT NULL,
+                    as_of_date DATE NOT NULL,
+                    window_days INTEGER NOT NULL,
+                    annualized_vol DOUBLE NOT NULL,
+                    computed_at TIMESTAMP NOT NULL,
+                    bar_count INTEGER NOT NULL,
+                    PRIMARY KEY (symbol, as_of_date, window_days)
+                );
+            """)
+
     def insert_options_df(self, df: pd.DataFrame) -> int:
         """Ingests a cleaned pandas DataFrame of options data into DuckDB.
 
@@ -110,6 +128,35 @@ class LocalDB:
             SELECT {col_str} FROM incoming_df;
         """)
         conn.unregister("incoming_df")
+
+        # Also populate nifty_daily_bars if underlying_spot is available for NIFTY
+        if "underlying_spot" in insert_df.columns and "trade_date" in insert_df.columns:
+            try:
+                spots = insert_df[
+                    insert_df["underlying_spot"].notna() & (insert_df["underlying_spot"] > 0)
+                ]
+                if not spots.empty:
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS nifty_daily_bars (
+                            trade_date DATE NOT NULL,
+                            symbol TEXT NOT NULL,
+                            open DOUBLE,
+                            high DOUBLE,
+                            low DOUBLE,
+                            close DOUBLE NOT NULL,
+                            volume BIGINT,
+                            PRIMARY KEY (trade_date, symbol)
+                        );
+                    """)
+                    daily_closes = spots.groupby("trade_date")["underlying_spot"].max().reset_index()
+                    for _, row in daily_closes.iterrows():
+                        conn.execute("""
+                            INSERT OR REPLACE INTO nifty_daily_bars (trade_date, symbol, open, high, low, close, volume)
+                            VALUES (?, 'NIFTY', NULL, NULL, NULL, ?, 0);
+                        """, [row["trade_date"], float(row["underlying_spot"])])
+            except Exception:
+                pass
+
         return len(insert_df)
 
     def get_table_count(self) -> int:

@@ -36,6 +36,10 @@ def get_rules(force_reload: bool = Query(default=False)) -> dict[str, Any]:
     return {
         "per_trade_risk_pct": rules.per_trade_risk_pct,
         "per_trade_risk_cap_inr": round(rules.per_trade_risk_pct * margin_base_inr, 2),
+        "realistic_risk_cap_pct": rules.realistic_risk_cap_pct,
+        "realistic_risk_cap_inr": round(rules.realistic_risk_cap_pct * margin_base_inr, 2),
+        "realistic_stress_sigma": rules.realistic_stress_sigma,
+        "realized_vol_window_days": rules.realized_vol_window_days,
         "rr_minimum": rules.rr_minimum,
         "rr_target": rules.rr_target,
         "daily_loss_cap_pct": rules.daily_loss_cap_pct,

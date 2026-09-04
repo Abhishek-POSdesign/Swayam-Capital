@@ -127,14 +127,35 @@ Audits candidate setup against Method rules using `TolerantComparator` (2% toler
   ```json
   {
     "passed": true,
+    "overall_passed": true,
+    "realistic_risk": {
+      "loss_inr": 4200.0,
+      "cap_inr": 8500.0,
+      "pct_of_margin": 0.494,
+      "passed": true
+    },
+    "blast_radius": {
+      "loss_inr": 16500.0,
+      "cap_inr": 25500.0,
+      "pct_of_margin": 1.941,
+      "passed": true
+    },
     "checks": [
       {
-        "rule": "per_trade_risk_cap",
+        "rule": "realistic_risk_cap",
         "verdict": "PASS",
-        "actual_inr": 7500.0,
+        "actual_inr": 4200.0,
         "cap_inr": 8500.0,
         "tolerance_pct": 0.02,
-        "note": "Max loss ₹7,500 vs cap ₹8,500 (1.0% + 2% tolerance)"
+        "note": "Expected worst-case loss at ±2σ ₹4,200 vs cap ₹8,500 (1.0% + 2% tolerance)"
+      },
+      {
+        "rule": "blast_radius_fuse",
+        "verdict": "PASS",
+        "actual_inr": 16500.0,
+        "cap_inr": 25500.0,
+        "tolerance_pct": 0.02,
+        "note": "Max loss ₹16,500 vs ceiling ₹25,500 (3.0% + 2% tolerance)"
       },
       {
         "rule": "rr_minimum",

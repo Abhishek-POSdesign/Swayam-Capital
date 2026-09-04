@@ -85,6 +85,13 @@ class TestPersonaStaticContent:
     def test_persona_is_read_only(self):
         assert "you never place a trade" in self.persona.lower()
 
+    def test_persona_contains_two_tier_risk_model(self):
+        """Persona should contain the two-tier risk model paragraph."""
+        assert "REALISTIC RISK" in self.persona
+        assert "BLAST RADIUS" in self.persona
+        assert "2σ NIFTY move" in self.persona
+        assert "black-swan ceiling" in self.persona
+
 
 class TestContextAssembly:
     """Verify assemble_context() handles all sections correctly."""
@@ -92,6 +99,9 @@ class TestContextAssembly:
     def _make_mock_rules(self):
         rules = MagicMock()
         rules.per_trade_risk_pct = 0.01
+        rules.realistic_risk_cap_pct = 0.01
+        rules.realistic_stress_sigma = 2.0
+        rules.realized_vol_window_days = 20
         rules.rr_minimum = 2.0
         rules.rr_target = 2.5
         rules.daily_loss_cap_pct = 0.02
@@ -230,8 +240,32 @@ class TestContextAssembly:
             from swayam.ai.persona.trading_partner import assemble_context
             _, snapshot = assemble_context()
 
-        for key in ["rules_hash", "margin_base_inr", "nifty_spot", "readiness_verdict", "open_position_count"]:
+        for key in ["rules_hash", "margin_base_inr", "nifty_spot", "readiness_verdict", "open_position_count", "realistic_vol_pct"]:
             assert key in snapshot, f"Missing snapshot key: {key}"
+
+    def test_context_includes_realistic_vol(self):
+        """assemble_context() should compute and include trailing realized volatility."""
+        with (
+            patch("swayam.ai.persona.trading_partner.vault_reader") as mock_vault,
+            patch("swayam.ai.persona.trading_partner.db") as mock_db,
+            patch("swayam.ai.persona.trading_partner.fyers_client") as mock_fyers,
+            patch("swayam.ai.persona.trading_partner.compute_realized_vol") as mock_vol,
+        ):
+            mock_vault.load_rules.return_value = self._make_mock_rules()
+            mock_db.get_margin_base_inr.return_value = 850000.0
+            mock_db.client.table.return_value.select.return_value.eq.return_value \
+                .order.return_value.limit.return_value.execute.return_value.data = []
+            mock_db.client.table.return_value.select.return_value.eq.return_value \
+                .execute.return_value.data = []
+            mock_fyers.get_nifty_spot.return_value = 24000.0
+            mock_vol.return_value = 0.143
+
+            from swayam.ai.persona.trading_partner import assemble_context
+            context, snapshot = assemble_context()
+
+        assert "Realized Volatility" in context
+        assert "14.30%" in context
+        assert snapshot["realistic_vol_pct"] == 14.3
 
 
 class TestBuildFullSystemPrompt:

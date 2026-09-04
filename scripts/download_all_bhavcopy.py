@@ -77,17 +77,32 @@ def download_range(start_date: date, end_date: date) -> None:
     print("=" * 50)
 
 
-if __name__ == "__main__":
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Download and ingest NSE Bhavcopies.")
-    parser.add_argument("--from", dest="from_date", required=True, help="Start date (YYYY-MM-DD)")
-    parser.add_argument("--to", dest="to_date", required=True, help="End date (YYYY-MM-DD)")
+    parser.add_argument("--from", dest="from_date", default=None, help="Start date (YYYY-MM-DD)")
+    parser.add_argument("--to", dest="to_date", default=None, help="End date (YYYY-MM-DD)")
+    parser.add_argument("--days", dest="days", type=int, default=None, help="Number of trailing days to download (e.g. 30)")
 
-    args = parser.parse_args()
-    try:
-        s_date = datetime.strptime(args.from_date, "%Y-%m-%d").date()
-        e_date = datetime.strptime(args.to_date, "%Y-%m-%d").date()
-    except ValueError as val_err:
-        print(f"[FAIL] Invalid date format: {val_err}. Please use YYYY-MM-DD.")
-        sys.exit(1)
+    args = parser.parse_args(argv)
+
+    if args.days is not None:
+        e_date = date.today()
+        s_date = e_date - timedelta(days=args.days)
+    elif args.from_date and args.to_date:
+        try:
+            s_date = datetime.strptime(args.from_date, "%Y-%m-%d").date()
+            e_date = datetime.strptime(args.to_date, "%Y-%m-%d").date()
+        except ValueError as val_err:
+            print(f"[FAIL] Invalid date format: {val_err}. Please use YYYY-MM-DD.")
+            return 1
+    else:
+        # Default to trailing 30 days if no arguments specified
+        e_date = date.today()
+        s_date = e_date - timedelta(days=30)
 
     download_range(s_date, e_date)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

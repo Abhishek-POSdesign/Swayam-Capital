@@ -8,6 +8,7 @@
 import { api } from '../api.js';
 import { renderPayoffChart } from '../modules/payoff-chart.js';
 import { formatINR, formatNumber } from '../utils/format.js';
+import { renderRuleValidation } from './rule-validation.js';
 
 export class StrategyBuilder {
   constructor(container, options = {}) {
@@ -342,65 +343,11 @@ export class StrategyBuilder {
     if (!container) return;
 
     const pc = calc.payoff_curve;
-    const isPassed = val.passed;
-
-    const checksHtml = val.checks
-      .map((c) => {
-        const isPass = c.verdict === 'PASS';
-        const icon = isPass ? '✅' : '❌';
-        const cssClass = isPass ? 'validation-pass' : 'validation-fail';
-        return `
-        <div class="validation-item ${cssClass}">
-          <div>
-            <div><strong>${c.rule.replace(/_/g, ' ').toUpperCase()}</strong></div>
-            <div style="font-size: 0.75rem; color: var(--text-secondary);">${c.note || ''}</div>
-          </div>
-          <div class="mono" style="font-size: 0.8rem; font-weight: 600; color: ${isPass ? 'var(--green)' : 'var(--red)'};">
-            ${icon} ${c.verdict}
-          </div>
-        </div>
-      `;
-      })
-      .join('');
-
-    container.innerHTML = `
-      <div class="panel">
-        <div class="panel-title">
-          <span>RULE VALIDATION</span>
-          <span style="font-size: 0.8rem; color: var(--text-secondary);">Method Gating</span>
-        </div>
-
-        <div class="validation-list">
-          ${checksHtml}
-        </div>
-
-        <div class="verdict-banner ${isPassed ? 'verdict-pass' : 'verdict-fail'}">
-          ${isPassed ? 'VERDICT: ✅ PASSED METHOD AUDIT' : 'VERDICT: ❌ BLOCKED BY METHOD RULES'}
-        </div>
-
-        <div>
-          <button id="btn-execute-trade" class="primary" style="width: 100%; padding: 0.75rem;" ${isPassed ? '' : 'disabled'}>
-            ⚡ EXECUTE PAPER TRADE
-          </button>
-        </div>
-
-        <div id="tv-button-container" style="margin-top: 0.75rem;"></div>
-      </div>
-    `;
-
-    // Render TradingView link button
-    import('./tv-buttons.js').then(({ renderTvButton }) => {
-      const tvContainer = document.getElementById('tv-button-container');
-      if (tvContainer) renderTvButton(tvContainer, 'NSE:NIFTY50');
-    });
-
-    // Attach execute button click
-    const execBtn = document.getElementById('btn-execute-trade');
-    if (execBtn) {
-      execBtn.addEventListener('click', () => {
+    renderRuleValidation(container, val, {
+      onExecute: () => {
         this.openExecutionModal(pc);
-      });
-    }
+      },
+    });
   }
 
   openExecutionModal(payoff) {

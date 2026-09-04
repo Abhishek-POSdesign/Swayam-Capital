@@ -8,7 +8,7 @@
 > **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-south1`, AI Location: `global`)  
 > **Supabase Database:** `wxijlrwoiaeaupaaqecc` (`https://wxijlrwoiaeaupaaqecc.supabase.co`)  
 > **Broker Integration:** FYERS API v3 (Client ID: `YA38914`)  
-> **Status:** Phase 1 Complete (BUILDs 1–7 + Small Cleanups Shipped). 187 automated tests passing. Ready for UI Redesign Session.
+> **Status:** Phase 1 Complete (BUILDs 1–8 Shipped). 217 automated tests passing (207 pytest + 10 vitest). Ready for UI Redesign Session.
 
 ---
 
@@ -115,6 +115,19 @@
   - `positions.py`: Margin base fallback dynamically reads from vault `MethodRules` or raises HTTP 503 instead of guessing a hardcoded amount.
 - **Frontend Syntax & Build Test:** Added in-memory Vite build test (`web/tests/test_build_syntax.test.js`) in Vitest ensuring zero template literal or syntax errors reach the browser.
 - **Documentation:** Updated `SETUP.md` with complete instructions for virtual environment and both Supabase migrations (001 and 002).
+
+### ✅ BUILD-8: Statistical Risk Cap (Two-Tier Risk Model)
+- **Two-Tier Risk Framework:** Replaced the single mathematical worst-case loss check with Abhishek's two-tier model:
+  - **Tier 1 (Realistic Risk Cap — 1.0% of margin base):** Primary sizing gate evaluating spread loss at ±2σ NIFTY move based on trailing 20-day realized volatility.
+  - **Tier 2 (Blast Radius Fuse — 3.0% of margin base):** Black-swan emergency ceiling comparing absolute mathematical max loss (`max_loss_inr`).
+- **Realized Volatility Engine (`src/swayam/options_math/realized_vol.py`):** Trailing 20-day realized volatility calculation using log returns of daily closes in DuckDB, with daily 1σ scaling and cached results in `realized_vol_cache`.
+- **Payoff at Spot (`src/swayam/options_math/payoff.py`):** Dedicated `pnl_at_spot()` function evaluating exact intrinsic P&L at stressed spot levels for multi-leg strategies.
+- **Obsidian Vault Rules Alignment:** Added `## Two-tier risk model — realistic vs absolute` subsection to `Risk Management Rules.md` and updated `VaultReader` parser with zero hardcoded numbers.
+- **Side-by-Side Frontend Risk Badges (`web/src/components/rule-validation.js`):** Realistic Risk and Blast Radius rendered with pass/fail badges, rupee values, margin percentages, Abhishek voice tooltips, and dynamic execution button disable.
+- **AI Persona & Context Integration:** Embedded risk philosophy into `TRADING_PARTNER_PERSONA` and injected today's computed realized volatility (`realistic_vol_pct`) into context assembly.
+- **Smoketest Check:** Added 20-day NIFTY realized volatility computation step to `swayam.smoketest`.
+- **Zero Silent Fallback Discipline:** Strict exception raising (`InsufficientHistoryError`, `HistoricalDataUnavailableError`, `MethodRulesParseError`, HTTP 503) rejecting silent fallback defaults.
+- **Test Suite Expansion:** Added 30 new tests, bringing the total suite to 207 pytest + 10 vitest (217 total passing tests).
 
 ---
 

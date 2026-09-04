@@ -66,9 +66,20 @@ class ValidationCheck(BaseModel):
     note: Optional[str] = None
 
 
+class RiskVerdict(BaseModel):
+    """Verdict and metrics for a risk cap evaluation."""
+    loss_inr: float
+    cap_inr: float
+    pct_of_margin: float
+    passed: bool
+
+
 class ValidationResponse(BaseModel):
     """Complete rule compliance audit for an options spread."""
     passed: bool
+    overall_passed: bool
+    realistic_risk: RiskVerdict
+    blast_radius: RiskVerdict
     checks: list[ValidationCheck]
     warnings: list[str] = []
 

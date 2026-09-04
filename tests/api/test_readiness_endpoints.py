@@ -134,17 +134,17 @@ def test_readiness_yellow_verdict_enforces_reduced_size_cap(mocker) -> None:
                 "strike": 24850.0,
                 "option_type": "PE",
                 "direction": "buy",
-                "quantity_lots": 1,
+                "quantity_lots": 4,
                 "entry_premium": 150.0,
                 "expiry_date": "2026-09-24",
                 "lot_size": 75,
             },
             {
-                "strike": 24100.0,
+                "strike": 24700.0,
                 "option_type": "PE",
                 "direction": "sell",
-                "quantity_lots": 1,
-                "entry_premium": 50.0,
+                "quantity_lots": 4,
+                "entry_premium": 87.0,
                 "expiry_date": "2026-09-24",
                 "lot_size": 75,
             },
@@ -156,7 +156,7 @@ def test_readiness_yellow_verdict_enforces_reduced_size_cap(mocker) -> None:
     response = client.post("/api/strategy/validate", json=payload)
     assert response.status_code == 200
     data = response.json()
-    cap_check = next(c for c in data["checks"] if c["rule"] == "per_trade_risk_cap")
+    cap_check = next(c for c in data["checks"] if c["rule"] == "realistic_risk")
     assert cap_check["verdict"] == "FAIL"
     assert cap_check["cap_inr"] == 6375.0
 

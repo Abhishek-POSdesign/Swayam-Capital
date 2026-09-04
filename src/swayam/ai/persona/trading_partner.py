@@ -35,6 +35,7 @@ from typing import Optional
 from swayam.vault_reader import vault_reader
 from swayam.db import db
 from swayam.fyers_client import fyers_client
+from swayam.options_math.realized_vol import compute_realized_vol, daily_sigma_from_annualized
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,10 @@ not to being agreeable in the moment.
 6. **Never suggest overriding rule caps.** 1% per-trade cap is a fixed ceiling. If
    asked "can I go 1.5% on this one?" the answer is no, with a reminder that the
    whole method rests on the ceiling being fixed.
+
+# How I think about risk
+
+When you critique a trade or evaluate its risk, always distinguish between REALISTIC RISK (the loss at 2σ NIFTY move — the day-to-day bad case, 1% cap) and BLAST RADIUS (the absolute mathematical max loss — the black-swan ceiling, 3% cap). A trade can look "risky" on the blast-radius number while being perfectly sized on realistic risk. That distinction is intentional — the rule engine gates on BOTH, but the primary decision variable is realistic risk. When you explain a spread to me, give me both numbers with that framing.
 
 # Tone
 
@@ -155,12 +160,13 @@ def _format_rules_for_ai(rules: object) -> str:
     try:
         r = rules  # type: ignore
         return (
+            f"- Realistic risk cap: {r.realistic_risk_cap_pct * 100:.1f}% of margin base (2σ, 20d vol)\n"
+            f"- Blast radius fuse: {r.blast_radius_pct * 100:.1f}% of margin base (black swan ceiling)\n"
             f"- Per-trade risk cap: {r.per_trade_risk_pct * 100:.1f}% of margin base\n"
             f"- R:R minimum: 1:{r.rr_minimum:.1f}\n"
             f"- R:R target: 1:{r.rr_target:.1f}\n"
             f"- Daily loss cap: {r.daily_loss_cap_pct * 100:.1f}% of margin base\n"
             f"- Weekly loss cap: {r.weekly_loss_cap_pct * 100:.1f}% of margin base\n"
-            f"- Blast radius fuse: {r.blast_radius_pct * 100:.1f}% of margin base\n"
             f"- Overnight hedge cap: {r.overnight_hedge_cap_pct * 100:.1f}% of margin base\n"
             f"- Alcohol lockout: {r.alcohol_lockout_days} days\n"
             f"- Sleep <{r.sleep_no_trade_threshold_hours}h: no trade\n"
@@ -294,6 +300,21 @@ def assemble_context(conversation_id: Optional[str] = None) -> tuple[str, dict]:
         parts.append("# NIFTY 50 Spot\n(not available — market may be closed or token expired)")
         snapshot["nifty_spot"] = None
         logger.debug("Could not fetch NIFTY spot for AI context: %s", exc)
+
+    # 3b. Realized Volatility (NIFTY 20-day)
+    try:
+        ann_vol = compute_realized_vol(symbol="NIFTY", as_of_date=date.today(), window_days=20)
+        daily_sigma = daily_sigma_from_annualized(ann_vol)
+        vol_pct = round(ann_vol * 100, 2)
+        parts.append(
+            f"# Realized Volatility (NIFTY 20-day)\n"
+            f"Annualized: {vol_pct:.2f}% | 1σ daily: {daily_sigma * 100:.2f}% | 2σ daily: {daily_sigma * 200:.2f}%"
+        )
+        snapshot["realistic_vol_pct"] = vol_pct
+    except Exception as exc:
+        parts.append("# Realized Volatility (NIFTY 20-day)\n(not available)")
+        snapshot["realistic_vol_pct"] = None
+        logger.debug("Could not compute realized vol for AI context: %s", exc)
 
     # 4. Today's readiness verdict (non-fatal — may not be logged yet)
     try:

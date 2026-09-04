@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - BUILD-8 (2026-09-07)
+- **Two-Tier Risk Model (`src/swayam/rule_engine/statistical_risk.py`, `src/swayam/vault_reader.py`, `src/swayam/api/routes/validation.py`)**: Replaced single mathematical worst-case loss check with Abhishek's two-tier risk framework:
+  1. **Tier 1 — Realistic Risk Cap (1.0% of margin base)**: Primary sizing gate evaluating candidate spread losses if NIFTY moves ±2σ over 1 day based on trailing 20-day realized volatility.
+  2. **Tier 2 — Blast Radius Fuse (3.0% of margin base)**: Emergency black-swan ceiling gating against absolute mathematical max loss (`max_loss_inr`).
+- **Realized Volatility Engine (`src/swayam/options_math/realized_vol.py`)**: Trailing annualized historical volatility calculation from daily closes stored in DuckDB (`nifty_daily_bars`), converted to daily 1σ standard deviation, backed by `realized_vol_cache`.
+- **DuckDB Migration 003 (`migrations/duckdb/003_realized_vol_cache.sql`)**: Additive migration schema for caching daily realized volatility calculations with idempotent migration runner wired into `LocalDB.init_schema()`.
+- **Payoff PnL at Spot Engine (`src/swayam/options_math/payoff.py`)**: Pure calculation function `pnl_at_spot()` computing exact intrinsic payoff at stressed index levels for arbitrary multi-leg options structures.
+- **Obsidian Vault Method Rules Integration (`Risk Management Rules.md`)**: Enriched vault rules with the two-tier philosophy and dynamic parsing in `VaultReader` (`realistic_risk_cap_pct`, `realistic_stress_sigma`, `realized_vol_window_days`).
+- **Frontend Two-Tier Risk Badges (`web/src/components/rule-validation.js`)**: Displays Realistic Risk and Blast Radius side-by-side with Abhishek voice tooltips, rupee caps, margin base percentages, and execution gating.
+- **AI Persona & Context Alignment (`src/swayam/ai/persona/trading_partner.py`)**: Embedded two-tier risk explanation in `TRADING_PARTNER_PERSONA` and injected today's computed 20-day realized volatility (`realistic_vol_pct`) into context assembly.
+- **Unified Smoketest Check (`src/swayam/smoketest.py`)**: Added check step computing and displaying trailing 20-day NIFTY realized volatility.
+- **Zero Silent Fallback Discipline**: Strictly eliminated silent defaults in trade validation; raises `InsufficientHistoryError`, `HistoricalDataUnavailableError`, `MethodRulesParseError`, and HTTP 503 when historical bars are missing.
+- **Test Suite Expansion**: Added 30 new tests across options math, DuckDB migrations, statistical risk, vault parsing, API routes, AI persona, and web components, bringing the suite to 207 pytest + 10 vitest (217 total passing).
+
 ### Added - BUILD-7 (2026-09-06)
 - **Live P&L & Valuation Endpoint (`GET /api/positions/live`)**: Computes real-time mark-to-market position valuations, unrealized P&L in rupees, % of risk, and updated Greeks from live FYERS option chain quotes, backed by 5-second in-memory caching to eliminate rate limit overhead.
 - **Position Exit Flow (`POST /api/positions/{id}/close`)**: Complete trade close endpoint implementing strict Database-before-Journal ordering (`swayam_trade_history` insert -> `swayam_positions` closed update -> Obsidian journal update). Realizes P&L and estimates transaction charges without hardcoded values.

@@ -116,33 +116,44 @@ class BhavcopyDownloader:
         df.columns = [c.strip().upper() for c in df.columns]
 
         # Handle UDiFF format vs Legacy format
-        if "TckrSymb" in df.columns or "TradDt" in df.columns:
-            # UDiFF Format
-            # Filter for NIFTY options (OPTIDX)
-            mask = (df["FinInstrmActlId"].str.contains("NIFTY", na=False)) & (
-                df["FinInstrmTp"].isin(["OPTIDX", "OPT"])
+        if "TCKRSYMB" in df.columns or "TRADDT" in df.columns:
+            # UDiFF Format (post July 2024)
+            # Filter for NIFTY options (TCKRSYMB == 'NIFTY' and OPTNTP in CE/PE)
+            optn_col = "OPTNTP" if "OPTNTP" in df.columns else None
+            tckr_col = "TCKRSYMB" if "TCKRSYMB" in df.columns else None
+            if not optn_col or not tckr_col:
+                return pd.DataFrame()
+
+            mask = (df[tckr_col].astype(str).str.strip() == "NIFTY") & (
+                df[optn_col].astype(str).str.strip().str.upper().isin(["CE", "PE"])
             )
             sub = df[mask].copy()
             if sub.empty:
                 return pd.DataFrame()
 
+            symbol_series = (
+                sub["FININSTRMNM"].astype(str).str.strip()
+                if "FININSTRMNM" in sub.columns
+                else sub[tckr_col].astype(str).str.strip()
+            )
+
             parsed = pd.DataFrame({
-                "trade_date": pd.to_datetime(sub["TradDt"]).dt.date,
-                "symbol": sub["TckrSymb"].str.strip(),
+                "trade_date": pd.to_datetime(sub["TRADDT"]).dt.date,
+                "symbol": symbol_series,
                 "underlying": "NIFTY",
-                "expiry_date": pd.to_datetime(sub["XpryDt"]).dt.date,
-                "strike": pd.to_numeric(sub["StrkPric"], errors="coerce"),
-                "option_type": sub["OptnTp"].str.strip().str.upper(),
-                "open": pd.to_numeric(sub["OpnPric"], errors="coerce"),
-                "high": pd.to_numeric(sub["HghPric"], errors="coerce"),
-                "low": pd.to_numeric(sub["LwPric"], errors="coerce"),
-                "close": pd.to_numeric(sub["ClsPric"], errors="coerce"),
-                "settle_price": pd.to_numeric(sub.get("SttlmPric", sub["ClsPric"]), errors="coerce"),
-                "volume": pd.to_numeric(sub.get("TtlTradgVol", 0), errors="coerce").fillna(0).astype("int64"),
-                "turnover_inr": pd.to_numeric(sub.get("TtlTrfVal", 0), errors="coerce").fillna(0.0),
-                "open_interest": pd.to_numeric(sub.get("OpnIntrst", 0), errors="coerce").fillna(0).astype("int64"),
-                "change_in_oi": pd.to_numeric(sub.get("ChngInOpnIntrst", 0), errors="coerce").fillna(0).astype("int64"),
-                "underlying_spot": pd.to_numeric(sub.get("UndrlygPric", None), errors="coerce"),
+                "expiry_date": pd.to_datetime(sub["XPRYDT"]).dt.date if "XPRYDT" in sub.columns else pd.to_datetime(sub["TRADDT"]).dt.date,
+                "strike": pd.to_numeric(sub["STRKPRIC"], errors="coerce") if "STRKPRIC" in sub.columns else None,
+                "option_type": sub[optn_col].astype(str).str.strip().str.upper(),
+                "open": pd.to_numeric(sub.get("OPNPRIC", 0), errors="coerce"),
+                "high": pd.to_numeric(sub.get("HGHPRIC", 0), errors="coerce"),
+                "low": pd.to_numeric(sub.get("LWPRIC", 0), errors="coerce"),
+                "close": pd.to_numeric(sub.get("CLSPRIC", 0), errors="coerce"),
+                "settle_price": pd.to_numeric(sub.get("STTLMPRIC", sub.get("CLSPRIC", 0)), errors="coerce"),
+                "volume": pd.to_numeric(sub.get("TTLTRADGVOL", 0), errors="coerce").fillna(0).astype("int64"),
+                "turnover_inr": pd.to_numeric(sub.get("TTLTRFVAL", 0), errors="coerce").fillna(0.0),
+                "open_interest": pd.to_numeric(sub.get("OPNINTRST", 0), errors="coerce").fillna(0).astype("int64"),
+                "change_in_oi": pd.to_numeric(sub.get("CHNGINOPNINTRST", 0), errors="coerce").fillna(0).astype("int64"),
+                "underlying_spot": pd.to_numeric(sub.get("UNDRLYGPRIC", None), errors="coerce"),
             })
             return parsed
 

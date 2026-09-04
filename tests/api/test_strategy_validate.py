@@ -95,8 +95,8 @@ def test_validate_single_leg_fails_no_single_leg_rule() -> None:
     assert rule_checks["no_single_leg"] == "FAIL"
 
 
-def test_validate_excessive_loss_fails_per_trade_risk_cap() -> None:
-    # 20 lots with ₹200 risk = ₹3,00,000 max loss, which blows past 1% cap (~₹8,500)
+def test_validate_excessive_loss_fails_blast_radius() -> None:
+    # 20 lots with ₹200 risk = ₹3,00,000 max loss, which blows past 3% blast cap (~₹25,500)
     payload = {
         "strategy_name": "Excessive Risk Spread",
         "underlying": "NIFTY",
@@ -130,7 +130,7 @@ def test_validate_excessive_loss_fails_per_trade_risk_cap() -> None:
     assert data["passed"] is False
 
     rule_checks = {c["rule"]: c["verdict"] for c in data["checks"]}
-    assert rule_checks["per_trade_risk_cap"] == "FAIL"
+    assert rule_checks["blast_radius"] == "FAIL"
 
 
 def test_validate_raises_503_when_supabase_unreachable_for_margin_base(mocker) -> None:
@@ -175,12 +175,6 @@ def test_validate_uses_settings_tolerance_not_hardcoded_002() -> None:
     orig_tolerance = settings.default_tolerance_pct
     object.__setattr__(settings, "default_tolerance_pct", 0.05)  # override to 5%
     try:
-        # Margin base = ₹8,50,000 -> 1% cap = ₹8,500.
-        # At 2% tolerance: cap max = 8500 * 1.02 = 8670.
-        # At 5% tolerance: cap max = 8500 * 1.05 = 8925.
-        # Max loss = (167.333 - 50.0) * 75 = 8800.0.
-        # With 2% tolerance it would FAIL (8800 > 8670).
-        # With 5% tolerance it PASSES (8800 <= 8925).
         payload = {
             "strategy_name": "Boundary Spread",
             "underlying": "NIFTY",
@@ -210,9 +204,208 @@ def test_validate_uses_settings_tolerance_not_hardcoded_002() -> None:
         response = client.post("/api/strategy/validate", json=payload)
         assert response.status_code == 200
         data = response.json()
-        cap_check = next(c for c in data["checks"] if c["rule"] == "per_trade_risk_cap")
+        cap_check = next(c for c in data["checks"] if c["rule"] == "blast_radius")
         assert cap_check["verdict"] == "PASS"
         assert cap_check["tolerance_pct"] == 0.05
     finally:
         object.__setattr__(settings, "default_tolerance_pct", orig_tolerance)
+
+
+def test_validate_spread_passes_realistic_fails_blast() -> None:
+    """Spread passing realistic risk but failing 3% blast radius ceiling."""
+    # 4 lots of 450-pt wide Bear Put: max loss = 4 * 7500 = ₹30,000 > ₹25,500 blast cap
+    # Overnight 2-sigma move loss: ~₹8,000 <= ₹8,500 realistic cap
+    payload = {
+        "strategy_name": "Pass Realistic Fail Blast",
+        "underlying": "NIFTY",
+        "legs": [
+            {
+                "strike": 24850.0,
+                "option_type": "PE",
+                "direction": "buy",
+                "quantity_lots": 4,
+                "entry_premium": 120.0,
+                "expiry_date": "2026-09-24",
+                "lot_size": 75,
+            },
+            {
+                "strike": 24400.0,
+                "option_type": "PE",
+                "direction": "sell",
+                "quantity_lots": 4,
+                "entry_premium": 20.0,
+                "expiry_date": "2026-09-24",
+                "lot_size": 75,
+            },
+        ],
+        "current_spot": 24867.5,
+        "iv_per_leg": {"default": 0.15},
+    }
+    response = client.post("/api/strategy/validate", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["overall_passed"] is False
+    assert data["passed"] is False
+    assert data["realistic_risk"]["passed"] is True
+    assert data["blast_radius"]["passed"] is False
+    assert data["blast_radius"]["loss_inr"] == 30000.0
+
+
+def test_validate_spread_passes_blast_fails_realistic() -> None:
+    """Spread passing blast radius fuse but failing 1% realistic risk cap."""
+    # 5 lots of 150-pt wide Bear Put: max loss = 5 * 63 * 75 = ₹23,625 <= ₹25,500 blast cap
+    # Overnight 2-sigma move loss: ~₹10,225 > ₹8,500 realistic cap
+    payload = {
+        "strategy_name": "Pass Blast Fail Realistic",
+        "underlying": "NIFTY",
+        "legs": [
+            {
+                "strike": 24850.0,
+                "option_type": "PE",
+                "direction": "buy",
+                "quantity_lots": 5,
+                "entry_premium": 150.0,
+                "expiry_date": "2026-09-24",
+                "lot_size": 75,
+            },
+            {
+                "strike": 24700.0,
+                "option_type": "PE",
+                "direction": "sell",
+                "quantity_lots": 5,
+                "entry_premium": 87.0,
+                "expiry_date": "2026-09-24",
+                "lot_size": 75,
+            },
+        ],
+        "current_spot": 24867.5,
+        "iv_per_leg": {"default": 0.15},
+    }
+    response = client.post("/api/strategy/validate", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["overall_passed"] is False
+    assert data["passed"] is False
+    assert data["realistic_risk"]["passed"] is False
+    assert data["blast_radius"]["passed"] is True
+    assert data["blast_radius"]["loss_inr"] == 23625.0
+
+
+def test_validate_spread_passes_both() -> None:
+    """Compliant spread that passes both realistic and blast radius caps."""
+    payload = {
+        "strategy_name": "Pass Both Caps",
+        "underlying": "NIFTY",
+        "legs": [
+            {
+                "strike": 24850.0,
+                "option_type": "PE",
+                "direction": "buy",
+                "quantity_lots": 1,
+                "entry_premium": 120.0,
+                "expiry_date": "2026-09-24",
+                "lot_size": 75,
+            },
+            {
+                "strike": 24400.0,
+                "option_type": "PE",
+                "direction": "sell",
+                "quantity_lots": 1,
+                "entry_premium": 20.0,
+                "expiry_date": "2026-09-24",
+                "lot_size": 75,
+            },
+        ],
+        "current_spot": 24867.5,
+        "iv_per_leg": {"default": 0.15},
+    }
+    response = client.post("/api/strategy/validate", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["overall_passed"] is True
+    assert data["passed"] is True
+    assert data["realistic_risk"]["passed"] is True
+    assert data["blast_radius"]["passed"] is True
+    assert data["realistic_risk"]["loss_inr"] <= data["realistic_risk"]["cap_inr"]
+
+
+def test_validate_historical_vol_unavailable_raises_503(mocker) -> None:
+    """Historical data missing raises 503 with loud error."""
+    from swayam.options_math.realized_vol import HistoricalDataUnavailableError
+    mocker.patch(
+        "swayam.api.routes.validation.compute_realized_vol",
+        side_effect=HistoricalDataUnavailableError("Table 'nifty_daily_bars' does not exist in DuckDB."),
+    )
+    payload = {
+        "strategy_name": "Test 503 Vol",
+        "underlying": "NIFTY",
+        "legs": [
+            {
+                "strike": 24850.0,
+                "option_type": "PE",
+                "direction": "buy",
+                "quantity_lots": 1,
+                "entry_premium": 120.0,
+                "expiry_date": "2026-09-24",
+                "lot_size": 75,
+            },
+            {
+                "strike": 24400.0,
+                "option_type": "PE",
+                "direction": "sell",
+                "quantity_lots": 1,
+                "entry_premium": 20.0,
+                "expiry_date": "2026-09-24",
+                "lot_size": 75,
+            },
+        ],
+        "current_spot": 24867.5,
+        "iv_per_leg": {"default": 0.15},
+    }
+    response = client.post("/api/strategy/validate", json=payload)
+    assert response.status_code == 503
+    assert "historical market data unavailable" in response.json()["detail"].lower()
+
+
+def test_validate_insufficient_history_raises_503(mocker) -> None:
+    """Insufficient history raises 503 with actionable backfill command."""
+    from swayam.options_math.realized_vol import InsufficientHistoryError
+    mocker.patch(
+        "swayam.api.routes.validation.compute_realized_vol",
+        side_effect=InsufficientHistoryError(
+            needed=20,
+            available=10,
+            backfill_command="python scripts/backfill_bhavcopy.py --days 30",
+        ),
+    )
+    payload = {
+        "strategy_name": "Test Insufficient History",
+        "underlying": "NIFTY",
+        "legs": [
+            {
+                "strike": 24850.0,
+                "option_type": "PE",
+                "direction": "buy",
+                "quantity_lots": 1,
+                "entry_premium": 120.0,
+                "expiry_date": "2026-09-24",
+                "lot_size": 75,
+            },
+            {
+                "strike": 24400.0,
+                "option_type": "PE",
+                "direction": "sell",
+                "quantity_lots": 1,
+                "entry_premium": 20.0,
+                "expiry_date": "2026-09-24",
+                "lot_size": 75,
+            },
+        ],
+        "current_spot": 24867.5,
+        "iv_per_leg": {"default": 0.15},
+    }
+    response = client.post("/api/strategy/validate", json=payload)
+    assert response.status_code == 503
+    assert "insufficient nifty history (10/20 bars)" in response.json()["detail"].lower()
+    assert "backfill_bhavcopy.py" in response.json()["detail"]
 

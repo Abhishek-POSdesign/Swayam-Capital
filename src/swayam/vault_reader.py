@@ -24,6 +24,9 @@ class MethodRules:
 
     # Risk Management Rules (Stored strictly as fractions/percentages)
     per_trade_risk_pct: float       # 0.01 for 1%
+    realistic_risk_cap_pct: float   # 0.01 for 1%
+    realistic_stress_sigma: float   # 2.0
+    realized_vol_window_days: int   # 20
     rr_minimum: float               # 2.0 for 1:2
     rr_target: float                # 2.5 for 1:2.5
     daily_loss_cap_pct: float       # 0.02 for 2%
@@ -51,6 +54,11 @@ class MethodRules:
         """Calculates effective per-trade rupee cap from percentage × margin base."""
         base = margin_base if margin_base is not None else self.margin_base_default_inr
         return self.per_trade_risk_pct * base
+
+    def calculate_realistic_risk_rupee_cap(self, margin_base: Optional[float] = None) -> float:
+        """Calculates effective realistic risk rupee cap from percentage × margin base."""
+        base = margin_base if margin_base is not None else self.margin_base_default_inr
+        return self.realistic_risk_cap_pct * base
 
     def calculate_daily_loss_rupee_cap(self, margin_base: Optional[float] = None) -> float:
         """Calculates effective daily loss rupee cap from percentage × margin base."""
@@ -240,8 +248,36 @@ class VaultReader:
         # 11. Re-entry ramp tiers
         reentry_ramp = self._parse_reentry_ramp(op_text)
 
+        # 12. Two-tier risk model parameters (realistic risk cap, stress sigma, window days)
+        m = re.search(r"realistic_risk_cap_pct:\s*`?([^\s`—\n\r]+)", risk_text, re.IGNORECASE)
+        if not m:
+            raise MethodRulesParseError("Could not parse realistic_risk_cap_pct in Risk Management Rules")
+        try:
+            realistic_risk_cap_pct = float(m.group(1).rstrip("%")) / 100.0
+        except ValueError:
+            raise MethodRulesParseError(f"Malformed realistic_risk_cap_pct in Risk Management Rules: {m.group(1)}")
+
+        m = re.search(r"realistic_stress_sigma:\s*`?([^\s`—\n\r]+)", risk_text, re.IGNORECASE)
+        if not m:
+            raise MethodRulesParseError("Could not parse realistic_stress_sigma in Risk Management Rules")
+        try:
+            realistic_stress_sigma = float(m.group(1))
+        except ValueError:
+            raise MethodRulesParseError(f"Malformed realistic_stress_sigma in Risk Management Rules: {m.group(1)}")
+
+        m = re.search(r"realized_vol_window_days:\s*`?([^\s`—\n\r]+)", risk_text, re.IGNORECASE)
+        if not m:
+            raise MethodRulesParseError("Could not parse realized_vol_window_days in Risk Management Rules")
+        try:
+            realized_vol_window_days = int(m.group(1))
+        except ValueError:
+            raise MethodRulesParseError(f"Malformed realized_vol_window_days in Risk Management Rules: {m.group(1)}")
+
         return MethodRules(
             per_trade_risk_pct=per_trade_risk_pct,
+            realistic_risk_cap_pct=realistic_risk_cap_pct,
+            realistic_stress_sigma=realistic_stress_sigma,
+            realized_vol_window_days=realized_vol_window_days,
             rr_minimum=rr_minimum,
             rr_target=rr_target,
             daily_loss_cap_pct=daily_loss_cap_pct,

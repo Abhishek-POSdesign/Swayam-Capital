@@ -18,6 +18,11 @@ VALID_RISK_TEXT = """
 - Weekly loss cap: 4% of margin base.
 - Any single trade whose realized loss exceeds 3% of margin base = system failure.
 - cannot lose more than 2% of margin base overnight
+### Parameters
+- `realistic_risk_cap_pct: 1.0` — the realistic cap as a percentage of margin base
+- `blast_radius_pct: 3.0` — the absolute cap as a percentage of margin base
+- `realistic_stress_sigma: 2.0` — how many standard deviations the stress test uses
+- `realized_vol_window_days: 20` — trailing window for volatility computation
 """
 
 VALID_OP_TEXT = """
@@ -44,6 +49,9 @@ def test_vault_reader_parses_real_method_files_successfully() -> None:
 
     # Verify percentages
     assert rules.per_trade_risk_pct == 0.01
+    assert rules.realistic_risk_cap_pct == 0.01
+    assert rules.realistic_stress_sigma == 2.0
+    assert rules.realized_vol_window_days == 20
     assert rules.rr_minimum == 2.0
     assert rules.rr_target == 2.5
     assert rules.daily_loss_cap_pct == 0.02
@@ -66,6 +74,7 @@ def test_vault_reader_parses_real_method_files_successfully() -> None:
     # Verify rupee calculation methods
     margin = 850000.0
     assert rules.calculate_per_trade_rupee_cap(margin) == 8500.0
+    assert rules.calculate_realistic_risk_rupee_cap(margin) == 8500.0
     assert rules.calculate_daily_loss_rupee_cap(margin) == 17000.0
     assert rules.calculate_weekly_loss_rupee_cap(margin) == 34000.0
     assert rules.calculate_blast_radius_rupee_cap(margin) == 25500.0
@@ -183,3 +192,37 @@ def test_vault_reader_raises_on_missing_reentry_ramp() -> None:
     """
     with pytest.raises(MethodRulesParseError, match="reentry_ramp"):
         reader._parse_all_rules(VALID_RISK_TEXT, op_text, VALID_BRIEF_TEXT)
+
+
+def test_vault_reader_raises_on_missing_realistic_risk_cap() -> None:
+    reader = VaultReader(
+        method_dir=settings.trading_method_path,
+        brief_file=settings.trading_brief_path,
+    )
+    bad_risk_text = VALID_RISK_TEXT.replace("realistic_risk_cap_pct: 1.0", "")
+    with pytest.raises(MethodRulesParseError, match="realistic_risk_cap_pct"):
+        reader._parse_all_rules(bad_risk_text, VALID_OP_TEXT, VALID_BRIEF_TEXT)
+
+
+def test_vault_reader_raises_on_malformed_realistic_stress_sigma() -> None:
+    reader = VaultReader(
+        method_dir=settings.trading_method_path,
+        brief_file=settings.trading_brief_path,
+    )
+    bad_risk_text = VALID_RISK_TEXT.replace("realistic_stress_sigma: 2.0", "realistic_stress_sigma: two")
+    with pytest.raises(MethodRulesParseError, match="realistic_stress_sigma"):
+        reader._parse_all_rules(bad_risk_text, VALID_OP_TEXT, VALID_BRIEF_TEXT)
+
+
+def test_vault_reader_tolerant_comparator() -> None:
+    from swayam.rules_engine import TolerantComparator
+    reader = VaultReader(
+        method_dir=settings.trading_method_path,
+        brief_file=settings.trading_brief_path,
+    )
+    rules = reader.load_rules()
+    comparator = TolerantComparator(tolerance_pct=0.02)
+    realistic_cap = rules.calculate_realistic_risk_rupee_cap(850000.0)
+    assert comparator.within_cap(8500.0, realistic_cap) is True
+    assert comparator.within_cap(8670.0, realistic_cap) is True
+    assert comparator.within_cap(8671.0, realistic_cap) is False
