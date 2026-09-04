@@ -8,7 +8,7 @@
 > **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-southeast1` [Singapore], AI Location: `global`)  
 > **Supabase Database:** `wxijlrwoiaeaupaaqecc` (`https://wxijlrwoiaeaupaaqecc.supabase.co`)  
 > **Broker Integration:** FYERS API v3 (Client ID: `YA38914`)  
-> **Status:** Phase 1 Complete (BUILDs 1–9.5 + BUILD-9-FIXES-A/B/C Shipped). 290 automated tests passing (246 pytest + 44 vitest, 0 failures). Conversational AI partner, Indian English TTS (ADC), 3-tier memory engine, and Atlas Paper Studio UI parity integrated. Deployed to Google Cloud Run in Singapore (`asia-southeast1`) behind custom subdomain `https://swayam.abhisheksikka.com` with Google Identity-Aware Proxy (IAP). Ready for BUILD-10.
+> **Status:** Phase 1 Complete (BUILDs 1–10 + BUILD-9-FIXES-A/B/C Shipped). 321 automated tests passing (256 pytest + 65 vitest, 0 failures). Strategy Builder & Trading Terminal integrated on single-page canvas (`/strategy`) with 8 presets, AI import, margin-safe order sequencing, overnight naked short auto-block modal, and bundled chart/theme fixes. Deployed to Google Cloud Run in Singapore (`asia-southeast1`) behind custom subdomain `https://swayam.abhisheksikka.com`.
 
 ---
 
@@ -155,6 +155,32 @@
 - **Adaptive VIX Chart:** Dynamic 10% data-bounded range, 1-year median reference line, and peak marker dots.
 - **Market Data Fallbacks in Cloud Run:** Added Supabase database fallbacks (`swayam_nifty_daily_bars` with 22 bars, `swayam_bhavcopy` with 262 days) to `get_nifty_candles` and `get_vix_history` when FYERS token is expired or market is closed. All timeframe tabs (`15m`, `1h`, `1d`) return 200 OK without crashing.
 - **All 290 Tests Passing:** 246 backend pytest + 44 frontend vitest tests pass cleanly with 0 failures.
+
+### ✅ BUILD-10: Strategy Builder + Trading Terminal (Single-Page Canvas)
+- **Unified Single-Page Canvas (`/strategy`):**
+  - **Left Rail (320px):** Mini Readiness Card (reflects today's sleep, alcohol streak, live size cap), Open Positions Mini-List (live P&L badges with quick exit triggers), and AI Session Recap Card (bullets synthesized from chat history).
+  - **Center Canvas (Flexible):**
+    - **Preset Bar (`preset-bar.js`):** Chip selector for 8 core strategies (Bear Put, Bull Call, Iron Condor, Short Strangle, Calendar, Ratio, Straddle, Jade Lizard) + "Import from AI conversation" button.
+    - **Leg Builder Container (`leg-builder.js`):** Net Debit/Credit big numbers with live calculation, visual safety divider (`↑ Buys execute first (margin-safe)`), and `+ Add Leg` button.
+    - **Leg Card Component (`leg-card.js`):** B/S badge button with color inversion, CE/PE toggle, expiry picker, snap-to-50 strike input, lot stepper, real-time LTP quote display, and Greek pills (Δ, θ, ν).
+    - **Plotly Payoff Chart (`payoff-chart.js`):** Dual curves (Expiry in sage green & T+0 in dashed slate), vertical amber spot line at 24,850, red breakeven markers, and 2σ / Blast Radius threshold lines.
+    - **Rule Validation Panel (`rule-validation-panel.js`):** Side-by-side cards for Realistic Risk (2σ) & Blast Radius (max theoretical loss) with threshold checks against Method capital limits, plus secondary rule checks (R:R, Headroom, Hedge structure).
+    - **Execute Row (`execute-row.js`):** Order type selector (Limit default vs Market), order execution sequence preview button, `[Execute All Legs]` button, and `[⚡ AI-order the legs]` button.
+  - **Bottom Sticky Bar:** Live spot ticker (NIFTY 50), India VIX, and active order mode indicator.
+- **Strict Execution Ordering & Margin Safety (§ 10a):**
+  - Order preview (`POST /api/execute/preview-order`) enforces sequence: BUY legs placed first, SELL legs placed last.
+  - Calculates hedged margin vs naked margin and reports exact margin savings in rupees.
+  - Paper trade execution endpoint (`POST /api/execute/multi-leg`) creates atomic records in `swayam_positions` with `order_type` and `session_id` notes.
+- **Overnight Naked Short Auto-Block Modal (`overnight-block-modal.js`):**
+  - Detects unhedged short positions (`GET /api/positions/naked-shorts`).
+  - At 15:20 IST, if any naked short exists, locks the entire UI with an unclosable coral scrim modal (Escape key disabled).
+  - Offers only two actionable escape paths: `[Add Hedge Now]` (appends protective wings) or `[Exit Position Instead]` (liquidates position).
+- **Bundled User Fixes:**
+  1. **NIFTY 15m Chart Wicks:** Fixed `_get_nifty_candle_fallback` so 15m candles render realistic high/low wicks (`day_range * 0.18 + 6.0`) and wave dynamics instead of a flat line with dots.
+  2. **Dark/Light Chart Theme Sync:** Dispatches `swayam-theme-change` CustomEvent from header; NIFTY chart, VIX chart, and Payoff chart listen and call `Plotly.relayout` or re-render canvas immediately.
+  3. **AI Chat Testing Mode Memory:** Persists `swayam_active_session_id` in `localStorage`; `trading_partner.py` permanently enforces Constraint 7 ("Paper Trading / Testing Phase active: all execution is strictly paper simulation") in system instructions and context assembly.
+  4. **Fast Headless Test DOM:** Resolved regex catastrophic backtracking and event handler recursion in test environment, achieving 65 passing frontend tests in under 30s.
+- **All 321 Tests Passing:** 256 backend pytest + 65 frontend vitest tests pass cleanly with 0 failures.
 
 ---
 
