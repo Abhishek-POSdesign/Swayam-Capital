@@ -37,11 +37,12 @@ def get_ai_provider(
     if resolved_name == "vertex":
         return VertexAIProvider(
             project_id=settings.gcp_project_id,
-            location=settings.gcp_region,
+            location=settings.gcp_ai_location,
             model=resolved_model,
             max_output_tokens=settings.ai_max_output_tokens,
             temperature=settings.ai_temperature,
         )
+
     elif resolved_name == "openrouter":
         return OpenRouterProvider(api_key=settings.ai_api_key, model=resolved_model)
     elif resolved_name in ("direct", "anthropic", "openai", "gemini"):

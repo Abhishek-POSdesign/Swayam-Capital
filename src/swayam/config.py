@@ -77,8 +77,14 @@ class Settings:
     # GCP Configuration
     gcp_project_id: str = field(default_factory=lambda: os.getenv("GCP_PROJECT_ID", "swayam-capital"))
     gcp_region: str = field(default_factory=lambda: os.getenv("GCP_REGION", "asia-south1"))
+    gcp_ai_location: str = field(default_factory=lambda: os.getenv("GCP_AI_LOCATION", "global"))
     gcs_options_bucket: str = field(default_factory=lambda: os.getenv("GCS_OPTIONS_BUCKET", "swayam-capital-options-data"))
     gcp_billing_account: str = field(default_factory=lambda: os.getenv("GCP_BILLING_ACCOUNT", ""))
+
+    # Trading Execution & Charges Configuration
+    estimated_charge_per_leg_inr: float = field(
+        default_factory=lambda: float(os.getenv("ESTIMATED_CHARGE_PER_LEG_INR", "150.0"))
+    )
 
     # AI Integration (3-Tier Routing)
     ai_provider: str = field(default_factory=lambda: os.getenv("AI_PROVIDER", "vertex"))

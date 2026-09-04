@@ -34,11 +34,12 @@ def _make_provider(model: str) -> VertexAIProvider:
     """Creates a VertexAIProvider wired to the given model."""
     return VertexAIProvider(
         project_id=settings.gcp_project_id,
-        location=settings.gcp_region,
+        location=settings.gcp_ai_location,
         model=model,
         max_output_tokens=settings.ai_max_output_tokens,
         temperature=settings.ai_temperature,
     )
+
 
 
 def chat_main_turn(messages: list[dict[str, str]]) -> tuple[str, str]:
