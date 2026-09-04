@@ -576,7 +576,14 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
         try:
             margin_base = db.get_margin_base_inr()
         except Exception:
-            margin_base = 850000.0  # Fallback for display calculation if config unreachable
+            try:
+                from swayam.vault_reader import vault_reader
+                margin_base = vault_reader.load_rules().margin_base_default_inr
+            except Exception:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Database and Method Rules unreachable to determine margin base for journal exit block.",
+                )
 
         try:
             append_exit_block(

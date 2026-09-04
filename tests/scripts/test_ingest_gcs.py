@@ -98,3 +98,14 @@ def test_ingest_date_inserts_and_is_idempotent(tmp_path):
 
     # CRITICAL: Due to natural key idempotency, total rows must still be 2, NOT 4!
     assert local_db.get_row_count("options_history") == 2
+
+
+def test_ingest_date_raises_error_if_bucket_unconfigured(mocker, tmp_path):
+    local_db = LocalDB(db_path=tmp_path / "test.duckdb")
+    mock_client = MagicMock()
+    mock_settings = MagicMock()
+    mock_settings.gcs_options_bucket = ""
+    mocker.patch("ingest_gcs_to_duckdb.settings", mock_settings)
+
+    with pytest.raises(ValueError, match="GCS_OPTIONS_BUCKET setting is required"):
+        ingest_date(date(2026, 9, 8), mock_client, local_db)

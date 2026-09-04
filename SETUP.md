@@ -46,13 +46,13 @@ This guide takes you from a clean machine to a fully verified Swayam Capital dev
 
 ## 4. Supabase Database Initialization
 
-1. Create a new project in [Supabase](https://supabase.com) named `swayam-capital`.
+1. Open your [Supabase Dashboard](https://supabase.com/dashboard/project/wxijlrwoiaeaupaaqecc).
 2. Copy the Project URL and API keys into `.env`.
-3. Apply the initial schema migration:
-   ```powershell
-   python scripts/apply_migration.py 001
-   ```
-   *(Alternatively, copy and run `migrations/001_initial_schema.sql` directly inside Supabase's SQL Editor).*
+3. Apply the schema migrations in order using the Supabase SQL Editor:
+   - **Migration 001 (Core Schema):**
+     Open `migrations/001_initial_schema.sql`, copy all contents, and execute inside Supabase SQL Editor (or check with `python scripts/apply_migration.py 001`).
+   - **Migration 002 (AI Partner & Rule Evolution):**
+     Open `migrations/002_ai_conversations_and_rule_log.sql`, copy all contents, and execute inside Supabase SQL Editor (or check with `python scripts/apply_migration.py 002`).
 
 ---
 

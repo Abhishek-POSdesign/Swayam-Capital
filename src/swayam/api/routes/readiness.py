@@ -3,9 +3,12 @@ Operational Readiness API endpoints for Swayam Capital.
 """
 
 from datetime import date, datetime, timezone
+import logging
 from typing import Any
 from fastapi import APIRouter, HTTPException
 from swayam.db import db
+
+logger = logging.getLogger(__name__)
 from swayam.readiness import (
     ReadinessInput,
     ReadinessReconciliation,
@@ -72,8 +75,16 @@ def log_readiness(inp: ReadinessInput) -> ReadinessVerdict:
         res = client.table("swayam_config").select("*").eq("key", "current_alcohol_streak_days").single().execute()
         if res.data:
             streak_days = int(res.data.get("value", 0))
-    except Exception:
-        streak_days = None
+    except Exception as exc:
+        err_msg = str(exc)
+        if "0 rows" in err_msg or "PGRST116" in err_msg or "Results contain 0 rows" in err_msg:
+            streak_days = None
+        else:
+            logger.error(f"Failed to query swayam_config: {exc}")
+            raise HTTPException(
+                status_code=503,
+                detail=f"Database unreachable while querying readiness configuration: {exc}",
+            )
 
     verdict = compute_readiness_verdict(inp, current_alcohol_streak_days=streak_days)
 

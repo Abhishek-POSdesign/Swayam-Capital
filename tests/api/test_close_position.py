@@ -250,3 +250,68 @@ def test_close_position_fetches_ltp_when_exit_legs_omitted(client):
     assert data["realized_pnl_inr"] == 7200.0
     mock_fyers.get_option_chain.assert_called_once()
 
+
+def test_close_position_margin_fallback_to_method_rules(client):
+    open_pos = _make_open_position()
+
+    with (
+        patch("swayam.api.routes.positions.db") as mock_db,
+        patch("swayam.api.routes.positions.append_exit_block") as mock_journal,
+        patch("swayam.vault_reader.vault_reader.load_rules") as mock_load,
+    ):
+        mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+            open_pos
+        ]
+        mock_db.client.table.return_value.insert.return_value.execute.return_value = MagicMock()
+        mock_db.client.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
+        mock_db.get_margin_base_inr.side_effect = RuntimeError("DB down")
+
+        mock_rules = MagicMock()
+        mock_rules.margin_base_default_inr = 900000.0
+        mock_load.return_value = mock_rules
+
+        resp = client.post(
+            "/api/positions/pos-close-123/close",
+            json={
+                "close_reason": "target_hit",
+                "exit_legs": [
+                    {"strike": 24850.0, "option_type": "PE", "exit_premium": 250.0},
+                    {"strike": 24100.0, "option_type": "PE", "exit_premium": 30.0},
+                ],
+            },
+        )
+
+    assert resp.status_code == 200
+    mock_journal.assert_called_once()
+    assert mock_journal.call_args.kwargs["margin_base_inr"] == 900000.0
+
+
+def test_close_position_margin_fails_503_when_both_unreachable(client):
+    open_pos = _make_open_position()
+
+    with (
+        patch("swayam.api.routes.positions.db") as mock_db,
+        patch("swayam.api.routes.positions.append_exit_block") as mock_journal,
+        patch("swayam.vault_reader.vault_reader.load_rules", side_effect=RuntimeError("Vault missing")),
+    ):
+        mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+            open_pos
+        ]
+        mock_db.client.table.return_value.insert.return_value.execute.return_value = MagicMock()
+        mock_db.client.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
+        mock_db.get_margin_base_inr.side_effect = RuntimeError("DB down")
+
+        resp = client.post(
+            "/api/positions/pos-close-123/close",
+            json={
+                "close_reason": "target_hit",
+                "exit_legs": [
+                    {"strike": 24850.0, "option_type": "PE", "exit_premium": 250.0},
+                    {"strike": 24100.0, "option_type": "PE", "exit_premium": 30.0},
+                ],
+            },
+        )
+
+    assert resp.status_code == 503
+    assert "margin base" in resp.json()["detail"].lower()
+

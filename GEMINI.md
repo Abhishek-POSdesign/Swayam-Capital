@@ -1,0 +1,233 @@
+# 🤖 GEMINI.md — Swayam Capital Architecture & Handoff Master Record
+
+> **Project:** Swayam Capital — Algorithmic & AI-Assisted F&O Options Trading Platform  
+> **Owner:** Abhishek Sikka  
+> **Primary AI Architect:** Antigravity (Gemini)  
+> **Code Repository:** `D:\Claude\POS\Trading-Platform\Swayam Capital`  
+> **Obsidian Vault (Method & Truth):** `G:\My Drive\Second Brain\02 - Projects\Trading\`  
+> **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-south1`, AI Location: `global`)  
+> **Supabase Database:** `wxijlrwoiaeaupaaqecc` (`https://wxijlrwoiaeaupaaqecc.supabase.co`)  
+> **Broker Integration:** FYERS API v3 (Client ID: `YA38914`)  
+> **Status:** Phase 1 Complete (BUILDs 1–7 + Small Cleanups Shipped). 187 automated tests passing. Ready for UI Redesign Session.
+
+---
+
+## 🏛️ 1. Core Philosophy & Operating Rules
+
+1. **Non-Technical Builder Protocol:**
+   - Abhishek is a non-technical builder and sole provider.
+   - Always communicate in plain English, avoiding or immediately explaining technical jargon.
+   - Strict Execution Protocol for code/file changes: Restate goal -> 3–5 step plan -> HARD STOP -> wait for user approval -> execute -> explain changes.
+   - For informational queries or read-only research, autonomous background execution is permitted.
+
+2. **The "Vault Holds Mind, Database Holds Money" Principle:**
+   - Trading rules, psychology rules, and journal reflections live in the Obsidian Second Brain vault (`02 - Projects/Trading/`).
+   - The platform dynamically parses rules from markdown at runtime (never hardcoding rupee amounts or static rules into Python code).
+   - Live trades, audit logs, and account balances live in Supabase (`swayam_*` tables) and local DuckDB.
+   - Sensitive broker IDs, live account numbers, or live P&L are never dumped into vault notes.
+
+3. **AI Persona & Behavior (The Eliminator, Not Recommender):**
+   - The AI acts as an **Eliminator**, filtering out invalid setups according to Abhishek's rules. Abhishek selects from the 2–3 compliant survivors.
+   - 6 Hardcoded Persona Constraints:
+     1. Strict rule enforcement (Method rules are non-negotiable).
+     2. 1% maximum capital risk per trade cap.
+     3. 1:2 minimum risk-to-reward ratio.
+     4. Operational readiness gating (sleep < 5h or active alcohol lockout blocks trades).
+     5. No unhedged naked options selling.
+     6. Process-oriented feedback (grading decisions on adherence, not outcome luck).
+
+4. **Zero Silent Fallbacks:**
+   - Fail loudly with clear HTTP exceptions (503 Service Unavailable, 400 Bad Request, 404 Not Found, 500 Internal Error).
+   - Never substitute fake dummy prices or default numbers when real systems fail.
+
+---
+
+## 🚀 2. Milestone Summary (BUILDs 1 through 7 Complete)
+
+### ✅ BUILD-1: Foundation & Vault Sync
+- Dynamic runtime parsing of Obsidian Method files (`Risk Management Rules.md`, `Operational Readiness Rules.md`, `Personal Trading Brief.md`).
+- Percentage-based rule calculations (1% risk, 2% daily loss, 4% weekly loss, 3% blast radius, 2% overnight hedge).
+- Local DuckDB storage engine (`data/options_cache.duckdb`) with automated schema migrations.
+- Bhavcopy downloader and daily options data ingestion pipeline.
+- Supabase database client initialization and connection health checking.
+
+### ✅ BUILD-2: FYERS Integration & Pricing Engine
+- Broker authentication with FYERS API v3 (OAuth token generation + automated daily refresh).
+- Complete Black-Scholes-Merton pricing library in Python (`src/swayam/options_math/`):
+  - Analytical Black-Scholes pricing for European index options.
+  - Full first- and second-order Greeks: Delta, Gamma, Theta, Vega, Rho.
+  - Implied Volatility (IV) solver using Newton-Raphson with bisection fallback.
+- Multi-leg spread payoff matrix generator (net debit/credit, max profit, max loss, breakeven points).
+- TradingView chart integration helper with custom shortcut buttons.
+
+### ✅ BUILD-3: Full-Stack Web Dashboard
+- Lightweight, ultra-fast frontend built with vanilla ES modules, Vite, and Plotly.js.
+- FastAPI backend serving `/api/` endpoints:
+  - `GET /api/market/spot`: Live NIFTY spot ticker with 5-second polling.
+  - `GET /api/rules/method`: Live parsed Method rules.
+  - `POST /api/strategy/compute`: Payoff curve generation and Greeks aggregation.
+  - `POST /api/strategy/validate`: Pre-execution validation against all Method rules.
+- Strategy builder with Bear Put Spread preset, strike selector, and real-time interactive payoff chart.
+
+### ✅ BUILD-4: 60-Second Operational Readiness Gate
+- Pre-trade checklist enforcing physical and mental state readiness before market open:
+  - Factor 1: Sleep duration (< 5h = RED lock, 5–6h = 75% size cap, > 6h = GREEN).
+  - Factor 2: Alcohol abstinence (90-day reset clock + 4-tier re-entry ramp: 0.25% -> 0.5% -> 0.75% -> 1.0%).
+  - Factor 3: Physical workout within last 48 hours.
+  - Factor 4: Emotional state & journal mood.
+  - Factor 5: Life stressors.
+- Auto-prefill reading Atlas Daily Logs (`G:\My Drive\Second Brain\01 - Daily Logs\YYYY-MM-DD.md`).
+- Hard gating: `/api/strategy/validate` and `/api/execute` reject any trade if readiness verdict is RED or unlogged.
+- Nightly reconciliation engine (`scripts/run_reconciler.py`) verifying 2:30 PM self-assessment against finalized Atlas logs.
+
+### ✅ BUILD-5: 24/7 Live Options Recorder (GCP Cloud)
+- Headless Cloud Function `swayam-recorder` deployed in `asia-south1` (Python 3.11, 512MB).
+- Cloud Scheduler trigger running `*/1 9-15 * * 1-5` (every minute during market hours).
+- Records entire NIFTY options chain (~130 strikes, CE + PE, LTP, bid/ask, OI, volume) directly from FYERS.
+- Writes daily compressed Parquet files to Google Cloud Storage (`gs://swayam-capital-options-data/YYYY/MM/DD/nifty_chain.parquet`).
+- Nightly Windows scheduled task (`scripts/ingest_gcs_to_duckdb.py`) ingesting Parquet into local DuckDB table `options_history` with composite natural key `(trade_date, symbol, snapshot_time_utc)` for 100% idempotent inserts.
+
+### ✅ BUILD-6: AI Trading Partner (Vertex AI Gemini)
+- 3-Tier Model Routing:
+  - **Tier 1 (Primary):** `gemini-3.1-pro-preview` — deep reasoning, setup validation, complex multi-leg evaluation.
+  - **Tier 2 (Fallback):** `gemini-2.5-pro` — activated automatically if Tier 1 times out or hits rate limits.
+  - **Tier 3 (Lightweight):** `gemini-2.5-flash-lite` — instant queries, quick calculations, routine trade checks.
+- Full context assembly loading: Method rules, margin base, live spot, today's readiness verdict, active positions, recent trade history, and Personal Trading Brief.
+- Server-Sent Events (SSE) streaming endpoint (`POST /api/ai/chat/stream`).
+- Collapsible web chat drawer with markdown formatting, token usage tracking, and conversation persistence.
+- Supabase Migration 002: added `swayam_ai_conversations`, `swayam_ai_messages`, `swayam_ai_usage_daily`, and `swayam_rule_evolution_log`.
+
+### ✅ BUILD-7: Live P&L and Trade Exit Flow
+- Real-time mark-to-market position valuation (`GET /api/positions/live`):
+  - Fetches live option chain from FYERS (with 5-second in-memory cache to prevent broker throttling).
+  - Calculates unrealized P&L leg-by-leg (Long: `(LTP - Entry) * Qty`, Short: `(Entry - LTP) * Qty`).
+  - Computes updated position Greeks and risk percentages against current margin base.
+- Trade close endpoint (`POST /api/positions/{id}/close`):
+  - **Database-before-Journal ordering:** records trade exit to `swayam_trade_history` and updates `swayam_positions` before updating markdown files.
+  - Automates journal note completion via `append_exit_block()`: updates frontmatter (`status: closed`, `closed_at`, `realized_pnl_inr`, `close_reason`) and replaces placeholder `## Exit (to be filled at close)` with formatted exit table, net P&L, charges, and holding duration.
+- Interactive web close modal with editable LTP overrides.
+
+### ✅ Small Cleanups & AI Region Fix
+- **AI Location Resolution:** Set `GCP_AI_LOCATION=global` across `.env`, `config.py`, `router.py`, and `factory.py`. Fixes 404 regional availability in `asia-south1` and allows full 3.1 Pro Preview operation with zero downgrade.
+- **Removed Silent Fallbacks:**
+  - `readiness.py`: Database failures now raise HTTP 503 instead of silently setting alcohol streak to empty.
+  - `ingest_gcs_to_duckdb.py`: Missing `GCS_OPTIONS_BUCKET` now raises an explicit `ValueError`.
+  - `positions.py`: Margin base fallback dynamically reads from vault `MethodRules` or raises HTTP 503 instead of guessing a hardcoded amount.
+- **Frontend Syntax & Build Test:** Added in-memory Vite build test (`web/tests/test_build_syntax.test.js`) in Vitest ensuring zero template literal or syntax errors reach the browser.
+- **Documentation:** Updated `SETUP.md` with complete instructions for virtual environment and both Supabase migrations (001 and 002).
+
+---
+
+## 📊 3. Database Schema Overview (Supabase: `wxijlrwoiaeaupaaqecc`)
+
+All 10 tables have Row Level Security (RLS) disabled for platform service key / anon access:
+
+| Table | Purpose | Key Fields |
+|:---|:---|:---|
+| `swayam_config` | Dynamic key-value system settings | `key` (PK), `value`, `description`, `updated_at` |
+| `swayam_readiness_log` | Daily pre-trade operational readiness assessments | `id` (PK), `log_date`, `verdict`, `trading_allowed`, `size_cap_pct`, `factors` |
+| `swayam_positions` | Open and closed trade positions | `id` (PK), `strategy_name`, `status`, `legs`, `entry_time`, `max_loss_inr`, `journal_path` |
+| `swayam_trade_history` | Historical closed trade records & realized metrics | `id` (PK), `position_id`, `realized_pnl_inr`, `charges_inr`, `holding_days`, `close_reason` |
+| `swayam_daily_pnl` | Daily P&L snapshots for equity curve | `trade_date` (PK), `realized_pnl_inr`, `unrealized_pnl_inr`, `trade_count` |
+| `swayam_audit_log` | Immutable compliance and execution audit trail | `id` (PK), `event_type`, `payload`, `created_at` |
+| `swayam_ai_conversations` | AI chat sessions | `id` (PK), `title`, `created_at`, `updated_at` |
+| `swayam_ai_messages` | Individual turns within an AI conversation | `id` (PK), `conversation_id`, `role`, `content`, `model_used`, `tokens_in`, `tokens_out` |
+| `swayam_ai_usage_daily` | Daily token and cost tracking for Vertex AI | `usage_date` (PK), `model`, `request_count`, `input_tokens`, `output_tokens`, `cost_inr` |
+| `swayam_rule_evolution_log` | History of rule adjustments and backtest proposals | `id` (PK), `rule_name`, `old_value`, `new_value`, `reason`, `backtest_id` |
+
+---
+
+## 🔌 4. API Endpoints Reference
+
+The FastAPI backend runs at `http://localhost:8000`:
+
+- **System & Health:**
+  - `GET /health` — Verifies system status and version.
+  - `GET /api/market/spot` — Returns live NIFTY spot price and timestamp from FYERS.
+- **Rules & Readiness:**
+  - `GET /api/rules/method` — Returns parsed Method rules and calculated rupee thresholds.
+  - `GET /api/readiness/today` — Checks if today's readiness is logged; returns Atlas defaults if unlogged.
+  - `POST /api/readiness/log` — Persists 2:30 PM readiness assessment and calculates trading verdict.
+- **Strategy & Execution:**
+  - `POST /api/strategy/compute` — Computes spread payoff diagram points, net debit/credit, and aggregated Greeks.
+  - `POST /api/strategy/validate` — Validates proposed strategy against Method rules and today's readiness gate.
+  - `POST /api/execute` — Executes paper trade: records to Supabase, generates Obsidian trade journal note.
+- **Positions & Trade Management:**
+  - `GET /api/positions/active` — Lists all currently open paper trade positions.
+  - `GET /api/positions/live` — Mark-to-market live valuation of open positions with 5s cached FYERS quotes.
+  - `POST /api/positions/{id}/close` — Closes an open position: updates DB, records P&L, appends exit block to journal note.
+- **AI Trading Partner:**
+  - `POST /api/ai/chat/stream` — SSE streaming chat completion with 3-tier Gemini routing and full context injection.
+  - `GET /api/ai/conversations` — Retrieves conversation list.
+  - `GET /api/ai/conversations/{id}/messages` — Retrieves turn history for a session.
+
+---
+
+## 🎨 5. Upcoming UI Redesign Session (Where to Pick Up Tomorrow)
+
+### Core Requirement from Abhishek
+**NOT single-page consolidation.** The platform requires a **multi-page / multi-tab architecture** inspired by the mature **Atlas** interface (`atlas.abhisheksikka.com`) and the **POS Design Bible** (`https://github.com/Abhishek-POSdesign/design-bible`).
+
+### Dedicated Work Surfaces
+1. **Readiness Workspace:**
+   - Dedicated wake-up screen with structured form fields (sleep hours, workout status, journal mood, stress level).
+   - Streak tracking (alcohol-free days clock, re-entry ramp tier indicators).
+   - Clear visual verdict card (GREEN / YELLOW / RED) with full factor breakdown.
+2. **Strategy Builder:**
+   - Spread construction surface (strike selector, expiry picker, lot size controls).
+   - Large interactive Plotly payoff chart with breakeven lines and current spot indicator.
+   - Real-time Method rule compliance checklist (checks turn green/red as legs are added).
+   - Position Greeks card (Delta, Gamma, Theta, Vega).
+3. **Active Trades & Live P&L:**
+   - Dedicated table and card view for open positions.
+   - Real-time 5-second polling with color-coded live P&L (green for profit, red for loss).
+   - Trade exit modal with editable exit premiums and instant net P&L calculation.
+4. **Trade Journal & History:**
+   - Visual browsing of past closed trades from Supabase and Obsidian.
+   - Long-form markdown reflection reading view.
+   - Cumulative equity curve and win/loss statistics.
+5. **Backtesting & Historical Data:**
+   - Historical options playback using recorded DuckDB parquet data.
+   - Rule parameter testing and sensitivity reports.
+6. **AI Trading Partner (Persistent):**
+   - Persistent collapsible sidebar or floating drawer accessible from any tab/page.
+   - Context-aware assistance streaming suggestions and checking rule compliance.
+
+### Technical Constraints for Frontend
+- Keep **Vanilla JavaScript + Vite + Plotly.js** (do not introduce heavy frameworks like React, Next.js, or Tailwind unless explicitly instructed).
+- Use CSS variables adhering to POS Design Bible standards (dark calibration, muted accents, precise spatial rhythm).
+
+---
+
+## 🛠️ 6. How to Run & Verify the Platform
+
+### Terminal 1: Backend API Server
+```powershell
+cd "D:\Claude\POS\Trading-Platform\Swayam Capital"
+.\.venv\Scripts\Activate.ps1
+python -m uvicorn swayam.api.main:app --reload --port 8000
+```
+
+### Terminal 2: Frontend Web Server
+```powershell
+cd "D:\Claude\POS\Trading-Platform\Swayam Capital\web"
+npm run dev
+# App will be accessible at http://localhost:5173
+```
+
+### Running the Test Suite
+```powershell
+# Python backend tests (180 tests)
+cd "D:\Claude\POS\Trading-Platform\Swayam Capital"
+.\.venv\Scripts\pytest
+
+# Frontend tests including bundle syntax verification (7 tests)
+cd "D:\Claude\POS\Trading-Platform\Swayam Capital\web"
+npm test
+```
+
+### Running Full System Smoketest
+```powershell
+cd "D:\Claude\POS\Trading-Platform\Swayam Capital"
+.\.venv\Scripts\python -m swayam.smoketest
+```

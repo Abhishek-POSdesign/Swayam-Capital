@@ -48,8 +48,9 @@ def log_message(msg: str) -> None:
 
 
 def ingest_date(target_date: date, storage_client: storage.Client, local_db: LocalDB) -> int:
-    """Downloads Parquet for a specific date from GCS and inserts into DuckDB."""
-    bucket_name = settings.gcs_options_bucket or "swayam-capital-options-data"
+    bucket_name = settings.gcs_options_bucket
+    if not bucket_name:
+        raise ValueError("GCS_OPTIONS_BUCKET setting is required for options ingest.")
     bucket = storage_client.bucket(bucket_name)
 
     paths_to_try = [

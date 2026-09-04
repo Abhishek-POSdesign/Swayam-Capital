@@ -159,3 +159,22 @@ def test_readiness_yellow_verdict_enforces_reduced_size_cap(mocker) -> None:
     cap_check = next(c for c in data["checks"] if c["rule"] == "per_trade_risk_cap")
     assert cap_check["verdict"] == "FAIL"
     assert cap_check["cap_inr"] == 6375.0
+
+
+def test_log_readiness_raises_503_when_config_db_fails(mocker) -> None:
+    mock_table = mocker.MagicMock()
+    # Simulate DB network connection failure
+    mock_table.select.return_value.eq.return_value.single.return_value.execute.side_effect = ConnectionError("Supabase connection timeout")
+    mocker.patch.object(db.client, "table", return_value=mock_table)
+
+    payload = {
+        "sleep_hours_bucket": "6-7",
+        "alcohol_yesterday": False,
+        "workout_in_last_48h": True,
+        "journal_mood": "focused",
+        "life_stressor": "none",
+    }
+
+    response = client.post("/api/readiness/log", json=payload)
+    assert response.status_code == 503
+    assert "Database unreachable" in response.json()["detail"]
