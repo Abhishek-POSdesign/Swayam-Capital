@@ -4,7 +4,7 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'asia-south1-docker.pkg.dev/$PROJECT_ID/swayam/dashboard:$SHORT_SHA'
+      - 'asia-south1-docker.pkg.dev/$PROJECT_ID/swayam/dashboard:$_TAG'
       - '-t'
       - 'asia-south1-docker.pkg.dev/$PROJECT_ID/swayam/dashboard:latest'
       - '.'
@@ -21,7 +21,7 @@ steps:
       - 'run'
       - 'deploy'
       - 'swayam-dashboard'
-      - '--image=asia-south1-docker.pkg.dev/$PROJECT_ID/swayam/dashboard:$SHORT_SHA'
+      - '--image=asia-south1-docker.pkg.dev/$PROJECT_ID/swayam/dashboard:$_TAG'
       - '--region=asia-south1'
       - '--platform=managed'
       - '--service-account=swayam-dashboard-sa@$PROJECT_ID.iam.gserviceaccount.com'
@@ -36,7 +36,7 @@ steps:
       - '--set-secrets=SUPABASE_URL=swayam-supabase-url:latest,SUPABASE_ANON_KEY=swayam-supabase-anon-key:latest,SUPABASE_SERVICE_ROLE_KEY=swayam-supabase-service-role-key:latest,FYERS_ACCESS_TOKEN=fyers-access-token:latest,FYERS_CLIENT_ID=fyers-client-id:latest,FYERS_APP_ID=fyers-app-id:latest,FYERS_SECRET_KEY=fyers-secret-key:latest'
 
 images:
-  - 'asia-south1-docker.pkg.dev/$PROJECT_ID/swayam/dashboard:$SHORT_SHA'
+  - 'asia-south1-docker.pkg.dev/$PROJECT_ID/swayam/dashboard:$_TAG'
   - 'asia-south1-docker.pkg.dev/$PROJECT_ID/swayam/dashboard:latest'
 
 options:
@@ -44,3 +44,7 @@ options:
   machineType: 'E2_HIGHCPU_8'
 
 timeout: '1800s'
+
+substitutions:
+  _TAG: 'latest'
+
