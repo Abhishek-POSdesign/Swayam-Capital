@@ -223,46 +223,23 @@ def get_nifty_candles(
 def _get_nifty_candle_fallback(
     tf: str, days_back: int
 ) -> tuple[list[str], list[float], list[float], list[float], list[float], bool]:
-    """Fallback to Supabase swayam_nifty_daily_bars or swayam_bhavcopy when FYERS is unavailable."""
+    """Fallback to Supabase swayam_nifty_daily_bars when FYERS is unavailable."""
     try:
         client = db.client
         res = (
             client.table("swayam_nifty_daily_bars")
-            .select("date, open, high, low, close")
-            .order("date", desc=False)
+            .select("trade_date, open, high, low, close")
+            .order("trade_date", desc=False)
             .limit(max(days_back, 45))
             .execute()
         )
         rows = res.data or []
 
-        # If no daily bars, fallback to swayam_bhavcopy
-        if not rows:
-            res_bhav = (
-                client.table("swayam_bhavcopy")
-                .select("date, nifty_close")
-                .order("date", desc=False)
-                .limit(max(days_back, 45))
-                .execute()
-            )
-            bhav_rows = res_bhav.data or []
-            if bhav_rows:
-                rows = [
-                    {
-                        "date": r["date"],
-                        "open": round(float(r["nifty_close"]), 2),
-                        "high": round(float(r["nifty_close"]) * 1.003, 2),
-                        "low": round(float(r["nifty_close"]) * 0.997, 2),
-                        "close": round(float(r["nifty_close"]), 2),
-                    }
-                    for r in bhav_rows
-                    if r.get("nifty_close") is not None
-                ]
-
         if not rows:
             return [], [], [], [], [], False
 
         if tf == "1d":
-            d = [r["date"] for r in rows]
+            d = [r.get("trade_date") or r.get("date") for r in rows]
             o = [round(float(r["open"]), 2) for r in rows]
             h = [round(float(r["high"]), 2) for r in rows]
             l = [round(float(r["low"]), 2) for r in rows]
@@ -280,7 +257,7 @@ def _get_nifty_candle_fallback(
         if tf == "1h":
             hours = ["09:15", "10:15", "11:15", "12:15", "13:15", "14:15"]
             for r in recent_rows:
-                day_d = r["date"]
+                day_d = r.get("trade_date") or r.get("date")
                 day_o = round(float(r["open"]), 2)
                 day_h = round(float(r["high"]), 2)
                 day_l = round(float(r["low"]), 2)
@@ -329,7 +306,7 @@ def _get_nifty_candle_fallback(
                 if (h > 9 or m >= 15) and (h < 15 or m <= 30)
             ]
             for r in ultra_recent:
-                day_d = r["date"]
+                day_d = r.get("trade_date") or r.get("date")
                 day_o = round(float(r["open"]), 2)
                 day_c = round(float(r["close"]), 2)
                 prev_c = day_o
