@@ -8,7 +8,7 @@
 > **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-southeast1` [Singapore], AI Location: `global`)  
 > **Supabase Database:** `wxijlrwoiaeaupaaqecc` (`https://wxijlrwoiaeaupaaqecc.supabase.co`)  
 > **Broker Integration:** FYERS API v3 (Client ID: `YA38914`)  
-> **Status:** Phase 1 Complete (BUILDs 1–10 + BUILD-9-FIXES-A/B/C Shipped). 321 automated tests passing (256 pytest + 65 vitest, 0 failures). Strategy Builder & Trading Terminal integrated on single-page canvas (`/strategy`) with 8 presets, AI import, margin-safe order sequencing, overnight naked short auto-block modal, and bundled chart/theme fixes. Deployed to Google Cloud Run in Singapore (`asia-southeast1`) behind custom subdomain `https://swayam.abhisheksikka.com`.
+> **Status:** Phase 1 Complete (BUILDs 1–10 + BUILD-9-FIXES-A/B/C + BUILD-10-FIXES-A Shipped). 326 automated tests passing (258 pytest + 68 vitest, 0 failures). Strategy Builder & Trading Terminal integrated on single-page canvas (`/strategy`) with 8 presets, AI import, margin-safe order sequencing, overnight naked short auto-block modal, loud 503 safety endpoint failures, and honest empty states. Deployed to Google Cloud Run in Singapore (`asia-southeast1`) behind custom subdomain `https://swayam.abhisheksikka.com`.
 
 ---
 
@@ -186,7 +186,13 @@
   3. **Push Layout for AI Panel:** Opening AI drawer now auto-collapses `#strategy-left-rail` (0px) and shifts main layout 400px left, eliminating overlay occlusion on top of the Strategy Payoff chart.
   4. **Browser Refresh Persistence:** Route detection now checks `window.location.pathname` synchronously with `data-initial-page` attribute and popstate listener. Refreshing on `/strategy` stays on `/strategy` without flashing or redirecting to Home.
   5. **Reclaimed Screen Space:** Removed bottom full-width AI chat box from Strategy Builder, giving full vertical and horizontal focus to builder legs, payoff chart, and execution data.
-- **All 321 Tests Passing:** 256 backend pytest + 65 frontend vitest tests pass cleanly with 0 failures.
+- **BUILD-10-FIXES-A (Safety Hardening & Honest Empty States):**
+  1. **Safety Endpoint Loud Failures:** `GET /api/positions/naked-shorts` and `GET /api/positions` now raise `HTTPException(503)` when Supabase is unreachable instead of silently returning empty lists. Prevents the 15:20 IST overnight safety modal from being skipped during a DB outage.
+  2. **Frontend Safety Alarm Banner:** In `strategy-builder.js`, if the 15:20 check encounters a 503 or network failure, renders a prominent coral alarm banner (`⚠️ Overnight-naked safety check unavailable — Supabase unreachable. Inspect open positions manually before market close.`).
+  3. **Positions List Outage Card:** In `mini-positions-list.js`, `renderError` displays a coral alert card instead of an empty list when the database cannot be reached.
+  4. **Honest Session Recap Empty State:** `session-recap.js` replaces hardcoded placeholder bullets with an honest empty-state card ("No prior session context yet...") on fresh sessions.
+  5. **Docstring Correction:** Updated `record_local_paper_position` docstring in `positions.py` to accurately document the in-memory session cache merged with Supabase.
+- **All 326 Tests Passing:** 258 backend pytest + 68 frontend vitest tests pass cleanly with 0 failures.
 
 ---
 
