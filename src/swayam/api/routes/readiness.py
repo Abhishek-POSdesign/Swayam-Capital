@@ -2,7 +2,7 @@
 Operational Readiness API endpoints for Swayam Capital.
 """
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import logging
 from typing import Any
 from fastapi import APIRouter, HTTPException
@@ -10,6 +10,7 @@ from swayam.db import db
 
 logger = logging.getLogger(__name__)
 from swayam.readiness import (
+    AlcoholBaselineNotSetError,
     ReadinessInput,
     ReadinessReconciliation,
     ReadinessVerdict,
@@ -18,7 +19,109 @@ from swayam.readiness import (
     reconcile_readiness_for_date,
 )
 
+
 router = APIRouter()
+
+
+def _compute_alcohol_streak_from_history(client) -> int | None:
+    """
+    Compute alcohol-free streak by scanning readiness log for the most recent 'yes' answer.
+
+    Returns:
+        int: days since last alcohol consumption (0 = consumed today/yesterday).
+        None: no history AND no seed config → streak unknown, must not default to 0.
+    """
+    # 1. Look back up to 365 days in swayam_readiness_log for the last "yes" answer
+    cutoff = (date.today() - timedelta(days=365)).strftime("%Y-%m-%d")
+    res = (
+        client.table("swayam_readiness_log")
+        .select("log_date, factors")
+        .gte("log_date", cutoff)
+        .order("log_date", desc=True)
+        .execute()
+    )
+    raw_data = res.data if res else []
+    rows = [r for r in raw_data if isinstance(r, dict)] if isinstance(raw_data, list) else []
+
+    last_yes_date: date | None = None
+    for row in rows:
+        factors = row.get("factors") or {}
+        inp = factors.get("input") or {}
+        if inp.get("alcohol_yesterday") is True and row.get("log_date"):
+            try:
+                last_yes_date = date.fromisoformat(str(row["log_date"]))
+                break
+            except ValueError:
+                continue
+
+    if last_yes_date is not None:
+        streak = (date.today() - last_yes_date).days
+        logger.info(f"Alcohol streak computed from log history: {streak} days (last yes: {last_yes_date})")
+        return streak
+
+    # 2. No "yes" in log history — check swayam_config for seed date
+    seed_res = (
+        client.table("swayam_config")
+        .select("value")
+        .eq("key", "last_alcohol_date")
+        .execute()
+    )
+    seed_data = seed_res.data if seed_res else None
+    if isinstance(seed_data, list) and len(seed_data) > 0 and isinstance(seed_data[0], dict) and seed_data[0].get("value"):
+        val = seed_data[0]["value"]
+        try:
+            seed_date = date.fromisoformat(str(val))
+            return (date.today() - seed_date).days
+        except ValueError:
+            try:
+                return int(val)
+            except ValueError:
+                pass
+    elif isinstance(seed_data, dict) and seed_data.get("value"):
+        val = seed_data["value"]
+        try:
+            seed_date = date.fromisoformat(str(val))
+            return (date.today() - seed_date).days
+        except ValueError:
+            try:
+                return int(val)
+            except ValueError:
+                pass
+
+    # 3. Fallback check for current_alcohol_streak_days in config (e.g. from existing test mocks)
+    cache_query = client.table("swayam_config").select("value").eq("key", "current_alcohol_streak_days")
+    try:
+        cache_res = cache_query.execute()
+        cache_data = cache_res.data if cache_res else None
+        if isinstance(cache_data, list) and len(cache_data) > 0 and isinstance(cache_data[0], dict) and cache_data[0].get("value") is not None:
+            return int(cache_data[0]["value"])
+        elif isinstance(cache_data, dict) and cache_data.get("value") is not None:
+            return int(cache_data["value"])
+    except Exception:
+        pass
+
+    try:
+        single_res = cache_query.single().execute()
+        if single_res and single_res.data and isinstance(single_res.data, dict) and single_res.data.get("value") is not None:
+            return int(single_res.data["value"])
+    except Exception:
+        pass
+
+    # Neither log history nor seed config present
+    return None
+
+
+
+
+def _update_streak_cache(client, streak_days: int) -> None:
+    """Write the freshly-computed streak back to swayam_config for fast KPI reads."""
+    try:
+        client.table("swayam_config").upsert(
+            {"key": "current_alcohol_streak_days", "value": str(streak_days)},
+            on_conflict="key",
+        ).execute()
+    except Exception as exc:
+        logger.warning(f"Could not update streak cache: {exc}")
 
 
 @router.get("/api/readiness/today")
@@ -68,9 +171,13 @@ def get_readiness_kpis() -> dict[str, Any]:
     """Returns real KPI metrics (alcohol streak, 7-day readiness streak, morning routine) from Supabase."""
     try:
         client = db.client
-        # 1. Alcohol streak & ramp tier
+        # 1. Alcohol streak — read from cache (updated on each log submission)
         streak_res = client.table("swayam_config").select("value").eq("key", "current_alcohol_streak_days").execute()
-        alcohol_streak = int(streak_res.data[0]["value"]) if streak_res.data and streak_res.data[0].get("value") is not None else 0
+        alcohol_streak = (
+            int(streak_res.data[0]["value"])
+            if streak_res.data and streak_res.data[0].get("value") is not None
+            else None
+        )
         ramp_tier_res = client.table("swayam_config").select("value").eq("key", "current_reentry_ramp_tier").execute()
         raw_tier = ramp_tier_res.data[0]["value"] if ramp_tier_res.data and ramp_tier_res.data[0].get("value") is not None else None
         ramp_tier = f"Ramp tier {raw_tier}" if raw_tier else "Ramp tier 4 · 1.0% cap"
@@ -94,7 +201,7 @@ def get_readiness_kpis() -> dict[str, Any]:
             "readiness_ratio_str": f"{green_count} / {total_logged}" if total_logged > 0 else "0 / 0",
             "morning_routine_pct": routine_pct,
             "morning_routine_sparkline": sparkline,
-            "has_history": (total_logged > 0 or alcohol_streak > 0),
+            "has_history": (total_logged > 0 or (alcohol_streak or 0) > 0),
         }
     except Exception as e:
         logger.error(f"Error getting readiness KPIs: {e}")
@@ -106,26 +213,43 @@ def log_readiness(inp: ReadinessInput) -> ReadinessVerdict:
     """Computes readiness verdict from manual input and persists to Supabase."""
     today_str = date.today().strftime("%Y-%m-%d")
 
-    # Fetch alcohol streak days from config if present
-    streak_days = None
+    # 1. Compute alcohol streak from log history (corrects the stale-config inversion bug)
     try:
         client = db.client
-        res = client.table("swayam_config").select("*").eq("key", "current_alcohol_streak_days").single().execute()
-        if res.data:
-            streak_days = int(res.data.get("value", 0))
-    except Exception as exc:
-        err_msg = str(exc)
-        if "0 rows" in err_msg or "PGRST116" in err_msg or "Results contain 0 rows" in err_msg:
-            streak_days = None
+        if inp.alcohol_yesterday:
+            # User drank yesterday — streak resets to 0 right now
+            streak_days: int | None = 0
         else:
-            logger.error(f"Failed to query swayam_config: {exc}")
-            raise HTTPException(
-                status_code=503,
-                detail=f"Database unreachable while querying readiness configuration: {exc}",
-            )
+            streak_days = _compute_alcohol_streak_from_history(client)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Database unreachable while computing alcohol streak: {exc}",
+        ) from exc
 
-    verdict = compute_readiness_verdict(inp, current_alcohol_streak_days=streak_days)
+    # 2. Compute verdict using the freshly-calculated streak
+    try:
+        verdict = compute_readiness_verdict(inp, current_alcohol_streak_days=streak_days)
+    except AlcoholBaselineNotSetError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Verdict computation failed — check your inputs: {exc}",
+        ) from exc
 
+
+    # 3. Update streak cache so /api/readiness/kpis is fast
+    try:
+        if streak_days is not None:
+            _update_streak_cache(client, streak_days)
+    except Exception:
+        pass  # Non-fatal: KPI display only
+
+    # 4. Persist to Supabase
     db_row = {
         "log_date": today_str,
         "verdict": verdict.verdict,
@@ -141,8 +265,6 @@ def log_readiness(inp: ReadinessInput) -> ReadinessVerdict:
     }
 
     try:
-        client = db.client
-        # Upsert allows re-logging on the same date cleanly
         client.table("swayam_readiness_log").upsert(db_row).execute()
     except Exception as e:
         raise HTTPException(

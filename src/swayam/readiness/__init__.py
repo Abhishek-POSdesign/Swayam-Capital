@@ -10,9 +10,10 @@ from swayam.readiness.models import (
     ReadinessVerdict,
 )
 from swayam.readiness.reconciler import reconcile_readiness_for_date
-from swayam.readiness.verdict import compute_readiness_verdict
+from swayam.readiness.verdict import AlcoholBaselineNotSetError, compute_readiness_verdict
 
 __all__ = [
+    "AlcoholBaselineNotSetError",
     "ReadinessInput",
     "ReadinessVerdict",
     "ReadinessReconciliation",
@@ -21,3 +22,4 @@ __all__ = [
     "get_daily_log_defaults",
     "reconcile_readiness_for_date",
 ]
+

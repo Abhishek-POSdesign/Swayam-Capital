@@ -164,8 +164,9 @@ def test_readiness_yellow_verdict_enforces_reduced_size_cap(mocker) -> None:
 def test_log_readiness_raises_503_when_config_db_fails(mocker) -> None:
     mock_table = mocker.MagicMock()
     # Simulate DB network connection failure
-    mock_table.select.return_value.eq.return_value.single.return_value.execute.side_effect = ConnectionError("Supabase connection timeout")
+    mock_table.select.side_effect = ConnectionError("Supabase connection timeout")
     mocker.patch.object(db.client, "table", return_value=mock_table)
+
 
     payload = {
         "sleep_hours_bucket": "6-7",

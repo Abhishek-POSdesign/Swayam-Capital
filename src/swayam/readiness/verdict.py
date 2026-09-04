@@ -12,6 +12,11 @@ from swayam.rules_engine import TolerantComparator
 from swayam.vault_reader import MethodRules, vault_reader
 
 
+class AlcoholBaselineNotSetError(Exception):
+    """Raised when no alcohol history exists in DB and no baseline seed is configured."""
+    pass
+
+
 def compute_readiness_verdict(
     inp: ReadinessInput,
     rules: Optional[MethodRules] = None,
@@ -53,7 +58,11 @@ def compute_readiness_verdict(
     if inp.alcohol_yesterday:
         per_factor["alcohol"] = "red"
         reasons.append(f"Alcohol consumed yesterday: {rules.alcohol_lockout_days}-day lockout active.")
-    elif current_alcohol_streak_days is not None and current_alcohol_streak_days < rules.alcohol_lockout_days:
+    elif current_alcohol_streak_days is None:
+        raise AlcoholBaselineNotSetError(
+            "Alcohol baseline date not configured. Run: python scripts/set_alcohol_baseline.py --date YYYY-MM-DD"
+        )
+    elif current_alcohol_streak_days < rules.alcohol_lockout_days:
         per_factor["alcohol"] = "red"
         reasons.append(f"Alcohol lockout active: Day {current_alcohol_streak_days} of {rules.alcohol_lockout_days}.")
     else:
@@ -73,20 +82,24 @@ def compute_readiness_verdict(
     # -------------------------------------------------------------
     if inp.journal_mood == "angry_grief":
         per_factor["mood"] = "red"
-        reasons.append("Mood marked as Angry/Grief: Emotional volatility blocks trading.")
+        reasons.append("Angry/Grief/Revenge sentiment detected in journal: Trading blocked.")
     elif inp.journal_mood in ("tired", "off"):
         per_factor["mood"] = "yellow"
-        reasons.append(f"Sub-optimal mood ({inp.journal_mood}): Exercise heightened caution.")
+        reasons.append(f"Journal mood is '{inp.journal_mood}': Exercise heightened caution.")
     else:
         per_factor["mood"] = "green"
 
     # -------------------------------------------------------------
     # 5. Life Stressor Evaluation
     # -------------------------------------------------------------
+    # none → PASS, anything else → YELLOW (size cap 0.5%, not full block)
+    # Method rules: family/work/health/financial all reduce size cap to 0.5%
+    # Only sleep <5h, alcohol <24h, or today unlogged triggers RED
     if inp.life_stressor != "none":
         per_factor["stressor"] = "yellow"
         note = f" - {inp.stressor_note}" if inp.stressor_note else ""
-        reasons.append(f"Active life stressor ({inp.life_stressor}){note}: Tighten stops on positions.")
+        extra = " Consider paper-trading only today." if inp.life_stressor == "financial" else ""
+        reasons.append(f"Active life stressor ({inp.life_stressor}){note}: Size cap reduced to 0.5%.{extra}")
     else:
         per_factor["stressor"] = "green"
 
@@ -100,10 +113,12 @@ def compute_readiness_verdict(
     elif any(v == "yellow" for v in per_factor.values()):
         composite_verdict = "yellow"
         trading_allowed = True
+        cap = rules.per_trade_risk_pct
         if per_factor.get("sleep") == "yellow":
-            size_cap_pct = rules.per_trade_risk_pct * rules.sleep_reduced_size_factor
-        else:
-            size_cap_pct = rules.per_trade_risk_pct
+            cap = min(cap, rules.per_trade_risk_pct * rules.sleep_reduced_size_factor)
+        if per_factor.get("stressor") == "yellow":
+            cap = min(cap, 0.0050)
+        size_cap_pct = cap
     else:
         composite_verdict = "green"
         trading_allowed = True
