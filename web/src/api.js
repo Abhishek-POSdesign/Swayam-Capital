@@ -56,6 +56,12 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getPositions: (status = 'open') => request(`/api/positions?status=${status}`),
+  getPositionsLive: () => request('/api/positions/live'),
+  closePosition: (positionId, payload) =>
+    request(`/api/positions/${positionId}/close`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   getTodayReadiness: () => request('/api/readiness/today'),
   logReadiness: (payload) =>
     request('/api/readiness/log', {
@@ -64,3 +70,4 @@ export const api = {
     }),
   reconcileReadiness: () => request('/api/readiness/reconcile', { method: 'POST' }),
 };
+

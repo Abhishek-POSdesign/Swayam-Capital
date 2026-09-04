@@ -3,7 +3,7 @@
  */
 
 import { api } from './api.js';
-import { renderActiveTrades } from './components/active-trades.js';
+import { ActiveTradesComponent, renderActiveTrades } from './components/active-trades.js';
 import { AIChatPanel } from './components/ai-chat.js';
 import { initHeader, updateHeaderSpot } from './components/header.js';
 import { ReadinessCheckComponent } from './components/readiness-check.js';
@@ -19,7 +19,9 @@ class SwayamApp {
     this.wsClient = null;
     this.readiness = null;
     this.aiChat = null;
+    this.activeTradesComponent = null;
   }
+
 
   async init() {
     console.log('Initializing Swayam Capital dashboard...');
@@ -54,8 +56,17 @@ class SwayamApp {
     }
     await this.builder.init();
 
-    // 4. Initialize Active Trades Panel
-    await this.loadPositions();
+    // 4. Initialize Active Trades Panel (Live 5s Polling & Close Flow)
+    const activeContainer = document.getElementById('active-trades-container');
+    if (activeContainer) {
+      this.activeTradesComponent = new ActiveTradesComponent(activeContainer, {
+        onTradeClosed: () => {
+          if (this.builder) this.builder.recomputeAndValidate();
+        },
+      });
+      await this.activeTradesComponent.init();
+    }
+
 
     // 5. Connect WebSocket for Spot ticks
     this.wsClient = new SpotWebSocketClient((spot) => {
@@ -103,13 +114,18 @@ class SwayamApp {
 
   async loadPositions() {
     try {
-      this.activePositions = await api.getPositions('open');
-      const container = document.getElementById('active-trades-container');
-      if (container) renderActiveTrades(container, this.activePositions);
+      if (this.activeTradesComponent) {
+        await this.activeTradesComponent.fetchLivePositions();
+      } else {
+        this.activePositions = await api.getPositions('open');
+        const container = document.getElementById('active-trades-container');
+        if (container) renderActiveTrades(container, this.activePositions);
+      }
     } catch (err) {
       console.error('Failed to load positions:', err);
     }
   }
+
 
   async pollSpot() {
     try {

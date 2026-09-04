@@ -345,7 +345,7 @@ export class AIChatPanel {
         el.textContent =
           data.request_count > 0
             ? `Today's AI spend: ₹${data.estimated_cost_inr.toFixed(2)} (${data.request_count} requests)`
-            : 'Today's AI spend: ₹0.00 (0 requests)';
+            : `Today's AI spend: ₹0.00 (0 requests)`;
       }
     } catch (_) {
       // Non-fatal
