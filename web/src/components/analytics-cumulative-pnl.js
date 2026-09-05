@@ -21,7 +21,7 @@ export class AnalyticsCumulativePnlComponent {
     if (!this.container) return;
 
     this.container.innerHTML = `
-      <div style="background: var(--dl-card, #191b21); border: 1px solid var(--dl-line, #282a33); border-radius: var(--radius-card, 8px); padding: 14px 16px; height: 100%;">
+      <div style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: var(--radius-card); padding: 14px 16px; height: 100%;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dl-fg-3); font-weight: 600;">
             📈 Cumulative Equity Curve (Net ₹)

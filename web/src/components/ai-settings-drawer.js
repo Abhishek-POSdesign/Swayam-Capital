@@ -44,10 +44,10 @@ export class AISettingsDrawer {
     const { voice, rate, autoPlay } = getTTSPreferences();
 
     this.container.innerHTML = `
-      <div id="ai-settings-drawer-panel" style="position: fixed; top: 0; right: 0; width: 380px; max-width: 90vw; height: 100vh; background: var(--dl-card, #191b21); border-left: 2px solid var(--accent-lilac, #ac9fd2); box-shadow: -6px 0 24px rgba(0,0,0,0.5); transform: translateX(100%); transition: transform var(--dur-base, 200ms) ease; z-index: 1000; display: flex; flex-direction: column;">
+      <div id="ai-settings-drawer-panel" style="position: fixed; top: 0; right: 0; width: 380px; max-width: 90vw; height: 100vh; background: var(--dl-card); border-left: 2px solid var(--accent-lilac); box-shadow: -6px 0 24px rgba(0,0,0,0.5); transform: translateX(100%); transition: transform var(--dur-base, 200ms) ease; z-index: 1000; display: flex; flex-direction: column;">
         
         <!-- Header -->
-        <div style="background: var(--dl-rail, #16171c); padding: 16px 20px; border-bottom: 1px solid var(--dl-line); display: flex; justify-content: space-between; align-items: center;">
+        <div style="background: var(--dl-rail); padding: 16px 20px; border-bottom: 1px solid var(--dl-line); display: flex; justify-content: space-between; align-items: center;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <span style="font-size: 1.1rem;">⚙️</span>
             <span style="font-weight: 700; font-size: 0.95rem; color: var(--dl-fg);">AI Partner Settings</span>

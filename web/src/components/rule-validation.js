@@ -37,7 +37,7 @@ export function renderRuleValidation(container, val, options = {}) {
             <div><strong>${c.rule.replace(/_/g, ' ').toUpperCase()}</strong></div>
             <div style="font-size: 0.75rem; color: var(--text-secondary);">${c.note || ''}</div>
           </div>
-          <div class="mono" style="font-size: 0.8rem; font-weight: 600; color: ${isPass ? 'var(--green, #26a69a)' : 'var(--red, #ef5350)'};">
+          <div class="mono" style="font-size: 0.8rem; font-weight: 600; color: ${isPass ? 'var(--green)' : 'var(--red)'};">
             ${icon} ${c.verdict}
           </div>
         </div>
@@ -59,10 +59,10 @@ export function renderRuleValidation(container, val, options = {}) {
              data-testid="realistic-risk-badge"
              title="${realisticTooltip}"
              style="padding: 0.65rem; border-radius: 6px; border: 1px solid ${isRealisticPass ? 'rgba(38,166,154,0.4)' : 'rgba(239,83,80,0.4)'}; background: ${isRealisticPass ? 'rgba(38,166,154,0.08)' : 'rgba(239,83,80,0.08)'}; cursor: help;">
-          <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: ${isRealisticPass ? 'var(--green, #26a69a)' : 'var(--red, #ef5350)'};">
+          <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: ${isRealisticPass ? 'var(--green)' : 'var(--red)'};">
             Realistic Risk (2σ, 20d vol)
           </div>
-          <div class="mono" style="font-size: 0.95rem; font-weight: 700; margin: 0.3rem 0; color: ${isRealisticPass ? 'var(--green, #26a69a)' : 'var(--red, #ef5350)'};">
+          <div class="mono" style="font-size: 0.95rem; font-weight: 700; margin: 0.3rem 0; color: ${isRealisticPass ? 'var(--green)' : 'var(--red)'};">
             ${isRealisticPass ? '✅' : '❌'} ${formatINR(val.realistic_risk?.loss_inr ?? 0)} / ${formatINR(val.realistic_risk?.cap_inr ?? 0)}
           </div>
           <div style="font-size: 0.72rem; color: var(--text-secondary);">
@@ -75,10 +75,10 @@ export function renderRuleValidation(container, val, options = {}) {
              data-testid="blast-radius-badge"
              title="${blastTooltip}"
              style="padding: 0.65rem; border-radius: 6px; border: 1px solid ${isBlastPass ? 'rgba(38,166,154,0.4)' : 'rgba(239,83,80,0.4)'}; background: ${isBlastPass ? 'rgba(38,166,154,0.08)' : 'rgba(239,83,80,0.08)'}; cursor: help;">
-          <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: ${isBlastPass ? 'var(--green, #26a69a)' : 'var(--red, #ef5350)'};">
+          <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: ${isBlastPass ? 'var(--green)' : 'var(--red)'};">
             Blast Radius (max loss)
           </div>
-          <div class="mono" style="font-size: 0.95rem; font-weight: 700; margin: 0.3rem 0; color: ${isBlastPass ? 'var(--green, #26a69a)' : 'var(--red, #ef5350)'};">
+          <div class="mono" style="font-size: 0.95rem; font-weight: 700; margin: 0.3rem 0; color: ${isBlastPass ? 'var(--green)' : 'var(--red)'};">
             ${isBlastPass ? '✅' : '❌'} ${formatINR(val.blast_radius?.loss_inr ?? 0)} / ${formatINR(val.blast_radius?.cap_inr ?? 0)}
           </div>
           <div style="font-size: 0.72rem; color: var(--text-secondary);">

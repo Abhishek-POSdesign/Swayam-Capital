@@ -63,7 +63,7 @@ export class TradesTableComponent {
         : grossPnl < 0 
         ? `-₹${Math.abs(Math.round(grossPnl)).toLocaleString('en-IN')}` 
         : `₹0`;
-      const pnlColor = netPnl > 0 ? 'var(--accent-sage, #86ab92)' : netPnl < 0 ? 'var(--accent-coral, #dd8170)' : 'var(--dl-fg-2)';
+      const pnlColor = netPnl > 0 ? 'var(--accent-sage)' : netPnl < 0 ? 'var(--accent-coral)' : 'var(--dl-fg-2)';
       
       const openedDate = t.opened_at ? t.opened_at.substring(0, 10) : '—';
       const openedTime = t.opened_at && t.opened_at.length > 16 ? t.opened_at.substring(11, 16) : '';
@@ -72,29 +72,29 @@ export class TradesTableComponent {
       // Discipline icon
       const rulesFollowed = t.rules_followed !== false;
       const disciplineHtml = rulesFollowed
-        ? `<span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-sage-tint, rgba(134,171,146,0.15)); color: var(--accent-sage, #86ab92); font-weight: 700; font-size: 0.75rem;" title="Discipline kept: all method rules followed">✓</span>`
-        : `<span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-coral-tint, rgba(221,129,112,0.15)); color: var(--accent-coral, #dd8170); font-weight: 700; font-size: 0.75rem;" title="${t.rules_broken_reason || 'Rule violation recorded'}">✗</span>`;
+        ? `<span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-sage-tint, rgba(134,171,146,0.15)); color: var(--accent-sage); font-weight: 700; font-size: 0.75rem;" title="Discipline kept: all method rules followed">✓</span>`
+        : `<span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-coral-tint, rgba(221,129,112,0.15)); color: var(--accent-coral); font-weight: 700; font-size: 0.75rem;" title="${t.rules_broken_reason || 'Rule violation recorded'}">✗</span>`;
 
       // Direction Badge
       const dir = (t.directional_view || 'Neutral').toLowerCase();
       const dirBg = dir.includes('bull') ? 'var(--accent-sage-tint, rgba(134,171,146,0.15))' : dir.includes('bear') ? 'var(--accent-coral-tint, rgba(221,129,112,0.15))' : 'rgba(255,255,255,0.06)';
-      const dirColor = dir.includes('bull') ? 'var(--accent-sage, #86ab92)' : dir.includes('bear') ? 'var(--accent-coral, #dd8170)' : 'var(--dl-fg-3)';
+      const dirColor = dir.includes('bull') ? 'var(--accent-sage)' : dir.includes('bear') ? 'var(--accent-coral)' : 'var(--dl-fg-3)';
 
       return `
-        <tr class="trade-row ${isExpanded ? 'expanded' : ''}" data-id="${t.position_id}" style="cursor: pointer; border-bottom: 1px solid var(--dl-line, #282a33); transition: background 0.15s ease;">
+        <tr class="trade-row ${isExpanded ? 'expanded' : ''}" data-id="${t.position_id}" style="cursor: pointer; border-bottom: 1px solid var(--dl-line); transition: background 0.15s ease;">
           <td style="padding: 10px 12px; font-family: var(--font-mono, monospace); font-size: 0.76rem; white-space: nowrap;">
-            <div style="color: var(--dl-fg, #ffffff); font-weight: 600;">${openedDate}</div>
-            <div style="color: var(--dl-fg-3, #5a5d6c); font-size: 0.68rem;">${openedTime} IST</div>
+            <div style="color: var(--dl-fg); font-weight: 600;">${openedDate}</div>
+            <div style="color: var(--dl-fg-3); font-size: 0.68rem;">${openedTime} IST</div>
           </td>
           <td style="padding: 10px 12px;">
-            <div style="font-weight: 600; font-size: 0.82rem; color: var(--dl-fg, #ffffff);">${t.strategy_name}</div>
-            <div style="font-size: 0.7rem; color: var(--dl-fg-3, #777); margin-top: 1px; max-width: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+            <div style="font-weight: 600; font-size: 0.82rem; color: var(--dl-fg);">${t.strategy_name}</div>
+            <div style="font-size: 0.7rem; color: var(--dl-fg-3); margin-top: 1px; max-width: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
               ${t.legs_summary || 'NIFTY options'}
             </div>
           </td>
           <td style="padding: 10px 12px; font-size: 0.75rem;">
-            <div style="color: var(--dl-fg-2, #ccc); font-weight: 500;">${t.setup_technical || 'Method Setup'}</div>
-            <div style="color: var(--dl-fg-3, #777); font-size: 0.68rem;">${t.setup_location || 'Key Level'}</div>
+            <div style="color: var(--dl-fg-2); font-weight: 500;">${t.setup_technical || 'Method Setup'}</div>
+            <div style="color: var(--dl-fg-3); font-size: 0.68rem;">${t.setup_location || 'Key Level'}</div>
           </td>
           <td style="padding: 10px 12px;">
             <span style="display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.68rem; font-weight: 600; text-transform: uppercase; background: ${dirBg}; color: ${dirColor};">
@@ -117,7 +117,7 @@ export class TradesTableComponent {
             </div>
           </td>
           <td style="padding: 10px 12px; text-align: center; font-family: var(--font-mono, monospace); font-size: 0.76rem;">
-            <div style="color: var(--accent-lilac, #ac9fd2); font-weight: 600;">
+            <div style="color: var(--accent-lilac); font-weight: 600;">
               ${t.rr_actual != null ? `1 : ${t.rr_actual.toFixed(2)}` : '—'}
             </div>
             <div style="font-size: 0.68rem; color: var(--dl-fg-3);">
@@ -203,7 +203,7 @@ export class TradesTableComponent {
     const isUserEdited = lessonSource === 'user_edited';
 
     return `
-      <tr class="expanded-detail-row" style="background: rgba(0,0,0,0.25); border-bottom: 2px solid var(--dl-line, #282a33);">
+      <tr class="expanded-detail-row" style="background: rgba(0,0,0,0.25); border-bottom: 2px solid var(--dl-line);">
         <td colspan="11" style="padding: 16px 20px;">
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
             
@@ -272,7 +272,7 @@ export class TradesTableComponent {
                     ✏️ Refine Lesson
                   </button>
                 ` : `
-                  <button type="button" class="btn-generate-lesson" data-pos-id="${t.position_id}" style="background: var(--accent-lilac, #ac9fd2); border: none; color: #101116; font-weight: 600; border-radius: 4px; padding: 4px 10px; font-size: 0.72rem; cursor: pointer;">
+                  <button type="button" class="btn-generate-lesson" data-pos-id="${t.position_id}" style="background: var(--accent-lilac); border: none; color: #101116; font-weight: 600; border-radius: 4px; padding: 4px 10px; font-size: 0.72rem; cursor: pointer;">
                     ✨ Generate AI Lesson
                   </button>
                 `}

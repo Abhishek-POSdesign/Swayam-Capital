@@ -63,23 +63,23 @@ export class JournalPage {
         <div id="journal-housekeeping-banner-container"></div>
 
         <!-- Header & Title Bar -->
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--dl-line, #282a33); padding-bottom: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--dl-line); padding-bottom: 14px;">
           <div>
             <div style="display: flex; align-items: center; gap: 10px;">
-              <h1 style="margin: 0; font-size: 1.35rem; font-weight: 700; color: var(--dl-fg, #ffffff); letter-spacing: -0.01em;">
+              <h1 style="margin: 0; font-size: 1.35rem; font-weight: 700; color: var(--dl-fg); letter-spacing: -0.01em;">
                 Trade Journal &amp; Performance Ledger
               </h1>
-              <span id="journal-trades-badge" style="background: rgba(255,255,255,0.06); color: var(--accent-lilac, #ac9fd2); padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; font-family: var(--font-mono);">
+              <span id="journal-trades-badge" style="background: rgba(255,255,255,0.06); color: var(--accent-lilac); padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; font-family: var(--font-mono);">
                 Loading...
               </span>
             </div>
-            <p style="margin: 4px 0 0 0; font-size: 0.78rem; color: var(--dl-fg-3, #5a5d6c);">
+            <p style="margin: 4px 0 0 0; font-size: 0.78rem; color: var(--dl-fg-3);">
               Historical Excel playbook + live paper trading log with automated AI lessons and disciplined edge analytics.
             </p>
           </div>
 
           <div style="display: flex; align-items: center; gap: 10px;">
-            <button id="btn-refresh-journal" type="button" style="background: var(--dl-card, #191b21); border: 1px solid var(--dl-line, #282a33); color: var(--dl-fg-2, #8b8e9b); padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+            <button id="btn-refresh-journal" type="button" style="background: var(--dl-card); border: 1px solid var(--dl-line); color: var(--dl-fg-2); padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px;">
               <span>🔄</span> Refresh
             </button>
           </div>
@@ -89,21 +89,21 @@ export class JournalPage {
         <div id="journal-kpi-strip-container"></div>
 
         <!-- Filter Bar -->
-        <div class="journal-filter-bar" style="background: var(--dl-card, #191b21); border: 1px solid var(--dl-line, #282a33); border-radius: var(--radius-card, 8px); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px;">
+        <div class="journal-filter-bar" style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: var(--radius-card); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px;">
           <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
             
             <!-- Quick Filter Pills -->
             <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
               
               <!-- Status Pills -->
-              <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-elevated, #101116); padding: 3px; border-radius: 6px; border: 1px solid var(--dl-line);">
+              <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-elevated); padding: 3px; border-radius: 6px; border: 1px solid var(--dl-line);">
                 <button type="button" class="filter-pill active" data-filter="status" data-value="all" style="background: transparent; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.74rem; font-weight: 600; color: var(--dl-fg); cursor: pointer;">All Status</button>
                 <button type="button" class="filter-pill" data-filter="status" data-value="closed" style="background: transparent; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.74rem; font-weight: 600; color: var(--dl-fg-3); cursor: pointer;">Closed</button>
                 <button type="button" class="filter-pill" data-filter="status" data-value="open" style="background: transparent; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.74rem; font-weight: 600; color: var(--dl-fg-3); cursor: pointer;">Open</button>
               </div>
 
               <!-- Outcome Pills -->
-              <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-elevated, #101116); padding: 3px; border-radius: 6px; border: 1px solid var(--dl-line);">
+              <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-elevated); padding: 3px; border-radius: 6px; border: 1px solid var(--dl-line);">
                 <button type="button" class="filter-pill active" data-filter="outcome" data-value="all" style="background: transparent; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.74rem; font-weight: 600; color: var(--dl-fg); cursor: pointer;">All Outcome</button>
                 <button type="button" class="filter-pill" data-filter="outcome" data-value="win" style="background: transparent; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.74rem; font-weight: 600; color: var(--dl-fg-3); cursor: pointer;">Wins</button>
                 <button type="button" class="filter-pill" data-filter="outcome" data-value="loss" style="background: transparent; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.74rem; font-weight: 600; color: var(--dl-fg-3); cursor: pointer;">Losses</button>
@@ -111,7 +111,7 @@ export class JournalPage {
               </div>
 
               <!-- Discipline Pills -->
-              <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-elevated, #101116); padding: 3px; border-radius: 6px; border: 1px solid var(--dl-line);">
+              <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-elevated); padding: 3px; border-radius: 6px; border: 1px solid var(--dl-line);">
                 <button type="button" class="filter-pill active" data-filter="discipline" data-value="all" style="background: transparent; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.74rem; font-weight: 600; color: var(--dl-fg); cursor: pointer;">All Rules</button>
                 <button type="button" class="filter-pill" data-filter="discipline" data-value="followed" style="background: transparent; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.74rem; font-weight: 600; color: var(--dl-fg-3); cursor: pointer;">✓ Followed</button>
                 <button type="button" class="filter-pill" data-filter="discipline" data-value="broken" style="background: transparent; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.74rem; font-weight: 600; color: var(--dl-fg-3); cursor: pointer;">✗ Broken</button>
@@ -213,7 +213,7 @@ export class JournalPage {
               <div id="analytics-lessons-scroll-container"></div>
               
               <!-- Edge & Discipline Stat Card -->
-              <div id="analytics-trend-card" style="background: var(--dl-card, #191b21); border: 1px solid var(--dl-line, #282a33); border-radius: var(--radius-card, 8px); padding: 14px 16px;">
+              <div id="analytics-trend-card" style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: var(--radius-card); padding: 14px 16px;">
                 <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dl-fg-3); font-weight: 600; margin-bottom: 10px;">
                   🧭 Trend Alignment Edge
                 </div>

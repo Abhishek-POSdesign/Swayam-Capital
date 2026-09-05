@@ -25,7 +25,7 @@ export class SessionRecapComponent {
           flex-direction: column;
           gap: 6px;
           font-size: 0.78rem;
-          color: var(--dl-fg-2, #a6adba);
+          color: var(--dl-fg-2);
           line-height: 1.4;
         ">
           <div style="display: flex; align-items: center; gap: 6px;">

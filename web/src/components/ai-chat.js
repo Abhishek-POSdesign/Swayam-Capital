@@ -431,28 +431,28 @@ export class AIChatPanel {
         display: flex;
         flex-direction: column;
         height: 100%;
-        background: var(--dl-card, #191b21);
-        border-left: 2px solid var(--accent-lilac, #ac9fd2);
+        background: var(--dl-card);
+        border-left: 2px solid var(--accent-lilac);
         font-family: var(--font-sans, system-ui, sans-serif);
         font-size: 13px;
-        color: var(--dl-fg, #e8e8f0);
+        color: var(--dl-fg);
       }
       .ai-panel__header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding: 10px 12px;
-        border-bottom: 1px solid var(--dl-line, #2a2a4a);
-        background: var(--dl-rail, #16171c);
+        border-bottom: 1px solid var(--dl-line);
+        background: var(--dl-rail);
         flex-shrink: 0;
       }
       .ai-panel__header-left { display: flex; align-items: center; gap: 6px; }
       .ai-panel__header-right { display: flex; align-items: center; gap: 4px; }
-      .ai-panel__icon { font-size: 16px; color: var(--accent-lilac, #ac9fd2); }
-      .ai-panel__title { font-weight: 600; font-size: 14px; color: var(--dl-fg, #e8e8f0); }
+      .ai-panel__icon { font-size: 16px; color: var(--accent-lilac); }
+      .ai-panel__title { font-weight: 600; font-size: 14px; color: var(--dl-fg); }
       .ai-panel__conv-title {
         font-size: 11px;
-        color: var(--dl-fg-3, #8888aa);
+        color: var(--dl-fg-3);
         max-width: 120px;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -464,7 +464,7 @@ export class AIChatPanel {
         display: flex;
         flex-direction: column;
         min-height: 0;
-        background: var(--dl-card, #191b21);
+        background: var(--dl-card);
       }
       .ai-messages {
         flex: 1;
@@ -486,15 +486,15 @@ export class AIChatPanel {
         word-break: break-word;
       }
       .ai-message--user .ai-message__content {
-        background: var(--accent-lilac, #ac9fd2);
+        background: var(--accent-lilac);
         color: #101116;
         border-bottom-right-radius: 3px;
         font-weight: 500;
       }
       .ai-message--assistant .ai-message__content {
-        background: var(--dl-card-2, #20232b);
-        color: var(--dl-fg, #e8e8f0);
-        border: 1px solid var(--dl-line, #2a2a4a);
+        background: var(--dl-card-2);
+        color: var(--dl-fg);
+        border: 1px solid var(--dl-line);
         border-bottom-left-radius: 3px;
       }
       .ai-message__content code {
@@ -518,7 +518,7 @@ export class AIChatPanel {
       .ai-typing {
         display: inline-block;
         animation: blink 1s step-end infinite;
-        color: var(--accent, #4f46e5);
+        color: var(--accent-lilac);
       }
       @keyframes blink { 50% { opacity: 0; } }
       .ai-starters {
@@ -526,11 +526,11 @@ export class AIChatPanel {
         display: flex;
         flex-direction: column;
         gap: 8px;
-        border-top: 1px solid var(--dl-line, #272a33);
+        border-top: 1px solid var(--dl-line);
       }
       .ai-starters__label {
         font-size: 11px;
-        color: var(--dl-fg-3, #8a91a0);
+        color: var(--dl-fg-3);
         margin: 0 0 4px 0;
         text-transform: uppercase;
         letter-spacing: 0.05em;
@@ -538,9 +538,9 @@ export class AIChatPanel {
       }
       .ai-starter-btn {
         text-align: left;
-        background: var(--dl-card-2, #20232b);
-        border: 1px solid var(--dl-line, #272a33);
-        color: var(--dl-fg, #edeff4);
+        background: var(--dl-card-2);
+        border: 1px solid var(--dl-line);
+        color: var(--dl-fg);
         padding: 8px 12px;
         border-radius: 8px;
         cursor: pointer;
@@ -549,24 +549,24 @@ export class AIChatPanel {
         transition: all 0.15s;
       }
       .ai-starter-btn:hover {
-        background: var(--dl-card, #191b21);
-        border-color: var(--accent-lilac, #ac9fd2);
+        background: var(--dl-card);
+        border-color: var(--accent-lilac);
       }
       .ai-panel__input-area {
         display: flex;
         align-items: flex-end;
         gap: 8px;
         padding: 10px 14px;
-        border-top: 1px solid var(--dl-line, #272a33);
-        background: var(--dl-card, #191b21);
+        border-top: 1px solid var(--dl-line);
+        background: var(--dl-card);
         flex-shrink: 0;
       }
       .ai-textarea {
         flex: 1;
         resize: none;
-        background: var(--dl-card-2, #20232b);
-        border: 1px solid var(--dl-line, #272a33);
-        color: var(--dl-fg, #edeff4);
+        background: var(--dl-card-2);
+        border: 1px solid var(--dl-line);
+        color: var(--dl-fg);
         border-radius: 8px;
         padding: 8px 10px;
         font-family: inherit;
@@ -574,29 +574,29 @@ export class AIChatPanel {
         outline: none;
         line-height: 1.4;
       }
-      .ai-textarea:focus { border-color: var(--accent-lilac, #ac9fd2); }
+      .ai-textarea:focus { border-color: var(--accent-lilac); }
       .ai-panel__footer {
         padding: 6px 14px;
         font-size: 11px;
-        color: var(--dl-fg-3, #8a91a0);
-        border-top: 1px solid var(--dl-line, #272a33);
-        background: var(--dl-rail, #16171c);
+        color: var(--dl-fg-3);
+        border-top: 1px solid var(--dl-line);
+        background: var(--dl-rail);
         flex-shrink: 0;
       }
       .ai-error {
         margin: 6px 12px;
         padding: 6px 10px;
         background: var(--accent-coral-tint, rgba(221, 129, 112, 0.17));
-        border: 1px solid var(--accent-coral, #dd8170);
+        border: 1px solid var(--accent-coral);
         border-radius: 6px;
-        color: var(--accent-coral, #dd8170);
+        color: var(--accent-coral);
         font-size: 12px;
       }
-      .ai-error-inline { color: var(--accent-coral, #dd8170); }
+      .ai-error-inline { color: var(--accent-coral); }
       .ai-btn {
-        background: var(--dl-card-2, #20232b);
-        border: 1px solid var(--dl-line, #272a33);
-        color: var(--dl-fg, #edeff4);
+        background: var(--dl-card-2);
+        border: 1px solid var(--dl-line);
+        color: var(--dl-fg);
         padding: 5px 10px;
         border-radius: 6px;
         cursor: pointer;
@@ -604,12 +604,12 @@ export class AIChatPanel {
         transition: all 0.15s;
         white-space: nowrap;
       }
-      .ai-btn:hover { background: var(--dl-line, #272a33); }
+      .ai-btn:hover { background: var(--dl-line); }
       .ai-btn--sm { padding: 4px 8px; font-size: 11px; }
       .ai-btn--ghost { background: transparent; border-color: transparent; }
       .ai-btn--primary {
-        background: var(--accent-lilac, #ac9fd2);
-        border-color: var(--accent-lilac, #ac9fd2);
+        background: var(--accent-lilac);
+        border-color: var(--accent-lilac);
         color: #101116;
         font-weight: 700;
         min-width: 64px;
@@ -624,8 +624,8 @@ export class AIChatPanel {
         top: 0;
         bottom: 0;
         width: 280px;
-        background: var(--dl-card, #191b21);
-        border-left: 1px solid var(--dl-line, #272a33);
+        background: var(--dl-card);
+        border-left: 1px solid var(--dl-line);
         z-index: 100;
         display: flex;
         flex-direction: column;
@@ -635,7 +635,7 @@ export class AIChatPanel {
         justify-content: space-between;
         align-items: center;
         padding: 10px 14px;
-        border-bottom: 1px solid var(--dl-line, #272a33);
+        border-bottom: 1px solid var(--dl-line);
         font-weight: 600;
         color: var(--dl-fg);
       }
@@ -644,14 +644,14 @@ export class AIChatPanel {
         padding: 8px 14px;
         cursor: pointer;
         font-size: 13px;
-        border-bottom: 1px solid var(--dl-line, #272a33);
+        border-bottom: 1px solid var(--dl-line);
         color: var(--dl-fg-2);
         transition: background 0.1s;
       }
-      .ai-history-item:hover { background: var(--dl-card-2, #20232b); color: var(--dl-fg); }
-      .ai-history-item--active { border-left: 3px solid var(--accent-lilac, #ac9fd2); padding-left: 11px; color: var(--dl-fg); font-weight: 600; }
-      .ai-history-item--empty, .ai-history-item--error { color: var(--dl-fg-3, #8a91a0); cursor: default; }
-      .ai-history-item--error { color: var(--accent-coral, #dd8170); }
+      .ai-history-item:hover { background: var(--dl-card-2); color: var(--dl-fg); }
+      .ai-history-item--active { border-left: 3px solid var(--accent-lilac); padding-left: 11px; color: var(--dl-fg); font-weight: 600; }
+      .ai-history-item--empty, .ai-history-item--error { color: var(--dl-fg-3); cursor: default; }
+      .ai-history-item--error { color: var(--accent-coral); }
     `;
     document.head.appendChild(style);
   }

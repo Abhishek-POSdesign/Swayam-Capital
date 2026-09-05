@@ -105,7 +105,7 @@ export class StrategyBuilderPage {
         <aside id="strategy-left-rail" style="
           flex: 0 0 320px;
           width: 320px;
-          background: var(--dl-rail, #13141a);
+          background: var(--dl-rail);
           border-right: 1px solid var(--dl-line);
           display: flex;
           flex-direction: column;
@@ -236,7 +236,7 @@ export class StrategyBuilderPage {
         left: 0;
         right: 0;
         height: 40px;
-        background: var(--dl-card, #191b21);
+        background: var(--dl-card);
         border-top: 1px solid var(--dl-line);
         display: flex;
         align-items: center;
