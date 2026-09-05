@@ -64,9 +64,9 @@ export class NiftySnapshotCardComponent {
       color = '#93c5fd';
       border = 'rgba(147, 197, 253, 0.3)';
     } else if (s === 'PREVIOUS SESSION') {
-      bg = 'rgba(251, 191, 36, 0.12)';
-      color = '#fbbf24';
-      border = 'rgba(251, 191, 36, 0.3)';
+      bg = 'var(--dl-card-2)';
+      color = 'var(--dl-fg-2)';
+      border = 'var(--dl-line)';
     } else if (s === 'STALE') {
       bg = 'rgba(248, 113, 113, 0.12)';
       color = '#f87171';
@@ -74,7 +74,7 @@ export class NiftySnapshotCardComponent {
     }
 
     return `
-      <span class="freshness-badge" style="display: inline-flex; align-items: center; font-size: 0.62rem; font-weight: 700; font-family: var(--font-mono); letter-spacing: 0.05em; padding: 1px 6px; border-radius: 4px; background: ${bg}; color: ${color}; border: 1px solid ${border}; white-space: nowrap;">
+      <span class="freshness-badge" style="display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); letter-spacing: 0.05em; padding: 2px 8px; border-radius: 4px; background: ${bg}; color: ${color}; border: 1px solid ${border}; white-space: nowrap;">
         ${s}
       </span>
     `;
@@ -172,7 +172,6 @@ export class NiftySnapshotCardComponent {
               <span style="font-size: 0.8rem; color: var(--dl-fg-3); font-weight: 600;">Market Breadth:</span>
               <span class="mono-nums" style="font-size: 0.95rem; color: var(--accent-sage); font-weight: 700;">▲ ${cash.advances || 32} Adv</span>
               <span class="mono-nums" style="font-size: 0.95rem; color: var(--accent-coral); font-weight: 700;">▼ ${cash.declines || 18} Dec</span>
-              ${this.getBadgeHtml(cash.breadth_freshness)}
             </div>
           </div>
 
@@ -240,7 +239,6 @@ export class NiftySnapshotCardComponent {
           <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 0.74rem; color: var(--dl-fg-3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Sector Rotation (10 Sectors)</span>
-              ${this.getBadgeHtml(cash.sector_freshness)}
             </div>
             <div style="display: flex; gap: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 6px;">
               ${sectorStripHtml}
@@ -255,7 +253,7 @@ export class NiftySnapshotCardComponent {
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div style="display: flex; align-items: center; gap: 10px;">
               <span class="eyebrow" style="font-size: 0.88rem; font-weight: 800; color: var(--dl-fg); letter-spacing: 0.05em;">F&O DERIVATIVES</span>
-              ${this.getBadgeHtml(fno.expiry_freshness)}
+              ${this.getBadgeHtml(fno.expiry_freshness || 'PREVIOUS SESSION')}
             </div>
             <div style="display: flex; align-items: center; gap: 10px;">
               <span style="font-size: 0.82rem; color: var(--dl-fg-3); font-weight: 600;">India VIX:</span>
@@ -263,7 +261,6 @@ export class NiftySnapshotCardComponent {
               <span class="mono-nums" style="font-size: 0.95rem; color: ${(fno.india_vix_change_pct || 0) >= 0 ? 'var(--accent-coral)' : 'var(--accent-sage)'}; font-weight: 700;">
                 ${(fno.india_vix_change_pct || 0) >= 0 ? '+' : ''}${fno.india_vix_change_pct !== undefined ? fno.india_vix_change_pct : '1.95'}%
               </span>
-              ${this.getBadgeHtml(fno.vix_freshness)}
             </div>
           </div>
 
@@ -294,7 +291,6 @@ export class NiftySnapshotCardComponent {
             <div style="background: var(--dl-card-2); padding: 14px; border-radius: 8px; border: 1px solid var(--dl-line); display: flex; flex-direction: column; gap: 6px;">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-size: 0.72rem; color: var(--dl-fg-3); font-weight: 700; text-transform: uppercase;">Put-Call Ratio (PCR)</span>
-                ${this.getBadgeHtml(fno.pcr_freshness)}
               </div>
               <div style="display: flex; align-items: baseline; gap: 14px;">
                 <div><span style="font-size: 0.75rem; color: var(--dl-fg-3);">W: </span><strong class="mono-nums" style="font-size: 1.25rem; color: var(--dl-fg); font-weight: 800;">${fno.weekly_pcr || '-'}</strong></div>
@@ -309,7 +305,6 @@ export class NiftySnapshotCardComponent {
             <div style="background: var(--dl-card-2); padding: 14px; border-radius: 8px; border: 1px solid var(--dl-line); display: flex; flex-direction: column; gap: 6px;">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-size: 0.72rem; color: var(--dl-fg-3); font-weight: 700; text-transform: uppercase;">Max Pain & OI Walls</span>
-                ${this.getBadgeHtml(fno.max_pain_freshness)}
               </div>
               <div class="mono-nums" style="font-size: 1.25rem; font-weight: 800; color: var(--accent-sage);">
                 Pain: ${fno.max_pain ? fno.max_pain.toLocaleString('en-IN') : '-'}
@@ -335,7 +330,6 @@ export class NiftySnapshotCardComponent {
               <div style="background: var(--dl-card-2); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--dl-line);">
                 <div style="font-size: 0.72rem; color: var(--dl-fg-3); font-weight: 700;">FII CASH (₹ Cr)</div>
                 <div class="mono-nums" style="font-size: 1.2rem; font-weight: 800; color: ${fiiCashColor}; margin-top: 4px;">${fiiCashStr}</div>
-                <div style="font-size: 0.7rem; color: var(--dl-fg-3); margin-top: 2px;">${inst.fii_cash_freshness}</div>
               </div>
 
               <!-- FII F&O Row -->
@@ -349,7 +343,6 @@ export class NiftySnapshotCardComponent {
               <div style="background: var(--dl-card-2); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--dl-line);">
                 <div style="font-size: 0.72rem; color: var(--dl-fg-3); font-weight: 700;">DII CASH (₹ Cr)</div>
                 <div class="mono-nums" style="font-size: 1.2rem; font-weight: 800; color: ${diiCashColor}; margin-top: 4px;">${diiCashStr}</div>
-                <div style="font-size: 0.7rem; color: var(--dl-fg-3); margin-top: 2px;">${inst.dii_cash_freshness}</div>
               </div>
 
               <!-- DII F&O Row -->

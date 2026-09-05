@@ -249,7 +249,7 @@ export class ChatSurfaceComponent {
             <button
               id="btn-chat-send"
               type="button"
-              style="height: 48px; padding: 0 26px; background: var(--accent-lilac); color: #101116; border: none; border-radius: 10px; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: opacity var(--dur-fast, 120ms) ease;"
+              style="height: 48px; padding: 0 26px; background: var(--accent-sage); color: #ffffff; border: none; border-radius: 10px; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: opacity var(--dur-fast, 120ms) ease;"
             >
               Send
             </button>
@@ -266,14 +266,14 @@ export class ChatSurfaceComponent {
           <button
             id="btn-goto-strategy"
             type="button"
-            style="background: var(--accent-lilac-tint, rgba(172, 159, 210, 0.14)); color: var(--accent-lilac); border: 1px solid var(--accent-lilac); height: 34px; padding: 0 18px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all var(--dur-fast, 120ms) ease;"
+            style="background: var(--accent-sage-tint); color: var(--accent-sage); border: 1px solid var(--accent-sage); height: 34px; padding: 0 18px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all var(--dur-fast, 120ms) ease;"
           >
             Go to Strategy Builder →
           </button>
         </div>
 
         <!-- Temporary Floating Toast Notification -->
-        <div id="chat-toast" style="display: none; position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); background: var(--dl-card); color: var(--accent-lilac); border: 1px solid var(--accent-lilac); padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; box-shadow: var(--dl-shadow); z-index: 10;">
+        <div id="chat-toast" style="display: none; position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); background: var(--dl-card); color: var(--accent-sage); border: 1px solid var(--accent-sage); padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; box-shadow: var(--dl-shadow); z-index: 10;">
           Saved to memory
         </div>
 
@@ -426,7 +426,7 @@ export class ChatSurfaceComponent {
         <div class="chat-prompt-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%;">
           ${PREMARKET_STARTER_PROMPTS.map((p) => `
             <div class="chat-quick-prompt-card" data-prompt="${p.replace(/"/g, '&quot;')}" style="background: var(--dl-card-2); border: 1px solid var(--dl-line); border-radius: 10px; padding: 12px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.15s ease; box-sizing: border-box;">
-              <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--accent-lilac-tint); color: var(--accent-lilac); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.75rem; font-weight: 700;">
+              <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--accent-sage-tint); color: var(--accent-sage); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.75rem; font-weight: 700;">
                 ✦
               </div>
               <span style="font-size: 0.84rem; color: var(--dl-fg); line-height: 1.35; font-weight: 500;">
@@ -443,7 +443,7 @@ export class ChatSurfaceComponent {
     const cards = this.container.querySelectorAll('.chat-quick-prompt-card');
     cards.forEach((card) => {
       card.addEventListener('mouseenter', () => {
-        card.style.borderColor = 'var(--accent-lilac)';
+        card.style.borderColor = 'var(--accent-sage)';
         card.style.transform = 'translateY(-1px)';
       });
       card.addEventListener('mouseleave', () => {
@@ -566,14 +566,15 @@ export class ChatSurfaceComponent {
       const bubble = document.createElement('div');
       bubble.style.cssText = `
         max-width: 70%;
-        background: var(--accent-lilac);
-        color: #101116;
+        background: var(--accent-sage);
+        color: #ffffff;
         padding: 12px 18px;
         border-radius: 14px 14px 3px 14px;
         font-size: 0.92rem;
         line-height: 1.55;
         font-weight: 500;
         word-break: break-word;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
       `;
 
       if (!attachmentUrl) {
