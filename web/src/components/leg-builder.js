@@ -87,13 +87,13 @@ export class LegBuilderComponent {
           </div>
         </div>
 
-        <!-- Legs Cards Container (2-col grid when 2 legs, single column stack otherwise) -->
-        <div id="legs-cards-wrapper" class="${this.legs.length === 2 ? 'legs-grid-2col' : 'legs-stack-1col'}" style="${this.legs.length === 2 ? 'display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;' : 'display: flex; flex-direction: column; gap: 8px;'}">
+        <!-- Legs Cards Container (Unconditional single column stack) -->
+        <div id="legs-cards-wrapper" class="legs-stack-1col" style="display: flex; flex-direction: column; gap: 10px;">
           <!-- Buy Legs Container -->
-          <div id="buy-legs-container" style="${this.legs.length === 2 ? 'display: contents;' : 'display: flex; flex-direction: column; gap: 8px;'}"></div>
+          <div id="buy-legs-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
 
           <!-- Sell Legs Container -->
-          <div id="sell-legs-container" style="${this.legs.length === 2 ? 'display: contents;' : 'display: flex; flex-direction: column; gap: 8px;'}"></div>
+          <div id="sell-legs-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
         </div>
 
         <!-- Add Leg Button -->

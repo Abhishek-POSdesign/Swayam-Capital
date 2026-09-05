@@ -31,8 +31,9 @@ describe('LegCardComponent', () => {
     expect(container.textContent).toContain('PE');
     expect(container.textContent).toContain('1 lot');
     expect(container.textContent).toContain('₹110.50');
-    expect(container.textContent).toContain('Δ -0.45');
-    expect(container.textContent).toContain('θ -8.2');
+    expect(container.textContent).not.toContain('Δ');
+    expect(container.textContent).not.toContain('θ');
+    expect(container.querySelector('.leg-greeks-strip')).toBeNull();
   });
 
   it('toggles direction when badge is clicked', () => {
