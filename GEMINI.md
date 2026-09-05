@@ -8,7 +8,7 @@
 > **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-southeast1` [Singapore], AI Location: `global`)  
 > **Supabase Database:** `wxijlrwoiaeaupaaqecc` (`https://wxijlrwoiaeaupaaqecc.supabase.co`)  
 > **Broker Integration:** FYERS API v3 (Client ID: `YA38914`)  
-> **Status:** Phase 1 Complete (BUILDs 1–11 + BUILD-11-FIXES-UI-A/B/C Shipped). 95 automated tests passing (6 pytest + 89 vitest, 0 failures). Strategy Builder (`/strategy`) and Trade Journal & Performance Analytics (`/journal`) are fully themed (light/dark/system), AI drawer auto-collapses sidebars, payoff chart shows Bear Put Spread on fresh load with clean dash placeholders, all ⚠️ warnings eliminated from clean states, stuck-skeleton fallback added for SPA navigation, and leg card tints (sage/coral) apply correctly in light mode. Platform is ready for live paper trading on Monday Sep 8, 2026. Deployed to Google Cloud Run in Singapore (`asia-southeast1`) behind custom subdomain `https://swayam.abhisheksikka.com`.
+> **Status:** Phase 1 Complete (BUILDs 1–11 + BUILD-11.7–11.12 + PRs #11, #12, #13 Shipped). 153 automated tests passing (51 pytest + 102 vitest, 0 failures). Features shipped include: historical data ingestion (BUILD-11.7), Cloud Scheduler morning briefs (BUILD-11.8), data integrity self-tests (BUILD-11.9), Telegram notification service (BUILD-11.10), PWA service worker & offline caching (BUILD-11.11), automated GCS database snapshots (BUILD-11.12), dashboard metric typography enlargement (PR #11), real 2026 macro events ingestion (PR #11), maskable PWA app icons (PR #12), mobile responsive layouts across Home and Strategy Builder (PR #11–13), and clean single muted previous-session badges (PR #13). Ready for live paper trading on Monday Sep 8, 2026. Two documented visual debts tracked for next sprint: Macro Card Readability and Side Panel Purple Token Replacement. Deployed to Google Cloud Run in Singapore (`asia-southeast1`) behind custom subdomain `https://swayam.abhisheksikka.com`.
 
 ---
 
@@ -299,15 +299,71 @@ Branch: `build/11-fixes-ui-a` → `build/11-fixes-ui-b` → `build/11-fixes-ui-c
 - **Stuck Skeleton Fallback**: `navigateTo('strategy')` now lazy-triggers `initStrategyView()` if not yet done, plus a 1.5s timeout guard that force-remounts if skeleton is still visible and `#strategy-builder-layout` hasn't appeared.
 - **Leg Card Tinted Backgrounds**: Root cause was `background: var(--dl-card-2)` as an **inline style** on the card `<div>` — inline styles override all CSS class rules. Removed the inline background; added `.leg-card { background: var(--dl-card-2); }` as a CSS class rule. Light mode tints now apply: sage green for Buy, coral red for Sell, clearly visible on the full card (not just the badge).
 
-### Test Scorecard (UI-C final state)
-| Suite | Count | Result |
-|:---|:---|:---|
-| Vitest (frontend) | 89 | ✅ All passing |
-| Pytest (journal API) | 6 | ✅ All passing |
+---
+
+## 🏗️ 6. BUILD-11.7 through BUILD-11.12 — Core Operations, Backups, & Automation (PR #10)
+
+Merged commit `8b66da5` into `main`. Full production stability and data safeguards:
+
+1. **BUILD-11.7: Historical Bhavcopy Downloader**: Automated data pipeline fetching daily NSE Bhavcopy and historical NIFTY options bars directly into local DuckDB (`data/options_cache.duckdb`), enabling fast offline analysis without broker API limits.
+2. **BUILD-11.8: Pre-Market Cloud Scheduler Briefing**: Deployed Google Cloud Scheduler cron job (`swayam-morning-briefing-trigger`) running daily at 8:30 AM IST, pre-generating the morning market briefing via Vertex AI Gemini before Abhishek starts his routine.
+3. **BUILD-11.9: Data Integrity & Parity Self-Test**: Built self-verifying test harness (`DATA_INTEGRITY_SELF_TEST_11_9.md`) verifying mathematical parity across FYERS live quotes, DuckDB caches, and Supabase trade journals.
+4. **BUILD-11.10: Emergency Telegram Notification Service**: Direct Telegram bot dispatcher (`src/swayam/notifications/telegram.py`) alerting on rule violations, risk threshold breaches, or backup errors.
+5. **BUILD-11.11: PWA Service Worker & Offline Shell**: Progressive Web App manifest (`web/manifest.json`) and service worker (`web/sw.js`) enabling one-tap installation on Android/iOS/Desktop with asset caching.
+6. **BUILD-11.12: Automated GCS Database Backups**: Implemented encrypted daily backup pipeline exporting all Supabase `swayam_*` tables and DuckDB databases to Google Cloud Storage (`gs://swayam-capital-backups`) with 30-day lifecycle auto-deletion.
 
 ---
 
-## 🛠️ 6. How to Run & Verify the Platform
+## 🎨 7. UI Evolution Runs: PR #11, PR #12, and PR #13 (Sep 2026)
+
+### ✅ PR #11 (Commit `30ac19a`): Typography, Layout, & Real 2026 Macro Calendar
+- **Dashboard Typography Enlargement**: Increased font sizes and spacing across Cash Market (20 DMA, 20-day ATR, 52W High/Low) and F&O Derivatives cards, making metrics easily readable from across the desk.
+- **Home Layout Restructure**: Moved "So Far Today" metrics bar directly above the AI Chat surface for logical top-to-bottom reading flow.
+- **Mobile Single-Column Bento**: Shifted 12-column dashboard into a clean single-column view on mobile screens.
+- **Real 2026 Macro Calendar**: Ingested genuine 2026 economic events (RBI MPC meetings, US CPI prints, FOMC rate decisions) into Supabase (`swayam_macro_events`), replacing placeholder dummy data.
+
+### ✅ PR #12 (Commit `043e490`): App Icons, Mobile Header, & PWA Polish
+- **Maskable App Icons**: Designed and rendered SVG/PNG icons with an emerald circular safe zone (`#15803d`) and centered SVG geometry. Resolves black/cropped square icons on Android, iOS, and Windows desktop apps.
+- **Mobile Header Sticky Bar**: Header navigation transformed into a compact, responsive sticky top bar with touch-friendly navigation pills.
+- **Overnight Market Ticker Wrap**: Overnight indices strip wraps cleanly without cutting off quotes on small viewports.
+- **PWA Standalone Detection**: Suppresses redundant "Install Swayam" banner when the app is already launched in standalone window mode.
+
+### ✅ PR #13 (Commit `057a010`): Strategy Mobile Stacking, Atlas Chat Colors, & Clean Badges
+- **Strategy Builder Mobile Layout**: Fixed side-by-side overflow on mobile; leg builder and payoff chart stack vertically at 100% width on screens under 768px.
+- **Single Muted Badges**: Removed duplicated yellow "PREVIOUS SESSION" badges across card contents; styled as a single, calm muted badge (`var(--color-text-muted)`) in each card header conforming to Atlas standards.
+- **AI Chat User Bubble & Action Palette**: Shifted chat bubbles and interactive action elements from bright purple to Atlas emerald sage (`#15803d`).
+- **Macro Events Date Parsing & Clean Country Flags**: Standardized date parser to accept both `event_date` and `date` formats; removed redundant `IN IN` double-flag rendering on Windows platforms.
+- **Friday Baseline Sector Rotation**: Updated sector change baseline to reflect Friday closing levels rather than uniform fallback values during market-closed weekend intervals.
+
+---
+
+## 📌 8. Outstanding Visual / Color Debts (Handover for Next Session)
+
+> [!IMPORTANT]
+> The user explicitly requested to freeze code changes at the end of the 2026-09-06 marathon and document the following two remaining UI debts for the next sprint:
+
+1. **Macro Economic Events Card Text Readability & Contrast**:
+   - **Problem**: High-impact tags have poor contrast (neon/glossy appearance that clashes with readability). Event titles appear overly glossy/dark while dates are excessively faint and muted.
+   - **Atlas Token Standard**: Atlas uses calm, high-contrast, matte typography (`var(--color-text-primary)` for titles, readable secondary tones for dates, and non-glossy, calm badge backgrounds).
+   - **Target Files**: `web/src/components/macro-events-card.js`, `web/src/styles/swayam-tokens.css`.
+
+2. **Side Panel & Strategy Rail Purple Token Replacement**:
+   - **Problem**: While Home AI chat bubbles were updated to Atlas sage (`#15803d`), the side panel / left rail (in Strategy Builder and session review) still uses purple accents (`#8b5cf6` / `--dl-ai-lilac`).
+   - **Atlas Token Standard**: Atlas uses sage green (`#15803d` / `--dl-done`) and neutral dark slate tones, reserving purple strictly for AI partner thinking indicators if needed, never for standard navigation rails.
+   - **Target Files**: `web/src/pages/strategy.js`, `web/src/styles.css`, `web/src/styles/swayam-tokens.css`.
+
+---
+
+### Test Scorecard (PR #13 / Current State)
+| Suite | Count | Result |
+|:---|:---|:---|
+| Vitest (frontend components & syntax) | 102 | ✅ All passing |
+| Pytest (backend APIs & integrations) | 51 | ✅ All passing |
+| Vite Production Build (`npm run build`) | Bundle | ✅ Succeeded in ~9.9s |
+
+---
+
+## 🛠️ 9. How to Run & Verify the Platform
 
 ### Terminal 1: Backend API Server
 ```powershell

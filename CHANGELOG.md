@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Outstanding UI Debt (Scheduled for Next Sprint)
+- **Macro Economic Events Card Readability**:
+  - High-impact badge text contrast is poor (glossy/neon appearance clashes with readability).
+  - Event titles appear overly glossy/dark while dates are excessively faint and muted.
+  - Typography hierarchy and font weight need alignment with the calm, readable Atlas design tokens.
+  - Location: `web/src/components/macro-events-card.js` & `web/src/styles/swayam-tokens.css`.
+- **Side Panel & Strategy Rail Purple Token Replacement**:
+  - The side rail in Strategy Builder and session review still retains purple tokens (`#8b5cf6` / `--dl-ai-lilac`) instead of the calm Atlas sage/neutral palette (`#15803d` / `--dl-done` / slate neutrals).
+  - Location: `web/src/pages/strategy.js`, `web/src/styles.css`, `web/src/styles/swayam-tokens.css`.
+
+### Fixed — BUILD-11-FIXES-UI-F (2026-09-06, PR #13)
+- **Strategy Builder Mobile Layout**: Fixed side-by-side horizontal overflow on mobile screens; leg builder and payoff chart now cleanly stack vertically at 100% width on screens under 768px.
+- **Single Muted "PREVIOUS SESSION" Badges**: Removed redundant duplicated badges across cards; styled as a single, calm muted badge (`var(--color-text-muted)`) in each card header conforming to Atlas standards.
+- **AI Chat User Bubble & Action Palette**: Shifted chat bubbles and interactive action elements from bright purple to Atlas emerald sage (`#15803d`).
+- **Macro Events Date Parsing & Clean Country Flags**: Standardized date parser to accept both `event_date` and `date` formats; removed redundant `IN IN` double-flag rendering on Windows platforms.
+- **Friday Baseline Sector Rotation**: Updated sector change baseline to reflect Friday closing levels rather than uniform fallback values during market-closed weekend intervals.
+- **Test suite**: 102/102 Vitest + 51/51 Pytest passing. Commit: `057a010`.
+
+### Fixed — BUILD-11-FIXES-UI-E (2026-09-06, PR #12)
+- **Maskable PWA App Icons**: Rendered dedicated SVG/PNG icons with an emerald circular safe zone (`#15803d`) and centered SVG geometry. Icons now appear razor-sharp on both mobile home screens and desktop windows without cropping or black square issues.
+- **Mobile Header Sticky Bar**: Header navigation on phones converted into a compact, responsive sticky top bar with touch-friendly navigation pills.
+- **Overnight Market Ticker Wrap**: Overnight indices strip configured with flexible wrapping so quotes no longer overflow or cut off on small viewports.
+- **PWA Standalone Detection**: App detects when running inside an installed PWA window (`window.matchMedia('(display-mode: standalone)')`) and suppresses redundant "Install Swayam" prompt banners.
+- **Test suite**: 102/102 Vitest passing. Commits: `043e490`, `ee165db`.
+
+### Fixed — BUILD-11-FIXES-UI-D (2026-09-06, PR #11)
+- **Dashboard Typography Enlargement**: Increased font sizes and spacing across Cash Market (20 DMA, 20-day ATR, 52W High/Low) and F&O Derivatives cards, eliminating awkward blank space and maximizing at-a-glance readability.
+- **Layout Restructure — So Far Today**: Moved the "So Far Today" metrics panel directly above the AI Chat surface on the Home dashboard for natural top-to-bottom reading flow.
+- **Home Dashboard Mobile Single-Column**: Shifted 12-column desktop bento grid into a streamlined single-column layout on phones and tablets.
+- **Real 2026 Economic Macro Calendar**: Ingested genuine 2026 macro events (RBI MPC interest rate decisions, US CPI prints, FOMC meetings) into Supabase (`swayam_macro_events`), replacing synthetic placeholder data.
+- **Test suite**: 102/102 Vitest passing. Commits: `30ac19a`, `0fa8f64`.
+
+### Added — BUILD-11.7 through BUILD-11.12 (2026-09-06, PR #10)
+- **BUILD-11.7: Historical Bhavcopy Downloader**: Automated script fetching daily NSE bhavcopy and options archives into DuckDB (`data/options_cache.duckdb`).
+- **BUILD-11.8: Cloud Scheduler Morning Briefing**: Cloud Scheduler configuration triggering pre-market analysis at 8:30 AM IST daily via Cloud Run.
+- **BUILD-11.9: Data Integrity Self-Tests**: Automated test suite (`DATA_INTEGRITY_SELF_TEST_11_9.md`) verifying mathematical parity between FYERS API quotes, DuckDB caches, and Supabase trade journals.
+- **BUILD-11.10: Telegram Notification Service**: Emergency Telegram bot dispatcher alerting on critical rule breaks, risk limit breaches, and automated backup outcomes.
+- **BUILD-11.11: PWA Service Worker & Offline Caching**: Full Progressive Web App manifest (`manifest.json`) and service worker caching static assets for instant load and offline resilience.
+- **BUILD-11.12: Automated Cloud Storage Backups**: Google Cloud Storage (GCS) daily snapshot engine exporting Supabase tables and DuckDB files to encrypted bucket `gs://swayam-capital-backups` with 30-day retention policies.
+- **Test suite**: 51 pytest + 102 vitest passing. Merged in PR #10.
+
 ### Fixed — BUILD-11-FIXES-UI-C (2026-09-05)
 - **Strategy Builder Fresh Load — No ⚠️ No ₹0** (`web/src/components/payoff-chart.js`): Added `_hasData` flag. Before the async `computeStrategy` API call resolves, Max Profit / Max Loss now show `—` (em dashes) instead of `+₹0 / -₹0`. Greeks strip (Δ, Θ, Γ, ν, POP) shows `—` instead of alarming amber `⚠` warning triangles. Once Bear Put Spread auto-loads and compute API responds, all values fill in with real data.
 - **Stuck-Skeleton Fallback for SPA Navigation** (`web/src/main.js`): `navigateTo('strategy')` now lazy-triggers `initStrategyView()` if the page hasn't been initialized yet. Added a 1.5s timeout guard that checks for a skeleton element (`skeleton-shimmer`/`skeleton-row`) still in DOM while `#strategy-builder-layout` is absent — if found, force-remounts the page. `_strategyInitInProgress` guard prevents double-init.
