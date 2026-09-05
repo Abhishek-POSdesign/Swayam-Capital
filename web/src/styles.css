@@ -35,7 +35,13 @@ body {
   font-family: var(--font-mono);
 }
 
-/* Header */
+/* Header Container & Sticky Navigation */
+#header-container {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
 header {
   background-color: var(--dl-rail);
   border-bottom: 1px solid var(--dl-line);
