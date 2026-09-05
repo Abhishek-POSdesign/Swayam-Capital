@@ -104,6 +104,7 @@ class Settings:
     ai_input_cost_per_1k_usd: float = field(default_factory=lambda: float(os.getenv("AI_INPUT_COST_PER_1K_USD", "0.00125")))
     ai_output_cost_per_1k_usd: float = field(default_factory=lambda: float(os.getenv("AI_OUTPUT_COST_PER_1K_USD", "0.005")))
     usd_to_inr_rate: float = field(default_factory=lambda: float(os.getenv("USD_TO_INR_RATE", "83.0")))
+    swayam_ai_daily_grounded_cap: int = field(default_factory=lambda: int(os.getenv("SWAYAM_AI_DAILY_GROUNDED_CAP", "8")))
 
     # Notifications Configuration (BUILD-11.8)
     telegram_bot_token: str = field(default_factory=lambda: os.getenv("TELEGRAM_BOT_TOKEN", ""))

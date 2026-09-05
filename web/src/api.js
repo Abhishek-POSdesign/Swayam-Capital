@@ -133,5 +133,8 @@ export const api = {
     }
     return response;
   },
+  getSoFarToday: () => request('/api/home/so-far-today'),
+  generateSoFarToday: (force = false) => request(`/api/home/so-far-today?force=${force}`, { method: 'POST' }),
+  getNiftySnapshot: (refresh = false) => request(`/api/home/nifty-snapshot?refresh=${refresh}`),
 };
 

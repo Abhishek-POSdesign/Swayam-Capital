@@ -9,7 +9,8 @@ import { VerdictCardComponent } from '../components/verdict-card.js';
 import { KPIHistoryCardComponent } from '../components/kpi-history-card.js';
 import { OvernightStripComponent } from '../components/overnight-strip.js';
 import { VixCardComponent } from '../components/vix-card.js';
-import { NiftyChartCardComponent } from '../components/nifty-chart-card.js';
+import { SoFarTodayCardComponent } from '../components/so-far-today-card.js';
+import { NiftySnapshotCardComponent } from '../components/nifty-snapshot-card.js';
 import { MacroEventsCardComponent } from '../components/macro-events-card.js';
 import { ReadingQueueCardComponent } from '../components/reading-queue-card.js';
 import { ChatSurfaceComponent } from '../components/chat-surface.js';
@@ -105,16 +106,19 @@ export class HomePage {
 
           <!-- 12-Column Bento Grid for Market Prep Tiles -->
           <div class="bento-grid">
-            <!-- Row 1: Overnight Global Strip (Span 12) — big numbers -->
+            <!-- Row 1: So Far Today Hero Card (Span 12) — grounded real-time market recap -->
+            <div id="home-so-far-today-container" class="span-12"></div>
+
+            <!-- Row 2: Overnight Global Strip (Span 12) — big numbers -->
             <div id="home-overnight-container" class="span-12"></div>
 
-            <!-- Row 2: NIFTY 50 Chart — FULL WIDTH (Span 12) with interactive tabs -->
+            <!-- Row 3: NIFTY 50 Snapshot (Cash + F&O Panes) — FULL WIDTH (Span 12) -->
             <div id="home-nifty-container" class="span-12"></div>
 
-            <!-- Row 3: India VIX — OWN FULL-WIDTH ROW (Span 12) with percentile band -->
+            <!-- Row 4: India VIX — OWN FULL-WIDTH ROW (Span 12) with percentile band -->
             <div id="home-vix-container" class="span-12"></div>
 
-            <!-- Row 4: Macro Events (Span 6) + Reading Queue (Span 6) -->
+            <!-- Row 5: Macro Events (Span 6) + Reading Queue (Span 6) -->
             <div id="home-macro-container" class="span-6"></div>
             <div id="home-reading-container" class="span-6"></div>
           </div>
@@ -251,17 +255,26 @@ export class HomePage {
     this.kpiComponent = new KPIHistoryCardComponent(kpiContainer);
     this.kpiComponent.render({});
 
-    // 4. Overnight Strip — big numbers
+    // 4. So Far Today Hero Card — real-time grounded market summary
+    const soFarContainer = this.container.querySelector('#home-so-far-today-container');
+    if (soFarContainer) {
+      this.soFarTodayComponent = new SoFarTodayCardComponent(soFarContainer);
+      this.soFarTodayComponent.init();
+    }
+
+    // 5. Overnight Strip — big numbers
     const overnightContainer = this.container.querySelector('#home-overnight-container');
     this.overnightComponent = new OvernightStripComponent(overnightContainer);
     this.overnightComponent.render();
 
-    // 5. NIFTY Chart — full-width, interactive tabs
+    // 6. NIFTY 50 Snapshot — numeric Cash + F&O panes
     const niftyContainer = this.container.querySelector('#home-nifty-container');
-    this.niftyChartComponent = new NiftyChartCardComponent(niftyContainer);
-    this.niftyChartComponent.render();
+    if (niftyContainer) {
+      this.niftySnapshotComponent = new NiftySnapshotCardComponent(niftyContainer);
+      this.niftySnapshotComponent.init();
+    }
 
-    // 6. India VIX — own row with percentile band
+    // 7. India VIX — own row with percentile band
     const vixContainer = this.container.querySelector('#home-vix-container');
     this.vixComponent = new VixCardComponent(vixContainer);
     this.vixComponent.render();

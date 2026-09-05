@@ -168,6 +168,9 @@ export function setupTestDOM() {
                 m[2].split(/\s+/).filter(Boolean).forEach(c => found.classList.add(c));
               }
             }
+            if (/\bdisabled\b/i.test(attrs)) {
+              found.disabled = true;
+            }
             return recordResult(found);
           }
 
