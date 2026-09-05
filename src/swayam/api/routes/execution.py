@@ -9,6 +9,7 @@ from datetime import date, datetime, timezone
 import uuid
 from typing import Any
 from fastapi import APIRouter, HTTPException
+import logging
 from swayam.api.journal_writer import write_new_trade_journal
 from swayam.api.models_api import (
     ExecuteRequest,
@@ -19,7 +20,10 @@ from swayam.api.models_api import (
 from swayam.api.routes.strategy import build_spread_from_request
 from swayam.api.routes.validation import audit_strategy_rules
 from swayam.db import db
+from swayam.notifications.events import dispatch
 from swayam.options_math import compute_payoff_curve, compute_position_greeks
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -142,6 +146,18 @@ def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
     validation = audit_strategy_rules(req)
     if not validation.passed:
         failing = [c.model_dump() for c in validation.checks if c.verdict == "FAIL"]
+        failing_reasons = ", ".join([f"{c.get('rule')}: {c.get('note', '')}" for c in failing])
+        rule_id_val = failing[0].get("rule") if failing else "method_rule"
+        try:
+            dispatch("rule_violation", {
+                "rule_id": rule_id_val,
+                "rule_name": rule_id_val.replace("_", " ").title(),
+                "attempted_action": f"Execute {req.strategy_name}",
+                "reason": failing_reasons,
+            })
+        except Exception as exc:
+            logger.warning("Could not dispatch rule_violation event: %s", exc)
+
         raise HTTPException(
             status_code=400,
             detail={
@@ -277,6 +293,20 @@ def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
                 f"but swayam_journal_entries index INSERT failed. Reconcile later. Error: {e}"
             ),
         ) from e
+
+    # Step 7: Best-effort event notification dispatch (Telegram + Browser Push)
+    strikes_desc = " / ".join([f"{l.direction.upper()} {l.strike} {l.option_type}" for l in req.legs])
+    try:
+        dispatch("trade_opened", {
+            "position_id": position_id,
+            "strategy": req.strategy_name,
+            "strikes": strikes_desc,
+            "net_debit_inr": curve.net_debit_credit_inr,
+            "mode": req.mode or "paper",
+            "session_id": req.session_id or position_id[:8],
+        })
+    except Exception as exc:
+        logger.warning("Could not dispatch trade_opened event: %s", exc)
 
     return {
         "position_id": position_id,

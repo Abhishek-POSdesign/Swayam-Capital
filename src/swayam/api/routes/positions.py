@@ -659,6 +659,23 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
     except Exception as exc:
         logger.warning("Auto lesson generation failed on trade close: %s", exc)
 
+    # Step E: Best-effort event notification dispatch (Telegram + Browser Push)
+    try:
+        from swayam.notifications.events import dispatch
+        session_id = None
+        if pos.get("notes") and "session_id=" in str(pos["notes"]):
+            session_id = str(pos["notes"]).split("session_id=")[-1].split(";")[0].strip()
+        dispatch("trade_closed", {
+            "position_id": position_id,
+            "strategy": pos.get("strategy_name", "Options Strategy"),
+            "pnl_inr": realized_pnl_inr,
+            "close_reason": req.close_reason,
+            "mode": pos.get("mode", "paper"),
+            "session_id": session_id or position_id[:8],
+        })
+    except Exception as exc:
+        logger.warning("Could not dispatch trade_closed event: %s", exc)
+
     return ClosePositionResponse(
         position_id=position_id,
         status="closed",

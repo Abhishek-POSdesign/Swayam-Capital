@@ -310,3 +310,50 @@ class TestSendMessage:
         ]
         # At minimum, history select + user insert + assistant insert
         assert len(messages_table_calls) >= 2
+
+    def test_send_message_with_image_upload(self, client):
+        """Image attachment should be uploaded to Supabase Storage and passed to stream."""
+        fake_png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
+        with (
+            patch("swayam.api.routes.ai.db") as mock_db,
+            patch("swayam.api.routes.ai.ai_router") as mock_router,
+            patch("swayam.api.routes.ai.build_full_system_prompt") as mock_prompt,
+        ):
+            self._setup_stream_mocks(mock_db, mock_router, mock_prompt)
+            mock_storage = MagicMock()
+            mock_storage.get_public_url.return_value = "https://example.com/test.png"
+            mock_db.client.storage.from_.return_value = mock_storage
+
+            resp = client.post(
+                "/api/ai/conversations/conv-123/messages",
+                data={"content": "Analyze this chart pattern"},
+                files={"image": ("chart.png", fake_png, "image/png")},
+            )
+
+        assert resp.status_code == 200
+        # Verify storage upload was called
+        mock_storage.upload.assert_called_once()
+        assert "https://example.com/test.png" in resp.text
+
+    def test_send_message_oversized_image_returns_400(self, client):
+        """Oversized image (>5 MB) should return 400."""
+        huge_bytes = b"x" * (6 * 1024 * 1024)
+        with patch("swayam.api.routes.ai.db"):
+            resp = client.post(
+                "/api/ai/conversations/conv-123/messages",
+                data={"content": "Analyze"},
+                files={"image": ("big.png", huge_bytes, "image/png")},
+            )
+        assert resp.status_code == 400
+        assert "exceeds maximum allowed size" in resp.json()["detail"]
+
+    def test_send_message_invalid_mime_returns_400(self, client):
+        """Invalid MIME type should return 400."""
+        with patch("swayam.api.routes.ai.db"):
+            resp = client.post(
+                "/api/ai/conversations/conv-123/messages",
+                data={"content": "Analyze"},
+                files={"image": ("script.exe", b"executable", "application/octet-stream")},
+            )
+        assert resp.status_code == 400
+        assert "Invalid image format" in resp.json()["detail"]

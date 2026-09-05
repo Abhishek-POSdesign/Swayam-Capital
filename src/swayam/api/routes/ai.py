@@ -29,7 +29,7 @@ from datetime import date, datetime, timezone
 from typing import Any, AsyncGenerator
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -68,10 +68,19 @@ class MessageRecord(BaseModel):
     id: str
     role: str
     content: str
-    provider: str | None
-    input_tokens: int | None
-    output_tokens: int | None
+    provider: str | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
     created_at: str
+    attachment_url: str | None = None
+    attachment_mime: str | None = None
+
+
+class ChatResponse(BaseModel):
+    response: str
+    attachment_url: str | None = None
+    conversation_id: str
+    model_used: str
 
 
 class SendMessageRequest(BaseModel):
@@ -118,6 +127,44 @@ def _upsert_daily_cost(provider: str, model: str, input_tokens: int, output_toke
         logger.warning("Could not update daily AI cost aggregate: %s", exc)
 
 
+ALLOWED_IMAGE_MIMES = {"image/png", "image/jpeg", "image/webp", "image/gif"}
+MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+async def _process_image_upload(image_file: Any, conversation_id: str) -> tuple[bytes, str, str]:
+    """Validates and uploads an image attachment to Supabase Storage.
+
+    Returns:
+        (image_bytes, image_mime, attachment_url)
+    """
+    raw_bytes = await image_file.read()
+    if len(raw_bytes) > MAX_IMAGE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Image size ({len(raw_bytes) / 1024 / 1024:.2f} MB) exceeds maximum allowed size of 5 MB."
+        )
+
+    mime = getattr(image_file, "content_type", None) or "image/png"
+    if mime not in ALLOWED_IMAGE_MIMES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid image format '{mime}'. Allowed formats: PNG, JPEG, WEBP, GIF."
+        )
+
+    ext = mime.split("/")[-1].replace("jpeg", "jpg")
+    msg_id = str(uuid4())
+    storage_path = f"{conversation_id}/{msg_id}.{ext}"
+
+    try:
+        bucket = db.client.storage.from_("swayam-ai-chat-attachments")
+        bucket.upload(storage_path, raw_bytes, file_options={"content-type": mime})
+        attachment_url = bucket.get_public_url(storage_path)
+        return raw_bytes, mime, attachment_url
+    except Exception as exc:
+        logger.error("Failed to upload image to Supabase Storage: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Failed to upload image attachment: {exc}")
+
+
 def _persist_message(
     conversation_id: str,
     role: str,
@@ -127,10 +174,12 @@ def _persist_message(
     input_tokens: int | None = None,
     output_tokens: int | None = None,
     latency_ms: int | None = None,
+    attachment_url: str | None = None,
+    attachment_mime: str | None = None,
 ) -> None:
     """Saves a message row to swayam_ai_messages."""
     try:
-        db.client.table("swayam_ai_messages").insert({
+        payload = {
             "conversation_id": conversation_id,
             "role": role,
             "content": content,
@@ -139,7 +188,12 @@ def _persist_message(
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "latency_ms": latency_ms,
-        }).execute()
+        }
+        if attachment_url:
+            payload["attachment_url"] = attachment_url
+        if attachment_mime:
+            payload["attachment_mime"] = attachment_mime
+        db.client.table("swayam_ai_messages").insert(payload).execute()
     except Exception as exc:
         logger.error("Failed to persist AI message (role=%s, conv=%s): %s", role, conversation_id, exc)
         raise
@@ -210,7 +264,7 @@ def get_messages(conversation_id: str) -> list[MessageRecord]:
         res = (
             db.client
             .table("swayam_ai_messages")
-            .select("id, role, content, provider, input_tokens, output_tokens, created_at")
+            .select("id, role, content, provider, input_tokens, output_tokens, created_at, attachment_url, attachment_mime")
             .eq("conversation_id", conversation_id)
             .in_("role", ["user", "assistant"])
             .order("created_at", desc=False)
@@ -225,6 +279,8 @@ def get_messages(conversation_id: str) -> list[MessageRecord]:
                 input_tokens=row.get("input_tokens"),
                 output_tokens=row.get("output_tokens"),
                 created_at=row["created_at"],
+                attachment_url=row.get("attachment_url"),
+                attachment_mime=row.get("attachment_mime"),
             )
             for row in (res.data or [])
         ]
@@ -233,20 +289,43 @@ def get_messages(conversation_id: str) -> list[MessageRecord]:
 
 
 @router.post("/conversations/{conversation_id}/messages")
-def send_message(conversation_id: str, body: SendMessageRequest) -> StreamingResponse:
+async def send_message(conversation_id: str, request: Request) -> StreamingResponse:
     """Sends a user message and streams the AI response via SSE.
+    Supports both JSON bodies and multipart/form-data with image attachments.
 
     SSE format:
+        data: {"attachment_url": "..."}\n\n (optional, if image attached)
         data: {"delta": "...chunk..."}\n\n
-        data: {"delta": "..."}\n\n
         data: [DONE]\n\n
-
-    Also persists both the user message and assistant response to Supabase and
-    updates the daily cost aggregate.
     """
+    content_type = request.headers.get("content-type", "")
+    content = ""
+    image_bytes = None
+    image_mime = None
+    attachment_url = None
+
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+        content = str(form.get("content") or "").strip()
+        image_file = form.get("image")
+        if image_file and hasattr(image_file, "read"):
+            image_bytes, image_mime, attachment_url = await _process_image_upload(image_file, conversation_id)
+    else:
+        try:
+            body = await request.json()
+            content = str(body.get("content") or "").strip()
+        except Exception:
+            content = ""
+
+    if not content and not image_bytes:
+        raise HTTPException(status_code=400, detail="Message content or image attachment is required.")
 
     def sse_generator() -> "Generator[str, None, None]":  # type: ignore
         t_start = time.monotonic()
+
+        # If an image was attached, echo attachment_url to client first
+        if attachment_url:
+            yield f"data: {json.dumps({'attachment_url': attachment_url})}\n\n"
 
         # --- 1. Load conversation history (user + assistant messages only) ---
         try:
@@ -278,10 +357,15 @@ def send_message(conversation_id: str, body: SendMessageRequest) -> StreamingRes
             context_snapshot = {"error": str(exc)}
 
         # --- 3. Compose full messages list ---
+        user_turn: dict[str, Any] = {"role": "user", "content": content or "Analyze this chart screenshot."}
+        if image_bytes and image_mime:
+            user_turn["image_bytes"] = image_bytes
+            user_turn["image_mime"] = image_mime
+
         messages = (
             [{"role": "system", "content": system_prompt}]
             + history
-            + [{"role": "user", "content": body.content}]
+            + [user_turn]
         )
 
         # --- 4. Persist user message ---
@@ -289,8 +373,10 @@ def send_message(conversation_id: str, body: SendMessageRequest) -> StreamingRes
             _persist_message(
                 conversation_id=conversation_id,
                 role="user",
-                content=body.content,
+                content=content or "Analyze this chart screenshot.",
                 context_snapshot=context_snapshot,
+                attachment_url=attachment_url,
+                attachment_mime=image_mime,
             )
         except Exception as exc:
             yield f"data: {json.dumps({'error': f'Could not persist user message: {exc}'})}\n\n"
@@ -306,7 +392,7 @@ def send_message(conversation_id: str, body: SendMessageRequest) -> StreamingRes
                 .execute()
             )
             if conv_res.data and not conv_res.data[0].get("title"):
-                first_words = " ".join(body.content.split()[:8])
+                first_words = " ".join((content or "Chart Analysis").split()[:8])
                 _touch_conversation(conversation_id, title=first_words)
             else:
                 _touch_conversation(conversation_id)
@@ -560,4 +646,101 @@ def get_session_context_summary(session_id: str) -> dict[str, Any]:
             "has_context": False,
             "bullets": ["Session context currently unavailable."],
         }
+
+
+@router.post("/chat", response_model=ChatResponse)
+async def direct_chat_endpoint(request: Request) -> ChatResponse:
+    """Non-streaming AI chat endpoint supporting both text and image attachments."""
+    content_type = request.headers.get("content-type", "")
+    content = ""
+    conversation_id = None
+    image_bytes = None
+    image_mime = None
+    attachment_url = None
+
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+        content = str(form.get("content") or form.get("message") or "").strip()
+        conversation_id = form.get("conversation_id") or form.get("session_id")
+        image_file = form.get("image")
+        if not conversation_id:
+            res = db.client.table("swayam_ai_conversations").insert({
+                "title": f"Chat {datetime.now(timezone.utc).strftime('%d %b %H:%M')}"
+            }).execute()
+            conversation_id = res.data[0]["id"] if res.data else str(uuid4())
+        if image_file and hasattr(image_file, "read"):
+            image_bytes, image_mime, attachment_url = await _process_image_upload(image_file, str(conversation_id))
+    else:
+        try:
+            body = await request.json()
+            content = str(body.get("content") or body.get("message") or "").strip()
+            conversation_id = body.get("conversation_id") or body.get("session_id")
+        except Exception:
+            content = ""
+
+    if not conversation_id:
+        res = db.client.table("swayam_ai_conversations").insert({
+            "title": f"Chat {datetime.now(timezone.utc).strftime('%d %b %H:%M')}"
+        }).execute()
+        conversation_id = res.data[0]["id"] if res.data else str(uuid4())
+
+    if not content and not image_bytes:
+        raise HTTPException(status_code=400, detail="Message content or image attachment is required.")
+
+    # Load history
+    try:
+        hist_res = (
+            db.client.table("swayam_ai_messages")
+            .select("role, content")
+            .eq("conversation_id", conversation_id)
+            .in_("role", ["user", "assistant"])
+            .order("created_at", desc=False)
+            .execute()
+        )
+        history = [{"role": r["role"], "content": r["content"]} for r in (hist_res.data or [])]
+    except Exception:
+        history = []
+
+    try:
+        system_prompt, context_snapshot = build_full_system_prompt(str(conversation_id))
+    except Exception:
+        system_prompt = "You are Abhishek's AI trading partner."
+        context_snapshot = {}
+
+    user_turn: dict[str, Any] = {"role": "user", "content": content or "Analyze this chart screenshot."}
+    if image_bytes and image_mime:
+        user_turn["image_bytes"] = image_bytes
+        user_turn["image_mime"] = image_mime
+
+    messages = [{"role": "system", "content": system_prompt}] + history + [user_turn]
+
+    _persist_message(
+        conversation_id=str(conversation_id),
+        role="user",
+        content=content or "Analyze this chart screenshot.",
+        context_snapshot=context_snapshot,
+        attachment_url=attachment_url,
+        attachment_mime=image_mime,
+    )
+
+    t_start = time.monotonic()
+    response_text, model_used = ai_router.chat_main_turn(messages)
+    latency_ms = int((time.monotonic() - t_start) * 1000)
+
+    _persist_message(
+        conversation_id=str(conversation_id),
+        role="assistant",
+        content=response_text,
+        provider=model_used,
+        latency_ms=latency_ms,
+    )
+    _touch_conversation(str(conversation_id))
+
+    return ChatResponse(
+        response=response_text,
+        attachment_url=attachment_url,
+        conversation_id=str(conversation_id),
+        model_used=model_used,
+    )
+
 

@@ -174,6 +174,9 @@ class SwayamApp {
       });
     }
 
+    // 6. Register PWA Service Worker (BUILD-11.11)
+    this.registerServiceWorker();
+
     // 6. Ensure correct view is displayed based on current route
     this.navigateTo(this.currentPage, false);
 
@@ -436,14 +439,35 @@ class SwayamApp {
       }
     }, 10000);
   }
+
+  registerServiceWorker() {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then((reg) => {
+            console.log('[SW] Service worker registered successfully:', reg.scope);
+          })
+          .catch((err) => {
+            console.warn('[SW] Service worker registration failed:', err);
+          });
+      });
+    }
+  }
 }
 
 // Bootstrap application on DOM ready
 if (typeof document !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', () => {
+  const bootstrap = () => {
     const app = new SwayamApp();
+    window.__swayamApp = app;
     app.init().catch(console.error);
-  });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap);
+  } else {
+    bootstrap();
+  }
 }
 
 export { SwayamApp };

@@ -25,6 +25,7 @@ node_modules/
 
 # Data and Cache
 /data/
+!data/nse_holidays_2026.json
 *.parquet
 *.csv
 *.sqlite

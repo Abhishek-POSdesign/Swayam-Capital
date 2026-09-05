@@ -1,0 +1,131 @@
+# Cloud Scheduler Job Configurations for Swayam Capital (BUILD-11.8)
+# Source of truth for all automated trading cron triggers.
+#
+# CRITICAL DEPLOYMENT CONSTRAINTS:
+# - Region: asia-southeast1 (explicitly configured per GCP architecture)
+# - Timezone: Asia/Kolkata (explicitly configured on every job — do not rely on defaults)
+# - Target: Cloud Function 'cron_notifications'
+
+jobs:
+  - name: swayam-readiness-reminder
+    description: "Weekday morning prompt to complete morning readiness ritual before market open"
+    schedule: "45 8 * * 1-5"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_notifications"
+      headers:
+        Content-Type: "application/json"
+      body: '{"job": "readiness_reminder"}'
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+
+  - name: swayam-overnight-naked-warning
+    description: "Weekday 15:20 IST safety check for unhedged/naked short option legs (Risk §10a)"
+    schedule: "20 15 * * 1-5"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_notifications"
+      headers:
+        Content-Type: "application/json"
+      body: '{"job": "overnight_naked_warning"}'
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+
+  - name: swayam-eod-summary
+    description: "Weekday 15:30 IST market close summary: trade count, realized P&L, discipline check"
+    schedule: "30 15 * * 1-5"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_notifications"
+      headers:
+        Content-Type: "application/json"
+      body: '{"job": "eod_summary"}'
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+
+  - name: swayam-macro-nightly-ingest
+    description: "Daily 02:00 IST automated ingestion of high-impact macro announcements from Trading Economics"
+    schedule: "0 2 * * *"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_macro_refresh?mode=ingest"
+      headers:
+        Content-Type: "application/json"
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+
+  - name: swayam-macro-weekly-curate
+    description: "Sunday 10:00 IST weekly Gemini curation of top 3-5 high-impact NIFTY F&O risk events"
+    schedule: "0 10 * * 0"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_macro_refresh?mode=curate"
+      headers:
+        Content-Type: "application/json"
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+
+  - name: swayam-weekly-email-digest
+    description: "Sunday 11:00 IST automated email digest summarizing weekly P&L, discipline rate, key lesson, and upcoming macro calendar"
+    schedule: "0 11 * * 0"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_email_digest"
+      headers:
+        Content-Type: "application/json"
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+
+  - name: swayam-backup-nightly-db
+    description: "Daily 02:00 IST automated export of all swayam_* tables to gs://swayam-backups/db/YYYY-MM-DD.sql.gz"
+    schedule: "0 2 * * *"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_backup_db"
+      headers:
+        Content-Type: "application/json"
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+
+  - name: swayam-backup-weekly-zip
+    description: "Sunday 03:00 IST weekly ZIP archive (pg_dump + git bundle + vault method docs) to gs://swayam-backups/weekly/ and local vault"
+    schedule: "0 3 * * 0"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_backup_weekly_zip"
+      headers:
+        Content-Type: "application/json"
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+
+  - name: swayam-backup-monthly-ai-chat
+    description: "1st of month 04:00 IST export of all AI sessions & messages to gs://swayam-backups/ai-chat/YYYY-MM.json"
+    schedule: "0 4 1 * *"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_backup_ai_chat"
+      headers:
+        Content-Type: "application/json"
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+
+
+

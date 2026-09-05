@@ -482,6 +482,15 @@ def assemble_context(conversation_id: Optional[str] = None) -> tuple[str, dict]:
     backtests = _load_recent_backtest_runs_summary(limit=5)
     parts.append(f"# Recent Backtest Runs\n{backtests}")
 
+    # 14. Upcoming Macro Events & Planning Context (BUILD-11.10)
+    try:
+        from swayam.ai.context_builder import build_planning_context
+        macro_ctx = build_planning_context()
+        if macro_ctx:
+            parts.append(f"# Upcoming Macro Risk & Planning Context\n{macro_ctx}")
+    except Exception as exc:
+        logger.warning("Could not load macro planning context: %s", exc)
+
     context_text = "\n\n".join(parts)
     return context_text, snapshot
 

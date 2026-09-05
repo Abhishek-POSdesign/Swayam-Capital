@@ -26,6 +26,8 @@ class SessionMessage(BaseModel):
     created_at: str
     provider: Optional[str] = None
     position_id: Optional[str] = None
+    attachment_url: Optional[str] = None
+    attachment_mime: Optional[str] = None
 
 
 @router.post("/new", response_model=NewSessionResponse)
@@ -56,7 +58,7 @@ def get_session_messages(session_id: str) -> List[SessionMessage]:
     try:
         res = (
             db.client.table("swayam_ai_messages")
-            .select("id, role, content, created_at, provider, position_id")
+            .select("id, role, content, created_at, provider, position_id, attachment_url, attachment_mime")
             .eq("conversation_id", session_id)
             .in_("role", ["user", "assistant"])
             .order("created_at", desc=False)
@@ -70,6 +72,8 @@ def get_session_messages(session_id: str) -> List[SessionMessage]:
                 created_at=row["created_at"],
                 provider=row.get("provider"),
                 position_id=row.get("position_id"),
+                attachment_url=row.get("attachment_url"),
+                attachment_mime=row.get("attachment_mime"),
             )
             for row in (res.data or [])
         ]

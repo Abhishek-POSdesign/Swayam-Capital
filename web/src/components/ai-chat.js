@@ -11,6 +11,8 @@
  * Markdown: bold, italic, code, lists rendered via simple inline parser.
  */
 
+import { openImageModal } from './chat-surface.js';
+
 const API_BASE = '';
 
 const STARTER_PROMPTS = [
@@ -46,6 +48,7 @@ export class AIChatPanel {
     this.conversationId = null;
     this.isCollapsed = false;
     this.currentEventSource = null;
+    this.pendingImage = null;
   }
 
   async init() {
@@ -85,13 +88,25 @@ export class AIChatPanel {
           <div class="ai-error" id="ai-error" style="display:none;"></div>
         </div>
 
-        <div class="ai-panel__input-area" id="ai-input-area">
+        <!-- Attachment preview -->
+        <div id="ai-drawer-attachment-preview" style="display: none; align-items: center; gap: 8px; padding: 6px 12px; background: var(--dl-card-2); border-top: 1px solid var(--dl-line);">
+          <div style="position: relative; display: inline-block;">
+            <img id="ai-drawer-thumb" src="" style="max-height: 70px; max-width: 110px; border-radius: 6px; border: 1px solid var(--dl-line); object-fit: cover;" />
+            <button id="ai-drawer-thumb-remove" type="button" title="Remove attachment" style="position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent-coral); color: #fff; border: none; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; line-height: 1;">×</button>
+          </div>
+          <span id="ai-drawer-attachment-info" style="font-size: 0.72rem; color: var(--dl-fg-3);"></span>
+        </div>
+
+        <div class="ai-panel__input-area" id="ai-input-area" style="display: flex; gap: 8px; align-items: flex-end;">
           <textarea
             class="ai-textarea"
             id="ai-textarea"
             rows="2"
-            placeholder="Ask anything about this trade, regime, or your method..."
+            placeholder="Ask anything, or paste a chart screenshot..."
+            style="flex: 1;"
           ></textarea>
+          <input type="file" id="ai-file-input" accept="image/png,image/jpeg,image/webp,image/gif" style="display: none;" />
+          <button class="ai-btn ai-btn--ghost" id="ai-btn-upload" title="Attach screenshot or image (max 5 MB)" style="height: 38px; width: 38px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; border: 1px solid var(--dl-line); border-radius: 8px; cursor: pointer;">📎</button>
           <button class="ai-btn ai-btn--primary" id="ai-btn-send">Send</button>
         </div>
 
@@ -125,14 +140,45 @@ export class AIChatPanel {
     document.getElementById('ai-btn-history').addEventListener('click', () => this._openHistory());
     document.getElementById('ai-history-close').addEventListener('click', () => this._closeHistory());
 
+    // Attachment upload button and file input
+    const uploadBtn = document.getElementById('ai-btn-upload');
+    const fileInput = document.getElementById('ai-file-input');
+    const thumbRemove = document.getElementById('ai-drawer-thumb-remove');
+    if (uploadBtn && fileInput) {
+      uploadBtn.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          this._setPendingImage(e.target.files[0]);
+        }
+      });
+    }
+    if (thumbRemove) {
+      thumbRemove.addEventListener('click', () => this._clearPendingImage());
+    }
+
     // Send button
     document.getElementById('ai-btn-send').addEventListener('click', () => this._sendMessage());
 
     // Enter to send, Shift+Enter for newline
-    document.getElementById('ai-textarea').addEventListener('keydown', (e) => {
+    const textarea = document.getElementById('ai-textarea');
+    textarea.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         this._sendMessage();
+      }
+    });
+
+    // Paste image directly into textarea
+    textarea.addEventListener('paste', (e) => {
+      const items = (e.clipboardData || window.clipboardData)?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) this._setPendingImage(file);
+          break;
+        }
       }
     });
 
@@ -144,6 +190,40 @@ export class AIChatPanel {
         this._sendMessage();
       });
     });
+  }
+
+  _setPendingImage(file) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image exceeds maximum allowed size of 5 MB.');
+      return;
+    }
+    const validMimes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+    if (!validMimes.includes(file.type)) {
+      alert('Invalid image format. Allowed formats: PNG, JPEG, WEBP, GIF.');
+      return;
+    }
+    this.pendingImage = file;
+    const preview = document.getElementById('ai-drawer-attachment-preview');
+    const thumb = document.getElementById('ai-drawer-thumb');
+    const info = document.getElementById('ai-drawer-attachment-info');
+    if (preview && thumb) {
+      thumb.src = URL.createObjectURL(file);
+      if (info) info.textContent = `${file.name || 'Screenshot'} (${(file.size / 1024).toFixed(0)} KB)`;
+      preview.style.display = 'flex';
+    }
+  }
+
+  _clearPendingImage() {
+    this.pendingImage = null;
+    const preview = document.getElementById('ai-drawer-attachment-preview');
+    const thumb = document.getElementById('ai-drawer-thumb');
+    const info = document.getElementById('ai-drawer-attachment-info');
+    const fileInput = document.getElementById('ai-file-input');
+    if (thumb) thumb.src = '';
+    if (info) info.textContent = '';
+    if (preview) preview.style.display = 'none';
+    if (fileInput) fileInput.value = '';
   }
 
   _toggleCollapse() {
@@ -209,7 +289,7 @@ export class AIChatPanel {
       const messages = await resp.json();
       const container = document.getElementById('ai-messages');
       container.innerHTML = '';
-      messages.forEach((msg) => this._appendMessage(msg.role, msg.content, false));
+      messages.forEach((msg) => this._appendMessage(msg.role, msg.content, false, msg.attachment_url));
       if (messages.length > 0) {
         document.getElementById('ai-starters').style.display = 'none';
       }
@@ -219,7 +299,7 @@ export class AIChatPanel {
     }
   }
 
-  _appendMessage(role, content, isStreaming = false) {
+  _appendMessage(role, content, isStreaming = false, attachmentUrl = null) {
     const container = document.getElementById('ai-messages');
     const div = document.createElement('div');
     div.classList.add('ai-message', role === 'user' ? 'ai-message--user' : 'ai-message--assistant');
@@ -227,7 +307,22 @@ export class AIChatPanel {
 
     const inner = document.createElement('div');
     inner.classList.add('ai-message__content');
-    inner.innerHTML = role === 'assistant' ? renderMarkdown(content) : escapeHtml(content);
+
+    if (attachmentUrl) {
+      const img = document.createElement('img');
+      img.src = attachmentUrl;
+      img.style.cssText = 'max-width: 100%; max-height: 200px; border-radius: 6px; cursor: pointer; margin-bottom: 6px; display: block; object-fit: contain; background: #1a1b23; border: 1px solid var(--dl-line);';
+      img.title = 'Click to expand image';
+      img.addEventListener('click', () => openImageModal(attachmentUrl));
+      inner.appendChild(img);
+    }
+
+    if (content) {
+      const textDiv = document.createElement('div');
+      textDiv.innerHTML = role === 'assistant' ? renderMarkdown(content) : escapeHtml(content);
+      inner.appendChild(textDiv);
+    }
+
     div.appendChild(inner);
     container.appendChild(div);
     this._scrollToBottom();
@@ -235,15 +330,41 @@ export class AIChatPanel {
   }
 
   async _sendMessage() {
+    // User Gesture: trigger notification permission request if not yet prompted (BUILD-11.11 Reinforcement 1)
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      try {
+        Notification.requestPermission().then(async (perm) => {
+          if (perm === 'granted' && 'serviceWorker' in navigator) {
+            try {
+              const reg = await navigator.serviceWorker.ready;
+              if (reg && reg.pushManager) {
+                const sub = await reg.pushManager.getSubscription();
+                if (sub) {
+                  api.registerDevice(JSON.stringify(sub), navigator.userAgent, 'web').catch(() => {});
+                }
+              }
+            } catch (_) {}
+          }
+        }).catch(() => {});
+      } catch (_) {}
+    }
+
     const textarea = document.getElementById('ai-textarea');
     const content = textarea.value.trim();
-    if (!content || !this.conversationId) return;
+    const imageToUpload = this.pendingImage;
+    if ((!content && !imageToUpload) || !this.conversationId) return;
 
     // Abort any in-progress stream
     if (this.currentEventSource) {
       this.currentEventSource.close();
       this.currentEventSource = null;
     }
+
+    let localAttachmentUrl = null;
+    if (imageToUpload) {
+      localAttachmentUrl = URL.createObjectURL(imageToUpload);
+    }
+    this._clearPendingImage();
 
     textarea.value = '';
     textarea.disabled = true;
@@ -254,7 +375,7 @@ export class AIChatPanel {
     document.getElementById('ai-starters').style.display = 'none';
 
     // Show user message
-    this._appendMessage('user', content, false);
+    this._appendMessage('user', content, false, localAttachmentUrl);
 
     // Create assistant placeholder
     const assistantDiv = document.createElement('div');
@@ -270,14 +391,28 @@ export class AIChatPanel {
     // Use fetch + ReadableStream for SSE (EventSource doesn't support POST)
     let fullText = '';
     try {
-      const resp = await fetch(
-        `${API_BASE}/api/ai/conversations/${this.conversationId}/messages`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content }),
-        }
-      );
+      let resp;
+      if (imageToUpload) {
+        const formData = new FormData();
+        formData.append('content', content);
+        formData.append('image', imageToUpload, imageToUpload.name || 'screenshot.png');
+        resp = await fetch(
+          `${API_BASE}/api/ai/conversations/${this.conversationId}/messages`,
+          {
+            method: 'POST',
+            body: formData,
+          }
+        );
+      } else {
+        resp = await fetch(
+          `${API_BASE}/api/ai/conversations/${this.conversationId}/messages`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content }),
+          }
+        );
+      }
 
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
