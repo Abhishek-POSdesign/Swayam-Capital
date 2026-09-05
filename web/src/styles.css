@@ -1,16 +1,15 @@
 @import './styles/swayam-tokens.css';
 
 :root {
-  --bg-primary: var(--dl-bg, #101116);
-  --bg-panel: var(--dl-card, #191b21);
-  --bg-elevated: var(--dl-card-2, #20232b);
-  --text-primary: var(--dl-fg, #edeff4);
-  --text-secondary: var(--dl-fg-2, #a9afbd);
-  --border: var(--dl-line, #272a33);
-  --green: var(--accent-sage, #86ab92);
-  --red: var(--accent-coral, #dd8170);
-  --amber: var(--accent-amber, #c9a04a);
-  --accent: var(--accent-lilac, #ac9fd2);
+  --bg-primary: var(--dl-bg);
+  --bg-panel: var(--dl-card);
+  --bg-elevated: var(--dl-card-2);
+  --text-primary: var(--dl-fg);
+  --text-secondary: var(--dl-fg-2);
+  --border: var(--dl-line);
+  --green: var(--accent-sage);
+  --red: var(--accent-coral);
+  --amber: var(--accent-amber);
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', "SF Mono", Monaco, Consolas, monospace;
 }
@@ -35,7 +34,13 @@ body {
   font-family: var(--font-mono);
 }
 
-/* Header */
+/* Header Container & Sticky Navigation */
+#header-container {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
 header {
   background-color: var(--dl-rail);
   border-bottom: 1px solid var(--dl-line);
@@ -57,7 +62,7 @@ header {
   font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: var(--accent);
+  color: var(--accent-lilac);
 }
 
 .header-spot {
@@ -96,14 +101,14 @@ button:disabled {
 }
 
 button.primary {
-  background-color: var(--green);
+  background-color: var(--accent-sage);
   color: #052e16;
   font-weight: 600;
   border: none;
 }
 
 button.primary:hover:not(:disabled) {
-  background-color: #22c55e;
+  background-color: var(--accent-sage-tint-hover);
 }
 
 /* Dashboard outer wrapper (dashboard grid + AI sidebar) */
@@ -186,7 +191,7 @@ select, input {
 
 select:focus, input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--accent-lilac);
 }
 
 /* Legs Table */
@@ -231,23 +236,27 @@ td {
 }
 
 .badge-ce {
-  background-color: #1e3a8a;
-  color: #93c5fd;
+  background-color: var(--accent-blue-tint);
+  color: var(--dl-task);
+  border: 1px solid var(--accent-blue);
 }
 
 .badge-pe {
-  background-color: #581c87;
-  color: #d8b4fe;
+  background-color: var(--accent-lilac-tint);
+  color: var(--dl-project);
+  border: 1px solid var(--accent-lilac);
 }
 
 .badge-buy {
-  background-color: #064e3b;
-  color: #6ee7b7;
+  background-color: var(--accent-sage-tint);
+  color: var(--dl-done);
+  border: 1px solid var(--accent-sage);
 }
 
 .badge-sell {
-  background-color: #7f1d1d;
-  color: #fca5a5;
+  background-color: var(--accent-coral-tint);
+  color: var(--dl-alert);
+  border: 1px solid var(--accent-coral);
 }
 
 /* Payoff Chart */
@@ -402,7 +411,7 @@ td {
 .toast {
   background-color: var(--bg-elevated);
   color: var(--text-primary);
-  border: 1px solid var(--accent);
+  border: 1px solid var(--accent-lilac);
   padding: 0.75rem 1.25rem;
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -449,6 +458,30 @@ body.ai-panel-open #strategy-left-rail {
   transition: all var(--dur-base, 180ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
+/* Manual collapsible Strategy Builder left rail */
+#strategy-left-rail.rail-collapsed {
+  flex: 0 0 40px !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  padding: 16px 8px !important;
+  overflow: hidden !important;
+}
+
+#strategy-left-rail.rail-collapsed .rail-full-content {
+  display: none !important;
+}
+
+#strategy-left-rail.rail-collapsed .rail-text-label {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .legs-grid-2col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 @media (max-width: 900px) {
   body:has(.ai-panel-open) .home-canvas,
   body:has(.ai-panel-open) .dashboard-container,
@@ -483,7 +516,7 @@ body.ai-panel-open #strategy-left-rail {
 }
 
 .swayam-rail::-webkit-scrollbar-thumb {
-  background: var(--dl-track, rgba(255, 255, 255, 0.1));
+  background: var(--dl-track);
   border-radius: 4px;
 }
 

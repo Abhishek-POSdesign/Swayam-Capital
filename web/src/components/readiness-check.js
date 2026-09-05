@@ -127,7 +127,7 @@ export class ReadinessCheckComponent {
           <!-- Mood Selector (Horizontal Pills - Required, No Default) -->
           <div style="grid-column: 1 / -1;">
             <label style="display: block; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">
-              How do I feel right now? <span style="color: var(--accent);">* Required (feelings > data)</span>
+              How do I feel right now? <span style="color: var(--accent-lilac);">* Required (feelings > data)</span>
             </label>
             <div id="mood-pill-container" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
               ${[
@@ -138,7 +138,7 @@ export class ReadinessCheckComponent {
                 { id: 'angry_grief', label: '🛑 Angry / Grief' },
               ].map(m => `
                 <button type="button" class="mood-pill ${this.selectedMood === m.id ? 'active' : ''}" data-mood="${m.id}"
-                  style="padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.825rem; cursor: pointer; border: 1px solid ${this.selectedMood === m.id ? 'var(--accent)' : 'var(--border)'}; background: ${this.selectedMood === m.id ? 'rgba(88, 166, 255, 0.15)' : 'var(--bg-surface)'}; color: var(--text-primary);">
+                  style="padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.825rem; cursor: pointer; border: 1px solid ${this.selectedMood === m.id ? 'var(--accent-lilac)' : 'var(--border)'}; background: ${this.selectedMood === m.id ? 'rgba(88, 166, 255, 0.15)' : 'var(--bg-surface)'}; color: var(--text-primary);">
                   ${m.label}
                 </button>
               `).join('')}
@@ -169,7 +169,7 @@ export class ReadinessCheckComponent {
         this.selectedMood = p.dataset.mood;
         pills.forEach(other => {
           const isActive = other.dataset.mood === this.selectedMood;
-          other.style.borderColor = isActive ? 'var(--accent)' : 'var(--border)';
+          other.style.borderColor = isActive ? 'var(--accent-lilac)' : 'var(--border)';
           other.style.background = isActive ? 'rgba(88, 166, 255, 0.15)' : 'var(--bg-surface)';
         });
         document.getElementById('mood-error').style.display = 'none';

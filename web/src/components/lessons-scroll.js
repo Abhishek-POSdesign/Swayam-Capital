@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Lesson Ledger Scroll Feed for Swayam Capital (BUILD-11).
  *
  * Displays chronologically ordered AI and user-refined lessons.
@@ -22,7 +22,7 @@ export class LessonsScrollComponent {
 
     if (!this.lessons.length) {
       this.container.innerHTML = `
-        <div style="background: var(--dl-card, #191b21); border: 1px solid var(--dl-line, #282a33); border-radius: var(--radius-card, 8px); padding: 14px 16px;">
+        <div style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: var(--radius-card); padding: 14px 16px;">
           <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dl-fg-3); font-weight: 600; margin-bottom: 8px;">
             💡 Recent Lesson Ledger
           </div>
@@ -37,7 +37,7 @@ export class LessonsScrollComponent {
     const itemsHtml = this.lessons.map(l => {
       const outcome = (l.outcome || 'BREAKEVEN').toUpperCase();
       const tagBg = outcome === 'WIN' ? 'var(--accent-sage-tint, rgba(134,171,146,0.15))' : outcome === 'LOSS' ? 'var(--accent-coral-tint, rgba(221,129,112,0.15))' : 'rgba(255,255,255,0.06)';
-      const tagColor = outcome === 'WIN' ? 'var(--accent-sage, #86ab92)' : outcome === 'LOSS' ? 'var(--accent-coral, #dd8170)' : 'var(--dl-fg-3)';
+      const tagColor = outcome === 'WIN' ? 'var(--accent-sage)' : outcome === 'LOSS' ? 'var(--accent-coral)' : 'var(--dl-fg-3)';
       const dateStr = (l.trade_closed_at || l.created_at || '').substring(0, 10);
       const isEdited = l.lesson_source === 'user_edited';
 
@@ -66,7 +66,7 @@ export class LessonsScrollComponent {
     }).join('');
 
     this.container.innerHTML = `
-      <div style="background: var(--dl-card, #191b21); border: 1px solid var(--dl-line, #282a33); border-radius: var(--radius-card, 8px); padding: 14px 16px;">
+      <div style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: var(--radius-card); padding: 14px 16px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
           <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dl-fg-3); font-weight: 600;">
             💡 Recent Lesson Ledger
@@ -75,7 +75,7 @@ export class LessonsScrollComponent {
             ${this.lessons.length} Lessons
           </span>
         </div>
-        <div class="lessons-feed" style="display: flex; flex-direction: column; gap: 8px; max-height: 290px; overflow-y: auto; padding-right: 4px;">
+        <div class="lessons-feed swayam-scroll-thin" style="display: flex; flex-direction: column; gap: 8px; max-height: 290px; overflow-y: auto; padding-right: 4px;">
           ${itemsHtml}
         </div>
       </div>

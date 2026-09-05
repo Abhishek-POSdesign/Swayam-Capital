@@ -55,8 +55,8 @@ export class OvernightBlockModalComponent {
         <div style="
           width: 100%;
           max-width: 540px;
-          background: var(--dl-card, #191b21);
-          border: 2px solid var(--accent-coral, #dd8170);
+          background: var(--dl-card);
+          border: 2px solid var(--accent-coral);
           border-radius: var(--radius-card, 12px);
           box-shadow: 0 20px 50px rgba(221, 129, 112, 0.25);
           padding: 28px;
@@ -71,7 +71,7 @@ export class OvernightBlockModalComponent {
               height: 44px;
               border-radius: 50%;
               background: var(--accent-coral-tint, rgba(221,129,112,0.15));
-              color: var(--accent-coral, #dd8170);
+              color: var(--accent-coral);
               display: flex;
               align-items: center;
               justify-content: center;
@@ -80,7 +80,7 @@ export class OvernightBlockModalComponent {
               ⚠️
             </div>
             <div>
-              <div class="eyebrow" style="color: var(--accent-coral, #dd8170); font-weight: 700;">
+              <div class="eyebrow" style="color: var(--accent-coral); font-weight: 700;">
                 AUTO-BLOCK ENFORCEMENT · 15:20 IST
               </div>
               <h2 style="font-family: var(--font-serif); font-size: 1.35rem; color: var(--dl-fg); margin: 2px 0 0 0;">
@@ -91,7 +91,7 @@ export class OvernightBlockModalComponent {
 
           <!-- Position Details Box -->
           <div style="
-            background: var(--dl-card-2, #101116);
+            background: var(--dl-card-2);
             border: 1px solid var(--dl-line);
             border-radius: 8px;
             padding: 14px 16px;

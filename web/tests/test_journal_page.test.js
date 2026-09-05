@@ -214,5 +214,68 @@ describe('BUILD-11 Trade Journal & Lesson Ledger Components', () => {
       expect(api.getJournalTrades).toHaveBeenCalled();
       expect(api.getJournalAnalytics).toHaveBeenCalled();
     });
+
+    it('displays housekeeping banner when pre-launch test trades detected and allows archiving', async () => {
+      localStorage.removeItem('swayam_journal_test_banner_dismissed');
+      vi.spyOn(api, 'getJournalTrades').mockResolvedValue({
+        trades: [],
+        total_count: 58,
+        pre_launch_test_trades_count: 58,
+        kpis: { total_trades: 58 },
+      });
+      vi.spyOn(api, 'getJournalAnalytics').mockResolvedValue({
+        cumulative_pnl_series: [],
+        pnl_by_strategy: [],
+        pnl_by_exit_reason: [],
+        pnl_by_directional_view: [],
+        win_rate_by_trend: {},
+        recent_lessons: [],
+      });
+      vi.spyOn(api, 'archiveTestTrades').mockResolvedValue({ archived: 58 });
+
+      const page = new JournalPage(container);
+      await page.init();
+
+      const bannerMount = container.querySelector('#journal-housekeeping-banner-container');
+      expect(bannerMount).not.toBeNull();
+      expect(bannerMount.innerHTML).toContain('58 pre-launch test paper trades detected');
+
+      // Click archive
+      const btnArchive = bannerMount.querySelector('#btn-archive-test-trades');
+      expect(btnArchive).not.toBeNull();
+      btnArchive.click();
+
+      expect(api.archiveTestTrades).toHaveBeenCalled();
+    });
+
+    it('renders trades table inside 460px max-height container with swayam-scroll-thin', async () => {
+      vi.spyOn(api, 'getJournalTrades').mockResolvedValue({
+        trades: [
+          { position_id: 'p1', opened_at: '2026-09-02T10:00:00Z', strategy_name: 'Iron Condor', status: 'closed' }
+        ],
+        total_count: 1,
+        pre_launch_test_trades_count: 0,
+        kpis: { total_trades: 1 },
+      });
+      vi.spyOn(api, 'getJournalAnalytics').mockResolvedValue({
+        cumulative_pnl_series: [],
+        pnl_by_strategy: [],
+        pnl_by_exit_reason: [],
+        pnl_by_directional_view: [],
+        win_rate_by_trend: {},
+        recent_lessons: [],
+      });
+
+      const page = new JournalPage(container);
+      await page.init();
+
+      expect(container.innerHTML).toContain('trades-ledger-scroll-wrapper');
+      expect(container.innerHTML).toContain('swayam-scroll-thin');
+      expect(container.innerHTML).toContain('max-height: 460px');
+
+      const footer = container.querySelector('#journal-trades-scroll-footer');
+      expect(footer).not.toBeNull();
+      expect(footer.textContent).toContain('1 rows shown · scroll for more');
+    });
   });
 });

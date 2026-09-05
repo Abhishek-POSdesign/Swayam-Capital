@@ -112,5 +112,6 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ lesson_text: lessonText }),
     }),
+  archiveTestTrades: () => request('/api/journal/archive-test-trades', { method: 'POST' }),
 };
 

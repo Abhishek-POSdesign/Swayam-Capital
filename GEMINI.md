@@ -40,6 +40,9 @@
    - Fail loudly with clear HTTP exceptions (503 Service Unavailable, 400 Bad Request, 404 Not Found, 500 Internal Error).
    - Never substitute fake dummy prices or default numbers when real systems fail.
 
+5. **No hex fallbacks inside `var(...)`:**
+   - The theme tokens are the source of truth. A hex fallback inside `var(--token, #hex)` is a dark-mode-only value that will silently mis-render the page in light mode if tokens fail to load. Trust the token; if it doesn't load, the page should visibly break, not lie. This rule applies to inline styles in JS/HTML and to `styles.css` alike.
+
 ---
 
 ## 🚀 2. Milestone Summary (BUILDs 1 through 7 Complete)

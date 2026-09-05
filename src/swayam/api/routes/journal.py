@@ -14,6 +14,7 @@ from typing import Any, Optional
 from fastapi import APIRouter, HTTPException, Query
 
 from swayam.api.models_api import (
+    ArchiveTestTradesResponse,
     JournalKPIs,
     JournalTradeItem,
     JournalTradesResponse,
@@ -78,6 +79,9 @@ def get_journal_trades(
 
         if status != "all":
             query = query.eq("status", status)
+        else:
+            query = query.neq("status", "archived")
+
         if strategy:
             query = query.ilike("strategy_name", f"%{strategy}%")
         if exit_reason:
@@ -91,6 +95,17 @@ def get_journal_trades(
 
         res = query.execute()
         raw_positions = res.data or []
+
+        # Count unarchived pre-launch test paper trades for housekeeping banner
+        test_check = (
+            client.table("swayam_positions")
+            .select("id")
+            .eq("mode", "paper")
+            .lt("opened_at", "2026-09-06")
+            .neq("status", "archived")
+            .execute()
+        )
+        pre_launch_test_count = len(test_check.data or [])
     except Exception as exc:
         logger.error("Failed to query journal trades from Supabase: %s", exc)
         raise HTTPException(
@@ -299,7 +314,44 @@ def get_journal_trades(
         max_loss_trade=max_loss_item,
     )
 
-    return JournalTradesResponse(trades=paginated_trades, total_count=total_count, kpis=kpis)
+    return JournalTradesResponse(
+        trades=paginated_trades,
+        total_count=total_count,
+        kpis=kpis,
+        pre_launch_test_trades_count=pre_launch_test_count,
+    )
+
+
+@router.post("/api/journal/archive-test-trades", response_model=ArchiveTestTradesResponse)
+def archive_test_trades() -> ArchiveTestTradesResponse:
+    """Safely archives pre-launch test paper trades (opened_at < 2026-09-06) without deleting records."""
+    try:
+        client = db.client
+        # Query matching unarchived test trades
+        matching = (
+            client.table("swayam_positions")
+            .select("id")
+            .eq("mode", "paper")
+            .lt("opened_at", "2026-09-06")
+            .neq("status", "archived")
+            .execute()
+        )
+        records = matching.data or []
+        count = len(records)
+
+        if count > 0:
+            client.table("swayam_positions").update({"status": "archived"}).eq("mode", "paper").lt("opened_at", "2026-09-06").neq("status", "archived").execute()
+
+        return ArchiveTestTradesResponse(
+            archived=count,
+            message=f"Successfully archived {count} pre-launch test paper trade{'s' if count != 1 else ''}.",
+        )
+    except Exception as exc:
+        logger.error("Failed to archive pre-launch test trades: %s", exc)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to archive test trades: {exc}",
+        ) from exc
 
 
 @router.get("/api/journal/trade/{position_id}")

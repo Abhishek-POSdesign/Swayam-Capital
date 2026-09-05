@@ -45,4 +45,65 @@ describe('PayoffChartComponent', () => {
     expect(chart.maxLoss).toBe(3750);
     expect(chart.maxProfit).toBe(7500);
   });
+
+  it('renders time slider, IV slider, and triggers onSliderChange callback', async () => {
+    let lastSliderParams = null;
+    const chart = new PayoffChartComponent(container, {
+      onSliderChange: (params) => {
+        lastSliderParams = params;
+      },
+    });
+    await chart.init();
+
+    const timeSlider = container.querySelector('#payoff-time-slider');
+    const ivSlider = container.querySelector('#payoff-iv-slider');
+    const btnReset = container.querySelector('#btn-reset-payoff-sliders');
+
+    expect(timeSlider).not.toBeNull();
+    expect(ivSlider).not.toBeNull();
+    expect(btnReset).not.toBeNull();
+
+    // Fire time slider change
+    timeSlider.value = '3';
+    timeSlider.dispatchEvent(new Event('input'));
+    expect(lastSliderParams).not.toBeNull();
+    expect(lastSliderParams.targetDays).toBe(3);
+
+    // Fire IV slider change
+    ivSlider.value = '15';
+    ivSlider.dispatchEvent(new Event('input'));
+    expect(lastSliderParams.ivShiftPct).toBe(15);
+
+    // Reset button
+    btnReset.click();
+    expect(timeSlider.value).toBe('0');
+    expect(ivSlider.value).toBe('0');
+    expect(lastSliderParams.targetDays).toBe(0);
+    expect(lastSliderParams.ivShiftPct).toBe(0);
+  });
+
+  it('renders portfolio Greeks strip with values and warning icon when missing', async () => {
+    const chart = new PayoffChartComponent(container);
+    await chart.init();
+
+    // Partial greeks
+    chart.updateData({
+      greeks: {
+        delta: 0.42,
+        theta: -185,
+        // gamma missing
+        vega: 840,
+      },
+      pop: 62.5,
+    });
+
+    const strip = container.querySelector('#payoff-greeks-strip');
+    expect(strip).not.toBeNull();
+    expect(strip.textContent).toContain('+0.42');
+    expect(strip.textContent).toContain('185');
+    expect(strip.textContent).toContain('840');
+    expect(strip.textContent).toContain('63%');
+    // Gamma should show warning ⚠
+    expect(strip.textContent).toContain('⚠');
+  });
 });

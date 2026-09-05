@@ -47,6 +47,14 @@ class StrategyComputeRequest(BaseModel):
         default_factory=dict,
         description="Mapping of leg key (e.g. '24850_PE') to implied volatility decimal (e.g. 0.15)",
     )
+    target_date: Optional[str] = Field(
+        default=None,
+        description="Optional valuation date YYYY-MM-DD for T+N payoff evaluation (must not exceed expiry)",
+    )
+    iv_shift_pct: float = Field(
+        default=0.0,
+        description="Optional IV percentage shift [-90, +200] for stress-testing payoff curve",
+    )
 
 
 class ExecuteRequest(StrategyComputeRequest):
@@ -148,6 +156,17 @@ class PayoffCurveResponse(BaseModel):
     net_debit_credit_inr: float
 
 
+class LegGreeksItem(BaseModel):
+    """Individual option leg Greek metrics."""
+    strike: float
+    option_type: str
+    direction: str
+    delta: float
+    theta: float
+    vega: float
+    gamma: float
+
+
 class GreeksResponse(BaseModel):
     """Standardized aggregated portfolio Greeks."""
     net_delta: float
@@ -155,12 +174,16 @@ class GreeksResponse(BaseModel):
     net_theta_per_day: float
     net_vega: float
     net_rho: float
+    pop: Optional[float] = Field(default=None, description="Probability of Profit percentage (0-100)")
+    per_leg: list[LegGreeksItem] = Field(default_factory=list, description="Per-leg calculated Greeks")
 
 
 class StrategyComputeResponse(BaseModel):
     """Combined strategy computation output."""
     payoff_curve: PayoffCurveResponse
     greeks: GreeksResponse
+    pop: Optional[float] = Field(default=None, description="Top-level Probability of Profit percentage")
+    per_leg: list[LegGreeksItem] = Field(default_factory=list, description="Per-leg calculated Greeks")
 
 
 class StrikeQuote(BaseModel):
@@ -262,6 +285,12 @@ class JournalTradesResponse(BaseModel):
     trades: list[JournalTradeItem]
     total_count: int
     kpis: JournalKPIs
+    pre_launch_test_trades_count: int = 0
+
+
+class ArchiveTestTradesResponse(BaseModel):
+    archived: int
+    message: str
 
 
 class LessonResponse(BaseModel):

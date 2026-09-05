@@ -82,7 +82,7 @@ export class ActiveTradesComponent {
       <!-- Close Position Modal -->
       <div id="close-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content" style="max-width: 520px;">
-          <h3 style="margin-bottom: 0.75rem; color: var(--accent);">Close Position</h3>
+          <h3 style="margin-bottom: 0.75rem; color: var(--accent-lilac);">Close Position</h3>
           <div id="close-modal-body"></div>
           <div id="close-modal-error" style="display: none; margin: 0.75rem 0; padding: 0.5rem; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--red); border-radius: 4px; color: var(--red); font-size: 0.8rem;"></div>
           <div class="modal-actions" style="margin-top: 1rem;">
@@ -193,7 +193,7 @@ export class ActiveTradesComponent {
             <div style="font-size: 0.75rem;">${riskPct}</div>
           </td>
           <td>
-            <a href="${obsidianLink}" style="color: var(--accent); text-decoration: none; font-size: 0.8rem;" title="Open note in Obsidian">
+            <a href="${obsidianLink}" style="color: var(--accent-lilac); text-decoration: none; font-size: 0.8rem;" title="Open note in Obsidian">
               ${journalFilename} ↗
             </a>
           </td>

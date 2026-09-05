@@ -174,7 +174,7 @@ export class ReadinessRitualComponent {
 
         <!-- Double confirmation modal for alcohol streak protection -->
         <div id="alcohol-streak-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
-          <div style="background: var(--dl-card, #191b21); border: 2px solid var(--accent-coral, #b56b5d); border-radius: 14px; max-width: 440px; width: 90%; padding: 22px 24px; box-shadow: var(--dl-shadow); display: flex; flex-direction: column; gap: 14px;">
+          <div style="background: var(--dl-card); border: 2px solid var(--accent-coral); border-radius: 14px; max-width: 440px; width: 90%; padding: 22px 24px; box-shadow: var(--dl-shadow); display: flex; flex-direction: column; gap: 14px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 1.3rem;">⚠️</span>
               <span style="font-weight: 700; font-size: 1.05rem; color: var(--accent-coral);">Streak Protection Warning</span>

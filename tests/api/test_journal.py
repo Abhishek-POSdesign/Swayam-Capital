@@ -1,4 +1,4 @@
-﻿"""
+"""
 Unit and integration tests for Trade Journal & Performance Analytics (BUILD-11).
 """
 
@@ -122,6 +122,19 @@ class MockQuery:
     def gte(self, *args, **kwargs):
         return self
 
+    def neq(self, col, val):
+        self._filtered = [r for r in self._filtered if str(r.get(col)) != str(val)]
+        return self
+
+    def lt(self, col, val):
+        self._filtered = [r for r in self._filtered if str(r.get(col, "")) < str(val)]
+        return self
+
+    def update(self, values):
+        for r in self._filtered:
+            r.update(values)
+        return self
+
     def lte(self, *args, **kwargs):
         return self
 
@@ -214,3 +227,31 @@ def test_journal_db_failure_raises_503(monkeypatch):
     res = client.get("/api/journal/trades")
     assert res.status_code == 503
     assert "safety-critical service" in res.json()["detail"]
+
+
+def test_archive_test_trades(monkeypatch):
+    mock_positions = [
+        {"id": "p-old-1", "mode": "paper", "opened_at": "2026-09-01T09:15:00Z", "status": "closed"},
+        {"id": "p-old-2", "mode": "paper", "opened_at": "2026-09-02T10:00:00Z", "status": "closed"},
+        {"id": "p-new-1", "mode": "paper", "opened_at": "2026-09-08T09:30:00Z", "status": "closed"},
+    ]
+    class MockArchiveDBClient:
+        def __init__(self):
+            self.data = list(mock_positions)
+        def table(self, name):
+            return MockQuery(self.data)
+
+    mock_db = MockArchiveDBClient()
+    monkeypatch.setattr(db, "_client", mock_db)
+
+    # First call archives the 2 pre-launch trades
+    res = client.post("/api/journal/archive-test-trades")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["archived"] == 2
+    assert "Successfully archived 2" in data["message"]
+
+    # Second call is idempotent, 0 remaining
+    res2 = client.post("/api/journal/archive-test-trades")
+    assert res2.status_code == 200
+    assert res2.json()["archived"] == 0

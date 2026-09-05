@@ -61,10 +61,10 @@ export class LessonEditorModal {
 
     this.container.innerHTML = `
       <div class="modal-overlay" style="position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; z-index: 1200; backdrop-filter: blur(2px);">
-        <div class="modal-content" style="background: var(--dl-card, #191b21); border: 1px solid var(--dl-line, #282a33); border-radius: var(--radius-card, 8px); width: 500px; max-width: 90vw; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <div class="modal-content" style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: var(--radius-card); width: 500px; max-width: 90vw; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
           
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h3 style="margin: 0; font-size: 1rem; color: var(--dl-fg, #ffffff); display: flex; align-items: center; gap: 8px;">
+            <h3 style="margin: 0; font-size: 1rem; color: var(--dl-fg); display: flex; align-items: center; gap: 8px;">
               <span>💡</span> Refine Lesson Takeaway
             </h3>
             <button type="button" id="btn-close-lesson-modal" style="background: none; border: none; color: var(--dl-fg-3); font-size: 1.2rem; cursor: pointer;">✕</button>
@@ -74,13 +74,13 @@ export class LessonEditorModal {
             Refine the automated lesson to capture your specific insight. Updating this note also persists to your Obsidian Second Brain journal note.
           </p>
 
-          <textarea id="lesson-textarea" rows="4" style="width: 100%; box-sizing: border-box; background: var(--bg-elevated, #101116); border: 1px solid var(--dl-line, #282a33); border-radius: 6px; padding: 10px; color: var(--dl-fg, #ffffff); font-size: 0.85rem; font-family: inherit; resize: vertical; outline: none;">${currentText}</textarea>
+          <textarea id="lesson-textarea" rows="4" style="width: 100%; box-sizing: border-box; background: var(--bg-elevated); border: 1px solid var(--dl-line); border-radius: 6px; padding: 10px; color: var(--dl-fg); font-size: 0.85rem; font-family: inherit; resize: vertical; outline: none;">${currentText}</textarea>
 
           <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px;">
             <button type="button" id="btn-cancel-lesson" style="background: transparent; border: 1px solid var(--dl-line); color: var(--dl-fg-2); border-radius: 4px; padding: 6px 14px; font-size: 0.8rem; cursor: pointer;">
               Cancel
             </button>
-            <button type="button" id="btn-save-lesson" style="background: var(--accent-lilac, #ac9fd2); border: none; color: #101116; font-weight: 600; border-radius: 4px; padding: 6px 16px; font-size: 0.8rem; cursor: pointer;">
+            <button type="button" id="btn-save-lesson" style="background: var(--accent-lilac); border: none; color: #101116; font-weight: 600; border-radius: 4px; padding: 6px 16px; font-size: 0.8rem; cursor: pointer;">
               Save Refined Lesson
             </button>
           </div>

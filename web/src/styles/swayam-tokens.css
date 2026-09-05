@@ -368,3 +368,55 @@ body {
   transform: scale(1.08);
   box-shadow: 0 0 24px rgba(172, 159, 210, 0.6);
 }
+
+/* Range Slider Primitives (Sensibull-pattern) */
+input[type="range"].swayam-slider-lilac,
+input[type="range"].swayam-slider-amber {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: var(--dl-line);
+  border-radius: 3px;
+  outline: none;
+  transition: background var(--dur-fast) ease;
+}
+
+input[type="range"].swayam-slider-lilac::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-lilac);
+  cursor: pointer;
+  border: 2px solid var(--dl-card);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+input[type="range"].swayam-slider-amber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-amber);
+  cursor: pointer;
+  border: 2px solid var(--dl-card);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Thin Sleek Scrollbar (Atlas Pattern) */
+.swayam-scroll-thin::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.swayam-scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.swayam-scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--dl-line);
+  border-radius: 4px;
+}
+.swayam-scroll-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--dl-fg-3);
+}
