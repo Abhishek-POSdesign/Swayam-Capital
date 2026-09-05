@@ -5,6 +5,11 @@
 /* ===== DARK CANVAS (default — Charcoal Muse) ===== */
 :root,
 :root[data-theme="dark"] {
+  --text-primary: #edeff4;    /* near-white — hero data, numerals, primary text */
+  --text-secondary: #a9afbd;  /* mid-gray — body copy, meta text */
+  --text-muted: #8a91a0;      /* low-gray — section labels ONLY (all-caps eyebrows) */
+  --text-inverse: #101116;    /* dark — text placed ON a light/tinted surface */
+
   --dl-bg: #101116;
   --dl-card: #191b21;
   --dl-card-2: #20232b;
@@ -76,6 +81,7 @@
   --text-primary: #1a1a1c;
   --text-secondary: #6c6b68;
   --text-muted: #94928e;
+  --text-inverse: #ffffff;    /* white — text placed ON a dark/tinted surface */
 
   --dl-bg: #ebe8e1;
   --dl-card: #f8f6f2;
@@ -125,7 +131,11 @@
 @media (prefers-color-scheme: light) {
   :root[data-theme="auto"] {
     --surface-0: #ebe8e1;  --surface-1: #f8f6f2;  --surface-1-hover: #ffffff;
-    --border: rgba(0, 0, 0, 0.07);  --text-primary: #1a1a1c;
+    --border: rgba(0, 0, 0, 0.07);
+    --text-primary: #1a1a1c;
+    --text-secondary: #6c6b68;
+    --text-muted: #94928e;
+    --text-inverse: #ffffff;
     --dl-bg: #ebe8e1;  --dl-card: #f8f6f2;  --dl-card-2: #fdfbf7;
     --dl-rail: #ffffff;  --dl-line: rgba(0, 0, 0, 0.07);  --dl-line-2: rgba(0, 0, 0, 0.04);
     --dl-fg: #1a1a1c;  --dl-fg-2: #6c6b68;  --dl-fg-3: #94928e;

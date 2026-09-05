@@ -108,18 +108,27 @@ export class PayoffChartComponent {
           </div>
         </div>
 
-        <!-- Metric Summary Chips immediately above chart -->
-        <div id="payoff-metrics-strip" style="display: flex; gap: 8px; flex-wrap: wrap; font-size: 0.72rem; padding: 2px 0;">
-          <span style="padding: 3px 8px; border-radius: 4px; background: var(--accent-sage-tint); color: var(--accent-sage); border: 1px solid rgba(134,171,146,0.3); font-weight: 600;">
-            Max Profit: +₹${Math.round(this.maxProfit).toLocaleString('en-IN')}
-          </span>
-          <span style="padding: 3px 8px; border-radius: 4px; background: var(--accent-coral-tint); color: var(--accent-coral); border: 1px solid rgba(221,129,112,0.3); font-weight: 600;">
-            Max Loss: -₹${Math.round(this.maxLoss).toLocaleString('en-IN')}
-          </span>
-          ${this.breakevens.length > 0 ? `
-            <span style="padding: 3px 8px; border-radius: 4px; background: rgba(201,160,74,0.12); color: var(--accent-amber); border: 1px solid rgba(201,160,74,0.3); font-family: var(--font-mono); font-weight: 600;">
-              Breakeven: ${this.breakevens.map(b => Math.round(b).toLocaleString('en-IN')).join(' | ')}
+        <!-- Hero Metrics Strip immediately above chart -->
+        <div id="payoff-metrics-strip" style="display: flex; gap: 20px; flex-wrap: wrap; align-items: baseline; padding: 4px 0;">
+          <div style="display: flex; flex-direction: column;">
+            <span style="font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600;">Max Profit</span>
+            <span style="font-family: var(--font-serif); font-size: 1.35rem; font-weight: 700; color: var(--accent-sage); line-height: 1.2;">
+              +₹${Math.round(this.maxProfit).toLocaleString('en-IN')}
             </span>
+          </div>
+          <div style="display: flex; flex-direction: column;">
+            <span style="font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600;">Max Loss</span>
+            <span style="font-family: var(--font-serif); font-size: 1.35rem; font-weight: 700; color: var(--accent-coral); line-height: 1.2;">
+              -₹${Math.round(this.maxLoss).toLocaleString('en-IN')}
+            </span>
+          </div>
+          ${this.breakevens.length > 0 ? `
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600;">Breakeven</span>
+              <span style="font-family: var(--font-serif); font-size: 1.35rem; font-weight: 700; color: var(--accent-amber); line-height: 1.2;">
+                ${this.breakevens.map(b => Math.round(b).toLocaleString('en-IN')).join(' | ')}
+              </span>
+            </div>
           ` : ''}
         </div>
 
@@ -131,7 +140,7 @@ export class PayoffChartComponent {
           flex-wrap: wrap;
           font-family: var(--font-mono);
           font-size: 0.72rem;
-          color: var(--dl-fg-2);
+          color: var(--text-secondary);
           padding: 6px 12px;
           background: var(--dl-card-2);
           border: 1px solid var(--dl-line);
@@ -153,10 +162,10 @@ export class PayoffChartComponent {
           <!-- Time Decay Slider Row -->
           <div style="display: flex; flex-direction: column; gap: 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem;">
-              <span style="font-weight: 600; color: var(--accent-lilac); font-family: var(--font-mono);">
+              <span style="font-weight: 600; color: var(--text-primary); font-family: var(--font-mono);">
                 <span id="payoff-time-label">${timeLabelText}</span>
               </span>
-              <span style="font-size: 0.68rem; color: var(--dl-fg-3);">Time Horizon</span>
+              <span style="font-size: 0.68rem; color: var(--text-muted);">Time Horizon</span>
             </div>
             <input
               type="range"
@@ -168,7 +177,7 @@ export class PayoffChartComponent {
               class="swayam-slider-lilac"
               style="width: 100%; cursor: pointer;"
             />
-            <div id="payoff-time-ticks" style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--dl-fg-3); font-family: var(--font-mono); padding: 0 2px;">
+            <div id="payoff-time-ticks" style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-mono); padding: 0 2px;">
               <span>Today</span>
               <span>Expiry</span>
             </div>
@@ -177,7 +186,7 @@ export class PayoffChartComponent {
           <!-- IV Shift Slider Row -->
           <div style="display: flex; flex-direction: column; gap: 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem;">
-              <span style="font-weight: 600; color: var(--accent-amber); font-family: var(--font-mono);">
+              <span style="font-weight: 600; color: var(--text-primary); font-family: var(--font-mono);">
                 <span id="payoff-iv-label">IV Change: ${this.ivSliderVal > 0 ? '+' : ''}${this.ivSliderVal}%</span>
               </span>
               <div style="display: flex; align-items: center; gap: 8px;">
@@ -332,16 +341,25 @@ export class PayoffChartComponent {
     const strip = this.container.querySelector('#payoff-metrics-strip');
     if (strip) {
       strip.innerHTML = `
-        <span style="padding: 3px 8px; border-radius: 4px; background: var(--accent-sage-tint); color: var(--accent-sage); border: 1px solid rgba(134,171,146,0.3); font-weight: 600;">
-          Max Profit: +₹${Math.round(this.maxProfit).toLocaleString('en-IN')}
-        </span>
-        <span style="padding: 3px 8px; border-radius: 4px; background: var(--accent-coral-tint); color: var(--accent-coral); border: 1px solid rgba(221,129,112,0.3); font-weight: 600;">
-          Max Loss: -₹${Math.round(this.maxLoss).toLocaleString('en-IN')}
-        </span>
-        ${this.breakevens.length > 0 ? `
-          <span style="padding: 3px 8px; border-radius: 4px; background: rgba(201,160,74,0.12); color: var(--accent-amber); border: 1px solid rgba(201,160,74,0.3); font-family: var(--font-mono); font-weight: 600;">
-            Breakeven: ${this.breakevens.map(b => Math.round(b).toLocaleString('en-IN')).join(' | ')}
+        <div style="display: flex; flex-direction: column;">
+          <span style="font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600;">Max Profit</span>
+          <span style="font-family: var(--font-serif); font-size: 1.35rem; font-weight: 700; color: var(--accent-sage); line-height: 1.2;">
+            +₹${Math.round(this.maxProfit).toLocaleString('en-IN')}
           </span>
+        </div>
+        <div style="display: flex; flex-direction: column;">
+          <span style="font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600;">Max Loss</span>
+          <span style="font-family: var(--font-serif); font-size: 1.35rem; font-weight: 700; color: var(--accent-coral); line-height: 1.2;">
+            -₹${Math.round(this.maxLoss).toLocaleString('en-IN')}
+          </span>
+        </div>
+        ${this.breakevens.length > 0 ? `
+          <div style="display: flex; flex-direction: column;">
+            <span style="font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600;">Breakeven</span>
+            <span style="font-family: var(--font-serif); font-size: 1.35rem; font-weight: 700; color: var(--accent-amber); line-height: 1.2;">
+              ${this.breakevens.map(b => Math.round(b).toLocaleString('en-IN')).join(' | ')}
+            </span>
+          </div>
         ` : ''}
       `;
     }
@@ -372,10 +390,11 @@ export class PayoffChartComponent {
       const chartDiv = this.container.querySelector('#payoff-plotly-canvas');
       if (!chartDiv) return;
 
+      const style = typeof window !== 'undefined' && window.getComputedStyle ? window.getComputedStyle(document.documentElement) : null;
       const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-      const bgColor = isDark ? '#191b21' : '#f8f8f7';
-      const textColor = isDark ? '#8b8e9b' : '#6b6e7b';
-      const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+      const bgColor = style?.getPropertyValue('--plotly-bg')?.trim() || (isDark ? '#191b21' : '#f8f6f2');
+      const textColor = style?.getPropertyValue('--text-secondary')?.trim() || (isDark ? '#8b8e9b' : '#6b6e7b');
+      const gridColor = style?.getPropertyValue('--plotly-grid')?.trim() || (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)');
 
       let xVals = [];
       let yExpiry = [];

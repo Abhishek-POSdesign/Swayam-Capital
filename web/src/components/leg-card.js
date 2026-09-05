@@ -150,7 +150,7 @@ export class LegCardComponent {
               width: 100%;
               height: 32px;
               background: var(--dl-input-bg, var(--dl-card-2));
-              color: var(--dl-fg);
+              color: var(--text-primary);
               border: 1px solid var(--dl-line);
               border-radius: 6px;
               padding: 0 8px;
@@ -166,24 +166,24 @@ export class LegCardComponent {
           <button
             type="button"
             class="btn-lot-dec"
-            style="width: 26px; height: 100%; border: none; background: transparent; color: var(--dl-fg-2); cursor: pointer; font-weight: 700;"
+            style="width: 26px; height: 100%; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-weight: 700;"
           >-</button>
-          <span class="lot-val" style="min-width: 44px; text-align: center; font-size: 0.78rem; font-family: var(--font-mono); font-weight: 600; color: var(--dl-fg);">
+          <span class="lot-val" style="min-width: 44px; text-align: center; font-size: 0.78rem; font-family: var(--font-mono); font-weight: 600; color: var(--text-primary);">
             ${this.leg.quantity_lots || 1} lot
           </span>
           <button
             type="button"
             class="btn-lot-inc"
-            style="width: 26px; height: 100%; border: none; background: transparent; color: var(--dl-fg-2); cursor: pointer; font-weight: 700;"
+            style="width: 26px; height: 100%; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-weight: 700;"
           >+</button>
         </div>
 
         <!-- Live LTP -->
         <div style="flex: 0 0 85px; text-align: right;">
-          <div class="leg-ltp" style="font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600; color: var(--dl-fg);">
+          <div class="leg-ltp" style="font-family: var(--font-mono); font-size: 0.92rem; font-weight: 700; color: var(--text-primary);">
             ${ltpDisplay}
           </div>
-          <div style="font-size: 0.65rem; color: var(--dl-fg-3);">LTP</div>
+          <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 500;">LTP</div>
         </div>
 
         <!-- Remove Button -->
@@ -196,7 +196,7 @@ export class LegCardComponent {
             margin-left: auto;
             background: transparent;
             border: none;
-            color: var(--dl-fg-3);
+            color: var(--text-muted);
             font-size: 1rem;
             cursor: pointer;
             padding: 4px 8px;
@@ -204,7 +204,7 @@ export class LegCardComponent {
             transition: color var(--dur-fast) ease;
           "
           onmouseover="this.style.color='var(--accent-coral)'"
-          onmouseout="this.style.color='var(--dl-fg-3)'"
+          onmouseout="this.style.color='var(--text-muted)'"
         >
           ✕
         </button>

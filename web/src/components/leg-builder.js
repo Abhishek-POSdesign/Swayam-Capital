@@ -59,7 +59,7 @@ export class LegBuilderComponent {
         <!-- Header: Title + Margin Pill + Net Debit/Credit -->
         <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px;">
           <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <span class="eyebrow" style="color: var(--dl-fg-3);">STRATEGY LEGS (${this.legs.length})</span>
+            <span class="eyebrow" style="color: var(--text-muted);">STRATEGY LEGS (${this.legs.length})</span>
             ${buyLegsWithIdx.length > 0 && sellLegsWithIdx.length > 0 ? `
               <span class="margin-safety-pill" style="
                 display: inline-flex;
@@ -80,7 +80,7 @@ export class LegBuilderComponent {
             ` : ''}
           </div>
           <div style="display: flex; align-items: baseline; gap: 6px;">
-            <span style="font-size: 0.8rem; color: var(--dl-fg-3); font-weight: 500;">${netLabel}:</span>
+            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">${netLabel}:</span>
             <span style="font-family: var(--font-serif); font-size: 1.35rem; font-weight: 700; color: ${netColor};">
               ₹${absNet}
             </span>

@@ -6,6 +6,8 @@
   --bg-elevated: var(--dl-card-2);
   --text-primary: var(--dl-fg);
   --text-secondary: var(--dl-fg-2);
+  --text-muted: var(--dl-fg-3);
+  --text-inverse: var(--dl-bg);
   --border: var(--dl-line);
   --green: var(--accent-sage);
   --red: var(--accent-coral);

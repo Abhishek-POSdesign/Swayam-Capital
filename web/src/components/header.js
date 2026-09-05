@@ -5,9 +5,9 @@
 
 import { formatINR } from '../utils/format.js';
 
-/** Returns the current theme stored in localStorage, defaulting to 'dark'. */
+/** Returns the current theme stored in localStorage, defaulting to 'auto' (system). */
 function getTheme() {
-  return localStorage.getItem('swayam-theme') || 'dark';
+  return localStorage.getItem('swayam-theme') || 'auto';
 }
 
 /** Applies theme to <html data-theme> and persists to localStorage. */
@@ -18,13 +18,13 @@ function applyTheme(theme) {
 
 /** SVG icons for each theme mode (matches Atlas theme-switcher.js exactly). */
 const THEME_ICONS = {
-  dark: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
-  auto: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
-  light: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
+  dark: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
+  auto: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
+  light: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
 };
 
-const THEME_CYCLE = { dark: 'auto', auto: 'light', light: 'dark' };
-const THEME_LABELS = { dark: 'Dark', auto: 'Auto', light: 'Light' };
+const THEME_CYCLE = { auto: 'dark', dark: 'light', light: 'auto' };
+const THEME_LABELS = { auto: 'Auto (System)', dark: 'Dark Mode', light: 'Light Mode' };
 
 export function initHeader(container, options = {}) {
   const activePage = options.activePage || 'home';
@@ -71,20 +71,25 @@ export function initHeader(container, options = {}) {
           </button>
         </nav>
 
-        <!-- Theme Switcher — cycles Dark → Auto → Light → Dark -->
+        <!-- Theme Switcher — cycles Auto → Dark → Light → Auto -->
         <button
           id="theme-switcher-btn"
           title="Theme: ${THEME_LABELS[storedTheme]}"
           style="
-            display: flex; align-items: center; justify-content: center;
-            width: 32px; height: 32px; border-radius: var(--radius-pill);
-            background: var(--theme-switcher-bg);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius-pill);
+            background: var(--dl-card-2);
             border: 1px solid var(--dl-line);
-            color: var(--dl-fg-2);
+            color: var(--text-primary);
             cursor: pointer;
-            transition: color var(--dur-fast) ease, background var(--dur-fast) ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+            transition: all var(--dur-fast) ease;
           "
-          aria-label="Switch theme"
+          aria-label="Switch theme (Current: ${THEME_LABELS[storedTheme]})"
         >
           ${THEME_ICONS[storedTheme]}
         </button>
