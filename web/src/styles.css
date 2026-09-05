@@ -594,3 +594,70 @@ body.no-transitions * {
   animation-duration: 0s !important;
 }
 
+/* Mobile Responsive Overhaul */
+@media (max-width: 900px) {
+  header {
+    padding: 0.75rem 1rem !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+  .header-actions {
+    flex-wrap: wrap !important;
+  }
+  .home-canvas {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+  .home-left-col {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    position: static !important;
+    top: 0 !important;
+    min-height: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--dl-line) !important;
+  }
+  .home-left-col.collapsed {
+    width: 100% !important;
+    flex: 0 0 auto !important;
+  }
+  #left-col-collapsed-strip {
+    width: 100% !important;
+    min-width: 100% !important;
+    min-height: 48px !important;
+    height: 48px !important;
+    flex-direction: row !important;
+    padding: 6px 14px !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+  #left-col-collapsed-strip > div:first-child {
+    flex-direction: row !important;
+    width: auto !important;
+    gap: 12px !important;
+  }
+  #collapsed-ritual-factors {
+    flex-direction: row !important;
+    gap: 4px !important;
+  }
+  #left-col-collapsed-strip > div:last-child {
+    writing-mode: horizontal-tb !important;
+    transform: none !important;
+    margin-bottom: 0 !important;
+    font-size: 0.72rem !important;
+  }
+  .home-right-col {
+    padding: 10px 14px 40px 14px !important;
+    width: 100% !important;
+  }
+  .bento-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+  .bento-grid .span-6,
+  .bento-grid .span-12 {
+    width: 100% !important;
+  }
+}
+
