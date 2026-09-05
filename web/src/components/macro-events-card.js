@@ -102,7 +102,7 @@ export class MacroEventsCardComponent {
       const isIndia = (item.country || 'IN').toUpperCase() === 'IN';
       const countryBadgeBg = isIndia ? 'rgba(234, 179, 8, 0.15)' : 'rgba(59, 130, 246, 0.15)';
       const countryBadgeColor = isIndia ? 'var(--accent-amber)' : '#60a5fa';
-      const countryText = isIndia ? '🇮🇳 IN' : '🇺🇸 US';
+      const countryText = isIndia ? 'IN' : 'US';
 
       const importance = (item.importance || 'high').toLowerCase();
       const isHigh = importance === 'high';
@@ -110,23 +110,30 @@ export class MacroEventsCardComponent {
       const impBg = isHigh ? 'var(--dl-alert)' : 'var(--dl-skip)';
       const impLabel = isHigh ? 'HIGH IMPACT' : 'MEDIUM IMPACT';
 
-      // Format date (e.g. 2026-09-10 -> Thu, 10 Sep 2026)
-      let dateDisplay = item.event_date || '';
+      // Format date (supporting event_date like '2026-09-14' or date like 'Sep 8')
+      const rawDate = item.event_date || item.date || '';
+      let dateDisplay = rawDate;
       try {
-        const parts = item.event_date.split('-');
-        if (parts.length === 3) {
-          const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-          dateDisplay = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        if (rawDate.includes('-')) {
+          const parts = rawDate.split('-');
+          if (parts.length === 3) {
+            const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            dateDisplay = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+          }
         }
       } catch (_) {}
 
-      const timeSuffix = item.event_time ? ` · ${item.event_time} IST` : '';
+      if (!dateDisplay) {
+        dateDisplay = 'Upcoming';
+      }
+
+      const timeSuffix = item.event_time ? ` · ${item.event_time} IST` : (item.event_time_ist ? ` · ${item.event_time_ist} IST` : '');
       const briefText = item.impact_brief || 'High volatility event risk for NIFTY derivatives.';
 
       return `
-        <div id="macro-event-${key}" class="macro-event-row" data-key="${key}" style="display: flex; flex-direction: column; padding: 12px 6px; ${borderTop} cursor: pointer; transition: background 0.15s ease;" title="Click to view NIFTY F&O impact brief">
+        <div id="macro-event-${key}" class="macro-event-row" data-key="${key}" style="display: flex; flex-direction: column; padding: 8px 4px; ${borderTop} cursor: pointer; transition: background 0.15s ease;" title="Click to view NIFTY F&O impact brief">
           <!-- Top Row: Date, Country, and Impact Badge -->
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;">
             <div style="display: flex; align-items: center; gap: 6px;">
               <span style="font-size: 0.70rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; background: ${countryBadgeBg}; color: ${countryBadgeColor}; border: 1px solid ${countryBadgeColor}40;">
                 ${countryText}
@@ -136,18 +143,18 @@ export class MacroEventsCardComponent {
               </span>
             </div>
 
-            <span style="font-family: var(--font-sans); font-size: 0.80rem; font-weight: 700; color: var(--dl-fg); background: var(--dl-card-2); border: 1px solid var(--dl-line); padding: 2px 8px; border-radius: 4px; white-space: nowrap;">
-              📅 ${dateDisplay}${timeSuffix}
+            <span style="font-family: var(--font-sans); font-size: 0.76rem; font-weight: 700; color: var(--dl-fg-2); background: var(--dl-card-2); border: 1px solid var(--dl-line); padding: 2px 8px; border-radius: 4px; white-space: nowrap;">
+              ${dateDisplay}${timeSuffix}
             </span>
           </div>
 
           <!-- Middle Row: Full Event Title -->
-          <div style="font-size: 0.96rem; font-weight: 700; color: var(--dl-fg); line-height: 1.35; margin-bottom: 4px;">
+          <div style="font-size: 0.92rem; font-weight: 700; color: var(--dl-fg); line-height: 1.35; margin-bottom: 3px;">
             ${item.event_name || item.event}
           </div>
 
           <!-- Bottom Row: Expand Action Cue -->
-          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.76rem; color: var(--accent-sage); font-weight: 600;">
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.74rem; color: var(--accent-sage); font-weight: 600;">
             <span>${isExpanded ? '▲ Hide NIFTY F&O Impact' : '▼ View NIFTY F&O Impact Analysis'}</span>
             <span class="macro-expand-chevron" style="font-size: 0.70rem; transform: ${isExpanded ? 'rotate(180deg)' : 'none'}; transition: transform 0.2s ease;">
               ▼
@@ -156,8 +163,8 @@ export class MacroEventsCardComponent {
 
           <!-- Inline Expandable Impact Brief Drawer -->
           ${isExpanded ? `
-            <div class="macro-impact-brief" style="margin-top: 8px; background: var(--dl-card-2); border-left: 3px solid var(--accent-sage); border-top: 1px solid var(--dl-line-2); border-bottom: 1px solid var(--dl-line-2); border-right: 1px solid var(--dl-line-2); padding: 10px 12px; border-radius: 0 6px 6px 0; font-size: 0.82rem; color: var(--dl-fg-2); line-height: 1.5; animation: fadeIn 0.2s ease;">
-              <strong style="color: var(--accent-sage); font-size: 0.84rem;">NIFTY F&O Impact:</strong> ${briefText}
+            <div class="macro-impact-brief" style="margin-top: 6px; background: var(--dl-card-2); border-left: 3px solid var(--accent-sage); border-top: 1px solid var(--dl-line-2); border-bottom: 1px solid var(--dl-line-2); border-right: 1px solid var(--dl-line-2); padding: 8px 10px; border-radius: 0 6px 6px 0; font-size: 0.80rem; color: var(--dl-fg-2); line-height: 1.45; animation: fadeIn 0.2s ease;">
+              <strong style="color: var(--accent-sage); font-size: 0.82rem;">NIFTY F&O Impact:</strong> ${briefText}
             </div>
           ` : ''}
         </div>
@@ -165,7 +172,7 @@ export class MacroEventsCardComponent {
     }).join('');
 
     this.container.innerHTML = `
-      <div class="tile macro-events-tile" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; min-height: 170px; background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: 10px; padding: 18px; box-sizing: border-box;">
+      <div class="tile macro-events-tile" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; min-height: auto; background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: 10px; padding: 14px 16px; box-sizing: border-box;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
           <span class="eyebrow" style="color: var(--dl-fg-3); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.06em;">MACRO EVENTS · NEXT 7 DAYS</span>
           <span style="font-size: 0.68rem; color: var(--dl-fg-3);">Click to expand impact</span>

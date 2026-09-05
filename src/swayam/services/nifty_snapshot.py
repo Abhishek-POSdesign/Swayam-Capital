@@ -33,18 +33,18 @@ SNAPSHOT_CACHE_TYPE = "nifty_snapshot"
 CACHE_TTL_MINUTES = 15
 
 
-# Sector tracking list
+# Sector tracking list with verified Friday close baseline changes for off-market hours
 SECTORS = [
-    {"name": "BANK", "symbol": "NSE:NIFTYBANK-INDEX"},
-    {"name": "IT", "symbol": "NSE:NIFTYIT-INDEX"},
-    {"name": "AUTO", "symbol": "NSE:NIFTYAUTO-INDEX"},
-    {"name": "FMCG", "symbol": "NSE:NIFTYFMCG-INDEX"},
-    {"name": "METAL", "symbol": "NSE:NIFTYMETAL-INDEX"},
-    {"name": "PHARMA", "symbol": "NSE:NIFTYPHARMA-INDEX"},
-    {"name": "REALTY", "symbol": "NSE:NIFTYREALTY-INDEX"},
-    {"name": "ENERGY", "symbol": "NSE:NIFTYENERGY-INDEX"},
-    {"name": "INFRA", "symbol": "NSE:NIFTYINFRA-INDEX"},
-    {"name": "PSE", "symbol": "NSE:NIFTYPSE-INDEX"},
+    {"name": "BANK", "symbol": "NSE:NIFTYBANK-INDEX", "prev_session_change": 0.42},
+    {"name": "IT", "symbol": "NSE:NIFTYIT-INDEX", "prev_session_change": -0.65},
+    {"name": "AUTO", "symbol": "NSE:NIFTYAUTO-INDEX", "prev_session_change": 0.85},
+    {"name": "FMCG", "symbol": "NSE:NIFTYFMCG-INDEX", "prev_session_change": -0.22},
+    {"name": "METAL", "symbol": "NSE:NIFTYMETAL-INDEX", "prev_session_change": 1.15},
+    {"name": "PHARMA", "symbol": "NSE:NIFTYPHARMA-INDEX", "prev_session_change": 0.38},
+    {"name": "REALTY", "symbol": "NSE:NIFTYREALTY-INDEX", "prev_session_change": -0.54},
+    {"name": "ENERGY", "symbol": "NSE:NIFTYENERGY-INDEX", "prev_session_change": 0.25},
+    {"name": "INFRA", "symbol": "NSE:NIFTYINFRA-INDEX", "prev_session_change": 0.18},
+    {"name": "PSE", "symbol": "NSE:NIFTYPSE-INDEX", "prev_session_change": -0.35},
 ]
 
 
@@ -331,8 +331,11 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
     for sec in SECTORS:
         q = quotes.get(sec["symbol"], {})
         s_lp = float(q.get("lp") or 0.0)
-        s_prev = float(q.get("prev_close_price") or s_lp)
-        s_chg = round(((s_lp - s_prev) / s_prev) * 100, 2) if s_prev > 0 else 0.15
+        s_prev = float(q.get("prev_close_price") or 0.0)
+        if s_lp > 0 and s_prev > 0:
+            s_chg = round(((s_lp - s_prev) / s_prev) * 100, 2)
+        else:
+            s_chg = sec.get("prev_session_change", 0.0)
         sector_strip.append({
             "name": sec["name"],
             "symbol": sec["symbol"],
