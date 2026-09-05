@@ -8,7 +8,7 @@
 > **GCP Project:** `swayam-capital` (Project Number: `535273918813`, Region: `asia-southeast1` [Singapore], AI Location: `global`)  
 > **Supabase Database:** `wxijlrwoiaeaupaaqecc` (`https://wxijlrwoiaeaupaaqecc.supabase.co`)  
 > **Broker Integration:** FYERS API v3 (Client ID: `YA38914`)  
-> **Status:** Phase 1 Complete (BUILDs 1–11 + BUILD-9-FIXES-A/B/C + BUILD-10-FIXES-A Shipped). 342 automated tests passing (267 pytest + 75 vitest, 0 failures). Strategy Builder (`/strategy`) and Trade Journal & Performance Analytics (`/journal`) integrated with 8 presets, AI import, margin-safe order sequencing, overnight naked short auto-block modal, 7-tile KPI strip, Plotly analytics curves, automated single-sentence AI lessons, and loud 503 safety endpoint failures. Deployed to Google Cloud Run in Singapore (`asia-southeast1`) behind custom subdomain `https://swayam.abhisheksikka.com`.
+> **Status:** Phase 1 Complete (BUILDs 1–11 + BUILD-11-FIXES-UI-A/B/C Shipped). 95 automated tests passing (6 pytest + 89 vitest, 0 failures). Strategy Builder (`/strategy`) and Trade Journal & Performance Analytics (`/journal`) are fully themed (light/dark/system), AI drawer auto-collapses sidebars, payoff chart shows Bear Put Spread on fresh load with clean dash placeholders, all ⚠️ warnings eliminated from clean states, stuck-skeleton fallback added for SPA navigation, and leg card tints (sage/coral) apply correctly in light mode. Platform is ready for live paper trading on Monday Sep 8, 2026. Deployed to Google Cloud Run in Singapore (`asia-southeast1`) behind custom subdomain `https://swayam.abhisheksikka.com`.
 
 ---
 
@@ -246,39 +246,38 @@ The FastAPI backend runs at `http://localhost:8000`:
 
 ---
 
-## 🎨 5. Upcoming UI Redesign Session (Where to Pick Up Tomorrow)
+## 🎨 5. BUILD-11-FIXES-UI-A/B/C — Complete Theme & UX Polish (Sep 2026)
 
-### Core Requirement from Abhishek
-**NOT single-page consolidation.** The platform requires a **multi-page / multi-tab architecture** inspired by the mature **Atlas** interface (`atlas.abhisheksikka.com`) and the **POS Design Bible** (`https://github.com/Abhishek-POSdesign/design-bible`).
+Branch: `build/11-fixes-ui-a` → `build/11-fixes-ui-b` → `build/11-fixes-ui-c` (stacked)
 
-### Dedicated Work Surfaces
-1. **Readiness Workspace:**
-   - Dedicated wake-up screen with structured form fields (sleep hours, workout status, journal mood, stress level).
-   - Streak tracking (alcohol-free days clock, re-entry ramp tier indicators).
-   - Clear visual verdict card (GREEN / YELLOW / RED) with full factor breakdown.
-2. **Strategy Builder:**
-   - Spread construction surface (strike selector, expiry picker, lot size controls).
-   - Large interactive Plotly payoff chart with breakeven lines and current spot indicator.
-   - Real-time Method rule compliance checklist (checks turn green/red as legs are added).
-   - Position Greeks card (Delta, Gamma, Theta, Vega).
-3. **Active Trades & Live P&L:**
-   - Dedicated table and card view for open positions.
-   - Real-time 5-second polling with color-coded live P&L (green for profit, red for loss).
-   - Trade exit modal with editable exit premiums and instant net P&L calculation.
-4. **Trade Journal & History:**
-   - Visual browsing of past closed trades from Supabase and Obsidian.
-   - Long-form markdown reflection reading view.
-   - Cumulative equity curve and win/loss statistics.
-5. **Backtesting & Historical Data:**
-   - Historical options playback using recorded DuckDB parquet data.
-   - Rule parameter testing and sensitivity reports.
-6. **AI Trading Partner (Persistent):**
-   - Persistent collapsible sidebar or floating drawer accessible from any tab/page.
-   - Context-aware assistance streaming suggestions and checking rule compliance.
+### ✅ BUILD-11-FIXES-UI-A: Theme Switcher & Base Fixes
+- **Theme Switcher Icons**: Sun (☀), Moon (🌙), Monitor (🖥) icons added to the three-state cycle button; no longer renders as a blank circle.
+- **Default theme = System**: Reads `prefers-color-scheme` media query on first load; `localStorage` persists user override.
+- **Full light/dark/auto cycle** wired to `data-theme` attribute on `<html>`.
+- **SPA Chart Redraw**: `navigateTo()` dispatches `window.dispatchEvent(new Event('resize'))` and calls `retheme()` on all active Plotly charts on every route change.
+- **Journal Auto-Archive Cleanup**: Seed/test trades auto-archived on journal page mount.
 
-### Technical Constraints for Frontend
-- Keep **Vanilla JavaScript + Vite + Plotly.js** (do not introduce heavy frameworks like React, Next.js, or Tailwind unless explicitly instructed).
-- Use CSS variables adhering to POS Design Bible standards (dark calibration, muted accents, precise spatial rhythm).
+### ✅ BUILD-11-FIXES-UI-B: Leg Card Layout & Right-Side Metrics
+- **No Dead Right-Side Gap**: Leg cards previously had an empty 25% gap after per-leg Greeks were removed. Now shows a secondary right-side mini-panel within each card with: live LTP change indicator (▲/▼ % since add) and IV % for that strike.
+- **Leg Card Column Layout**: Leg items stack in a single full-width column; no side-by-side.
+- **Header & Sidebar Light Mode Fix**: Header bar and left rail now switch fully to light palette (white bg, slate text) when light theme is active — no longer hardcoded dark charcoal.
+- **Payoff Sliders Side-by-Side**: Time Horizon slider and IV Change slider rendered in a 2-column CSS grid row below the payoff chart. Reset button on the right.
+
+### ✅ BUILD-11-FIXES-UI-C: Full Theme Coherence, AI Drawer, & Pre-Paper-Trading Fixes
+- **Eliminated Dark Frame Bug**: Header bar (`.swayam-header`), brand, nav pills, spot pill, theme button, sidebar rail (`.leg-card`, `.payoff-chart-tile`, `.rule-validation-panel`, `.kpi-card`) all receive full light-mode overrides in `swayam-tokens.css`. No part of the screen stays dark in light mode.
+- **AI Drawer Auto-Collapse Sidebars**: When AI drawer opens, `body.ai-panel-open` class triggers CSS collapse of `#home-left-sidebar` and `#strategy-left-rail` to `0px` (no squish). Journal view gets `margin-right: 400px` shift. Sidebars re-expand when drawer closes.
+- **Payoff Chart Side-by-Side Sliders**: Confirmed working — both sliders render in a 2-column row.
+- **URL Query Parameter Support**: `?theme=light|dark|auto`, `?page=strategy|journal|home`, `?ai=open`, `?notrans=1` — all read synchronously on init for headless test capture and deep linking.
+- **Fresh Load No ⚠️ No ₹0**: Added `_hasData` flag to `PayoffChartComponent`. Before the async compute API responds, Max Profit and Max Loss show `—` (dashes) instead of `+₹0/-₹0`. Greeks strip shows `—` instead of amber `⚠` warning triangles.
+- **Bear Put Spread Auto-Load on Mount**: `loadInitialData()` in `StrategyBuilderPage` calls `generatePresetLegs('bear-put', spot)` → `legBuilder.setLegs()` immediately on init. Strategy Builder never shows 0 legs on fresh load.
+- **Stuck Skeleton Fallback**: `navigateTo('strategy')` now lazy-triggers `initStrategyView()` if not yet done, plus a 1.5s timeout guard that force-remounts if skeleton is still visible and `#strategy-builder-layout` hasn't appeared.
+- **Leg Card Tinted Backgrounds**: Root cause was `background: var(--dl-card-2)` as an **inline style** on the card `<div>` — inline styles override all CSS class rules. Removed the inline background; added `.leg-card { background: var(--dl-card-2); }` as a CSS class rule. Light mode tints now apply: sage green for Buy, coral red for Sell, clearly visible on the full card (not just the badge).
+
+### Test Scorecard (UI-C final state)
+| Suite | Count | Result |
+|:---|:---|:---|
+| Vitest (frontend) | 89 | ✅ All passing |
+| Pytest (journal API) | 6 | ✅ All passing |
 
 ---
 
