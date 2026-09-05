@@ -58,10 +58,9 @@ export class LegCardComponent {
         align-items: center;
         gap: 12px;
         padding: 12px 14px;
-        background: var(--dl-card-2);
         border: 1px solid var(--dl-line);
         border-radius: var(--radius-sm);
-        transition: border-color var(--dur-fast) ease;
+        transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease;
       ">
         <!-- B / S Toggle Badge -->
         <button

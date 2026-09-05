@@ -46,6 +46,8 @@ class SwayamApp {
     const isJournal = qpPage === 'journal' || (typeof window !== 'undefined' && window.location.pathname.includes('journal'));
     this.currentPage = isStrategy ? 'strategy' : isJournal ? 'journal' : 'home';
     this.isAIDrawerOpen = false;
+    this._strategyInitInProgress = false;
+    this._skeletonCheckTimer = null;
   }
 
   async init() {
@@ -311,8 +313,29 @@ class SwayamApp {
           window.history.pushState({}, '', url.toString());
         } catch (_) {}
       }
-      if (this.strategyPage) {
+      // Lazy-initialize strategy page if not yet done (e.g. first navigation to strategy)
+      if (!this.strategyPage && !this._strategyInitInProgress) {
+        this._strategyInitInProgress = true;
+        this.initStrategyView().finally(() => { this._strategyInitInProgress = false; });
+      } else if (this.strategyPage) {
         this.strategyPage.refreshPositions();
+      }
+      // Stuck-skeleton fallback: if the strategy container still shows a skeleton
+      // after 1.5s (content never mounted), force a re-init.
+      if (strategyView) {
+        const skeletonCheck = setTimeout(() => {
+          const stillHasSkeleton = strategyView.querySelector('.skeleton-shimmer, .skeleton-row, [data-skeleton]');
+          const hasRealContent = strategyView.querySelector('#strategy-builder-layout');
+          if (stillHasSkeleton && !hasRealContent && !this._strategyInitInProgress) {
+            console.warn('[SwayamApp] Strategy skeleton stuck — forcing re-init.');
+            this.strategyPage = null;
+            this._strategyInitInProgress = true;
+            this.initStrategyView().finally(() => { this._strategyInitInProgress = false; });
+          }
+        }, 1500);
+        // Store so we can cancel it if needed
+        if (this._skeletonCheckTimer) clearTimeout(this._skeletonCheckTimer);
+        this._skeletonCheckTimer = skeletonCheck;
       }
     } else if (page === 'journal') {
       if (homeView) homeView.style.display = 'none';

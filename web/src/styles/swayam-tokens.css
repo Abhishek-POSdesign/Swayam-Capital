@@ -410,6 +410,11 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02);
 }
 
+/* Strategy Builder Cards — dark mode base background (replaces removed inline style) */
+.leg-card {
+  background: var(--dl-card-2);
+}
+
 /* Strategy Builder Cards in Light Mode */
 :root[data-theme="light"] .leg-card {
   background: #ffffff;
@@ -418,13 +423,13 @@ body {
 }
 
 :root[data-theme="light"] .leg-card.leg-buy {
-  background: rgba(21, 128, 61, 0.04);
-  border-color: rgba(21, 128, 61, 0.25);
+  background: rgba(21, 128, 61, 0.08) !important;
+  border-color: rgba(21, 128, 61, 0.35) !important;
 }
 
 :root[data-theme="light"] .leg-card.leg-sell {
-  background: rgba(220, 38, 38, 0.04);
-  border-color: rgba(220, 38, 38, 0.25);
+  background: rgba(220, 38, 38, 0.07) !important;
+  border-color: rgba(220, 38, 38, 0.3) !important;
 }
 
 :root[data-theme="light"] .payoff-chart-tile {

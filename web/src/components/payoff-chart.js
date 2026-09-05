@@ -23,6 +23,7 @@ export class PayoffChartComponent {
     this.daysToExpiry = 7;
     this.expiryDate = null;
     this._themeListenerAttached = false;
+    this._hasData = false; // becomes true after first updateData() call
   }
 
   _renderGreeksContent() {
@@ -34,9 +35,11 @@ export class PayoffChartComponent {
     const gammaVal = hasG ? (this.greeks.net_gamma ?? this.greeks.gamma) : undefined;
     const vegaVal = hasG ? (this.greeks.net_vega ?? this.greeks.vega) : undefined;
 
+    const pending = `<span style="color: var(--dl-fg-3); font-style: italic;">—</span>`;
+
     const deltaHtml = deltaVal !== undefined
       ? `Net Δ <span style="color: var(--dl-fg);">${(deltaVal > 0 ? '+' : '') + Number(deltaVal).toFixed(2)}</span>`
-      : `Net Δ <span title="Greek computation unavailable — see server logs" style="color: var(--accent-amber); cursor: help;">⚠</span>`;
+      : `Net Δ ${pending}`;
 
     let thetaHtml;
     if (thetaVal !== undefined) {
@@ -45,20 +48,20 @@ export class PayoffChartComponent {
       const thSign = th >= 0 ? `+₹${th}/day` : `−₹${Math.abs(th)}/day`;
       thetaHtml = `Θ <span style="color: ${thColor}; font-weight: 600;">${thSign}</span>`;
     } else {
-      thetaHtml = `Θ <span title="Greek computation unavailable — see server logs" style="color: var(--accent-amber); cursor: help;">⚠</span>`;
+      thetaHtml = `Θ ${pending}`;
     }
 
     const gammaHtml = gammaVal !== undefined
       ? `Γ <span style="color: var(--dl-fg);">${(gammaVal > 0 ? '+' : '') + Number(gammaVal).toFixed(4)}</span>`
-      : `Γ <span title="Greek computation unavailable — see server logs" style="color: var(--accent-amber); cursor: help;">⚠</span>`;
+      : `Γ ${pending}`;
 
     const vegaHtml = vegaVal !== undefined
       ? `ν <span style="color: var(--dl-fg);">₹${Math.round(vegaVal)}/vol</span>`
-      : `ν <span title="Greek computation unavailable — see server logs" style="color: var(--accent-amber); cursor: help;">⚠</span>`;
+      : `ν ${pending}`;
 
     const popHtml = hasPop
       ? `POP <span style="color: var(--accent-sage); font-weight: 700;">${Math.round(this.pop)}%</span>`
-      : `POP <span title="Greek computation unavailable — see server logs" style="color: var(--accent-amber); cursor: help;">⚠</span>`;
+      : `POP ${pending}`;
 
     return `
       <div style="display: flex; align-items: center; gap: 4px;">${deltaHtml}</div>
@@ -113,13 +116,13 @@ export class PayoffChartComponent {
           <div style="display: flex; flex-direction: column;">
             <span style="font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600;">Max Profit</span>
             <span style="font-family: var(--font-serif); font-size: 1.35rem; font-weight: 700; color: var(--accent-sage); line-height: 1.2;">
-              +₹${Math.round(this.maxProfit).toLocaleString('en-IN')}
+              ${this._hasData ? `+₹${Math.round(this.maxProfit).toLocaleString('en-IN')}` : '<span style="color: var(--dl-fg-3); font-style: italic;">—</span>'}
             </span>
           </div>
           <div style="display: flex; flex-direction: column;">
             <span style="font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600;">Max Loss</span>
             <span style="font-family: var(--font-serif); font-size: 1.35rem; font-weight: 700; color: var(--accent-coral); line-height: 1.2;">
-              -₹${Math.round(this.maxLoss).toLocaleString('en-IN')}
+              ${this._hasData ? `-₹${Math.round(this.maxLoss).toLocaleString('en-IN')}` : '<span style="color: var(--dl-fg-3); font-style: italic;">—</span>'}
             </span>
           </div>
           ${this.breakevens.length > 0 ? `
@@ -303,6 +306,7 @@ export class PayoffChartComponent {
   }
 
   async updateData({ curveData, curveExpiry, curveTarget, currentSpot, maxLoss, maxProfit, breakevens, realisticRisk, greeks, pop, expiryDate }) {
+    this._hasData = true;
     this.chartData = curveData || this.chartData;
     this.curveExpiry = curveExpiry || curveData || this.curveExpiry;
     this.curveTarget = curveTarget || curveData || this.curveTarget;

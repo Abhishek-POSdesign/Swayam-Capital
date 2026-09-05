@@ -82,7 +82,7 @@ describe('PayoffChartComponent', () => {
     expect(lastSliderParams.ivShiftPct).toBe(0);
   });
 
-  it('renders portfolio Greeks strip with values and warning icon when missing', async () => {
+  it('renders portfolio Greeks strip with values and dash placeholder when missing', async () => {
     const chart = new PayoffChartComponent(container);
     await chart.init();
 
@@ -103,8 +103,8 @@ describe('PayoffChartComponent', () => {
     expect(strip.textContent).toContain('185');
     expect(strip.textContent).toContain('840');
     expect(strip.textContent).toContain('63%');
-    // Gamma should show warning ⚠
-    expect(strip.textContent).toContain('⚠');
+    // Gamma should show dash placeholder — (not warning ⚠)
+    expect(strip.textContent).toContain('—');
   });
 
   it('preserves slider DOM elements and event listeners across updateData calls', async () => {
