@@ -56,14 +56,17 @@ describe('Home Page & Subsystem Composition', () => {
     expect(container.textContent).toContain('FOMC Minutes');
   });
 
-  it('renders ReadingQueueCardComponent with institutional research notes', () => {
+  it('renders ReadingQueueCardComponent as honest SOON tile (BUILD-11.6)', () => {
     const queue = new ReadingQueueCardComponent(container);
     queue.render();
 
-    expect(container.textContent).toContain('AI READING QUEUE · OVERNIGHT SCAN');
-    expect(container.textContent).toContain('Motilal Oswal');
-    expect(container.textContent).toContain('Zerodha Varsity');
-    expect(container.textContent).toContain('Bloomberg');
+    expect(container.textContent).toContain('AI READING QUEUE');
+    expect(container.textContent).toContain('SOON');
+    expect(container.textContent).toContain('BUILD-13');
+    // Confirm fake placeholder articles are gone
+    expect(container.textContent).not.toContain('Motilal Oswal');
+    expect(container.textContent).not.toContain('Zerodha Varsity');
+    expect(container.textContent).not.toContain('Bloomberg');
   });
 
   it('renders KPIHistoryCardComponent with alcohol streak, 7-day dots, and routine %', () => {
