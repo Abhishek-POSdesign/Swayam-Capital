@@ -330,6 +330,25 @@ export class AIChatPanel {
   }
 
   async _sendMessage() {
+    // User Gesture: trigger notification permission request if not yet prompted (BUILD-11.11 Reinforcement 1)
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      try {
+        Notification.requestPermission().then(async (perm) => {
+          if (perm === 'granted' && 'serviceWorker' in navigator) {
+            try {
+              const reg = await navigator.serviceWorker.ready;
+              if (reg && reg.pushManager) {
+                const sub = await reg.pushManager.getSubscription();
+                if (sub) {
+                  api.registerDevice(JSON.stringify(sub), navigator.userAgent, 'web').catch(() => {});
+                }
+              }
+            } catch (_) {}
+          }
+        }).catch(() => {});
+      } catch (_) {}
+    }
+
     const textarea = document.getElementById('ai-textarea');
     const content = textarea.value.trim();
     const imageToUpload = this.pendingImage;

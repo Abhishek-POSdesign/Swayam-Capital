@@ -137,5 +137,10 @@ export const api = {
   generateSoFarToday: (force = false) => request(`/api/home/so-far-today?force=${force}`, { method: 'POST' }),
   getNiftySnapshot: (refresh = false) => request(`/api/home/nifty-snapshot?refresh=${refresh}`),
   getMacroEvents: (highlightedOnly = true) => request(`/api/macro/events?highlighted_only=${highlightedOnly}`),
+  registerDevice: (deviceToken, browserUa = null, platform = 'web') =>
+    request('/api/notifications/register-device', {
+      method: 'POST',
+      body: JSON.stringify({ device_token: deviceToken, browser_ua: browserUa, platform }),
+    }),
 };
 

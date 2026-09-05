@@ -14,6 +14,7 @@ import { NiftySnapshotCardComponent } from '../components/nifty-snapshot-card.js
 import { MacroEventsCardComponent } from '../components/macro-events-card.js';
 import { ReadingQueueCardComponent } from '../components/reading-queue-card.js';
 import { ChatSurfaceComponent } from '../components/chat-surface.js';
+import { PwaInstallPromptComponent } from '../components/pwa-install-prompt.js';
 
 export class HomePage {
   constructor(container, options = {}) {
@@ -103,6 +104,9 @@ export class HomePage {
               MARKET OPENS 09:15 IST · 2h 47m
             </div>
           </div>
+
+          <!-- PWA Install Prompt Banner (BUILD-11.11) -->
+          <div id="home-pwa-prompt-container"></div>
 
           <!-- 12-Column Bento Grid for Market Prep Tiles -->
           <div class="bento-grid">
@@ -230,6 +234,13 @@ export class HomePage {
   }
 
   mountComponents() {
+    // 0. PWA Install Prompt (BUILD-11.11)
+    const pwaContainer = this.container.querySelector('#home-pwa-prompt-container');
+    if (pwaContainer) {
+      this.pwaPromptComponent = new PwaInstallPromptComponent(pwaContainer);
+      this.pwaPromptComponent.render();
+    }
+
     // 1. Readiness Ritual
     const ritualContainer = this.container.querySelector('#home-ritual-container');
     this.ritualComponent = new ReadinessRitualComponent(ritualContainer, {

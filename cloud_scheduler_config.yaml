@@ -75,3 +75,17 @@ jobs:
       oidc_token:
         service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
 
+  - name: swayam-weekly-email-digest
+    description: "Sunday 11:00 IST automated email digest summarizing weekly P&L, discipline rate, key lesson, and upcoming macro calendar"
+    schedule: "0 11 * * 0"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_email_digest"
+      headers:
+        Content-Type: "application/json"
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+
+

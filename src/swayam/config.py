@@ -117,6 +117,11 @@ class Settings:
     trading_economics_api_key: str = field(default_factory=lambda: os.getenv("TRADING_ECONOMICS_API_KEY", ""))
     cron_shared_secret: str = field(default_factory=lambda: os.getenv("CRON_SHARED_SECRET", "swayam-cron-internal-secret-2026"))
 
+    # Weekly Email Digest (BUILD-11.11 - Gmail SMTP, REINFORCEMENT 3)
+    gmail_app_password: str = field(default_factory=lambda: os.getenv("GMAIL_APP_PASSWORD", ""))
+    gmail_sender_address: str = field(default_factory=lambda: os.getenv("GMAIL_SENDER_ADDRESS", ""))
+    gmail_recipient_address: str = field(default_factory=lambda: os.getenv("GMAIL_RECIPIENT_ADDRESS", ""))
+
     def validate_required_vars(self) -> list[str]:
         """Checks for missing required environment variables and returns a list of missing names."""
         missing: list[str] = []

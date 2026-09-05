@@ -111,14 +111,18 @@ Major tables: `swayam_positions`, `swayam_lessons`, `swayam_ai_sessions`, `swaya
 - **Auth:** ADC locally + service account identities in cloud. Zero JSON key files.
 
 Services:
-- **Cloud Run** service `swayam-web` — the live app
+- **Cloud Run** service `swayam-web` — the live app (PWA enabled with `manifest.webmanifest` and `service-worker.js`)
 - **Cloud Build** trigger `swayam-main-deploy` — auto-deploy on push to main
-- **Cloud Function** `swayam-options-recorder` — 60-second options snapshots during market hours
-- **Cloud Scheduler** — fires the recorder Mon-Fri 09:15-15:30 IST
+- **Cloud Functions:**
+  - `swayam-options-recorder` — 60-second options snapshots during market hours
+  - `cron_notifications` — (BUILD-11.8) Telegram + FCM push dispatcher
+  - `cron_macro_refresh` — (BUILD-11.10) Trading Economics nightly ingest + Sunday Gemini curation
+  - `cron_email_digest` — (BUILD-11.11) Sunday 11:00 IST weekly performance & planning digest via Gmail SMTP
+- **Cloud Scheduler** — `Asia/Kolkata` time zone, `asia-southeast1` region (triggers recorder, notifications, macro refresh, email digest)
 - **GCS bucket** `swayam-options-recordings` — nightly Parquet
 - **GCS bucket** `swayam-backups` — (BUILD-11.12)
 
-Secrets in **GCP Secret Manager**: `fyers-access-token`, `fyers-client-id`, `supabase-service-role-key`, `telegram-bot-token` (BUILD-11.8), `gemini-api-key` (unused, ADC preferred).
+Secrets in **GCP Secret Manager**: `fyers-access-token`, `fyers-client-id`, `supabase-service-role-key`, `telegram-bot-token` (BUILD-11.8), `telegram-chat-id`, `fcm-server-key`, `vapid-public-key`, `vapid-private-key`, `trading-economics-api-key` (BUILD-11.10), `cron-shared-secret`, `gmail-app-password` (BUILD-11.11), `gmail-sender-address`, `gemini-api-key` (unused, ADC preferred).
 
 ---
 

@@ -6,7 +6,7 @@ Initializes REST API routes, CORS middleware, and WebSocket broadcasting service
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from swayam.api.routes import ai, execution, health, home, journal, lessons, macro, market, notebook, pinned, positions, readiness, session, strategy, tts, validation
+from swayam.api.routes import ai, execution, health, home, journal, lessons, macro, market, notebook, notifications, pinned, positions, readiness, session, strategy, tts, validation
 from swayam.api.ws_manager import ws_manager
 
 app = FastAPI(
@@ -41,6 +41,7 @@ app.include_router(pinned.router)
 app.include_router(session.router)
 app.include_router(journal.router)
 app.include_router(lessons.router)
+app.include_router(notifications.router)
 
 # Serve frontend static files from built dist if present (Cloud Run & production)
 from pathlib import Path
