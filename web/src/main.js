@@ -234,6 +234,11 @@ class SwayamApp {
 
   navigateTo(page, updateHistory = true) {
     this.currentPage = page;
+    // Clear anti-flash initial-page attribute — its !important CSS rules
+    // block navigation to sibling views. See styles.css.
+    if (typeof document !== 'undefined' && document.documentElement) {
+      document.documentElement.removeAttribute('data-initial-page');
+    }
     const homeView = document.getElementById('home-view');
     const strategyView = document.getElementById('strategy-view');
     const journalView = document.getElementById('journal-view');
@@ -356,7 +361,11 @@ class SwayamApp {
 }
 
 // Bootstrap application on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
-  const app = new SwayamApp();
-  app.init().catch(console.error);
-});
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const app = new SwayamApp();
+    app.init().catch(console.error);
+  });
+}
+
+export { SwayamApp };

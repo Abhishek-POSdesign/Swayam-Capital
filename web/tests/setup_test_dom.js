@@ -43,6 +43,13 @@ export function setupTestDOM() {
     const el = {
       tagName: tagName.toUpperCase(),
       attributes: id ? { id } : {},
+      get id() {
+        return this.attributes.id;
+      },
+      set id(val) {
+        this.attributes.id = val;
+        if (val) elementsById.set(val, this);
+      },
       children: [],
       parentNode: null,
       eventListeners: {},
@@ -286,13 +293,17 @@ export function setupTestDOM() {
     documentElement: htmlEl,
     body: createMockElement('body'),
     createElement: (tag) => createMockElement(tag),
-    getElementById: (id) => createMockElement('div', id),
+    getElementById: (id) => elementsById.get(id) || createMockElement('div', id),
+    querySelector: (sel) => null,
+    querySelectorAll: (sel) => [],
   };
 
   const windowListeners = new Map();
   global.window = {
     document: global.document,
     localStorage: global.localStorage,
+    location: { pathname: '/', href: 'http://localhost:5173/' },
+    history: { pushState: () => {}, replaceState: () => {} },
     addEventListener: (evt, handler) => {
       if (!windowListeners.has(evt)) windowListeners.set(evt, []);
       windowListeners.get(evt).push(handler);

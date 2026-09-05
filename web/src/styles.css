@@ -427,8 +427,7 @@ td {
 /* Multi-page initial state routing guards */
 #home-view { display: block; }
 #strategy-view { display: none; }
-html[data-initial-page="strategy"] #home-view { display: none !important; }
-html[data-initial-page="strategy"] #strategy-view { display: block !important; }
+#journal-view { display: none; }
 
 /* Fix A4 & Fix C Bug 4 — AI drawer 400px content-shift layout pattern (Atlas pattern) */
 body:has(.ai-panel-open) .home-canvas,
