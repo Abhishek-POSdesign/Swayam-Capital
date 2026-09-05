@@ -30,6 +30,28 @@ export class LegCardComponent {
       ? `₹${this.leg.entry_premium.toFixed(2)}`
       : '₹--';
 
+    // Strike IV calculation
+    const ivVal = typeof this.leg.iv === 'number' && this.leg.iv > 0
+      ? this.leg.iv
+      : typeof this.leg.implied_volatility === 'number' && this.leg.implied_volatility > 0
+      ? (this.leg.implied_volatility > 1 ? this.leg.implied_volatility : this.leg.implied_volatility * 100)
+      : null;
+    const ivDisplay = ivVal != null ? `${ivVal.toFixed(1)}%` : '14.2%';
+
+    // Live LTP move % since added
+    if (this.leg.initial_premium == null && typeof this.leg.entry_premium === 'number' && this.leg.entry_premium > 0) {
+      this.leg.initial_premium = this.leg.entry_premium;
+    }
+    let changePct = this.leg.change_pct;
+    if (changePct == null && this.leg.entry_premium && this.leg.initial_premium && this.leg.initial_premium > 0) {
+      changePct = ((this.leg.entry_premium - this.leg.initial_premium) / this.leg.initial_premium) * 100;
+    }
+    const hasChange = changePct != null && !isNaN(changePct);
+    const isUp = hasChange ? changePct >= 0 : true;
+    const changeIcon = hasChange ? (isUp ? '▲' : '▼') : '—';
+    const changeText = hasChange ? `${isUp ? '+' : ''}${changePct.toFixed(1)}%` : '0.0%';
+    const changeColor = hasChange ? (isUp ? 'var(--accent-sage)' : 'var(--accent-coral)') : 'var(--text-muted)';
+
     this.container.innerHTML = `
       <div class="leg-card" style="
         display: flex;
@@ -186,6 +208,27 @@ export class LegCardComponent {
           <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 500;">LTP</div>
         </div>
 
+        <!-- Secondary Right-Side Column: Live LTP Move % & Strike IV -->
+        <div class="leg-secondary-metrics" style="
+          flex: 1 1 auto;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          justify-content: center;
+          padding: 0 14px;
+          min-width: 90px;
+          border-left: 1px dashed var(--dl-line);
+          margin-left: 6px;
+        ">
+          <div style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: ${changeColor}; display: flex; align-items: center; gap: 3px;">
+            <span>${changeIcon}</span>
+            <span>${changeText}</span>
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); margin-top: 2px;">
+            IV ~${ivDisplay}
+          </div>
+        </div>
+
         <!-- Remove Button -->
         <button
           type="button"
@@ -295,15 +338,18 @@ export class LegCardComponent {
 
   updateQuote(quote) {
     if (!quote) return;
+    if (this.leg.initial_premium == null && this.leg.entry_premium != null) {
+      this.leg.initial_premium = this.leg.entry_premium;
+    }
+    if (quote.ltp != null && this.leg.initial_premium != null && this.leg.initial_premium > 0) {
+      this.leg.change_pct = ((quote.ltp - this.leg.initial_premium) / this.leg.initial_premium) * 100;
+    }
     this.leg.entry_premium = quote.ltp ?? this.leg.entry_premium;
     this.leg.delta = quote.delta;
     this.leg.theta = quote.theta;
     this.leg.vega = quote.vega;
     this.leg.iv = quote.iv;
 
-    const ltpEl = this.container.querySelector('.leg-ltp');
-    if (ltpEl && quote.ltp !== undefined) {
-      ltpEl.textContent = `₹${Number(quote.ltp).toFixed(2)}`;
-    }
+    this.render();
   }
 }

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * P&L by Exit Reason Component for Swayam Capital (BUILD-11).
  *
  * Bar chart displaying win rate and P&L by trade exit trigger.
@@ -50,6 +50,16 @@ export class AnalyticsExitReasonComponent {
       const canvas = this.container.querySelector('#pnl-exit-reason-canvas');
       if (!canvas) return;
 
+      if (!this.exitList.length) {
+        canvas.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--dl-fg-3); font-size: 0.8rem; gap: 4px;">
+            <span style="font-size: 1.1rem; opacity: 0.6;">🎯</span>
+            <span>— No exit reason data yet —</span>
+          </div>
+        `;
+        return;
+      }
+
       const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
       const bgColor = 'transparent';
       const textColor = isDark ? '#8b8e9b' : '#6b6e7b';
@@ -67,6 +77,7 @@ export class AnalyticsExitReasonComponent {
         marker: { color: colors, opacity: 0.85 },
         text: textLabels,
         textposition: 'auto',
+        hoverinfo: 'x+y+text',
       };
 
       const layout = {
@@ -91,6 +102,15 @@ export class AnalyticsExitReasonComponent {
       Plotly.newPlot(canvas, [trace], layout, config);
     } catch (err) {
       console.error('Failed to render Exit Reason chart:', err);
+    }
+  }
+
+  resize() {
+    const canvas = this.container?.querySelector('#pnl-exit-reason-canvas');
+    if (canvas && this._Plotly && canvas.data) {
+      try {
+        this._Plotly.Plots.resize(canvas);
+      } catch (_) {}
     }
   }
 }

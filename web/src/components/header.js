@@ -16,11 +16,11 @@ function applyTheme(theme) {
   localStorage.setItem('swayam-theme', theme);
 }
 
-/** SVG icons for each theme mode (matches Atlas theme-switcher.js exactly). */
+/** SVG icons for each theme mode (Auto = Monitor, Dark = Moon, Light = Sun). */
 const THEME_ICONS = {
-  dark: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
-  auto: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
-  light: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
+  auto: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
+  dark: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
+  light: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
 };
 
 const THEME_CYCLE = { auto: 'dark', dark: 'light', light: 'auto' };
@@ -81,17 +81,20 @@ export function initHeader(container, options = {}) {
             justify-content: center;
             width: 34px;
             height: 34px;
-            border-radius: var(--radius-pill);
-            background: var(--dl-card-2);
-            border: 1px solid var(--dl-line);
-            color: var(--text-primary);
+            min-width: 34px;
+            min-height: 34px;
+            padding: 0 !important;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #edeff4;
             cursor: pointer;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
             transition: all var(--dur-fast) ease;
           "
           aria-label="Switch theme (Current: ${THEME_LABELS[storedTheme]})"
         >
-          ${THEME_ICONS[storedTheme]}
+          ${THEME_ICONS[storedTheme] || THEME_ICONS.auto}
         </button>
 
         <div class="user-avatar-pill" title="Abhishek Sikka">
@@ -115,15 +118,16 @@ export function initHeader(container, options = {}) {
     });
   });
 
-  // Theme switcher click — cycles through dark → auto → light → dark
+  // Theme switcher click — cycles through auto → dark → light → auto
   const themeSwitcherBtn = container.querySelector('#theme-switcher-btn');
   if (themeSwitcherBtn) {
     themeSwitcherBtn.addEventListener('click', () => {
       const current = getTheme();
       const next = THEME_CYCLE[current] || 'dark';
       applyTheme(next);
-      themeSwitcherBtn.innerHTML = THEME_ICONS[next];
+      themeSwitcherBtn.innerHTML = THEME_ICONS[next] || THEME_ICONS.auto;
       themeSwitcherBtn.title = `Theme: ${THEME_LABELS[next]}`;
+      themeSwitcherBtn.setAttribute('aria-label', `Switch theme (Current: ${THEME_LABELS[next]})`);
       window.dispatchEvent(new CustomEvent('swayam-theme-change', { detail: { theme: next } }));
     });
   }

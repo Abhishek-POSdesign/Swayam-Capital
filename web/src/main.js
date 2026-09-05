@@ -296,6 +296,26 @@ class SwayamApp {
         this.journalPage.loadData();
       }
     }
+
+    // Force layout refresh and redraw for charts on route transition to prevent zero width/height blankness
+    const triggerChartRedraw = () => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('resize'));
+      }
+      if (page === 'journal' && this.journalPage) {
+        this.journalPage.resizeCharts?.();
+      } else if (page === 'strategy' && this.strategyPage?.payoffChart) {
+        this.strategyPage.payoffChart.retheme?.();
+      } else if (page === 'home' && this.homePage?.niftyChart) {
+        this.homePage.niftyChart.retheme?.();
+      }
+    };
+
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(triggerChartRedraw);
+    }
+    setTimeout(triggerChartRedraw, 100);
+    setTimeout(triggerChartRedraw, 300);
   }
 
   async loadRules(forceReload = false) {

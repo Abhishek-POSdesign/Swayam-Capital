@@ -1,4 +1,4 @@
-﻿/**
+/**
  * P&L by Strategy Component for Swayam Capital (BUILD-11).
  *
  * Plotly horizontal bar chart showing net P&L and win rate per strategy preset.
@@ -50,6 +50,16 @@ export class AnalyticsPnlByStrategyComponent {
       const canvas = this.container.querySelector('#pnl-strategy-canvas');
       if (!canvas) return;
 
+      if (!this.stratList.length) {
+        canvas.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--dl-fg-3); font-size: 0.8rem; gap: 4px;">
+            <span style="font-size: 1.1rem; opacity: 0.6;">📊</span>
+            <span>— No strategy data yet —</span>
+          </div>
+        `;
+        return;
+      }
+
       const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
       const bgColor = 'transparent';
       const textColor = isDark ? '#8b8e9b' : '#6b6e7b';
@@ -94,6 +104,15 @@ export class AnalyticsPnlByStrategyComponent {
       Plotly.newPlot(canvas, [trace], layout, config);
     } catch (err) {
       console.error('Failed to render P&L by Strategy chart:', err);
+    }
+  }
+
+  resize() {
+    const canvas = this.container?.querySelector('#pnl-strategy-canvas');
+    if (canvas && this._Plotly && canvas.data) {
+      try {
+        this._Plotly.Plots.resize(canvas);
+      } catch (_) {}
     }
   }
 }

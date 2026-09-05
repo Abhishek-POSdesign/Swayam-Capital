@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Cumulative P&L Curve Component for Swayam Capital (BUILD-11).
  *
  * Plotly line chart with zero line, area fill, and dark/light theme support.
@@ -50,6 +50,16 @@ export class AnalyticsCumulativePnlComponent {
       const canvas = this.container.querySelector('#cumulative-pnl-canvas');
       if (!canvas) return;
 
+      if (!this.series.length) {
+        canvas.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--dl-fg-3); font-size: 0.8rem; gap: 4px;">
+            <span style="font-size: 1.1rem; opacity: 0.6;">📈</span>
+            <span>— No equity curve data yet —</span>
+          </div>
+        `;
+        return;
+      }
+
       const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
       const bgColor = 'transparent';
       const textColor = isDark ? '#8b8e9b' : '#6b6e7b';
@@ -98,6 +108,15 @@ export class AnalyticsCumulativePnlComponent {
       Plotly.newPlot(canvas, [trace], layout, config);
     } catch (err) {
       console.error('Failed to render Cumulative P&L chart:', err);
+    }
+  }
+
+  resize() {
+    const canvas = this.container?.querySelector('#cumulative-pnl-canvas');
+    if (canvas && this._Plotly && canvas.data) {
+      try {
+        this._Plotly.Plots.resize(canvas);
+      } catch (_) {}
     }
   }
 }

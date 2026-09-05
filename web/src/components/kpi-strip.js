@@ -45,10 +45,14 @@ export class KPIStripComponent {
     const maxWin = k.max_profit_trade;
     const maxLoss = k.max_loss_trade;
 
-    const netColor = netPnl > 0 ? 'var(--accent-sage)' : netPnl < 0 ? 'var(--accent-coral)' : 'var(--dl-fg-2)';
+    const netColor = totalTrades === 0 ? 'var(--dl-fg-2)' : (netPnl > 0 ? 'var(--accent-sage)' : netPnl < 0 ? 'var(--accent-coral)' : 'var(--dl-fg-2)');
     const winColor = totalTrades === 0 ? 'var(--dl-fg-2)' : (parseFloat(winRate) >= 50 ? 'var(--accent-sage)' : 'var(--accent-amber)');
     const discColor = totalTrades === 0 ? 'var(--dl-fg-2)' : (parseFloat(disciplineRate) >= 80 ? 'var(--accent-sage)' : 'var(--accent-coral)');
 
+    const netDisplay = totalTrades > 0 ? `${netPnl >= 0 ? '+' : ''}₹${Math.round(netPnl).toLocaleString('en-IN')}` : '—';
+    const grossDisplay = totalTrades > 0 ? `Gross: ₹${Math.round(grossPnl).toLocaleString('en-IN')}` : 'Gross: —';
+    const capDisplay = totalTrades > 0 ? `${pctMargin}% cap` : '—';
+    const chargesDisplay = totalTrades > 0 ? `₹${Math.round(chargesDrag).toLocaleString('en-IN')}` : '—';
     const winRateDisplay = totalTrades > 0 ? `${winRate}%` : '—';
     const avgRRDisplay = totalTrades > 0 ? `1 : ${avgRR}` : '—';
     const disciplineDisplay = totalTrades > 0 ? `${disciplineRate}%` : '—';
@@ -98,12 +102,12 @@ export class KPIStripComponent {
         <div class="kpi-card" style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: var(--radius-card); padding: 12px 14px;">
           <div style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 4px; font-weight: 600;">Net P&amp;L</div>
           <div style="font-size: 1.4rem; font-weight: 700; color: ${netColor}; font-family: var(--font-mono, monospace); line-height: 1.2;">
-            ${netPnl >= 0 ? '+' : ''}₹${Math.round(netPnl).toLocaleString('en-IN')}
+            ${netDisplay}
           </div>
           <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px; display: flex; gap: 4px; flex-wrap: wrap;">
-            <span>Gross: ₹${Math.round(grossPnl).toLocaleString('en-IN')}</span>
+            <span>${grossDisplay}</span>
             <span style="color: var(--dl-line);">·</span>
-            <span>${pctMargin}% cap</span>
+            <span>${capDisplay}</span>
           </div>
         </div>
 
@@ -122,7 +126,7 @@ export class KPIStripComponent {
         <div class="kpi-card" style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: var(--radius-card); padding: 12px 14px;">
           <div style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 4px; font-weight: 600;">Charges Drag</div>
           <div style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary); font-family: var(--font-mono, monospace); line-height: 1.2;">
-            ₹${Math.round(chargesDrag).toLocaleString('en-IN')}
+            ${chargesDisplay}
           </div>
           <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
             ${chargesPctDisplay}

@@ -396,6 +396,20 @@ export class JournalPage {
       this.setupEventListeners();
       this.loadData();
     });
+
+    if (typeof window !== 'undefined' && !this._resizeListenerAttached) {
+      window.addEventListener('resize', () => this.resizeCharts());
+      window.addEventListener('swayam-theme-change', () => {
+        this.loadData();
+      });
+      this._resizeListenerAttached = true;
+    }
+  }
+
+  resizeCharts() {
+    this.cumulativeChart?.resize?.();
+    this.strategyChart?.resize?.();
+    this.exitReasonChart?.resize?.();
   }
 
   async loadData() {
