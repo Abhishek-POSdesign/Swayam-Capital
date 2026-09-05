@@ -105,6 +105,13 @@ class Settings:
     ai_output_cost_per_1k_usd: float = field(default_factory=lambda: float(os.getenv("AI_OUTPUT_COST_PER_1K_USD", "0.005")))
     usd_to_inr_rate: float = field(default_factory=lambda: float(os.getenv("USD_TO_INR_RATE", "83.0")))
 
+    # Notifications Configuration (BUILD-11.8)
+    telegram_bot_token: str = field(default_factory=lambda: os.getenv("TELEGRAM_BOT_TOKEN", ""))
+    telegram_chat_id: str = field(default_factory=lambda: os.getenv("TELEGRAM_CHAT_ID", ""))
+    fcm_server_key: str = field(default_factory=lambda: os.getenv("FCM_SERVER_KEY", ""))
+    vapid_public_key: str = field(default_factory=lambda: os.getenv("VAPID_PUBLIC_KEY", ""))
+    vapid_private_key: str = field(default_factory=lambda: os.getenv("VAPID_PRIVATE_KEY", ""))
+
     def validate_required_vars(self) -> list[str]:
         """Checks for missing required environment variables and returns a list of missing names."""
         missing: list[str] = []

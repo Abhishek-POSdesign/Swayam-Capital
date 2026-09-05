@@ -1,0 +1,50 @@
+# Cloud Scheduler Job Configurations for Swayam Capital (BUILD-11.8)
+# Source of truth for all automated trading cron triggers.
+#
+# CRITICAL DEPLOYMENT CONSTRAINTS:
+# - Region: asia-southeast1 (explicitly configured per GCP architecture)
+# - Timezone: Asia/Kolkata (explicitly configured on every job — do not rely on defaults)
+# - Target: Cloud Function 'cron_notifications'
+
+jobs:
+  - name: swayam-readiness-reminder
+    description: "Weekday morning prompt to complete morning readiness ritual before market open"
+    schedule: "45 8 * * 1-5"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_notifications"
+      headers:
+        Content-Type: "application/json"
+      body: '{"job": "readiness_reminder"}'
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+
+  - name: swayam-overnight-naked-warning
+    description: "Weekday 15:20 IST safety check for unhedged/naked short option legs (Risk §10a)"
+    schedule: "20 15 * * 1-5"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_notifications"
+      headers:
+        Content-Type: "application/json"
+      body: '{"job": "overnight_naked_warning"}'
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+
+  - name: swayam-eod-summary
+    description: "Weekday 15:30 IST market close summary: trade count, realized P&L, discipline check"
+    schedule: "30 15 * * 1-5"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_notifications"
+      headers:
+        Content-Type: "application/json"
+      body: '{"job": "eod_summary"}'
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
