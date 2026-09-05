@@ -26,7 +26,8 @@ export class HomePage {
     this.mountComponents();
     this.setupSidebarCollapse();
     this.startMarketCountdown();
-    await this.loadData();
+    // Non-blocking: background load so UI components and AI drawer mount instantaneously
+    this.loadData();
   }
 
   render() {

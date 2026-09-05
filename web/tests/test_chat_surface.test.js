@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setupTestDOM } from './setup_test_dom.js';
 import { ChatSurfaceComponent } from '../src/components/chat-surface.js';
 
@@ -84,5 +84,42 @@ describe('ChatSurfaceComponent (Full-Width AI Workspace)', () => {
 
     expect(container.textContent).toContain('AI UNAVAILABLE');
     expect(container.textContent).toContain('Gemini quota exceeded');
+  });
+
+  it('stages an image and shows thumbnail preview with remove button (BUILD-11.7)', () => {
+    const chat = new ChatSurfaceComponent(container);
+    chat.render();
+
+    // Mock file
+    const fakeFile = new File(['fake-png-data'], 'chart.png', { type: 'image/png' });
+    chat.setPendingImage(fakeFile);
+
+    const previewContainer = container.querySelector('#chat-attachment-preview-container');
+    const thumb = container.querySelector('#chat-attachment-thumb');
+    const info = container.querySelector('#chat-attachment-info');
+    const removeBtn = container.querySelector('#chat-attachment-remove');
+
+    expect(previewContainer.style.display).toBe('flex');
+    expect(info.textContent).toContain('chart.png');
+    expect(chat.pendingImage).toBe(fakeFile);
+
+    // Click remove button
+    removeBtn.click();
+    expect(previewContainer.style.display).toBe('none');
+    expect(chat.pendingImage).toBeNull();
+  });
+
+  it('renders image attachment in user message bubble with expand click (BUILD-11.7)', () => {
+    const chat = new ChatSurfaceComponent(container);
+    chat.render();
+
+    const row = chat.appendMessageDOM('user', 'Check this chart', 'msg-1', false, 'https://example.com/chart.png');
+    expect(row).not.toBeNull();
+
+    const bubble = row.children[0];
+    const img = bubble.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img.getAttribute('src') || img.src).toBe('https://example.com/chart.png');
+    expect(bubble.textContent).toContain('Check this chart');
   });
 });

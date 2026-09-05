@@ -113,5 +113,25 @@ export const api = {
       body: JSON.stringify({ lesson_text: lessonText }),
     }),
   archiveTestTrades: () => request('/api/journal/archive-test-trades', { method: 'POST' }),
+  sendChatMessageWithImage: async (sessionId, text, imageBlob, filename = 'screenshot.png') => {
+    const formData = new FormData();
+    formData.append('content', text || '');
+    if (imageBlob) {
+      formData.append('image', imageBlob, filename);
+    }
+    const response = await fetch(`${BASE_URL}/api/ai/conversations/${sessionId}/messages`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!response.ok) {
+      let errorDetail = `HTTP ${response.status}`;
+      try {
+        const errJson = await response.json();
+        errorDetail = errJson.detail || errorDetail;
+      } catch (_) {}
+      throw new Error(errorDetail);
+    }
+    return response;
+  },
 };
 

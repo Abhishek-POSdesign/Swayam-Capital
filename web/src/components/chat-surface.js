@@ -71,6 +71,29 @@ function inlineMarkdown(text) {
     .replace(/`([^`]+)`/g, '<code style="font-family: var(--font-mono); font-size: 0.85em; background: var(--dl-card-2); padding: 1px 5px; border-radius: 4px; color: var(--accent-lilac);">$1</code>');
 }
 
+export function openImageModal(imgSrc) {
+  let modal = document.getElementById('ai-image-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'ai-image-modal';
+    modal.style.cssText = `
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 99999;
+      display: flex; align-items: center; justify-content: center; padding: 20px; cursor: pointer;
+    `;
+    modal.innerHTML = `
+      <div style="position: relative; max-width: 90vw; max-height: 90vh;">
+        <img id="ai-modal-img" src="" style="max-width: 100%; max-height: 90vh; border-radius: 8px; object-fit: contain; box-shadow: 0 8px 32px rgba(0,0,0,0.5);" />
+        <button type="button" style="position: absolute; top: -14px; right: -14px; width: 32px; height: 32px; border-radius: 50%; background: var(--dl-card); color: var(--dl-fg); border: 1px solid var(--dl-line); cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center;">✕</button>
+      </div>
+    `;
+    modal.addEventListener('click', () => { modal.style.display = 'none'; });
+    document.body.appendChild(modal);
+  }
+  const img = document.getElementById('ai-modal-img');
+  if (img) img.src = imgSrc;
+  modal.style.display = 'flex';
+}
+
 export class ChatSurfaceComponent {
   constructor(container, options = {}) {
     this.container = container;
@@ -79,6 +102,7 @@ export class ChatSurfaceComponent {
     this.messages = [];
     this.isStreaming = false;
     this.briefText = '';
+    this.pendingImage = null;
   }
 
   _getInitialSessionId() {
@@ -188,19 +212,40 @@ export class ChatSurfaceComponent {
 
         <!-- Full-Width Composer Section -->
         <div class="chat-composer" style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--dl-line); padding-top: 14px;">
-          <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px;">
-            <span id="chat-char-counter" style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--dl-fg-3); display: none;">0 chars</span>
-            <button id="btn-new-convo" type="button" style="background: transparent; border: none; font-size: 0.78rem; color: var(--dl-fg-3); cursor: pointer; text-decoration: underline;">
-              + New Conversation
-            </button>
+          <!-- Attachment Preview Container -->
+          <div id="chat-attachment-preview-container" style="display: none; align-items: center; gap: 10px; padding: 6px 10px; background: var(--dl-card-2); border: 1px solid var(--dl-line); border-radius: 8px;">
+            <div style="position: relative; display: inline-block;">
+              <img id="chat-attachment-thumb" src="" style="max-height: 90px; max-width: 140px; border-radius: 6px; border: 1px solid var(--dl-line); object-fit: cover;" />
+              <button id="chat-attachment-remove" type="button" title="Remove attachment" style="position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-coral); color: #fff; border: none; cursor: pointer; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; line-height: 1;">×</button>
+            </div>
+            <span id="chat-attachment-info" style="font-size: 0.78rem; color: var(--dl-fg-3);"></span>
           </div>
-          <div style="display: flex; gap: 12px; align-items: flex-end;">
+
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+            <span style="font-size: 0.75rem; color: var(--dl-fg-3);">Tip: Paste or drop TradingView screenshots (Ctrl+V)</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span id="chat-char-counter" style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--dl-fg-3); display: none;">0 chars</span>
+              <button id="btn-new-convo" type="button" style="background: transparent; border: none; font-size: 0.78rem; color: var(--dl-fg-3); cursor: pointer; text-decoration: underline;">
+                + New Conversation
+              </button>
+            </div>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: flex-end;">
             <textarea
               id="chat-textarea"
               rows="3"
-              placeholder="Type your thoughts, question, or challenge the brief above..."
+              placeholder="Type your thoughts, paste a chart screenshot, or challenge the brief above..."
               style="flex: 1; min-height: 76px; max-height: 200px; background: var(--dl-card-2); color: var(--dl-fg); border: 1px solid var(--dl-line); border-radius: 10px; padding: 12px 16px; font-family: var(--font-sans); font-size: 0.92rem; resize: vertical; outline: none; line-height: 1.55;"
             ></textarea>
+            <input type="file" id="chat-file-input" accept="image/png,image/jpeg,image/webp,image/gif" style="display: none;" />
+            <button
+              id="btn-chat-attach"
+              type="button"
+              title="Attach screenshot or image (max 5 MB)"
+              style="height: 48px; width: 44px; background: var(--dl-card-2); color: var(--dl-fg); border: 1px solid var(--dl-line); border-radius: 10px; font-size: 1.15rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;"
+            >
+              📎
+            </button>
             <button
               id="btn-chat-send"
               type="button"
@@ -274,6 +319,24 @@ export class ChatSurfaceComponent {
       });
     }
 
+    // Attachment buttons & file input
+    const btnAttach = this.container.querySelector('#btn-chat-attach');
+    const fileInput = this.container.querySelector('#chat-file-input');
+    const btnRemoveAttach = this.container.querySelector('#chat-attachment-remove');
+
+    if (btnAttach && fileInput) {
+      btnAttach.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          this.setPendingImage(e.target.files[0]);
+        }
+      });
+    }
+
+    if (btnRemoveAttach) {
+      btnRemoveAttach.addEventListener('click', () => this.clearPendingImage());
+    }
+
     // Send button & textarea
     const sendBtn = this.container.querySelector('#btn-chat-send');
     const textarea = this.container.querySelector('#chat-textarea');
@@ -294,7 +357,32 @@ export class ChatSurfaceComponent {
           this.sendMessage();
         }
       });
+
+      textarea.addEventListener('paste', (e) => {
+        const items = (e.clipboardData || window.clipboardData)?.items;
+        if (!items) return;
+        for (const item of items) {
+          if (item.type.startsWith('image/')) {
+            e.preventDefault();
+            const file = item.getAsFile();
+            if (file) this.setPendingImage(file);
+            break;
+          }
+        }
+      });
     }
+
+    // Drag and drop onto chat surface
+    this.container.addEventListener('dragover', (e) => e.preventDefault());
+    this.container.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer?.files?.length) {
+        const file = e.dataTransfer.files[0];
+        if (file.type.startsWith('image/')) {
+          this.setPendingImage(file);
+        }
+      }
+    });
 
     if (sendBtn) {
       sendBtn.addEventListener('click', () => this.sendMessage());
@@ -302,6 +390,7 @@ export class ChatSurfaceComponent {
 
     // New conversation
     const btnNew = this.container.querySelector('#btn-new-convo');
+    const shortSession = this.sessionId ? `swayam-${this.sessionId.slice(0, 6)}` : 'swayam-live';
     if (btnNew) {
       btnNew.addEventListener('click', async () => {
         if (confirm('Start a fresh conversation session? Your previous discussion will be preserved in history.')) {
@@ -401,6 +490,40 @@ export class ChatSurfaceComponent {
     }
   }
 
+  setPendingImage(file) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image exceeds maximum allowed size of 5 MB.');
+      return;
+    }
+    const validMimes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+    if (!validMimes.includes(file.type)) {
+      alert('Invalid image format. Allowed formats: PNG, JPEG, WEBP, GIF.');
+      return;
+    }
+    this.pendingImage = file;
+    const previewContainer = this.container.querySelector('#chat-attachment-preview-container');
+    const thumb = this.container.querySelector('#chat-attachment-thumb');
+    const info = this.container.querySelector('#chat-attachment-info');
+    if (previewContainer && thumb) {
+      thumb.src = URL.createObjectURL(file);
+      if (info) info.textContent = `${file.name || 'Screenshot'} (${(file.size / 1024).toFixed(0)} KB)`;
+      previewContainer.style.display = 'flex';
+    }
+  }
+
+  clearPendingImage() {
+    this.pendingImage = null;
+    const previewContainer = this.container.querySelector('#chat-attachment-preview-container');
+    const thumb = this.container.querySelector('#chat-attachment-thumb');
+    const info = this.container.querySelector('#chat-attachment-info');
+    const fileInput = this.container.querySelector('#chat-file-input');
+    if (thumb) thumb.src = '';
+    if (info) info.textContent = '';
+    if (previewContainer) previewContainer.style.display = 'none';
+    if (fileInput) fileInput.value = '';
+  }
+
   async loadSessionMessages() {
     if (!this.sessionId) return;
     try {
@@ -417,14 +540,14 @@ export class ChatSurfaceComponent {
         container.innerHTML = this._renderEmptyStateHTML();
         this._attachEmptyStateListeners();
       } else {
-        msgs.forEach((m) => this.appendMessageDOM(m.role, m.content, m.id));
+        msgs.forEach((m) => this.appendMessageDOM(m.role, m.content, m.id, false, m.attachment_url));
       }
     } catch (err) {
       console.error('Could not load session messages:', err);
     }
   }
 
-  appendMessageDOM(role, content, messageId = null, isStreaming = false) {
+  appendMessageDOM(role, content, messageId = null, isStreaming = false, attachmentUrl = null) {
     const container = this.container.querySelector('#chat-messages-container');
     if (!container) return null;
 
@@ -452,7 +575,15 @@ export class ChatSurfaceComponent {
         font-weight: 500;
         word-break: break-word;
       `;
-      bubble.textContent = content;
+
+      if (!attachmentUrl) {
+        bubble.textContent = content || '';
+      } else {
+        bubble.innerHTML = `<img src="${attachmentUrl}" title="Click to expand image" style="max-width: 480px; max-height: 280px; width: 100%; border-radius: 8px; cursor: pointer; margin-bottom: 8px; display: block; object-fit: contain; background: #1a1b23;" /><div class="bubble-text">${content || ''}</div>`;
+        const imgEl = bubble.querySelector('img');
+        if (imgEl) imgEl.addEventListener('click', () => openImageModal(attachmentUrl));
+      }
+
       msgRow.appendChild(bubble);
     } else {
       // AI Assistant response card
@@ -519,15 +650,22 @@ export class ChatSurfaceComponent {
     const textarea = this.container.querySelector('#chat-textarea');
     if (!textarea) return;
     const text = textarea.value.trim();
-    if (!text) return;
+    const imageToUpload = this.pendingImage;
+    if (!text && !imageToUpload) return;
 
     textarea.value = '';
     const charCounter = this.container.querySelector('#chat-char-counter');
     if (charCounter) charCounter.style.display = 'none';
 
+    let localAttachmentUrl = null;
+    if (imageToUpload) {
+      localAttachmentUrl = URL.createObjectURL(imageToUpload);
+    }
+    this.clearPendingImage();
+
     // 1. Append user message locally
-    this.appendMessageDOM('user', text);
-    this.messages.push({ role: 'user', content: text });
+    this.appendMessageDOM('user', text, null, false, localAttachmentUrl);
+    this.messages.push({ role: 'user', content: text, attachment_url: localAttachmentUrl });
 
     // 2. Prepare streaming bubble for assistant
     this.isStreaming = true;
@@ -543,11 +681,22 @@ export class ChatSurfaceComponent {
     let fullAssistantText = '';
 
     try {
-      const response = await fetch(`/api/ai/conversations/${this.sessionId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: text }),
-      });
+      let response;
+      if (imageToUpload) {
+        const formData = new FormData();
+        formData.append('content', text);
+        formData.append('image', imageToUpload, imageToUpload.name || 'screenshot.png');
+        response = await fetch(`/api/ai/conversations/${this.sessionId}/messages`, {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        response = await fetch(`/api/ai/conversations/${this.sessionId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: text }),
+        });
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status} ${response.statusText}`);

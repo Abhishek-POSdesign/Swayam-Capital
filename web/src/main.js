@@ -440,10 +440,17 @@ class SwayamApp {
 
 // Bootstrap application on DOM ready
 if (typeof document !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', () => {
+  const bootstrap = () => {
     const app = new SwayamApp();
+    window.__swayamApp = app;
     app.init().catch(console.error);
-  });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap);
+  } else {
+    bootstrap();
+  }
 }
 
 export { SwayamApp };

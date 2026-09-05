@@ -112,9 +112,15 @@ class VertexAIProvider(AIProvider):
                     system_text = content
                 # Additional system messages are silently skipped (shouldn't occur)
             elif role == "user":
-                contents.append(
-                    types.Content(role="user", parts=[types.Part.from_text(text=content)])
-                )
+                parts = []
+                # Check for image attachment: image_bytes and image_mime
+                image_bytes = msg.get("image_bytes")
+                image_mime = msg.get("image_mime")
+                if image_bytes and image_mime:
+                    parts.append(types.Part.from_bytes(data=image_bytes, mime_type=image_mime))
+                if content:
+                    parts.append(types.Part.from_text(text=content))
+                contents.append(types.Content(role="user", parts=parts))
             elif role == "assistant":
                 contents.append(
                     types.Content(role="model", parts=[types.Part.from_text(text=content)])
