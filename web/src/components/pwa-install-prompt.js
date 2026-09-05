@@ -17,6 +17,14 @@ export class PwaInstallPromptComponent {
 
   isDismissed() {
     try {
+      if (typeof window !== 'undefined') {
+        if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+          return true;
+        }
+        if (window.navigator && window.navigator.standalone) {
+          return true;
+        }
+      }
       const until = localStorage.getItem(this.dismissedKey);
       if (until && Date.now() < parseInt(until, 10)) {
         return true;

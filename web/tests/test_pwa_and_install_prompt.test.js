@@ -40,6 +40,22 @@ describe('BUILD-11.11 PWA & Install Prompt Components', () => {
     expect(container.innerHTML).toBe('');
   });
 
+  it('suppresses install prompt banner when already running in standalone display mode', () => {
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: query === '(display-mode: standalone)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    const prompt = new PwaInstallPromptComponent(container);
+    expect(prompt.isDismissed()).toBe(true);
+  });
+
   it('requests notification permission on Install click (user gesture - REINFORCEMENT 1)', async () => {
     const prompt = new PwaInstallPromptComponent(container);
     prompt.render();

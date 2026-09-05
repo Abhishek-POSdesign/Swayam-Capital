@@ -32,15 +32,15 @@ export class OvernightStripComponent {
       const borderLeft = idx > 0 ? 'border-left: 1px solid var(--dl-line-2);' : '';
 
       return `
-        <div class="global-ticker-cell" style="flex: 1; min-width: 0; padding: 10px 16px; ${borderLeft} display: flex; flex-direction: column; gap: 3px;">
-          <span style="font-family: var(--font-sans); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dl-fg-3);">
+        <div class="global-ticker-cell" style="flex: 1 0 auto; min-width: 135px; padding: 10px 16px; ${borderLeft} display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-family: var(--font-sans); font-size: 0.70rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dl-fg-3);">
             ${ticker}
           </span>
           <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: nowrap;">
-            <span class="mono-nums" style="font-size: 1.45rem; font-weight: 700; color: var(--dl-fg); line-height: 1; letter-spacing: -0.01em;">
+            <span class="mono-nums" style="font-size: 1.35rem; font-weight: 700; color: var(--dl-fg); line-height: 1; letter-spacing: -0.01em; white-space: nowrap;">
               ${info.value}
             </span>
-            <span class="mono-nums" style="font-size: 0.88rem; font-weight: 600; color: ${deltaColor};">
+            <span class="mono-nums" style="font-size: 0.86rem; font-weight: 600; color: ${deltaColor}; white-space: nowrap;">
               ${info.pct}
             </span>
           </div>
@@ -49,7 +49,7 @@ export class OvernightStripComponent {
     }).join('');
 
     this.container.innerHTML = `
-      <div class="tile overnight-strip-tile span-12" style="display: flex; align-items: stretch; justify-content: space-between; padding: 0; overflow-x: auto; min-height: 72px;">
+      <div class="tile overnight-strip-tile span-12" style="display: flex; align-items: stretch; justify-content: space-between; padding: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; min-height: 72px;">
         ${cellsHtml}
       </div>
     `;

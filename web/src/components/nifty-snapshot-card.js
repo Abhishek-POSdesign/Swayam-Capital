@@ -128,9 +128,9 @@ export class NiftySnapshotCardComponent {
       const sign = sec.change_pct >= 0 ? '+' : '';
       const col = sec.change_pct >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)';
       return `
-        <div style="display: flex; flex-direction: column; align-items: center; background: var(--dl-card-2); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--dl-line); min-width: 58px;">
-          <span style="font-size: 0.65rem; color: var(--dl-fg-3); font-weight: 600;">${sec.name}</span>
-          <span class="mono-nums" style="font-size: 0.72rem; color: ${col}; font-weight: 700;">${sign}${sec.change_pct.toFixed(1)}%</span>
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--dl-card-2); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--dl-line); min-width: 80px; flex: 0 0 auto;">
+          <span style="font-size: 0.80rem; color: var(--dl-fg-2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">${sec.name}</span>
+          <span class="mono-nums" style="font-size: 0.98rem; color: ${col}; font-weight: 800; margin-top: 2px;">${sign}${sec.change_pct.toFixed(1)}%</span>
         </div>
       `;
     }).join('');
@@ -242,7 +242,7 @@ export class NiftySnapshotCardComponent {
               <span style="font-size: 0.74rem; color: var(--dl-fg-3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Sector Rotation (10 Sectors)</span>
               ${this.getBadgeHtml(cash.sector_freshness)}
             </div>
-            <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;">
+            <div style="display: flex; gap: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 6px;">
               ${sectorStripHtml}
             </div>
           </div>
