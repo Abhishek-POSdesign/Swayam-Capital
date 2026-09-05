@@ -54,23 +54,23 @@ export function initHeader(container, options = {}) {
         <span id="header-spot-delta" style="color: var(--accent-sage); font-weight: 600;">+12.35 (+0.05%)</span>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <nav class="nav-pill-row">
-          <button type="button" class="nav-pill ${activePage === 'home' ? 'active' : ''}" data-page="home">
-            Home
-          </button>
-          <button type="button" class="nav-pill ${activePage === 'strategy' ? 'active' : ''}" data-page="strategy">
-            Strategy Builder
-          </button>
-          <button type="button" class="nav-pill ${activePage === 'journal' ? 'active' : ''}" data-page="journal">
-            Trade Journal
-          </button>
-          <button type="button" class="nav-pill ${activePage === 'backtest' ? 'active' : ''}" data-page="backtest" style="opacity: 0.5;" title="Upcoming: BUILD-12">
-            Backtest Lab
-            <span style="margin-left: 6px; font-size: 0.6rem; padding: 2px 6px; border-radius: var(--radius-pill); background: var(--accent-lilac-tint); color: var(--accent-lilac); font-weight: 700; letter-spacing: 0.06em;">SOON</span>
-          </button>
-        </nav>
+      <nav class="nav-pill-row">
+        <button type="button" class="nav-pill ${activePage === 'home' ? 'active' : ''}" data-page="home">
+          Home
+        </button>
+        <button type="button" class="nav-pill ${activePage === 'strategy' ? 'active' : ''}" data-page="strategy">
+          Strategy Builder
+        </button>
+        <button type="button" class="nav-pill ${activePage === 'journal' ? 'active' : ''}" data-page="journal">
+          Trade Journal
+        </button>
+        <button type="button" class="nav-pill ${activePage === 'backtest' ? 'active' : ''}" data-page="backtest" style="opacity: 0.5;" title="Upcoming: BUILD-12">
+          Backtest Lab
+          <span style="margin-left: 6px; font-size: 0.6rem; padding: 2px 6px; border-radius: var(--radius-pill); background: var(--accent-lilac-tint); color: var(--accent-lilac); font-weight: 700; letter-spacing: 0.06em;">SOON</span>
+        </button>
+      </nav>
 
+      <div class="header-user-actions" style="display: flex; align-items: center; gap: 8px;">
         <!-- Theme Switcher — cycles Auto → Dark → Light → Auto -->
         <button
           id="theme-switcher-btn"
