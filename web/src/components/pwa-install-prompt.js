@@ -96,16 +96,16 @@ export class PwaInstallPromptComponent {
     }
 
     this.container.innerHTML = `
-      <div class="pwa-install-banner" style="display: flex; justify-content: space-between; align-items: center; background: var(--dl-card); border: 1px solid var(--accent-sage); border-radius: 8px; padding: 10px 16px; margin-bottom: 16px; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: fadeIn 0.3s ease;">
-        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--dl-fg);">
-          <span style="font-size: 1.15rem;">📱</span>
+      <div class="pwa-install-banner" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; background: var(--dl-card); border: 1px solid var(--accent-sage); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: fadeIn 0.3s ease;">
+        <div style="display: flex; align-items: center; gap: 12px; font-size: 0.88rem; color: var(--dl-fg); min-width: 220px; flex: 1;">
+          <span style="font-size: 1.35rem; flex-shrink: 0; line-height: 1; display: inline-block;">📱</span>
           <span><strong>Install Swayam</strong> · Get instant push notifications and a home-screen app icon.</span>
         </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <button id="pwa-install-btn" style="background: var(--accent-sage); color: #101116; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: opacity 0.15s ease;">
+        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+          <button id="pwa-install-btn" style="background: var(--accent-sage); color: #101116; border: none; padding: 7px 16px; border-radius: 6px; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: opacity 0.15s ease;">
             Install
           </button>
-          <button id="pwa-dismiss-btn" style="background: transparent; color: var(--dl-fg-3); border: 1px solid var(--dl-line); padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">
+          <button id="pwa-dismiss-btn" style="background: transparent; color: var(--dl-fg-3); border: 1px solid var(--dl-line); padding: 7px 14px; border-radius: 6px; font-size: 0.82rem; cursor: pointer;">
             Not now
           </button>
         </div>

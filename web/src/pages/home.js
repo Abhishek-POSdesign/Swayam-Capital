@@ -110,24 +110,24 @@ export class HomePage {
 
           <!-- 12-Column Bento Grid for Market Prep Tiles -->
           <div class="bento-grid">
-            <!-- Row 1: So Far Today Hero Card (Span 12) — grounded real-time market recap -->
-            <div id="home-so-far-today-container" class="span-12"></div>
-
-            <!-- Row 2: Overnight Global Strip (Span 12) — big numbers -->
+            <!-- Row 1: Overnight Global Strip (Span 12) — big numbers -->
             <div id="home-overnight-container" class="span-12"></div>
 
-            <!-- Row 3: NIFTY 50 Snapshot (Cash + F&O Panes) — FULL WIDTH (Span 12) -->
+            <!-- Row 2: NIFTY 50 Snapshot (Cash + F&O Panes) — FULL WIDTH (Span 12) -->
             <div id="home-nifty-container" class="span-12"></div>
 
-            <!-- Row 4: India VIX — OWN FULL-WIDTH ROW (Span 12) with percentile band -->
+            <!-- Row 3: India VIX — OWN FULL-WIDTH ROW (Span 12) with percentile band -->
             <div id="home-vix-container" class="span-12"></div>
 
-            <!-- Row 5: Macro Events (Span 6) + Reading Queue (Span 6) -->
+            <!-- Row 4: Macro Events (Span 6) + Reading Queue (Span 6) -->
             <div id="home-macro-container" class="span-6"></div>
             <div id="home-reading-container" class="span-6"></div>
+
+            <!-- Row 5: So Far Today Card (Span 12) — positioned right above AI Trading Partner -->
+            <div id="home-so-far-today-container" class="span-12"></div>
           </div>
 
-          <!-- Row 5: AI Trading Partner Full-Width Workspace (~1000-1400px) -->
+          <!-- Row 6: AI Trading Partner Full-Width Workspace (~1000-1400px) -->
           <section id="home-ai-brief-container" style="width: 100%; min-width: 0;"></section>
         </main>
       </div>
@@ -147,12 +147,14 @@ export class HomePage {
       if (collapsed) {
         sidebar.style.flex = '0 0 72px';
         sidebar.style.width = '72px';
+        sidebar.classList.add('collapsed');
         expandedContent.style.display = 'none';
         collapsedStrip.style.display = 'flex';
         try { localStorage.setItem('swayam_ritual_collapsed', 'true'); } catch (_) {}
       } else {
         sidebar.style.flex = '0 0 380px';
         sidebar.style.width = '380px';
+        sidebar.classList.remove('collapsed');
         expandedContent.style.display = 'flex';
         collapsedStrip.style.display = 'none';
         try { localStorage.setItem('swayam_ritual_collapsed', 'false'); } catch (_) {}
@@ -167,10 +169,10 @@ export class HomePage {
       }
     });
 
-    // Restore saved state
+    // Restore saved state or default to collapsed on mobile screens (<= 900px)
     try {
       const saved = localStorage.getItem('swayam_ritual_collapsed');
-      if (saved === 'true') {
+      if (saved === 'true' || (saved === null && window.innerWidth <= 900)) {
         setCollapsed(true);
       }
     } catch (_) {}
