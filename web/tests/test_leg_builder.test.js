@@ -50,4 +50,26 @@ describe('LegBuilderComponent', () => {
 
     expect(builder.getLegs().length).toBe(1);
   });
+
+  it('unconditionally uses vertical single-column stack regardless of leg count', () => {
+    const builder = new LegBuilderComponent(container);
+    
+    // Test with 1, 2, 4 legs
+    [1, 2, 4].forEach(count => {
+      const legs = Array.from({ length: count }, (_, i) => ({
+        strike: 24500 + i * 50,
+        option_type: 'CE',
+        direction: i % 2 === 0 ? 'buy' : 'sell',
+        quantity_lots: 1,
+        lot_size: 75,
+        entry_premium: 50,
+      }));
+      builder.setLegs(legs);
+      const wrapper = container.querySelector('#legs-cards-wrapper');
+      expect(wrapper.classList.contains('legs-stack-1col')).toBe(true);
+      expect(wrapper.classList.contains('legs-grid-2col')).toBe(false);
+      expect(wrapper.style.display).toBe('flex');
+      expect(wrapper.style.flexDirection).toBe('column');
+    });
+  });
 });

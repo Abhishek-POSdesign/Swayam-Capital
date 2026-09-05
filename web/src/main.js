@@ -27,17 +27,49 @@ class SwayamApp {
     this.aiChat = null;
     this.aiLauncher = null;
     this.settingsDrawer = null;
-    const isStrategy = typeof window !== 'undefined' && window.location.pathname.includes('strategy');
-    const isJournal = typeof window !== 'undefined' && window.location.pathname.includes('journal');
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    if (urlParams && urlParams.get('notrans') === '1') {
+      try {
+        document.documentElement.setAttribute('data-no-transitions', 'true');
+        document.body.classList.add('no-transitions');
+      } catch (_) {}
+    }
+    const qpTheme = urlParams ? urlParams.get('theme') : null;
+    if (qpTheme && ['light', 'dark', 'auto'].includes(qpTheme)) {
+      try {
+        localStorage.setItem('swayam-theme', qpTheme);
+        document.documentElement.setAttribute('data-theme', qpTheme);
+      } catch (_) {}
+    }
+    const qpPage = urlParams ? urlParams.get('page') : null;
+    const isStrategy = qpPage === 'strategy' || (typeof window !== 'undefined' && window.location.pathname.includes('strategy'));
+    const isJournal = qpPage === 'journal' || (typeof window !== 'undefined' && window.location.pathname.includes('journal'));
     this.currentPage = isStrategy ? 'strategy' : isJournal ? 'journal' : 'home';
     this.isAIDrawerOpen = false;
+    this._strategyInitInProgress = false;
+    this._skeletonCheckTimer = null;
   }
 
   async init() {
     console.log('Initializing Swayam Capital trading platform (BUILD-11)...');
 
-    const isStrategy = typeof window !== 'undefined' && window.location.pathname.includes('strategy');
-    const isJournal = typeof window !== 'undefined' && window.location.pathname.includes('journal');
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    if (urlParams && urlParams.get('notrans') === '1') {
+      try {
+        document.documentElement.setAttribute('data-no-transitions', 'true');
+        document.body.classList.add('no-transitions');
+      } catch (_) {}
+    }
+    const qpTheme = urlParams ? urlParams.get('theme') : null;
+    if (qpTheme && ['light', 'dark', 'auto'].includes(qpTheme)) {
+      try {
+        localStorage.setItem('swayam-theme', qpTheme);
+        document.documentElement.setAttribute('data-theme', qpTheme);
+      } catch (_) {}
+    }
+    const qpPage = urlParams ? urlParams.get('page') : null;
+    const isStrategy = qpPage === 'strategy' || (typeof window !== 'undefined' && window.location.pathname.includes('strategy'));
+    const isJournal = qpPage === 'journal' || (typeof window !== 'undefined' && window.location.pathname.includes('journal'));
     this.currentPage = isStrategy ? 'strategy' : isJournal ? 'journal' : 'home';
 
     // Synchronously enforce view visibility to prevent flash of wrong page on refresh
@@ -144,6 +176,11 @@ class SwayamApp {
 
     // 6. Ensure correct view is displayed based on current route
     this.navigateTo(this.currentPage, false);
+
+    // 7. Auto-open AI drawer if requested via ?ai=open
+    if (urlParams && urlParams.get('ai') === 'open') {
+      this.openAIDrawer();
+    }
   }
 
   async initStrategyView() {
@@ -234,6 +271,11 @@ class SwayamApp {
 
   navigateTo(page, updateHistory = true) {
     this.currentPage = page;
+    // Clear anti-flash initial-page attribute — its !important CSS rules
+    // block navigation to sibling views. See styles.css.
+    if (typeof document !== 'undefined' && document.documentElement) {
+      document.documentElement.removeAttribute('data-initial-page');
+    }
     const homeView = document.getElementById('home-view');
     const strategyView = document.getElementById('strategy-view');
     const journalView = document.getElementById('journal-view');
@@ -271,8 +313,29 @@ class SwayamApp {
           window.history.pushState({}, '', url.toString());
         } catch (_) {}
       }
-      if (this.strategyPage) {
+      // Lazy-initialize strategy page if not yet done (e.g. first navigation to strategy)
+      if (!this.strategyPage && !this._strategyInitInProgress) {
+        this._strategyInitInProgress = true;
+        this.initStrategyView().finally(() => { this._strategyInitInProgress = false; });
+      } else if (this.strategyPage) {
         this.strategyPage.refreshPositions();
+      }
+      // Stuck-skeleton fallback: if the strategy container still shows a skeleton
+      // after 1.5s (content never mounted), force a re-init.
+      if (strategyView) {
+        const skeletonCheck = setTimeout(() => {
+          const stillHasSkeleton = strategyView.querySelector('.skeleton-shimmer, .skeleton-row, [data-skeleton]');
+          const hasRealContent = strategyView.querySelector('#strategy-builder-layout');
+          if (stillHasSkeleton && !hasRealContent && !this._strategyInitInProgress) {
+            console.warn('[SwayamApp] Strategy skeleton stuck — forcing re-init.');
+            this.strategyPage = null;
+            this._strategyInitInProgress = true;
+            this.initStrategyView().finally(() => { this._strategyInitInProgress = false; });
+          }
+        }, 1500);
+        // Store so we can cancel it if needed
+        if (this._skeletonCheckTimer) clearTimeout(this._skeletonCheckTimer);
+        this._skeletonCheckTimer = skeletonCheck;
       }
     } else if (page === 'journal') {
       if (homeView) homeView.style.display = 'none';
@@ -291,6 +354,26 @@ class SwayamApp {
         this.journalPage.loadData();
       }
     }
+
+    // Force layout refresh and redraw for charts on route transition to prevent zero width/height blankness
+    const triggerChartRedraw = () => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('resize'));
+      }
+      if (page === 'journal' && this.journalPage) {
+        this.journalPage.resizeCharts?.();
+      } else if (page === 'strategy' && this.strategyPage?.payoffChart) {
+        this.strategyPage.payoffChart.retheme?.();
+      } else if (page === 'home' && this.homePage?.niftyChart) {
+        this.homePage.niftyChart.retheme?.();
+      }
+    };
+
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(triggerChartRedraw);
+    }
+    setTimeout(triggerChartRedraw, 100);
+    setTimeout(triggerChartRedraw, 300);
   }
 
   async loadRules(forceReload = false) {
@@ -356,7 +439,11 @@ class SwayamApp {
 }
 
 // Bootstrap application on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
-  const app = new SwayamApp();
-  app.init().catch(console.error);
-});
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const app = new SwayamApp();
+    app.init().catch(console.error);
+  });
+}
+
+export { SwayamApp };

@@ -16,6 +16,8 @@ describe('BUILD-11 Trade Journal & Lesson Ledger Components', () => {
 
   beforeEach(() => {
     setupTestDOM();
+    if (global.sessionStorage) global.sessionStorage.clear();
+    vi.spyOn(api, 'archiveTestTrades').mockResolvedValue({ archived: 0 });
     container = document.createElement('div');
     document.body.appendChild(container);
   });
@@ -58,6 +60,29 @@ describe('BUILD-11 Trade Journal & Lesson Ledger Components', () => {
       expect(container.innerHTML).toContain('₹2,800');
       expect(container.innerHTML).toContain('Outliers');
       expect(container.innerHTML).toContain('14,500');
+    });
+
+    it('renders em-dashes for rate and ratio metrics when total_trades is 0', () => {
+      const kpis = {
+        total_trades: 0,
+        wins_count: 0,
+        losses_count: 0,
+        breakeven_count: 0,
+        win_rate_pct: 0.0,
+        avg_rr_actual: 0.0,
+        cumulative_net_pnl_inr: 0,
+        cumulative_gross_pnl_inr: 0,
+        discipline_rate_pct: 100.0,
+      };
+
+      const kpiStrip = new KPIStripComponent(container, { kpis });
+      kpiStrip.render();
+
+      expect(container.innerHTML).toContain('Total Trades');
+      expect(container.innerHTML).toContain('Win Rate');
+      expect(container.innerHTML).toContain('—');
+      expect(container.innerHTML).not.toContain('0.0%');
+      expect(container.innerHTML).not.toContain('1 : 0.00');
     });
   });
 
@@ -215,13 +240,14 @@ describe('BUILD-11 Trade Journal & Lesson Ledger Components', () => {
       expect(api.getJournalAnalytics).toHaveBeenCalled();
     });
 
-    it('displays housekeeping banner when pre-launch test trades detected and allows archiving', async () => {
-      localStorage.removeItem('swayam_journal_test_banner_dismissed');
+    it('auto-archives seed trades on init once per session', async () => {
+      sessionStorage.clear();
+      const archiveSpy = vi.spyOn(api, 'archiveTestTrades').mockResolvedValue({ archived: 58 });
       vi.spyOn(api, 'getJournalTrades').mockResolvedValue({
         trades: [],
-        total_count: 58,
-        pre_launch_test_trades_count: 58,
-        kpis: { total_trades: 58 },
+        total_count: 0,
+        pre_launch_test_trades_count: 0,
+        kpis: { total_trades: 0 },
       });
       vi.spyOn(api, 'getJournalAnalytics').mockResolvedValue({
         cumulative_pnl_series: [],
@@ -231,21 +257,45 @@ describe('BUILD-11 Trade Journal & Lesson Ledger Components', () => {
         win_rate_by_trend: {},
         recent_lessons: [],
       });
-      vi.spyOn(api, 'archiveTestTrades').mockResolvedValue({ archived: 58 });
+
+      const page = new JournalPage(container);
+      await page.init();
+
+      expect(archiveSpy).toHaveBeenCalledTimes(1);
+      expect(sessionStorage.getItem('swayam_seed_archived')).toBe('true');
+      const bannerMount = container.querySelector('#journal-housekeeping-banner-container');
+      expect(bannerMount.innerHTML).toBe('');
+
+      // Second init in same session should NOT call archive again
+      const page2 = new JournalPage(container);
+      await page2.init();
+      expect(archiveSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows coral error banner with retry button if auto-archive fails', async () => {
+      sessionStorage.clear();
+      vi.spyOn(api, 'archiveTestTrades').mockRejectedValue(new Error('Network error'));
+      vi.spyOn(api, 'getJournalTrades').mockResolvedValue({
+        trades: [],
+        total_count: 0,
+        kpis: { total_trades: 0 },
+      });
+      vi.spyOn(api, 'getJournalAnalytics').mockResolvedValue({
+        cumulative_pnl_series: [],
+        pnl_by_strategy: [],
+        pnl_by_exit_reason: [],
+        pnl_by_directional_view: [],
+        win_rate_by_trend: {},
+        recent_lessons: [],
+      });
 
       const page = new JournalPage(container);
       await page.init();
 
       const bannerMount = container.querySelector('#journal-housekeeping-banner-container');
       expect(bannerMount).not.toBeNull();
-      expect(bannerMount.innerHTML).toContain('58 pre-launch test paper trades detected');
-
-      // Click archive
-      const btnArchive = bannerMount.querySelector('#btn-archive-test-trades');
-      expect(btnArchive).not.toBeNull();
-      btnArchive.click();
-
-      expect(api.archiveTestTrades).toHaveBeenCalled();
+      expect(bannerMount.innerHTML).toContain('Could not auto-archive test data — manual archive available');
+      expect(bannerMount.querySelector('#btn-retry-archive')).not.toBeNull();
     });
 
     it('renders trades table inside 460px max-height container with swayam-scroll-thin', async () => {

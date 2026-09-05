@@ -6,6 +6,8 @@
   --bg-elevated: var(--dl-card-2);
   --text-primary: var(--dl-fg);
   --text-secondary: var(--dl-fg-2);
+  --text-muted: var(--dl-fg-3);
+  --text-inverse: var(--dl-bg);
   --border: var(--dl-line);
   --green: var(--accent-sage);
   --red: var(--accent-coral);
@@ -32,6 +34,19 @@ body {
 
 .mono {
   font-family: var(--font-mono);
+}
+
+/* Skeleton Loader Shimmer (Atlas pattern) */
+.skeleton-block {
+  background: linear-gradient(90deg, var(--dl-line) 0%, var(--dl-card-2) 50%, var(--dl-line) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* Header Container & Sticky Navigation */
@@ -98,6 +113,38 @@ button:hover:not(:disabled) {
 button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+#theme-switcher-btn {
+  padding: 0 !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: #edeff4 !important;
+  cursor: pointer !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+}
+
+#theme-switcher-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+#theme-switcher-btn svg {
+  display: block !important;
+  width: 18px !important;
+  height: 18px !important;
+  stroke: currentColor !important;
+  fill: none !important;
+  flex-shrink: 0 !important;
 }
 
 button.primary {
@@ -427,25 +474,40 @@ td {
 /* Multi-page initial state routing guards */
 #home-view { display: block; }
 #strategy-view { display: none; }
-html[data-initial-page="strategy"] #home-view { display: none !important; }
-html[data-initial-page="strategy"] #strategy-view { display: block !important; }
+#journal-view { display: none; }
 
 /* Fix A4 & Fix C Bug 4 — AI drawer 400px content-shift layout pattern (Atlas pattern) */
 body:has(.ai-panel-open) .home-canvas,
 body:has(.ai-panel-open) .dashboard-container,
 body:has(.ai-panel-open) #header-container,
 body:has(.ai-panel-open) #strategy-builder-layout,
+body:has(.ai-panel-open) #journal-view,
+body:has(.ai-panel-open) .journal-page-canvas,
 body.ai-panel-open .home-canvas,
 body.ai-panel-open .dashboard-container,
 body.ai-panel-open #header-container,
-body.ai-panel-open #strategy-builder-layout {
+body.ai-panel-open #strategy-builder-layout,
+body.ai-panel-open #journal-view,
+body.ai-panel-open .journal-page-canvas {
   margin-right: 400px;
   transition: margin-right var(--dur-base, 180ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
-/* Auto-collapse Strategy Builder left rail when AI drawer opens to give full space to builder and charts */
+body:has(.ai-panel-open) #ai-sidebar-container,
+body.ai-panel-open #ai-sidebar-container {
+  right: 0px !important;
+}
+
+body:has(.ai-panel-open) .home-canvas,
+body.ai-panel-open .home-canvas {
+  gap: 0px !important;
+}
+
+/* Auto-collapse Strategy Builder and Home left rails when AI drawer opens to give full space to content */
 body:has(.ai-panel-open) #strategy-left-rail,
-body.ai-panel-open #strategy-left-rail {
+body.ai-panel-open #strategy-left-rail,
+body:has(.ai-panel-open) #home-left-sidebar,
+body.ai-panel-open #home-left-sidebar {
   flex: 0 0 0px !important;
   width: 0px !important;
   min-width: 0px !important;
@@ -487,15 +549,19 @@ body.ai-panel-open #strategy-left-rail {
   body:has(.ai-panel-open) .dashboard-container,
   body:has(.ai-panel-open) #header-container,
   body:has(.ai-panel-open) #strategy-builder-layout,
+  body:has(.ai-panel-open) #journal-view,
+  body:has(.ai-panel-open) .journal-page-canvas,
   body.ai-panel-open .home-canvas,
   body.ai-panel-open .dashboard-container,
   body.ai-panel-open #header-container,
-  body.ai-panel-open #strategy-builder-layout {
+  body.ai-panel-open #strategy-builder-layout,
+  body.ai-panel-open #journal-view,
+  body.ai-panel-open .journal-page-canvas {
     margin-right: 0;
   }
 }
 
-.home-canvas, .dashboard-container, #header-container, #strategy-builder-layout {
+.home-canvas, .dashboard-container, #header-container, #strategy-builder-layout, #journal-view, .journal-page-canvas {
   transition: margin-right var(--dur-base, 180ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
@@ -521,9 +587,10 @@ body.ai-panel-open #strategy-left-rail {
 }
 
 /* Clean cards inside solid rail */
-.swayam-rail .tile {
-  background: var(--dl-card);
-  border: 1px solid var(--dl-line);
-  box-shadow: none;
+/* Instant transition override for deterministic rendering */
+:root[data-no-transitions] *,
+body.no-transitions * {
+  transition-duration: 0s !important;
+  animation-duration: 0s !important;
 }
 

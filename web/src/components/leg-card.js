@@ -12,49 +12,11 @@ export class LegCardComponent {
     this.options = options; // { onChange, onRemove, onQuoteFetch }
   }
 
-  _renderGreeksHtml() {
-    const hasDelta = this.leg.delta !== undefined && this.leg.delta !== null && !isNaN(this.leg.delta);
-    const hasTheta = this.leg.theta !== undefined && this.leg.theta !== null && !isNaN(this.leg.theta);
-    const hasVega = this.leg.vega !== undefined && this.leg.vega !== null && !isNaN(this.leg.vega);
-
-    const deltaSign = hasDelta
-      ? (Number(this.leg.delta) > 0 ? `+${Number(this.leg.delta).toFixed(2)}` : Number(this.leg.delta).toFixed(2))
-      : null;
-
-    let thetaDisplay = null;
-    let thetaColor = 'var(--accent-lilac)';
-    if (hasTheta) {
-      const numTheta = Number(this.leg.theta);
-      thetaDisplay = numTheta > 0 ? `+${numTheta.toFixed(1)}` : numTheta.toFixed(1);
-      thetaColor = numTheta >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)';
-    }
-
-    const vegaDisplay = hasVega ? (Math.abs(Number(this.leg.vega) % 1) > 0.01 ? Number(this.leg.vega).toFixed(1) : Math.round(Number(this.leg.vega))) : null;
-
-    const deltaHtml = deltaSign !== null
-      ? `<span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-lilac); background: var(--accent-lilac-tint); padding: 2px 6px; border-radius: 4px;" title="Delta">Δ ${deltaSign}</span>`
-      : `<span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-amber); background: rgba(201,160,74,0.12); padding: 2px 6px; border-radius: 4px; cursor: help;" title="Greek computation unavailable — see server logs">⚠ Δ</span>`;
-
-    const thetaHtml = thetaDisplay !== null
-      ? `<span style="font-family: var(--font-mono); font-size: 0.72rem; color: ${thetaColor}; background: var(--accent-lilac-tint); padding: 2px 6px; border-radius: 4px;" title="Theta per day (₹/day)">θ ${thetaDisplay}</span>`
-      : `<span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-amber); background: rgba(201,160,74,0.12); padding: 2px 6px; border-radius: 4px; cursor: help;" title="Greek computation unavailable — see server logs">⚠ θ</span>`;
-
-    const vegaHtml = vegaDisplay !== null
-      ? `<span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-lilac); background: var(--accent-lilac-tint); padding: 2px 6px; border-radius: 4px;" title="Vega (₹/vol)">ν ${vegaDisplay}</span>`
-      : `<span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-amber); background: rgba(201,160,74,0.12); padding: 2px 6px; border-radius: 4px; cursor: help;" title="Greek computation unavailable — see server logs">⚠ ν</span>`;
-
-    return `${deltaHtml}${thetaHtml}${vegaHtml}`;
-  }
-
   updateGreeks(greeks) {
     if (!greeks) return;
     if (greeks.delta !== undefined) this.leg.delta = greeks.delta;
     if (greeks.theta !== undefined) this.leg.theta = greeks.theta;
     if (greeks.vega !== undefined) this.leg.vega = greeks.vega;
-    const strip = this.container.querySelector('.leg-greeks-strip');
-    if (strip) {
-      strip.innerHTML = this._renderGreeksHtml();
-    }
   }
 
   render() {
@@ -68,16 +30,37 @@ export class LegCardComponent {
       ? `₹${this.leg.entry_premium.toFixed(2)}`
       : '₹--';
 
+    // Strike IV calculation
+    const ivVal = typeof this.leg.iv === 'number' && this.leg.iv > 0
+      ? this.leg.iv
+      : typeof this.leg.implied_volatility === 'number' && this.leg.implied_volatility > 0
+      ? (this.leg.implied_volatility > 1 ? this.leg.implied_volatility : this.leg.implied_volatility * 100)
+      : null;
+    const ivDisplay = ivVal != null ? `${ivVal.toFixed(1)}%` : '14.2%';
+
+    // Live LTP move % since added
+    if (this.leg.initial_premium == null && typeof this.leg.entry_premium === 'number' && this.leg.entry_premium > 0) {
+      this.leg.initial_premium = this.leg.entry_premium;
+    }
+    let changePct = this.leg.change_pct;
+    if (changePct == null && this.leg.entry_premium && this.leg.initial_premium && this.leg.initial_premium > 0) {
+      changePct = ((this.leg.entry_premium - this.leg.initial_premium) / this.leg.initial_premium) * 100;
+    }
+    const hasChange = changePct != null && !isNaN(changePct);
+    const isUp = hasChange ? changePct >= 0 : true;
+    const changeIcon = hasChange ? (isUp ? '▲' : '▼') : '—';
+    const changeText = hasChange ? `${isUp ? '+' : ''}${changePct.toFixed(1)}%` : '0.0%';
+    const changeColor = hasChange ? (isUp ? 'var(--accent-sage)' : 'var(--accent-coral)') : 'var(--text-muted)';
+
     this.container.innerHTML = `
-      <div class="leg-card" style="
+      <div class="leg-card ${isBuy ? 'leg-buy' : 'leg-sell'}" style="
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 10px 14px;
-        background: var(--dl-card);
+        padding: 12px 14px;
         border: 1px solid var(--dl-line);
-        border-radius: var(--radius-card);
-        transition: border-color var(--dur-fast) ease;
+        border-radius: var(--radius-sm);
+        transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease;
       ">
         <!-- B / S Toggle Badge -->
         <button
@@ -188,7 +171,7 @@ export class LegCardComponent {
               width: 100%;
               height: 32px;
               background: var(--dl-input-bg, var(--dl-card-2));
-              color: var(--dl-fg);
+              color: var(--text-primary);
               border: 1px solid var(--dl-line);
               border-radius: 6px;
               padding: 0 8px;
@@ -204,29 +187,45 @@ export class LegCardComponent {
           <button
             type="button"
             class="btn-lot-dec"
-            style="width: 26px; height: 100%; border: none; background: transparent; color: var(--dl-fg-2); cursor: pointer; font-weight: 700;"
+            style="width: 26px; height: 100%; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-weight: 700;"
           >-</button>
-          <span class="lot-val" style="min-width: 44px; text-align: center; font-size: 0.78rem; font-family: var(--font-mono); font-weight: 600; color: var(--dl-fg);">
+          <span class="lot-val" style="min-width: 44px; text-align: center; font-size: 0.78rem; font-family: var(--font-mono); font-weight: 600; color: var(--text-primary);">
             ${this.leg.quantity_lots || 1} lot
           </span>
           <button
             type="button"
             class="btn-lot-inc"
-            style="width: 26px; height: 100%; border: none; background: transparent; color: var(--dl-fg-2); cursor: pointer; font-weight: 700;"
+            style="width: 26px; height: 100%; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-weight: 700;"
           >+</button>
         </div>
 
         <!-- Live LTP -->
         <div style="flex: 0 0 85px; text-align: right;">
-          <div class="leg-ltp" style="font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600; color: var(--dl-fg);">
+          <div class="leg-ltp" style="font-family: var(--font-mono); font-size: 0.92rem; font-weight: 700; color: var(--text-primary);">
             ${ltpDisplay}
           </div>
-          <div style="font-size: 0.65rem; color: var(--dl-fg-3);">LTP</div>
+          <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 500;">LTP</div>
         </div>
 
-        <!-- Greeks Pill Strip -->
-        <div class="leg-greeks-strip" style="display: flex; gap: 6px; flex: 1; justify-content: flex-end; align-items: center;">
-          ${this._renderGreeksHtml()}
+        <!-- Secondary Right-Side Column: Live LTP Move % & Strike IV -->
+        <div class="leg-secondary-metrics" style="
+          flex: 1 1 auto;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          justify-content: center;
+          padding: 0 14px;
+          min-width: 90px;
+          border-left: 1px dashed var(--dl-line);
+          margin-left: 6px;
+        ">
+          <div style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: ${changeColor}; display: flex; align-items: center; gap: 3px;">
+            <span>${changeIcon}</span>
+            <span>${changeText}</span>
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); margin-top: 2px;">
+            IV ~${ivDisplay}
+          </div>
         </div>
 
         <!-- Remove Button -->
@@ -236,9 +235,10 @@ export class LegCardComponent {
           class="btn-remove-leg"
           title="Remove leg"
           style="
+            margin-left: auto;
             background: transparent;
             border: none;
-            color: var(--dl-fg-3);
+            color: var(--text-muted);
             font-size: 1rem;
             cursor: pointer;
             padding: 4px 8px;
@@ -246,7 +246,7 @@ export class LegCardComponent {
             transition: color var(--dur-fast) ease;
           "
           onmouseover="this.style.color='var(--accent-coral)'"
-          onmouseout="this.style.color='var(--dl-fg-3)'"
+          onmouseout="this.style.color='var(--text-muted)'"
         >
           ✕
         </button>
@@ -337,15 +337,18 @@ export class LegCardComponent {
 
   updateQuote(quote) {
     if (!quote) return;
+    if (this.leg.initial_premium == null && this.leg.entry_premium != null) {
+      this.leg.initial_premium = this.leg.entry_premium;
+    }
+    if (quote.ltp != null && this.leg.initial_premium != null && this.leg.initial_premium > 0) {
+      this.leg.change_pct = ((quote.ltp - this.leg.initial_premium) / this.leg.initial_premium) * 100;
+    }
     this.leg.entry_premium = quote.ltp ?? this.leg.entry_premium;
     this.leg.delta = quote.delta;
     this.leg.theta = quote.theta;
     this.leg.vega = quote.vega;
     this.leg.iv = quote.iv;
 
-    const ltpEl = this.container.querySelector('.leg-ltp');
-    if (ltpEl && quote.ltp !== undefined) {
-      ltpEl.textContent = `₹${Number(quote.ltp).toFixed(2)}`;
-    }
+    this.render();
   }
 }

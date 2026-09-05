@@ -2,6 +2,7 @@
 Tests for strategy calculation endpoints in Swayam Capital.
 """
 
+from datetime import date, timedelta
 from fastapi.testclient import TestClient
 from swayam.api import app
 
@@ -204,3 +205,75 @@ def test_compute_strategy_pop_increases_with_favorable_spot() -> None:
 
     # Monotonicity check
     assert pops[0] < pops[1] < pops[2]
+
+
+def test_compute_strategy_dual_curves_differ_with_sliders() -> None:
+    today_dt = date.today()
+    t3_dt = today_dt + timedelta(days=3)
+    expiry_dt = today_dt + timedelta(days=20)
+
+    base_payload = {
+        "strategy_name": "Bull Call",
+        "underlying": "NIFTY",
+        "legs": [
+            {
+                "strike": 24800.0,
+                "option_type": "CE",
+                "direction": "buy",
+                "quantity_lots": 1,
+                "entry_premium": 210.0,
+                "expiry_date": expiry_dt.isoformat(),
+                "lot_size": 75,
+            },
+            {
+                "strike": 25100.0,
+                "option_type": "CE",
+                "direction": "sell",
+                "quantity_lots": 1,
+                "entry_premium": 75.0,
+                "expiry_date": expiry_dt.isoformat(),
+                "lot_size": 75,
+            },
+        ],
+        "current_spot": 24850.0,
+        "iv_per_leg": {"24800_CE": 0.14, "25100_CE": 0.14},
+    }
+
+    # 1. Target date today vs today+3
+    payload_today = {**base_payload, "target_date": today_dt.isoformat(), "iv_shift_pct": 0.0}
+    payload_t3 = {**base_payload, "target_date": t3_dt.isoformat(), "iv_shift_pct": 0.0}
+
+    res_today = client.post("/api/strategy/compute", json=payload_today)
+    res_t3 = client.post("/api/strategy/compute", json=payload_t3)
+
+    assert res_today.status_code == 200
+    assert res_t3.status_code == 200
+
+    data_today = res_today.json()
+    data_t3 = res_t3.json()
+
+    assert "payoff_curve_expiry" in data_today
+    assert "payoff_curve_target" in data_today
+
+    # Expiry curves must match
+    assert data_today["payoff_curve_expiry"]["points"][0]["pnl_expiry"] == data_t3["payoff_curve_expiry"]["points"][0]["pnl_expiry"]
+
+    # Target curves must differ due to theta decay across 3 days
+    target_today_pnl = [p["pnl_today"] for p in data_today["payoff_curve_target"]["points"]]
+    target_t3_pnl = [p["pnl_today"] for p in data_t3["payoff_curve_target"]["points"]]
+    assert target_today_pnl != target_t3_pnl
+
+    # 2. IV shift 0% vs +20%
+    payload_iv0 = {**base_payload, "target_date": today_dt.isoformat(), "iv_shift_pct": 0.0}
+    payload_iv20 = {**base_payload, "target_date": today_dt.isoformat(), "iv_shift_pct": 20.0}
+
+    res_iv0 = client.post("/api/strategy/compute", json=payload_iv0)
+    res_iv20 = client.post("/api/strategy/compute", json=payload_iv20)
+
+    assert res_iv0.status_code == 200
+    assert res_iv20.status_code == 200
+
+    target_iv0_pnl = [p["pnl_today"] for p in res_iv0.json()["payoff_curve_target"]["points"]]
+    target_iv20_pnl = [p["pnl_today"] for p in res_iv20.json()["payoff_curve_target"]["points"]]
+    assert target_iv0_pnl != target_iv20_pnl
+

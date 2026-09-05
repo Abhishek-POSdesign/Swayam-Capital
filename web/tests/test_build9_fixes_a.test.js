@@ -15,29 +15,29 @@ describe('BUILD-9-FIXES-A Frontend Enhancements', () => {
     document.body.appendChild(container);
   });
 
-  it('1. Theme switcher cycles dark -> auto -> light -> dark and updates document theme', () => {
+  it('1. Theme switcher defaults to auto and cycles auto -> dark -> light -> auto', () => {
     initHeader(container);
 
     const themeBtn = container.querySelector('#theme-switcher-btn');
     expect(themeBtn).not.toBeNull();
-    // Default theme initialized to dark
-    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
-    expect(localStorage.getItem('swayam-theme')).toBe('dark');
-
-    // First click: dark -> auto
-    themeBtn.click();
+    // Default theme initialized to auto (System default)
     expect(document.documentElement.getAttribute('data-theme')).toBe('auto');
     expect(localStorage.getItem('swayam-theme')).toBe('auto');
 
-    // Second click: auto -> light
+    // First click: auto -> dark
+    themeBtn.click();
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    expect(localStorage.getItem('swayam-theme')).toBe('dark');
+
+    // Second click: dark -> light
     themeBtn.click();
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
     expect(localStorage.getItem('swayam-theme')).toBe('light');
 
-    // Third click: light -> dark
+    // Third click: light -> auto
     themeBtn.click();
-    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
-    expect(localStorage.getItem('swayam-theme')).toBe('dark');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('auto');
+    expect(localStorage.getItem('swayam-theme')).toBe('auto');
   });
 
   it('2. NIFTY chart timeframe tabs are interactive and update active state', async () => {

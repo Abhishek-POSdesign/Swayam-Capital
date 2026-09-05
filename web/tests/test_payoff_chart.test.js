@@ -82,7 +82,7 @@ describe('PayoffChartComponent', () => {
     expect(lastSliderParams.ivShiftPct).toBe(0);
   });
 
-  it('renders portfolio Greeks strip with values and warning icon when missing', async () => {
+  it('renders portfolio Greeks strip with values and dash placeholder when missing', async () => {
     const chart = new PayoffChartComponent(container);
     await chart.init();
 
@@ -103,7 +103,50 @@ describe('PayoffChartComponent', () => {
     expect(strip.textContent).toContain('185');
     expect(strip.textContent).toContain('840');
     expect(strip.textContent).toContain('63%');
-    // Gamma should show warning ⚠
-    expect(strip.textContent).toContain('⚠');
+    // Gamma should show dash placeholder — (not warning ⚠)
+    expect(strip.textContent).toContain('—');
+  });
+
+  it('preserves slider DOM elements and event listeners across updateData calls', async () => {
+    let sliderChangeCount = 0;
+    const chart = new PayoffChartComponent(container, {
+      onSliderChange: () => {
+        sliderChangeCount++;
+      },
+    });
+    await chart.init();
+
+    const timeSliderInitial = container.querySelector('#payoff-time-slider');
+    const ivSliderInitial = container.querySelector('#payoff-iv-slider');
+    expect(timeSliderInitial).not.toBeNull();
+    expect(ivSliderInitial).not.toBeNull();
+
+    // Call updateData with new curve and metrics
+    await chart.updateData({
+      curveData: {
+        points: [{ spot: 24850, pnl_expiry: 1000, pnl_today: 500 }],
+        breakevens: [24800],
+      },
+      currentSpot: 24850,
+      maxLoss: 5000,
+      maxProfit: 10000,
+      breakevens: [24800],
+      expiryDate: '2026-09-24',
+    });
+
+    // Verify DOM identity is preserved (elements were not destroyed or re-rendered)
+    const timeSliderAfter = container.querySelector('#payoff-time-slider');
+    const ivSliderAfter = container.querySelector('#payoff-iv-slider');
+    expect(timeSliderAfter).toBe(timeSliderInitial);
+    expect(ivSliderAfter).toBe(ivSliderInitial);
+
+    // Verify event listeners still fire
+    timeSliderAfter.value = '4';
+    timeSliderAfter.dispatchEvent(new Event('input'));
+    expect(sliderChangeCount).toBe(1);
+
+    ivSliderAfter.value = '10';
+    ivSliderAfter.dispatchEvent(new Event('input'));
+    expect(sliderChangeCount).toBe(2);
   });
 });

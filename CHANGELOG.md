@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added - BUILD-9-FIXES-B (2026-09-07)
+### Fixed — BUILD-11-FIXES-UI-C (2026-09-05)
+- **Strategy Builder Fresh Load — No ⚠️ No ₹0** (`web/src/components/payoff-chart.js`): Added `_hasData` flag. Before the async `computeStrategy` API call resolves, Max Profit / Max Loss now show `—` (em dashes) instead of `+₹0 / -₹0`. Greeks strip (Δ, Θ, Γ, ν, POP) shows `—` instead of alarming amber `⚠` warning triangles. Once Bear Put Spread auto-loads and compute API responds, all values fill in with real data.
+- **Stuck-Skeleton Fallback for SPA Navigation** (`web/src/main.js`): `navigateTo('strategy')` now lazy-triggers `initStrategyView()` if the page hasn't been initialized yet. Added a 1.5s timeout guard that checks for a skeleton element (`skeleton-shimmer`/`skeleton-row`) still in DOM while `#strategy-builder-layout` is absent — if found, force-remounts the page. `_strategyInitInProgress` guard prevents double-init.
+- **Leg Card Tinted Backgrounds in Light Mode** (`web/src/components/leg-card.js`, `web/src/styles/swayam-tokens.css`): Root cause was an inline `style="background: var(--dl-card-2)"` on the card `<div>` overriding all CSS class rules. Removed inline background; added `.leg-card { background: var(--dl-card-2); }` CSS class rule for dark mode. Boosted light-mode tint opacity: Buy legs → `rgba(21,128,61,0.08)` with green border; Sell legs → `rgba(220,38,38,0.07)` with red border.
+- **Test suite**: 89/89 Vitest + 6/6 Pytest — all passing. Commits: `86aa751`, `785a462`.
+
+### Fixed — BUILD-11-FIXES-UI-B (2026-09-05)
+- **No Dead Right-Side Gap in Leg Cards** (`web/src/components/leg-card.js`): Added secondary right-side mini-panel inside each leg card showing live LTP change indicator (▲/▼ % since add) and IV % for that strike. Eliminates the empty 25% gap after per-leg Greeks were removed.
+- **Header & Sidebar Stay Dark in Light Mode** (`web/src/styles/swayam-tokens.css`): Replaced hardcoded dark charcoal values for `.swayam-header`, `.nav-pill`, `.header-spot-pill`, `#theme-switcher-btn`, `.user-avatar-pill` with full light-mode overrides. Header and left sidebars now switch completely to white/slate in light mode.
+- **Payoff Sliders Side-by-Side** (`web/src/components/payoff-chart.js`): Time Horizon slider and IV Change / Volatility Stress slider now render in a 2-column CSS grid row below the chart. Reset button placed at the right of the IV row.
+
+### Fixed — BUILD-11-FIXES-UI-A (2026-09-05)
+- **Theme Switcher Icons**: Sun (☀), Moon (🌙), Monitor (🖥) glyphs added to the three-state cycle button. No longer renders as a blank black circle.
+- **Default Theme = System**: On first load, reads `prefers-color-scheme` media query. User override persisted in `localStorage` as `swayam-theme`.
+- **SPA Chart Redraw on Navigation**: `navigateTo()` dispatches `resize` event and calls `retheme()` on all Plotly charts every time the route changes.
+- **Journal Auto-Archive**: Seed trades archived on first journal mount per session.
+
+### Added — BUILD-11-FIXES-UI-C (2026-09-05)
+- **AI Drawer Auto-Collapse Left Sidebars** (`web/src/styles.css`): `body.ai-panel-open` class collapses `#home-left-sidebar` and `#strategy-left-rail` to `0px`. Journal view gets `margin-right: 400px`. Sidebars re-expand when AI drawer closes.
+- **URL Query Parameter Support** (`web/src/main.js`, `web/index.html`): `?theme=`, `?page=`, `?ai=open`, `?notrans=1` read synchronously on init. Enables deep-linking and headless screenshot capture without JS race conditions.
+
+### Added — BUILD-11-FIXES-UI-A (2026-09-05)
+- **Shimmer Skeleton Loaders** (`web/index.html`): Pre-rendered shimmer skeleton markup in `#home-view`, `#strategy-view`, `#journal-view` for instant first paint before JS mounts.
+- **SOON Badge on Backtest Lab**: Placeholder "coming soon" badge on the Backtest tab.
+
+
 - **Full-Width Interactive Conversational Workspace (`web/src/components/chat-surface.js`, `web/src/pages/home.js`)**: Upgraded "What Matters Today" into an expansive 1,000–1,400px wide conversational workspace matching Cursor terminal standards, complete with pre-market briefing, speech synthesizer playback, per-message actions (save to memory, pin rule), streaming dialogue history, and continuous session bridge to Strategy Builder.
 - **Indian English Text-to-Speech (`src/swayam/ai/tts.py`, `src/swayam/api/routes/tts.py`, `web/src/components/tts-player.js`)**: Integrated Google Cloud Text-to-Speech via Cloud Run Application Default Credentials (ADC), featuring Neural2 Indian English voices (`swayam_calm` male default, `swayam_warm` female alternate), configurable speech rate (0.5x–2.0x), audio caching, and single-stream playback.
 - **3-Tier Event-Driven Memory Model (`src/swayam/ai/memory.py`, `src/swayam/api/routes/notebook.py`, `pinned.py`, `session.py`, `migrations/005_ai_memory_system.sql`)**:

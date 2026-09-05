@@ -215,10 +215,10 @@ export class StrategyBuilderPage {
           <!-- Row 1: Strategy Presets Bar -->
           <div id="strategy-presets-container" class="span-12"></div>
 
-          <!-- Row 2: Multi-leg Builder (span-5) + Payoff Chart (span-7) with Sensibull controls -->
-          <div class="builder-chart-grid" style="display: grid; grid-template-columns: 5fr 7fr; gap: 16px; align-items: start;">
-            <div id="leg-builder-mount"></div>
-            <div id="payoff-chart-mount" style="height: 100%;"></div>
+          <!-- Row 2: Multi-leg Builder + Payoff Chart (Stacked full-width bands) -->
+          <div class="builder-chart-grid" style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
+            <div id="leg-builder-mount" style="width: 100%;"></div>
+            <div id="payoff-chart-mount" style="width: 100%;"></div>
           </div>
 
           <!-- Row 3: Rule Validation Panel (span-12) -->
@@ -515,17 +515,20 @@ export class StrategyBuilderPage {
 
       const computeRes = await api.computeStrategy(computePayload);
 
-      if (computeRes && computeRes.payoff_curve) {
-        const curve = computeRes.payoff_curve;
+      if (computeRes && (computeRes.payoff_curve_expiry || computeRes.payoff_curve)) {
+        const curveExpiry = computeRes.payoff_curve_expiry || computeRes.payoff_curve;
+        const curveTarget = computeRes.payoff_curve_target || computeRes.payoff_curve;
         const expiryDate = legs[0]?.expiry_date;
         if (this.payoffChart) {
           this.payoffChart.updateData({
-            curveData: curve,
+            curveData: curveTarget,
+            curveExpiry,
+            curveTarget,
             currentSpot: this.currentSpot,
-            maxLoss: curve.max_loss_inr,
-            maxProfit: curve.max_profit_inr,
-            breakevens: curve.breakevens,
-            realisticRisk: curve.max_loss_inr * 0.8,
+            maxLoss: curveExpiry.max_loss_inr,
+            maxProfit: curveExpiry.max_profit_inr,
+            breakevens: curveExpiry.breakevens,
+            realisticRisk: curveExpiry.max_loss_inr * 0.8,
             greeks: computeRes.greeks,
             pop: computeRes.pop ?? computeRes.greeks?.pop,
             expiryDate,
