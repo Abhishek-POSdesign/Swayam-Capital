@@ -90,7 +90,7 @@ export class PayoffChartComponent {
     const timeLabelText = this._computeTargetDateText(this.timeSliderVal);
 
     this.container.innerHTML = `
-      <div class="payoff-chart-tile" style="display: flex; flex-direction: column; gap: 8px; background: var(--dl-card); padding: 16px 18px; border-radius: var(--radius-card); border: 1px solid var(--dl-line); height: 100%; min-height: 380px;">
+      <div class="payoff-chart-tile" style="display: flex; flex-direction: column; gap: 8px; background: var(--dl-card); padding: 16px 18px; border-radius: var(--radius-card); border: 1px solid var(--dl-line); height: 100%; min-height: 520px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <span class="eyebrow" style="color: var(--dl-fg-3);">STRATEGY PAYOFF PROFILE</span>
@@ -140,7 +140,7 @@ export class PayoffChartComponent {
           ${this._renderGreeksContent()}
         </div>
 
-        <div id="payoff-plotly-canvas" style="width: 100%; flex: 1; min-height: 270px;"></div>
+        <div id="payoff-plotly-canvas" style="width: 100%; flex: 1; min-height: 320px;"></div>
 
         <!-- Sensibull-style Interactive Time & IV Sliders -->
         <div id="payoff-sliders-section" style="

@@ -215,10 +215,10 @@ export class StrategyBuilderPage {
           <!-- Row 1: Strategy Presets Bar -->
           <div id="strategy-presets-container" class="span-12"></div>
 
-          <!-- Row 2: Multi-leg Builder (span-5) + Payoff Chart (span-7) with Sensibull controls -->
-          <div class="builder-chart-grid" style="display: grid; grid-template-columns: 5fr 7fr; gap: 16px; align-items: start;">
-            <div id="leg-builder-mount"></div>
-            <div id="payoff-chart-mount" style="height: 100%;"></div>
+          <!-- Row 2: Multi-leg Builder + Payoff Chart (Stacked full-width bands) -->
+          <div class="builder-chart-grid" style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
+            <div id="leg-builder-mount" style="width: 100%;"></div>
+            <div id="payoff-chart-mount" style="width: 100%;"></div>
           </div>
 
           <!-- Row 3: Rule Validation Panel (span-12) -->
