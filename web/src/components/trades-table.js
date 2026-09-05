@@ -141,22 +141,22 @@ export class TradesTableComponent {
     }).join('');
 
     this.container.innerHTML = `
-      <div class="trades-table-card" style="background: var(--dl-card, #191b21); border: 1px solid var(--dl-line, #282a33); border-radius: var(--radius-card, 8px); overflow: hidden;">
+      <div class="trades-table-card" style="background: var(--dl-card); border: none; border-radius: var(--radius-card); overflow: visible;">
         <div style="overflow-x: auto;">
           <table style="width: 100%; border-collapse: collapse; text-align: left;">
-            <thead>
-              <tr style="background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--dl-line, #282a33); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dl-fg-3, #5a5d6c);">
-                <th style="padding: 10px 12px; font-weight: 600;">Date / Time</th>
-                <th style="padding: 10px 12px; font-weight: 600;">Strategy</th>
-                <th style="padding: 10px 12px; font-weight: 600;">Setup / Loc</th>
-                <th style="padding: 10px 12px; font-weight: 600;">Direction</th>
-                <th style="padding: 10px 12px; font-weight: 600;">TIT / PIT</th>
-                <th style="padding: 10px 12px; font-weight: 600;">Charges</th>
-                <th style="padding: 10px 12px; text-align: right; font-weight: 600;">Net P&amp;L (Gross)</th>
-                <th style="padding: 10px 12px; text-align: center; font-weight: 600;">R:R (Act/Plan)</th>
-                <th style="padding: 10px 12px; text-align: center; font-weight: 600;">Disc.</th>
-                <th style="padding: 10px 12px; text-align: center; font-weight: 600;">Status</th>
-                <th style="padding: 10px 12px; text-align: right; font-weight: 600;"></th>
+            <thead style="position: sticky; top: 0; z-index: 4; background: var(--dl-card);">
+              <tr style="background: var(--dl-card); border-bottom: 1px solid var(--dl-line); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dl-fg-3);">
+                <th style="padding: 10px 12px; font-weight: 600; background: var(--dl-card);">Date / Time</th>
+                <th style="padding: 10px 12px; font-weight: 600; background: var(--dl-card);">Strategy</th>
+                <th style="padding: 10px 12px; font-weight: 600; background: var(--dl-card);">Setup / Loc</th>
+                <th style="padding: 10px 12px; font-weight: 600; background: var(--dl-card);">Direction</th>
+                <th style="padding: 10px 12px; font-weight: 600; background: var(--dl-card);">TIT / PIT</th>
+                <th style="padding: 10px 12px; font-weight: 600; background: var(--dl-card);">Charges</th>
+                <th style="padding: 10px 12px; text-align: right; font-weight: 600; background: var(--dl-card);">Net P&amp;L (Gross)</th>
+                <th style="padding: 10px 12px; text-align: center; font-weight: 600; background: var(--dl-card);">R:R (Act/Plan)</th>
+                <th style="padding: 10px 12px; text-align: center; font-weight: 600; background: var(--dl-card);">Disc.</th>
+                <th style="padding: 10px 12px; text-align: center; font-weight: 600; background: var(--dl-card);">Status</th>
+                <th style="padding: 10px 12px; text-align: right; font-weight: 600; background: var(--dl-card);"></th>
               </tr>
             </thead>
             <tbody>

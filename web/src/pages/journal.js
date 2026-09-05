@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Trade Journal & Performance Analytics Page Controller for Swayam Capital (BUILD-11).
  *
  * Coordinates:
@@ -57,8 +57,11 @@ export class JournalPage {
 
   render() {
     this.container.innerHTML = `
-      <div class="journal-page-canvas" style="padding: 20px 24px; max-width: 1600px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px;">
+      <div class="journal-page-canvas" style="padding: 14px 24px; max-width: 1600px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;">
         
+        <!-- Housekeeping Banner (Pre-launch test trades) -->
+        <div id="journal-housekeeping-banner-container"></div>
+
         <!-- Header & Title Bar -->
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--dl-line, #282a33); padding-bottom: 14px;">
           <div>
@@ -151,8 +154,37 @@ export class JournalPage {
 
         </div>
 
-        <!-- Detailed Trades Table Container -->
-        <div id="journal-trades-table-container"></div>
+        <!-- Detailed Trades Table Container (Capped at 460px with custom scrollbar, fade overlay & footer) -->
+        <div class="trades-ledger-outer-wrapper" style="display: flex; flex-direction: column; gap: 6px;">
+          <div class="trades-ledger-scroll-wrapper swayam-scroll-thin" style="
+            max-height: 460px;
+            overflow-y: auto;
+            position: relative;
+            background: var(--dl-card);
+            border: 1px solid var(--dl-line);
+            border-radius: var(--radius-card);
+          ">
+            <div id="journal-trades-table-container"></div>
+            <div id="journal-trades-bottom-fade" style="
+              position: sticky;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              height: 30px;
+              background: linear-gradient(to bottom, transparent, var(--dl-card));
+              pointer-events: none;
+              z-index: 5;
+              display: none;
+            "></div>
+          </div>
+          <div id="journal-trades-scroll-footer" style="
+            font-size: 0.7rem;
+            color: var(--dl-fg-3);
+            text-align: right;
+            padding-right: 4px;
+            display: none;
+          "></div>
+        </div>
 
         <!-- Edge Analytics Section -->
         <div style="margin-top: 8px;">
@@ -364,12 +396,109 @@ export class JournalPage {
         badge.textContent = `${tradesData.total_count} Trades`;
       }
 
+      // Housekeeping banner for pre-launch test trades
+      const preLaunchCount = tradesData.pre_launch_test_trades_count || 0;
+      const isDismissed = localStorage.getItem('swayam_journal_test_banner_dismissed') === 'true';
+      const bannerContainer = this.container.querySelector('#journal-housekeeping-banner-container');
+      if (bannerContainer) {
+        if (preLaunchCount > 0 && !isDismissed) {
+          bannerContainer.innerHTML = `
+            <div id="journal-test-trades-banner" style="
+              background: rgba(201, 160, 74, 0.12);
+              border: 1px solid var(--accent-amber);
+              border-radius: var(--radius-card);
+              padding: 12px 18px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              flex-wrap: wrap;
+              gap: 12px;
+            ">
+              <div style="display: flex; align-items: center; gap: 10px; font-size: 0.82rem; color: var(--dl-fg);">
+                <span style="font-size: 1.1rem;">⚠️</span>
+                <span><strong>${preLaunchCount} pre-launch test paper trades detected.</strong> These are Antigravity's automated seed data.</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" id="btn-archive-test-trades" style="
+                  background: var(--accent-amber);
+                  color: #101116;
+                  font-weight: 600;
+                  border: none;
+                  padding: 6px 14px;
+                  border-radius: 6px;
+                  font-size: 0.76rem;
+                  cursor: pointer;
+                ">
+                  Archive test data
+                </button>
+                <button type="button" id="btn-dismiss-test-banner" style="
+                  background: transparent;
+                  border: 1px solid var(--dl-line);
+                  color: var(--dl-fg-2);
+                  padding: 6px 12px;
+                  border-radius: 6px;
+                  font-size: 0.76rem;
+                  cursor: pointer;
+                ">
+                  Dismiss
+                </button>
+              </div>
+            </div>
+            <div id="journal-archive-error-msg" style="display: none; color: var(--accent-coral); font-size: 0.76rem; margin-top: 6px; padding: 0 4px;"></div>
+          `;
+
+          bannerContainer.querySelector('#btn-dismiss-test-banner')?.addEventListener('click', () => {
+            localStorage.setItem('swayam_journal_test_banner_dismissed', 'true');
+            bannerContainer.innerHTML = '';
+          });
+
+          const btnArchive = bannerContainer.querySelector('#btn-archive-test-trades');
+          btnArchive?.addEventListener('click', async () => {
+            btnArchive.disabled = true;
+            btnArchive.textContent = 'Archiving...';
+            const errEl = bannerContainer.querySelector('#journal-archive-error-msg');
+            if (errEl) errEl.style.display = 'none';
+
+            try {
+              await api.archiveTestTrades();
+              bannerContainer.innerHTML = '';
+              await this.loadData();
+            } catch (err) {
+              btnArchive.disabled = false;
+              btnArchive.textContent = 'Archive test data';
+              if (errEl) {
+                errEl.textContent = `Archive failed — ${err.message || 'Unknown error'}`;
+                errEl.style.display = 'block';
+              }
+            }
+          });
+        } else {
+          bannerContainer.innerHTML = '';
+        }
+      }
+
       if (this.kpiStrip) {
         this.kpiStrip.update(tradesData.kpis);
       }
 
       if (this.tradesTable) {
         this.tradesTable.update(tradesData.trades, this.filters.sort_by);
+      }
+
+      // Update scroll footer and bottom fade for trades table
+      const scrollFooter = this.container.querySelector('#journal-trades-scroll-footer');
+      const bottomFade = this.container.querySelector('#journal-trades-bottom-fade');
+      const rowCount = tradesData.trades ? tradesData.trades.length : 0;
+      if (scrollFooter) {
+        if (rowCount > 0) {
+          scrollFooter.textContent = `${rowCount} rows shown · scroll for more`;
+          scrollFooter.style.display = 'block';
+        } else {
+          scrollFooter.style.display = 'none';
+        }
+      }
+      if (bottomFade) {
+        bottomFade.style.display = rowCount > 6 ? 'block' : 'none';
       }
 
       // 2. Fetch Analytics

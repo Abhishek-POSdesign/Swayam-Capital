@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Lesson Ledger Scroll Feed for Swayam Capital (BUILD-11).
  *
  * Displays chronologically ordered AI and user-refined lessons.
@@ -75,7 +75,7 @@ export class LessonsScrollComponent {
             ${this.lessons.length} Lessons
           </span>
         </div>
-        <div class="lessons-feed" style="display: flex; flex-direction: column; gap: 8px; max-height: 290px; overflow-y: auto; padding-right: 4px;">
+        <div class="lessons-feed swayam-scroll-thin" style="display: flex; flex-direction: column; gap: 8px; max-height: 290px; overflow-y: auto; padding-right: 4px;">
           ${itemsHtml}
         </div>
       </div>
