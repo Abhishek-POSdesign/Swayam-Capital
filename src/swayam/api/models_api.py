@@ -143,6 +143,7 @@ class PayoffPointResponse(BaseModel):
     spot: float
     pnl_expiry: float
     pnl_today: float
+    pnl: Optional[float] = None
 
 
 class PayoffCurveResponse(BaseModel):
@@ -181,6 +182,8 @@ class GreeksResponse(BaseModel):
 class StrategyComputeResponse(BaseModel):
     """Combined strategy computation output."""
     payoff_curve: PayoffCurveResponse
+    payoff_curve_expiry: Optional[PayoffCurveResponse] = None
+    payoff_curve_target: Optional[PayoffCurveResponse] = None
     greeks: GreeksResponse
     pop: Optional[float] = Field(default=None, description="Top-level Probability of Profit percentage")
     per_leg: list[LegGreeksItem] = Field(default_factory=list, description="Per-leg calculated Greeks")

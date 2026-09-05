@@ -292,8 +292,10 @@ export class PayoffChartComponent {
     }
   }
 
-  async updateData({ curveData, currentSpot, maxLoss, maxProfit, breakevens, realisticRisk, greeks, pop, expiryDate }) {
-    this.chartData = curveData;
+  async updateData({ curveData, curveExpiry, curveTarget, currentSpot, maxLoss, maxProfit, breakevens, realisticRisk, greeks, pop, expiryDate }) {
+    this.chartData = curveData || this.chartData;
+    this.curveExpiry = curveExpiry || curveData || this.curveExpiry;
+    this.curveTarget = curveTarget || curveData || this.curveTarget;
     this.currentSpot = currentSpot || this.currentSpot;
     this.maxLoss = Math.abs(maxLoss || 0);
     this.maxProfit = maxProfit || 0;
@@ -379,7 +381,14 @@ export class PayoffChartComponent {
       let yExpiry = [];
       let yToday = [];
 
-      if (this.chartData && this.chartData.points && this.chartData.points.length > 0) {
+      if (this.curveExpiry && this.curveExpiry.points && this.curveExpiry.points.length > 0) {
+        xVals = this.curveExpiry.points.map((p) => p.spot);
+        yExpiry = this.curveExpiry.points.map((p) => (p.pnl_expiry !== undefined ? p.pnl_expiry : p.pnl || 0));
+      }
+      if (this.curveTarget && this.curveTarget.points && this.curveTarget.points.length > 0) {
+        if (xVals.length === 0) xVals = this.curveTarget.points.map((p) => p.spot);
+        yToday = this.curveTarget.points.map((p) => (p.pnl_today !== undefined ? p.pnl_today : p.pnl || 0));
+      } else if (this.chartData && this.chartData.points && this.chartData.points.length > 0) {
         xVals = this.chartData.points.map((p) => p.spot);
         yExpiry = this.chartData.points.map((p) => p.pnl_expiry);
         yToday = this.chartData.points.map((p) => p.pnl_today);
@@ -398,6 +407,13 @@ export class PayoffChartComponent {
           yToday.push(Math.round(pnlExpiry * 0.45 + diff * 1500));
         }
       }
+
+      console.log('[PayoffChart.renderPlot]', {
+        curve_expiry_0: yExpiry[0],
+        curve_target_0: yToday[0],
+        targetDays: this.timeSliderVal,
+        ivShiftPct: this.ivSliderVal,
+      });
 
       // Shaded green area for positive profit zone
       const profitShadeTrace = {
@@ -435,14 +451,16 @@ export class PayoffChartComponent {
         hovertemplate: 'Spot: %{x:,.0f}<br>Expiry P&L: ₹%{y:,.0f}<extra></extra>',
       };
 
+      const targetLabel = this.timeSliderVal > 0 ? `Target (T+${this.timeSliderVal})` : 'Today (T+0)';
       const todayTrace = {
         x: xVals,
         y: yToday,
         type: 'scatter',
         mode: 'lines',
-        name: 'T+0 (Today)',
-        line: { color: isDark ? '#ac9fd2' : '#7b6ea8', width: 1.8, dash: 'dot' },
-        hovertemplate: 'Spot: %{x:,.0f}<br>T+0 P&L: ₹%{y:,.0f}<extra></extra>',
+        name: targetLabel,
+        line: { color: isDark ? '#ac9fd2' : '#7b6ea8', width: 2.5, dash: 'dash' },
+        opacity: 1.0,
+        hovertemplate: `Spot: %{x:,.0f}<br>${targetLabel} P&L: ₹%{y:,.0f}<extra></extra>`,
       };
 
       // Breakeven markers

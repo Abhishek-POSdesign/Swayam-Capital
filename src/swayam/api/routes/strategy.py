@@ -240,6 +240,27 @@ def compute_strategy(req: StrategyComputeRequest) -> StrategyComputeResponse:
             spot=round(p.spot, 2),
             pnl_expiry=round(p.pnl_at_expiry, 2),
             pnl_today=round(p.pnl_today, 2),
+            pnl=round(p.pnl_today, 2),
+        )
+        for p in curve.points
+    ]
+
+    points_expiry = [
+        PayoffPointResponse(
+            spot=round(p.spot, 2),
+            pnl_expiry=round(p.pnl_at_expiry, 2),
+            pnl_today=round(p.pnl_at_expiry, 2),
+            pnl=round(p.pnl_at_expiry, 2),
+        )
+        for p in curve.points
+    ]
+
+    points_target = [
+        PayoffPointResponse(
+            spot=round(p.spot, 2),
+            pnl_expiry=round(p.pnl_at_expiry, 2),
+            pnl_today=round(p.pnl_today, 2),
+            pnl=round(p.pnl_today, 2),
         )
         for p in curve.points
     ]
@@ -248,6 +269,26 @@ def compute_strategy(req: StrategyComputeRequest) -> StrategyComputeResponse:
     payoff_resp = PayoffCurveResponse(
         spot_range=[round(curve.spot_range[0], 2), round(curve.spot_range[1], 2)],
         points=points_resp,
+        breakevens=breakevens_rounded,
+        max_profit_inr=round(curve.max_profit_inr, 2),
+        max_loss_inr=round(curve.max_loss_inr, 2),
+        rr_implied=round(curve.rr_implied, 2),
+        net_debit_credit_inr=round(curve.net_debit_credit_inr, 2),
+    )
+
+    payoff_curve_expiry = PayoffCurveResponse(
+        spot_range=[round(curve.spot_range[0], 2), round(curve.spot_range[1], 2)],
+        points=points_expiry,
+        breakevens=breakevens_rounded,
+        max_profit_inr=round(curve.max_profit_inr, 2),
+        max_loss_inr=round(curve.max_loss_inr, 2),
+        rr_implied=round(curve.rr_implied, 2),
+        net_debit_credit_inr=round(curve.net_debit_credit_inr, 2),
+    )
+
+    payoff_curve_target = PayoffCurveResponse(
+        spot_range=[round(curve.spot_range[0], 2), round(curve.spot_range[1], 2)],
+        points=points_target,
         breakevens=breakevens_rounded,
         max_profit_inr=round(curve.max_profit_inr, 2),
         max_loss_inr=round(curve.max_loss_inr, 2),
@@ -303,7 +344,9 @@ def compute_strategy(req: StrategyComputeRequest) -> StrategyComputeResponse:
     )
 
     return StrategyComputeResponse(
-        payoff_curve=payoff_resp,
+        payoff_curve=payoff_curve_expiry,
+        payoff_curve_expiry=payoff_curve_expiry,
+        payoff_curve_target=payoff_curve_target,
         greeks=greeks_resp,
         pop=pop,
         per_leg=per_leg_items,

@@ -515,17 +515,20 @@ export class StrategyBuilderPage {
 
       const computeRes = await api.computeStrategy(computePayload);
 
-      if (computeRes && computeRes.payoff_curve) {
-        const curve = computeRes.payoff_curve;
+      if (computeRes && (computeRes.payoff_curve_expiry || computeRes.payoff_curve)) {
+        const curveExpiry = computeRes.payoff_curve_expiry || computeRes.payoff_curve;
+        const curveTarget = computeRes.payoff_curve_target || computeRes.payoff_curve;
         const expiryDate = legs[0]?.expiry_date;
         if (this.payoffChart) {
           this.payoffChart.updateData({
-            curveData: curve,
+            curveData: curveTarget,
+            curveExpiry,
+            curveTarget,
             currentSpot: this.currentSpot,
-            maxLoss: curve.max_loss_inr,
-            maxProfit: curve.max_profit_inr,
-            breakevens: curve.breakevens,
-            realisticRisk: curve.max_loss_inr * 0.8,
+            maxLoss: curveExpiry.max_loss_inr,
+            maxProfit: curveExpiry.max_profit_inr,
+            breakevens: curveExpiry.breakevens,
+            realisticRisk: curveExpiry.max_loss_inr * 0.8,
             greeks: computeRes.greeks,
             pop: computeRes.pop ?? computeRes.greeks?.pop,
             expiryDate,
