@@ -288,6 +288,14 @@ export function setupTestDOM() {
     clear: () => storage.clear(),
   };
 
+  const sessionStore = new Map();
+  global.sessionStorage = {
+    getItem: (key) => (sessionStore.has(key) ? sessionStore.get(key) : null),
+    setItem: (key, val) => sessionStore.set(key, String(val)),
+    removeItem: (key) => sessionStore.delete(key),
+    clear: () => sessionStore.clear(),
+  };
+
   const htmlEl = createMockElement('html');
   global.document = {
     documentElement: htmlEl,
@@ -302,6 +310,7 @@ export function setupTestDOM() {
   global.window = {
     document: global.document,
     localStorage: global.localStorage,
+    sessionStorage: global.sessionStorage,
     location: { pathname: '/', href: 'http://localhost:5173/' },
     history: { pushState: () => {}, replaceState: () => {} },
     addEventListener: (evt, handler) => {

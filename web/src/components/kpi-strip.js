@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 7-Tile Top KPI Strip for Swayam Capital Trade Journal (BUILD-11).
  *
  * Displays:
@@ -46,8 +46,13 @@ export class KPIStripComponent {
     const maxLoss = k.max_loss_trade;
 
     const netColor = netPnl > 0 ? 'var(--accent-sage)' : netPnl < 0 ? 'var(--accent-coral)' : 'var(--dl-fg-2)';
-    const winColor = parseFloat(winRate) >= 50 ? 'var(--accent-sage)' : 'var(--accent-amber)';
-    const discColor = parseFloat(disciplineRate) >= 80 ? 'var(--accent-sage)' : 'var(--accent-coral)';
+    const winColor = totalTrades === 0 ? 'var(--dl-fg-2)' : (parseFloat(winRate) >= 50 ? 'var(--accent-sage)' : 'var(--accent-amber)');
+    const discColor = totalTrades === 0 ? 'var(--dl-fg-2)' : (parseFloat(disciplineRate) >= 80 ? 'var(--accent-sage)' : 'var(--accent-coral)');
+
+    const winRateDisplay = totalTrades > 0 ? `${winRate}%` : '—';
+    const avgRRDisplay = totalTrades > 0 ? `1 : ${avgRR}` : '—';
+    const disciplineDisplay = totalTrades > 0 ? `${disciplineRate}%` : '—';
+    const chargesPctDisplay = totalTrades > 0 ? `${chargesPct}% of gross` : '—';
 
     this.container.innerHTML = `
       <div class="kpi-strip-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px;">
@@ -71,7 +76,7 @@ export class KPIStripComponent {
         <div class="kpi-card" style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: var(--radius-card); padding: 12px 14px;">
           <div style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dl-fg-3); margin-bottom: 4px; font-weight: 600;">Win Rate</div>
           <div style="font-size: 1.4rem; font-weight: 700; color: ${winColor}; font-family: var(--font-mono, monospace); line-height: 1.2;">
-            ${winRate}%
+            ${winRateDisplay}
           </div>
           <div style="font-size: 0.7rem; color: var(--dl-fg-3); margin-top: 4px;">
             Target: &gt; 50%
@@ -81,8 +86,8 @@ export class KPIStripComponent {
         <!-- 3. Realised R:R -->
         <div class="kpi-card" style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: var(--radius-card); padding: 12px 14px;">
           <div style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dl-fg-3); margin-bottom: 4px; font-weight: 600;">Realised R:R</div>
-          <div style="font-size: 1.4rem; font-weight: 700; color: var(--accent-lilac); font-family: var(--font-mono, monospace); line-height: 1.2;">
-            1 : ${avgRR}
+          <div style="font-size: 1.4rem; font-weight: 700; color: ${totalTrades > 0 ? 'var(--accent-lilac)' : 'var(--dl-fg-2)'}; font-family: var(--font-mono, monospace); line-height: 1.2;">
+            ${avgRRDisplay}
           </div>
           <div style="font-size: 0.7rem; color: var(--dl-fg-3); margin-top: 4px;">
             Avg closed ratio
@@ -106,7 +111,7 @@ export class KPIStripComponent {
         <div class="kpi-card" style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: var(--radius-card); padding: 12px 14px;">
           <div style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dl-fg-3); margin-bottom: 4px; font-weight: 600;">Discipline Rate</div>
           <div style="font-size: 1.4rem; font-weight: 700; color: ${discColor}; font-family: var(--font-mono, monospace); line-height: 1.2;">
-            ${disciplineRate}%
+            ${disciplineDisplay}
           </div>
           <div style="font-size: 0.7rem; color: var(--dl-fg-3); margin-top: 4px;">
             Rules strictly kept
@@ -120,7 +125,7 @@ export class KPIStripComponent {
             ₹${Math.round(chargesDrag).toLocaleString('en-IN')}
           </div>
           <div style="font-size: 0.7rem; color: var(--dl-fg-3); margin-top: 4px;">
-            ${chargesPct}% of gross
+            ${chargesPctDisplay}
           </div>
         </div>
 
@@ -129,10 +134,10 @@ export class KPIStripComponent {
           <div style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dl-fg-3); margin-bottom: 4px; font-weight: 600;">Outliers</div>
           <div style="display: flex; flex-direction: column; gap: 2px; margin-top: 2px;">
             <div style="font-size: 0.8rem; font-family: var(--font-mono, monospace); color: var(--accent-sage); font-weight: 600;">
-              ▲ +₹${maxWin ? Math.round(maxWin.pnl).toLocaleString('en-IN') : '0'}
+              ▲ ${maxWin ? `+₹${Math.round(maxWin.pnl).toLocaleString('en-IN')}` : '—'}
             </div>
             <div style="font-size: 0.8rem; font-family: var(--font-mono, monospace); color: var(--accent-coral); font-weight: 600;">
-              ▼ -₹${maxLoss ? Math.abs(Math.round(maxLoss.pnl)).toLocaleString('en-IN') : '0'}
+              ▼ ${maxLoss ? `-₹${Math.abs(Math.round(maxLoss.pnl)).toLocaleString('en-IN')}` : '—'}
             </div>
           </div>
         </div>

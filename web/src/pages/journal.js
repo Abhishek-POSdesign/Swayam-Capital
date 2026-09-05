@@ -52,6 +52,21 @@ export class JournalPage {
     this.render();
     this.mountComponents();
     this.setupEventListeners();
+
+    if (!sessionStorage.getItem('swayam_seed_archived')) {
+      try {
+        const res = await api.archiveTestTrades();
+        const count = res?.archived || 0;
+        if (count > 0) {
+          console.log(`[journal] archived ${count} seed trades`);
+        }
+        sessionStorage.setItem('swayam_seed_archived', 'true');
+      } catch (err) {
+        console.error('[journal] failed to auto-archive test data', err);
+        this._showArchiveErrorBanner();
+      }
+    }
+
     await this.loadData();
   }
 
@@ -396,85 +411,10 @@ export class JournalPage {
         badge.textContent = `${tradesData.total_count} Trades`;
       }
 
-      // Housekeeping banner for pre-launch test trades
-      const preLaunchCount = tradesData.pre_launch_test_trades_count || 0;
-      const isDismissed = localStorage.getItem('swayam_journal_test_banner_dismissed') === 'true';
+      // Housekeeping banner container cleared unless active error
       const bannerContainer = this.container.querySelector('#journal-housekeeping-banner-container');
-      if (bannerContainer) {
-        if (preLaunchCount > 0 && !isDismissed) {
-          bannerContainer.innerHTML = `
-            <div id="journal-test-trades-banner" style="
-              background: rgba(201, 160, 74, 0.12);
-              border: 1px solid var(--accent-amber);
-              border-radius: var(--radius-card);
-              padding: 12px 18px;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              flex-wrap: wrap;
-              gap: 12px;
-            ">
-              <div style="display: flex; align-items: center; gap: 10px; font-size: 0.82rem; color: var(--dl-fg);">
-                <span style="font-size: 1.1rem;">⚠️</span>
-                <span><strong>${preLaunchCount} pre-launch test paper trades detected.</strong> These are Antigravity's automated seed data.</span>
-              </div>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <button type="button" id="btn-archive-test-trades" style="
-                  background: var(--accent-amber);
-                  color: #101116;
-                  font-weight: 600;
-                  border: none;
-                  padding: 6px 14px;
-                  border-radius: 6px;
-                  font-size: 0.76rem;
-                  cursor: pointer;
-                ">
-                  Archive test data
-                </button>
-                <button type="button" id="btn-dismiss-test-banner" style="
-                  background: transparent;
-                  border: 1px solid var(--dl-line);
-                  color: var(--dl-fg-2);
-                  padding: 6px 12px;
-                  border-radius: 6px;
-                  font-size: 0.76rem;
-                  cursor: pointer;
-                ">
-                  Dismiss
-                </button>
-              </div>
-            </div>
-            <div id="journal-archive-error-msg" style="display: none; color: var(--accent-coral); font-size: 0.76rem; margin-top: 6px; padding: 0 4px;"></div>
-          `;
-
-          bannerContainer.querySelector('#btn-dismiss-test-banner')?.addEventListener('click', () => {
-            localStorage.setItem('swayam_journal_test_banner_dismissed', 'true');
-            bannerContainer.innerHTML = '';
-          });
-
-          const btnArchive = bannerContainer.querySelector('#btn-archive-test-trades');
-          btnArchive?.addEventListener('click', async () => {
-            btnArchive.disabled = true;
-            btnArchive.textContent = 'Archiving...';
-            const errEl = bannerContainer.querySelector('#journal-archive-error-msg');
-            if (errEl) errEl.style.display = 'none';
-
-            try {
-              await api.archiveTestTrades();
-              bannerContainer.innerHTML = '';
-              await this.loadData();
-            } catch (err) {
-              btnArchive.disabled = false;
-              btnArchive.textContent = 'Archive test data';
-              if (errEl) {
-                errEl.textContent = `Archive failed — ${err.message || 'Unknown error'}`;
-                errEl.style.display = 'block';
-              }
-            }
-          });
-        } else {
-          bannerContainer.innerHTML = '';
-        }
+      if (bannerContainer && sessionStorage.getItem('swayam_seed_archived')) {
+        bannerContainer.innerHTML = '';
       }
 
       if (this.kpiStrip) {
@@ -559,5 +499,61 @@ export class JournalPage {
     } finally {
       this.isLoading = false;
     }
+  }
+
+  _showArchiveErrorBanner() {
+    const bannerContainer = this.container.querySelector('#journal-housekeeping-banner-container');
+    if (!bannerContainer) return;
+    bannerContainer.innerHTML = `
+      <div id="journal-test-trades-banner" style="
+        background: rgba(221, 129, 112, 0.12);
+        border: 1px solid var(--accent-coral);
+        border-radius: var(--radius-card);
+        padding: 12px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+      ">
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.82rem; color: var(--dl-fg);">
+          <span style="font-size: 1.1rem;">⚠️</span>
+          <span>Could not auto-archive test data — manual archive available</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" id="btn-retry-archive" style="
+            background: var(--accent-coral);
+            color: #101116;
+            font-weight: 600;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.76rem;
+            cursor: pointer;
+          ">
+            Retry
+          </button>
+        </div>
+      </div>
+    `;
+
+    bannerContainer.querySelector('#btn-retry-archive')?.addEventListener('click', async () => {
+      const btn = bannerContainer.querySelector('#btn-retry-archive');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Retrying...';
+      }
+      try {
+        await api.archiveTestTrades();
+        sessionStorage.setItem('swayam_seed_archived', 'true');
+        bannerContainer.innerHTML = '';
+        await this.loadData();
+      } catch (retryErr) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Retry';
+        }
+      }
+    });
   }
 }
