@@ -34,6 +34,19 @@ body {
   font-family: var(--font-mono);
 }
 
+/* Skeleton Loader Shimmer (Atlas pattern) */
+.skeleton-block {
+  background: linear-gradient(90deg, var(--dl-line) 0%, var(--dl-card-2) 50%, var(--dl-line) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* Header Container & Sticky Navigation */
 #header-container {
   position: sticky;

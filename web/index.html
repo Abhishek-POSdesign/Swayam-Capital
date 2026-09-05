@@ -23,13 +23,53 @@
     <div id="header-container"></div>
 
     <!-- Home Page View (BUILD-9 Default) -->
-    <div id="home-view"></div>
+    <div id="home-view">
+      <div class="skeleton-layout" style="padding: 16px 24px; max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
+        <div class="skeleton-block" style="height: 120px; width: 100%;"></div>
+        <div class="skeleton-block" style="height: 220px; width: 100%;"></div>
+        <div class="skeleton-block" style="height: 280px; width: 100%;"></div>
+      </div>
+    </div>
 
     <!-- Strategy Builder View (Multi-page navigation, BUILD-10) -->
-    <div id="strategy-view" style="display: none;"></div>
+    <div id="strategy-view" style="display: none;">
+      <div class="skeleton-layout" style="padding: 16px 24px; max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
+        <div class="skeleton-block" style="height: 48px; width: 100%;"></div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="skeleton-block" style="height: 80px; width: 100%;"></div>
+          <div class="skeleton-block" style="height: 80px; width: 100%;"></div>
+        </div>
+        <div class="skeleton-block" style="height: 420px; width: 100%;"></div>
+      </div>
+    </div>
 
     <!-- Trade Journal & Analytics View (BUILD-11) -->
-    <div id="journal-view" style="display: none;"></div>
+    <div id="journal-view" style="display: none;">
+      <div class="skeleton-layout" style="padding: 14px 24px; max-width: 1600px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+          <div class="skeleton-block" style="height: 88px;"></div>
+          <div class="skeleton-block" style="height: 88px;"></div>
+          <div class="skeleton-block" style="height: 88px;"></div>
+          <div class="skeleton-block" style="height: 88px;"></div>
+          <div class="skeleton-block" style="height: 88px;"></div>
+          <div class="skeleton-block" style="height: 88px;"></div>
+          <div class="skeleton-block" style="height: 88px;"></div>
+        </div>
+        <div class="skeleton-block" style="height: 52px; width: 100%;"></div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div class="skeleton-block" style="height: 38px; width: 100%;"></div>
+          <div class="skeleton-block" style="height: 38px; width: 100%;"></div>
+          <div class="skeleton-block" style="height: 38px; width: 100%;"></div>
+          <div class="skeleton-block" style="height: 38px; width: 100%;"></div>
+          <div class="skeleton-block" style="height: 38px; width: 100%;"></div>
+          <div class="skeleton-block" style="height: 38px; width: 100%;"></div>
+          <div class="skeleton-block" style="height: 38px; width: 100%;"></div>
+          <div class="skeleton-block" style="height: 38px; width: 100%;"></div>
+          <div class="skeleton-block" style="height: 38px; width: 100%;"></div>
+          <div class="skeleton-block" style="height: 38px; width: 100%;"></div>
+        </div>
+      </div>
+    </div>
 
     <!-- Persistent AI Trading Partner Sidebar Drawer -->
     <aside class="ai-sidebar-drawer" id="ai-sidebar-container" style="position: fixed; right: -450px; top: 0; bottom: 0; width: 400px; max-width: 92vw; z-index: 1000; background: var(--dl-card, #191b21); border-left: 2px solid var(--accent-lilac, #ac9fd2); transition: right 0.25s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: -10px 0 30px rgba(0,0,0,0.5);"></aside>

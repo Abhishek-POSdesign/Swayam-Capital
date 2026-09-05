@@ -67,6 +67,7 @@ export function initHeader(container, options = {}) {
           </button>
           <button type="button" class="nav-pill ${activePage === 'backtest' ? 'active' : ''}" data-page="backtest" style="opacity: 0.5;" title="Upcoming: BUILD-12">
             Backtest Lab
+            <span style="margin-left: 6px; font-size: 0.6rem; padding: 2px 6px; border-radius: var(--radius-pill); background: var(--accent-lilac-tint); color: var(--accent-lilac); font-weight: 700; letter-spacing: 0.06em;">SOON</span>
           </button>
         </nav>
 
