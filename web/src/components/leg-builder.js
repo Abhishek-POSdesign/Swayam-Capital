@@ -56,10 +56,28 @@ export class LegBuilderComponent {
 
     this.container.innerHTML = `
       <div class="leg-builder-container" style="display: flex; flex-direction: column; gap: 14px; background: var(--dl-card); padding: 18px 20px; border-radius: var(--radius-card); border: 1px solid var(--dl-line);">
-        <!-- Header: Title + Net Debit/Credit -->
-        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-          <div style="display: flex; align-items: center; gap: 8px;">
+        <!-- Header: Title + Margin Pill + Net Debit/Credit -->
+        <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <span class="eyebrow" style="color: var(--dl-fg-3);">STRATEGY LEGS (${this.legs.length})</span>
+            ${buyLegsWithIdx.length > 0 && sellLegsWithIdx.length > 0 ? `
+              <span class="margin-safety-pill" style="
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                height: 20px;
+                line-height: 20px;
+                padding: 0 8px;
+                border-radius: 999px;
+                background: var(--accent-sage-tint);
+                color: var(--accent-sage);
+                border: 1px solid rgba(134,171,146,0.3);
+                font-size: 0.68rem;
+                font-weight: 600;
+              ">
+                ↑ Buys execute first (margin-safe)
+              </span>
+            ` : ''}
           </div>
           <div style="display: flex; align-items: baseline; gap: 6px;">
             <span style="font-size: 0.8rem; color: var(--dl-fg-3); font-weight: 500;">${netLabel}:</span>
@@ -69,36 +87,14 @@ export class LegBuilderComponent {
           </div>
         </div>
 
-        <!-- Buy Legs Container (Top) -->
-        <div id="buy-legs-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        <!-- Legs Cards Container (2-col grid when 2 legs, single column stack otherwise) -->
+        <div id="legs-cards-wrapper" class="${this.legs.length === 2 ? 'legs-grid-2col' : 'legs-stack-1col'}" style="${this.legs.length === 2 ? 'display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;' : 'display: flex; flex-direction: column; gap: 8px;'}">
+          <!-- Buy Legs Container -->
+          <div id="buy-legs-container" style="${this.legs.length === 2 ? 'display: contents;' : 'display: flex; flex-direction: column; gap: 8px;'}"></div>
 
-        <!-- Margin Safety Divider (if both buy and sell legs exist) -->
-        <div id="margin-order-divider" style="
-          display: ${buyLegsWithIdx.length > 0 && sellLegsWithIdx.length > 0 ? 'flex' : 'none'};
-          align-items: center;
-          gap: 12px;
-          margin: 4px 0;
-        ">
-          <div style="flex: 1; height: 1px; background: var(--dl-line);"></div>
-          <div style="
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: var(--accent-sage);
-            background: var(--accent-sage-tint);
-            padding: 3px 10px;
-            border-radius: 999px;
-            border: 1px solid rgba(134,171,146,0.3);
-          ">
-            <span>↑ Buys execute first (margin-safe)</span>
-          </div>
-          <div style="flex: 1; height: 1px; background: var(--dl-line);"></div>
+          <!-- Sell Legs Container -->
+          <div id="sell-legs-container" style="${this.legs.length === 2 ? 'display: contents;' : 'display: flex; flex-direction: column; gap: 8px;'}"></div>
         </div>
-
-        <!-- Sell Legs Container (Bottom) -->
-        <div id="sell-legs-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
 
         <!-- Add Leg Button -->
         <button
@@ -161,6 +157,28 @@ export class LegBuilderComponent {
     if (btnAdd) {
       btnAdd.addEventListener('click', () => this.handleAddLeg());
     }
+  }
+
+  updateGreeks(perLegGreeks) {
+    if (!perLegGreeks || !Array.isArray(perLegGreeks)) return;
+    perLegGreeks.forEach((pg, i) => {
+      if (this.legs[i]) {
+        this.legs[i].delta = pg.delta;
+        this.legs[i].theta = pg.theta;
+        this.legs[i].vega = pg.vega;
+        this.legs[i].gamma = pg.gamma;
+      }
+    });
+    this.legCards.forEach(({ idx, card }) => {
+      const g = this.legs[idx];
+      if (g && card && card.updateGreeks) {
+        card.updateGreeks({
+          delta: g.delta,
+          theta: g.theta,
+          vega: g.vega,
+        });
+      }
+    });
   }
 
   handleLegChange(idx, updatedLeg) {

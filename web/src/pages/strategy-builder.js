@@ -31,6 +31,9 @@ export class StrategyBuilderPage {
     this.currentSpot = 24842.65;
     this.sessionId = this._resolveSessionId();
     this.strategyName = 'Bear Put Spread';
+    this.targetDate = null;
+    this.ivShiftPct = 0;
+    this.isRailCollapsed = false;
 
     // Sub-components
     this.presetBar = null;
@@ -68,6 +71,29 @@ export class StrategyBuilderPage {
     this.initSubComponents();
     await this.loadInitialData();
     this.startOvernightCronCheck();
+
+    // Restore rail collapsed state if previously set
+    const storedRail = localStorage.getItem('swayam_strategy_rail_collapsed') === 'true';
+    if (storedRail) {
+      this.toggleRail(true);
+    }
+  }
+
+  toggleRail(forceState) {
+    const rail = this.container.querySelector('#strategy-left-rail');
+    const toggleBtn = this.container.querySelector('#btn-toggle-rail');
+    if (!rail) return;
+
+    this.isRailCollapsed = forceState !== undefined ? forceState : !this.isRailCollapsed;
+    rail.classList.toggle('rail-collapsed', this.isRailCollapsed);
+
+    if (this.isRailCollapsed) {
+      if (toggleBtn) toggleBtn.textContent = '›';
+      localStorage.setItem('swayam_strategy_rail_collapsed', 'true');
+    } else {
+      if (toggleBtn) toggleBtn.textContent = '‹';
+      localStorage.setItem('swayam_strategy_rail_collapsed', 'false');
+    }
   }
 
   renderLayout() {
@@ -75,7 +101,7 @@ export class StrategyBuilderPage {
 
     this.container.innerHTML = `
       <div id="strategy-builder-layout" class="swayam-layout" style="display: flex; min-height: calc(100vh - var(--header-h, 56px)); transition: margin-right 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
-        <!-- LEFT SIDEBAR RAIL (Atlas design system) -->
+        <!-- LEFT SIDEBAR RAIL (Atlas design system, collapsible) -->
         <aside id="strategy-left-rail" style="
           flex: 0 0 320px;
           width: 320px;
@@ -88,44 +114,74 @@ export class StrategyBuilderPage {
           min-height: 100%;
           transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         ">
-          <!-- Back to Home Link -->
-          <button
-            type="button"
-            id="btn-back-to-home"
-            style="
-              display: flex;
-              align-items: center;
-              gap: 6px;
-              background: transparent;
-              border: none;
-              color: var(--dl-fg-2);
-              font-size: 0.82rem;
-              font-weight: 600;
-              cursor: pointer;
-              padding: 4px 6px;
-              border-radius: 6px;
-              width: fit-content;
-              transition: color var(--dur-fast) ease;
-            "
-            onmouseover="this.style.color='var(--dl-fg)'"
-            onmouseout="this.style.color='var(--dl-fg-2)'"
-          >
-            ← Back to Home
-          </button>
+          <!-- Rail Top Header: Back to Home + Collapse Chevron -->
+          <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <button
+              type="button"
+              id="btn-back-to-home"
+              style="
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                background: transparent;
+                border: none;
+                color: var(--dl-fg-2);
+                font-size: 0.82rem;
+                font-weight: 600;
+                cursor: pointer;
+                padding: 4px 6px;
+                border-radius: 6px;
+                width: fit-content;
+                transition: color var(--dur-fast) ease;
+              "
+              onmouseover="this.style.color='var(--dl-fg)'"
+              onmouseout="this.style.color='var(--dl-fg-2)'"
+            >
+              <span id="btn-back-to-home-icon">←</span>
+              <span class="rail-text-label">Back to Home</span>
+            </button>
 
-          <!-- Mini Readiness Status -->
-          <div id="rail-mini-readiness"></div>
+            <button
+              type="button"
+              id="btn-toggle-rail"
+              title="Collapse/Expand left rail"
+              style="
+                background: transparent;
+                border: 1px solid var(--dl-line);
+                color: var(--dl-fg-2);
+                border-radius: 4px;
+                width: 24px;
+                height: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.82rem;
+                cursor: pointer;
+                transition: all var(--dur-fast) ease;
+              "
+              onmouseover="this.style.color='var(--dl-fg)'; this.style.borderColor='var(--dl-fg-3)';"
+              onmouseout="this.style.color='var(--dl-fg-2)'; this.style.borderColor='var(--dl-line)';"
+            >
+              ‹
+            </button>
+          </div>
 
-          <!-- Mini Active Positions -->
-          <div id="rail-mini-positions"></div>
+          <!-- Rail Full Content (Hidden when collapsed) -->
+          <div class="rail-full-content" style="display: flex; flex-direction: column; gap: 16px; flex: 1;">
+            <!-- Mini Readiness Status -->
+            <div id="rail-mini-readiness"></div>
 
-          <!-- Today's Session Recap -->
-          <div id="rail-session-recap"></div>
+            <!-- Mini Active Positions -->
+            <div id="rail-mini-positions"></div>
 
-          <!-- Sticky Rail Footer -->
-          <div style="margin-top: auto; padding-top: 18px; border-top: 1px solid var(--dl-line); display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--dl-fg-3);">
-            <span style="font-family: var(--font-mono);">Sess: #${shortSid}</span>
-            <span style="color: var(--accent-sage);">Paper Mode</span>
+            <!-- Today's Session Recap -->
+            <div id="rail-session-recap"></div>
+
+            <!-- Sticky Rail Footer -->
+            <div style="margin-top: auto; padding-top: 18px; border-top: 1px solid var(--dl-line); display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--dl-fg-3);">
+              <span style="font-family: var(--font-mono);">Sess: #${shortSid}</span>
+              <span style="color: var(--accent-sage);">Paper Mode</span>
+            </div>
           </div>
         </aside>
 
@@ -159,8 +215,8 @@ export class StrategyBuilderPage {
           <!-- Row 1: Strategy Presets Bar -->
           <div id="strategy-presets-container" class="span-12"></div>
 
-          <!-- Row 2: Multi-leg Builder (span-7) + Payoff Chart (span-5) -->
-          <div class="builder-chart-grid" style="display: grid; grid-template-columns: 7fr 5fr; gap: 16px; align-items: start;">
+          <!-- Row 2: Multi-leg Builder (span-5) + Payoff Chart (span-7) with Sensibull controls -->
+          <div class="builder-chart-grid" style="display: grid; grid-template-columns: 5fr 7fr; gap: 16px; align-items: start;">
             <div id="leg-builder-mount"></div>
             <div id="payoff-chart-mount" style="height: 100%;"></div>
           </div>
@@ -217,6 +273,18 @@ export class StrategyBuilderPage {
         }
       });
     }
+
+    // Hook Collapsible Rail Toggle Button
+    const btnToggle = this.container.querySelector('#btn-toggle-rail');
+    if (btnToggle) {
+      btnToggle.addEventListener('click', () => this.toggleRail());
+    }
+  }
+
+  async handleSliderChange({ targetDays, targetDate, ivShiftPct }) {
+    this.targetDate = targetDate;
+    this.ivShiftPct = ivShiftPct;
+    await this.recomputeAndValidate();
   }
 
   initSubComponents() {
@@ -243,7 +311,9 @@ export class StrategyBuilderPage {
     // 3. Payoff Chart
     const chartMount = this.container.querySelector('#payoff-chart-mount');
     if (chartMount) {
-      this.payoffChart = new PayoffChartComponent(chartMount);
+      this.payoffChart = new PayoffChartComponent(chartMount, {
+        onSliderChange: (params) => this.handleSliderChange(params),
+      });
       this.payoffChart.init();
     }
 
@@ -420,7 +490,7 @@ export class StrategyBuilderPage {
 
     // 2. Compute payoff curve
     try {
-      const computeRes = await api.computeStrategy({
+      const computePayload = {
         strategy_name: this.strategyName,
         underlying: 'NIFTY',
         current_spot: this.currentSpot,
@@ -434,10 +504,20 @@ export class StrategyBuilderPage {
           entry_premium: l.entry_premium || 0,
           expiry_date: l.expiry_date,
         })),
-      });
+      };
+
+      if (this.targetDate) {
+        computePayload.target_date = this.targetDate;
+      }
+      if (this.ivShiftPct !== 0) {
+        computePayload.iv_shift_pct = this.ivShiftPct;
+      }
+
+      const computeRes = await api.computeStrategy(computePayload);
 
       if (computeRes && computeRes.payoff_curve) {
         const curve = computeRes.payoff_curve;
+        const expiryDate = legs[0]?.expiry_date;
         if (this.payoffChart) {
           this.payoffChart.updateData({
             curveData: curve,
@@ -446,7 +526,13 @@ export class StrategyBuilderPage {
             maxProfit: curve.max_profit_inr,
             breakevens: curve.breakevens,
             realisticRisk: curve.max_loss_inr * 0.8,
+            greeks: computeRes.greeks,
+            pop: computeRes.pop ?? computeRes.greeks?.pop,
+            expiryDate,
           });
+        }
+        if (this.legBuilder && (computeRes.per_leg || computeRes.greeks?.per_leg)) {
+          this.legBuilder.updateGreeks(computeRes.per_leg || computeRes.greeks?.per_leg);
         }
       }
     } catch (_) {}

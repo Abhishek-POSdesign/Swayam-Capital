@@ -449,6 +449,30 @@ body.ai-panel-open #strategy-left-rail {
   transition: all var(--dur-base, 180ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
+/* Manual collapsible Strategy Builder left rail */
+#strategy-left-rail.rail-collapsed {
+  flex: 0 0 40px !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  padding: 16px 8px !important;
+  overflow: hidden !important;
+}
+
+#strategy-left-rail.rail-collapsed .rail-full-content {
+  display: none !important;
+}
+
+#strategy-left-rail.rail-collapsed .rail-text-label {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .legs-grid-2col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 @media (max-width: 900px) {
   body:has(.ai-panel-open) .home-canvas,
   body:has(.ai-panel-open) .dashboard-container,

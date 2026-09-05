@@ -8,7 +8,7 @@
 export class PayoffChartComponent {
   constructor(container, options = {}) {
     this.container = container;
-    this.options = options;
+    this.options = options; // { onSliderChange }
     this._Plotly = null;
     this.chartData = null;
     this.currentSpot = 24850;
@@ -16,10 +16,79 @@ export class PayoffChartComponent {
     this.maxProfit = 0;
     this.breakevens = [];
     this.realisticRisk = 0;
+    this.greeks = null;
+    this.pop = null;
+    this.timeSliderVal = 0;
+    this.ivSliderVal = 0;
+    this.daysToExpiry = 7;
+    this.expiryDate = null;
     this._themeListenerAttached = false;
   }
 
+  _renderGreeksContent() {
+    const hasG = this.greeks !== null && this.greeks !== undefined;
+    const hasPop = this.pop !== null && this.pop !== undefined;
+
+    const deltaVal = hasG ? (this.greeks.net_delta ?? this.greeks.delta) : undefined;
+    const thetaVal = hasG ? (this.greeks.net_theta_per_day ?? this.greeks.theta) : undefined;
+    const gammaVal = hasG ? (this.greeks.net_gamma ?? this.greeks.gamma) : undefined;
+    const vegaVal = hasG ? (this.greeks.net_vega ?? this.greeks.vega) : undefined;
+
+    const deltaHtml = deltaVal !== undefined
+      ? `Net Δ <span style="color: var(--dl-fg);">${(deltaVal > 0 ? '+' : '') + Number(deltaVal).toFixed(2)}</span>`
+      : `Net Δ <span title="Greek computation unavailable — see server logs" style="color: var(--accent-amber); cursor: help;">⚠</span>`;
+
+    let thetaHtml;
+    if (thetaVal !== undefined) {
+      const th = Math.round(thetaVal);
+      const thColor = th >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)';
+      const thSign = th >= 0 ? `+₹${th}/day` : `−₹${Math.abs(th)}/day`;
+      thetaHtml = `Θ <span style="color: ${thColor}; font-weight: 600;">${thSign}</span>`;
+    } else {
+      thetaHtml = `Θ <span title="Greek computation unavailable — see server logs" style="color: var(--accent-amber); cursor: help;">⚠</span>`;
+    }
+
+    const gammaHtml = gammaVal !== undefined
+      ? `Γ <span style="color: var(--dl-fg);">${(gammaVal > 0 ? '+' : '') + Number(gammaVal).toFixed(4)}</span>`
+      : `Γ <span title="Greek computation unavailable — see server logs" style="color: var(--accent-amber); cursor: help;">⚠</span>`;
+
+    const vegaHtml = vegaVal !== undefined
+      ? `ν <span style="color: var(--dl-fg);">₹${Math.round(vegaVal)}/vol</span>`
+      : `ν <span title="Greek computation unavailable — see server logs" style="color: var(--accent-amber); cursor: help;">⚠</span>`;
+
+    const popHtml = hasPop
+      ? `POP <span style="color: var(--accent-sage); font-weight: 700;">${Math.round(this.pop)}%</span>`
+      : `POP <span title="Greek computation unavailable — see server logs" style="color: var(--accent-amber); cursor: help;">⚠</span>`;
+
+    return `
+      <div style="display: flex; align-items: center; gap: 4px;">${deltaHtml}</div>
+      <div style="color: var(--dl-line);">·</div>
+      <div style="display: flex; align-items: center; gap: 4px;">${thetaHtml}</div>
+      <div style="color: var(--dl-line);">·</div>
+      <div style="display: flex; align-items: center; gap: 4px;">${gammaHtml}</div>
+      <div style="color: var(--dl-line);">·</div>
+      <div style="display: flex; align-items: center; gap: 4px;">${vegaHtml}</div>
+      <div style="color: var(--dl-line);">·</div>
+      <div style="display: flex; align-items: center; gap: 4px;">${popHtml}</div>
+    `;
+  }
+
+  _computeTargetDateText(days) {
+    const today = new Date();
+    if (days === 0) {
+      const dStr = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return `T+0 (Today, ${dStr})`;
+    }
+    const target = new Date();
+    target.setDate(today.getDate() + days);
+    const fromStr = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const toStr = target.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `T+${days} (${fromStr} → ${toStr})`;
+  }
+
   async init() {
+    const timeLabelText = this._computeTargetDateText(this.timeSliderVal);
+
     this.container.innerHTML = `
       <div class="payoff-chart-tile" style="display: flex; flex-direction: column; gap: 8px; background: var(--dl-card); padding: 16px 18px; border-radius: var(--radius-card); border: 1px solid var(--dl-line); height: 100%; min-height: 380px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
@@ -30,8 +99,8 @@ export class PayoffChartComponent {
             <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-sage); font-weight: 600;">
               <span style="display: inline-block; width: 14px; height: 3px; background: var(--accent-sage); border-radius: 2px;"></span> At Expiry
             </span>
-            <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-lilac, #ac9fd2); font-weight: 600;">
-              <span style="display: inline-block; width: 14px; height: 2px; border-top: 2px dashed var(--accent-lilac, #ac9fd2);"></span> Today (T+0)
+            <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-lilac); font-weight: 600;">
+              <span style="display: inline-block; width: 14px; height: 2px; border-top: 2px dashed var(--accent-lilac);"></span> Today (T+0)
             </span>
             <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-amber); font-weight: 600;">
               <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-amber);"></span> Breakeven
@@ -40,7 +109,7 @@ export class PayoffChartComponent {
         </div>
 
         <!-- Metric Summary Chips immediately above chart -->
-        <div id="payoff-metrics-strip" style="display: flex; gap: 8px; flex-wrap: wrap; font-size: 0.72rem; padding: 4px 0;">
+        <div id="payoff-metrics-strip" style="display: flex; gap: 8px; flex-wrap: wrap; font-size: 0.72rem; padding: 2px 0;">
           <span style="padding: 3px 8px; border-radius: 4px; background: var(--accent-sage-tint); color: var(--accent-sage); border: 1px solid rgba(134,171,146,0.3); font-weight: 600;">
             Max Profit: +₹${Math.round(this.maxProfit).toLocaleString('en-IN')}
           </span>
@@ -54,7 +123,104 @@ export class PayoffChartComponent {
           ` : ''}
         </div>
 
-        <div id="payoff-plotly-canvas" style="width: 100%; flex: 1; min-height: 290px;"></div>
+        <!-- Portfolio Greeks Strip (Sensibull pattern) -->
+        <div id="payoff-greeks-strip" style="
+          display: flex;
+          gap: 12px;
+          align-items: center;
+          flex-wrap: wrap;
+          font-family: var(--font-mono);
+          font-size: 0.72rem;
+          color: var(--dl-fg-2);
+          padding: 6px 12px;
+          background: var(--dl-card-2);
+          border: 1px solid var(--dl-line);
+          border-radius: 6px;
+        ">
+          ${this._renderGreeksContent()}
+        </div>
+
+        <div id="payoff-plotly-canvas" style="width: 100%; flex: 1; min-height: 270px;"></div>
+
+        <!-- Sensibull-style Interactive Time & IV Sliders -->
+        <div id="payoff-sliders-section" style="
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          padding: 10px 4px 4px 4px;
+          border-top: 1px solid var(--dl-line);
+        ">
+          <!-- Time Decay Slider Row -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem;">
+              <span style="font-weight: 600; color: var(--accent-lilac); font-family: var(--font-mono);">
+                <span id="payoff-time-label">${timeLabelText}</span>
+              </span>
+              <span style="font-size: 0.68rem; color: var(--dl-fg-3);">Time Horizon</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="${this.daysToExpiry}"
+              step="1"
+              value="${this.timeSliderVal}"
+              id="payoff-time-slider"
+              class="swayam-slider-lilac"
+              style="width: 100%; cursor: pointer;"
+            />
+            <div id="payoff-time-ticks" style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--dl-fg-3); font-family: var(--font-mono); padding: 0 2px;">
+              <span>Today</span>
+              <span>Expiry</span>
+            </div>
+          </div>
+
+          <!-- IV Shift Slider Row -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem;">
+              <span style="font-weight: 600; color: var(--accent-amber); font-family: var(--font-mono);">
+                <span id="payoff-iv-label">IV Change: ${this.ivSliderVal > 0 ? '+' : ''}${this.ivSliderVal}%</span>
+              </span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 0.68rem; color: var(--dl-fg-3);">Volatility Stress</span>
+                <button
+                  type="button"
+                  id="btn-reset-payoff-sliders"
+                  style="
+                    background: transparent;
+                    border: 1px solid var(--dl-line);
+                    color: var(--dl-fg-2);
+                    border-radius: 4px;
+                    padding: 2px 8px;
+                    font-size: 0.68rem;
+                    cursor: pointer;
+                    transition: all var(--dur-fast) ease;
+                  "
+                  onmouseover="this.style.color='var(--dl-fg)'; this.style.borderColor='var(--dl-fg-3)';"
+                  onmouseout="this.style.color='var(--dl-fg-2)'; this.style.borderColor='var(--dl-line)';"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+            <input
+              type="range"
+              min="-30"
+              max="30"
+              step="5"
+              value="${this.ivSliderVal}"
+              id="payoff-iv-slider"
+              class="swayam-slider-amber"
+              style="width: 100%; cursor: pointer;"
+            />
+            <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--dl-fg-3); font-family: var(--font-mono); padding: 0 2px;">
+              <span>−30%</span>
+              <span>−15%</span>
+              <span>0%</span>
+              <span>+15%</span>
+              <span>+30%</span>
+            </div>
+          </div>
+        </div>
 
         <!-- Legend / Risk Key -->
         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; padding-top: 6px; border-top: 1px solid var(--dl-line); font-family: var(--font-mono);">
@@ -63,6 +229,8 @@ export class PayoffChartComponent {
         </div>
       </div>
     `;
+
+    this._attachSliderEvents();
 
     if (typeof window !== 'undefined' && !this._themeListenerAttached) {
       window.addEventListener('swayam-theme-change', () => this.retheme());
@@ -73,13 +241,90 @@ export class PayoffChartComponent {
     await this.renderPlot();
   }
 
-  async updateData({ curveData, currentSpot, maxLoss, maxProfit, breakevens, realisticRisk }) {
+  _attachSliderEvents() {
+    const timeSlider = this.container.querySelector('#payoff-time-slider');
+    const timeLabel = this.container.querySelector('#payoff-time-label');
+    const ivSlider = this.container.querySelector('#payoff-iv-slider');
+    const ivLabel = this.container.querySelector('#payoff-iv-label');
+    const btnReset = this.container.querySelector('#btn-reset-payoff-sliders');
+
+    if (timeSlider) {
+      timeSlider.addEventListener('input', (e) => {
+        this.timeSliderVal = parseInt(e.target.value, 10);
+        if (timeLabel) timeLabel.textContent = this._computeTargetDateText(this.timeSliderVal);
+        this._notifySliderChange();
+      });
+    }
+
+    if (ivSlider) {
+      ivSlider.addEventListener('input', (e) => {
+        this.ivSliderVal = parseFloat(e.target.value);
+        if (ivLabel) ivLabel.textContent = `IV Change: ${this.ivSliderVal > 0 ? '+' : ''}${this.ivSliderVal}%`;
+        this._notifySliderChange();
+      });
+    }
+
+    if (btnReset) {
+      btnReset.addEventListener('click', () => {
+        this.timeSliderVal = 0;
+        this.ivSliderVal = 0;
+        if (timeSlider) timeSlider.value = 0;
+        if (ivSlider) ivSlider.value = 0;
+        if (timeLabel) timeLabel.textContent = this._computeTargetDateText(0);
+        if (ivLabel) ivLabel.textContent = 'IV Change: 0%';
+        this._notifySliderChange();
+      });
+    }
+  }
+
+  _notifySliderChange() {
+    const today = new Date();
+    const target = new Date();
+    target.setDate(today.getDate() + this.timeSliderVal);
+    const targetDateStr = target.toISOString().slice(0, 10);
+
+    if (this.options.onSliderChange) {
+      this.options.onSliderChange({
+        targetDays: this.timeSliderVal,
+        targetDate: this.timeSliderVal > 0 ? targetDateStr : null,
+        ivShiftPct: this.ivSliderVal,
+      });
+    }
+  }
+
+  async updateData({ curveData, currentSpot, maxLoss, maxProfit, breakevens, realisticRisk, greeks, pop, expiryDate }) {
     this.chartData = curveData;
     this.currentSpot = currentSpot || this.currentSpot;
     this.maxLoss = Math.abs(maxLoss || 0);
     this.maxProfit = maxProfit || 0;
     this.breakevens = breakevens || [];
     this.realisticRisk = Math.abs(realisticRisk || 0);
+    if (greeks !== undefined) this.greeks = greeks;
+    if (pop !== undefined) this.pop = pop;
+
+    if (expiryDate) {
+      this.expiryDate = expiryDate;
+      const exp = new Date(expiryDate);
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      exp.setHours(0, 0, 0, 0);
+      const diff = Math.max(0, Math.round((exp.getTime() - now.getTime()) / (1000 * 3600 * 24)));
+      this.daysToExpiry = diff;
+      const slider = this.container.querySelector('#payoff-time-slider');
+      if (slider) slider.max = String(diff);
+      const ticks = this.container.querySelector('#payoff-time-ticks');
+      if (ticks) {
+        if (diff <= 7) {
+          const days = [];
+          for (let i = 0; i <= diff; i++) {
+            days.push(`<span>${i === 0 ? 'Today' : i === diff ? 'Exp' : '+' + i}</span>`);
+          }
+          ticks.innerHTML = days.join('');
+        } else {
+          ticks.innerHTML = `<span>Today</span><span>+${Math.round(diff / 2)}</span><span>Exp (+${diff}d)</span>`;
+        }
+      }
+    }
 
     // Update metrics strip in DOM
     const strip = this.container.querySelector('#payoff-metrics-strip');
@@ -97,6 +342,12 @@ export class PayoffChartComponent {
           </span>
         ` : ''}
       `;
+    }
+
+    // Update Greeks strip in DOM
+    const greeksStrip = this.container.querySelector('#payoff-greeks-strip');
+    if (greeksStrip) {
+      greeksStrip.innerHTML = this._renderGreeksContent();
     }
 
     await this.renderPlot();
