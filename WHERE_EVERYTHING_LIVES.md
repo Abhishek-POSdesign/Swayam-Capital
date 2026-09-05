@@ -126,9 +126,70 @@ Secrets in **GCP Secret Manager**: `fyers-access-token`, `fyers-client-id`, `sup
 
 ---
 
-## Section 5 — Backups (BUILD-11.12, planned)
+## Section 5 — Backups (BUILD-11.12, LIVE)
 
-Not yet built as of 2026-09-06. Once shipped: nightly `pg_dump` → GCS, weekly ZIP → Google Drive, monthly AI-chat mirror → vault.
+Durable, automated multi-destination backup pipeline:
+
+1. **Nightly Database Dumps (02:00 IST Daily):**
+   - Cloud Function: `cron_backup_db`
+   - Destination: `gs://swayam-backups/db/YYYY-MM-DD.sql.gz`
+   - Local Mirror: `data/backups/db/YYYY-MM-DD.sql.gz`
+   - GCS Lifecycle Retention (`gcs_lifecycle_backups.json`):
+     - Daily files deleted after 30 days.
+     - Monthly 1st-of-month files (`*-01.sql.gz`) kept for 12 months.
+     - Yearly files (`*-01-01.sql.gz`) kept for 5 years.
+   - Alerting: Immediate Telegram alert dispatched if backup fails or is skipped.
+
+2. **Weekly Workspace & Method ZIP (Sundays 03:00 IST):**
+   - Cloud Function: `cron_backup_weekly_zip`
+   - Destination: `gs://swayam-backups/weekly/YYYY-WW.zip`
+   - Local Vault Sync: `G:\My Drive\Second Brain\_backups\swayam\YYYY-WW.zip` (rolling 12-week retention)
+   - Contents:
+     - Full SQL database dump (`database_dump.sql`)
+     - Complete Git repository bundle (`swayam-repo.bundle`) created via `git bundle create`
+     - All markdown trading method files from vault (`02 - Projects/Trading/01 - Method`)
+
+3. **Monthly AI Chat Journal Mirror (1st of month, 04:00 IST):**
+   - Cloud Function: `cron_backup_ai_chat`
+   - Destination: `gs://swayam-backups/ai-chat/YYYY-MM.json`
+   - Local Vault Sync: `G:\My Drive\Second Brain\_backups\swayam\ai-chat\YYYY-MM.json`
+   - Contents: Complete export of `swayam_ai_conversations` and `swayam_ai_messages`.
+
+---
+
+### How to Restore from Backup
+
+#### Method A: Automated One-Command Script (Recommended)
+Run the built-in restore script:
+```bash
+# Using Python:
+python scripts/restore_from_backup.py [path/to/backup.sql.gz]
+
+# Using Bash:
+bash scripts/restore_from_backup.sh [path/to/backup.sql.gz]
+```
+If no file argument is provided, the script automatically selects the latest snapshot from `data/backups/db/`.
+
+#### Method B: Manual Restoration via psql or Supabase SQL Editor
+1. Download or uncompress the backup file:
+   ```bash
+   # From GCS:
+   gcloud storage cp gs://swayam-backups/db/2026-09-06.sql.gz .
+   gzip -d 2026-09-06.sql.gz
+   ```
+2. Open Supabase Dashboard → SQL Editor (Project `wxijlrwoiaeaupaaqecc`) or connect via `psql`:
+   ```bash
+   psql -h aws-0-ap-south-1.pooler.supabase.com -p 5432 -d postgres -U postgres.wxijlrwoiaeaupaaqecc -f 2026-09-06.sql
+   ```
+3. Verify row counts across all 19 `swayam_*` tables.
+
+#### Method C: Restoring Code from Git Bundle
+To recreate or verify the entire Git repository from a weekly ZIP archive:
+```bash
+git clone swayam-repo.bundle restored-swayam-capital
+cd restored-swayam-capital
+git checkout main
+```
 
 ---
 
