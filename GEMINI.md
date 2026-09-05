@@ -45,7 +45,33 @@
 
 ---
 
-## 🚀 2. Milestone Summary (BUILDs 1 through 7 Complete)
+## 🗺️ 2. Master Reference doc — mandatory sync
+
+Every Antigravity build MUST update `WHERE_EVERYTHING_LIVES.md` (both the repo
+copy at the root of this repo AND the vault copy at
+`G:\My Drive\Second Brain\02 - Projects\Trading\WHERE EVERYTHING LIVES.md`) if
+this build changed any of:
+
+- File locations (moved, renamed, added, removed)
+- Endpoint URLs or route paths
+- Supabase table or column names
+- Secret Manager keys or environment variable names
+- Backup paths, buckets, or cron schedules
+- Cloud service names or regions
+- Which doc is authoritative for what
+
+Update the "Last updated" line at the top of both copies with today's date.
+
+This is enforced. If the PR changed any of the above and the doc is not
+updated, the PR gets reworked before merge. No exceptions.
+
+Reason: Abhishek is non-technical. `WHERE_EVERYTHING_LIVES.md` is his lookup
+and the entry point for any future AI picking up this project. If it goes
+stale, the next person who trusts it makes a wrong decision.
+
+---
+
+## 🚀 3. Milestone Summary (BUILDs 1 through 7 Complete)
 
 ### ✅ BUILD-1: Foundation & Vault Sync
 - Dynamic runtime parsing of Obsidian Method files (`Risk Management Rules.md`, `Operational Readiness Rules.md`, `Personal Trading Brief.md`).
