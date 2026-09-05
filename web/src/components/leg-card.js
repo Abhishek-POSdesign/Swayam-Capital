@@ -53,7 +53,7 @@ export class LegCardComponent {
     const changeColor = hasChange ? (isUp ? 'var(--accent-sage)' : 'var(--accent-coral)') : 'var(--text-muted)';
 
     this.container.innerHTML = `
-      <div class="leg-card" style="
+      <div class="leg-card ${isBuy ? 'leg-buy' : 'leg-sell'}" style="
         display: flex;
         align-items: center;
         gap: 12px;

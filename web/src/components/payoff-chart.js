@@ -153,9 +153,10 @@ export class PayoffChartComponent {
 
         <!-- Sensibull-style Interactive Time & IV Sliders -->
         <div id="payoff-sliders-section" style="
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+          align-items: start;
           padding: 10px 4px 4px 4px;
           border-top: 1px solid var(--dl-line);
         ">

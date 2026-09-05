@@ -27,8 +27,23 @@ class SwayamApp {
     this.aiChat = null;
     this.aiLauncher = null;
     this.settingsDrawer = null;
-    const isStrategy = typeof window !== 'undefined' && window.location.pathname.includes('strategy');
-    const isJournal = typeof window !== 'undefined' && window.location.pathname.includes('journal');
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    if (urlParams && urlParams.get('notrans') === '1') {
+      try {
+        document.documentElement.setAttribute('data-no-transitions', 'true');
+        document.body.classList.add('no-transitions');
+      } catch (_) {}
+    }
+    const qpTheme = urlParams ? urlParams.get('theme') : null;
+    if (qpTheme && ['light', 'dark', 'auto'].includes(qpTheme)) {
+      try {
+        localStorage.setItem('swayam-theme', qpTheme);
+        document.documentElement.setAttribute('data-theme', qpTheme);
+      } catch (_) {}
+    }
+    const qpPage = urlParams ? urlParams.get('page') : null;
+    const isStrategy = qpPage === 'strategy' || (typeof window !== 'undefined' && window.location.pathname.includes('strategy'));
+    const isJournal = qpPage === 'journal' || (typeof window !== 'undefined' && window.location.pathname.includes('journal'));
     this.currentPage = isStrategy ? 'strategy' : isJournal ? 'journal' : 'home';
     this.isAIDrawerOpen = false;
   }
@@ -36,8 +51,23 @@ class SwayamApp {
   async init() {
     console.log('Initializing Swayam Capital trading platform (BUILD-11)...');
 
-    const isStrategy = typeof window !== 'undefined' && window.location.pathname.includes('strategy');
-    const isJournal = typeof window !== 'undefined' && window.location.pathname.includes('journal');
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    if (urlParams && urlParams.get('notrans') === '1') {
+      try {
+        document.documentElement.setAttribute('data-no-transitions', 'true');
+        document.body.classList.add('no-transitions');
+      } catch (_) {}
+    }
+    const qpTheme = urlParams ? urlParams.get('theme') : null;
+    if (qpTheme && ['light', 'dark', 'auto'].includes(qpTheme)) {
+      try {
+        localStorage.setItem('swayam-theme', qpTheme);
+        document.documentElement.setAttribute('data-theme', qpTheme);
+      } catch (_) {}
+    }
+    const qpPage = urlParams ? urlParams.get('page') : null;
+    const isStrategy = qpPage === 'strategy' || (typeof window !== 'undefined' && window.location.pathname.includes('strategy'));
+    const isJournal = qpPage === 'journal' || (typeof window !== 'undefined' && window.location.pathname.includes('journal'));
     this.currentPage = isStrategy ? 'strategy' : isJournal ? 'journal' : 'home';
 
     // Synchronously enforce view visibility to prevent flash of wrong page on refresh
@@ -144,6 +174,11 @@ class SwayamApp {
 
     // 6. Ensure correct view is displayed based on current route
     this.navigateTo(this.currentPage, false);
+
+    // 7. Auto-open AI drawer if requested via ?ai=open
+    if (urlParams && urlParams.get('ai') === 'open') {
+      this.openAIDrawer();
+    }
   }
 
   async initStrategyView() {

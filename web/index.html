@@ -6,15 +6,35 @@
     <title>Swayam Capital — Options Trading Platform</title>
     <link rel="stylesheet" href="/src/styles.css" />
     <script>
-      const path = window.location.pathname;
+      const params = new URLSearchParams(window.location.search);
+      const qpTheme = params.get('theme');
+      if (qpTheme && ['light', 'dark', 'auto'].includes(qpTheme)) {
+        document.documentElement.setAttribute('data-theme', qpTheme);
+        try { localStorage.setItem('swayam-theme', qpTheme); } catch (_) {}
+      } else {
+        const stored = localStorage.getItem('swayam-theme');
+        if (stored) document.documentElement.setAttribute('data-theme', stored);
+      }
+      if (params.get('ai') === 'open') {
+        document.documentElement.classList.add('ai-panel-open');
+      }
+
       document.addEventListener('DOMContentLoaded', () => {
-        const page = path.includes('/strategy') ? 'strategy'
+        const path = window.location.pathname;
+        const qpPage = params.get('page');
+        const page = qpPage ? qpPage
+                   : path.includes('/strategy') ? 'strategy'
                    : path.includes('/journal')  ? 'journal'
                    : 'home';
         ['home', 'strategy', 'journal'].forEach(p => {
           const el = document.getElementById(p + '-view');
           if (el) el.style.display = (p === page) ? 'block' : 'none';
         });
+        if (params.get('ai') === 'open') {
+          document.body.classList.add('ai-panel-open');
+          const drawer = document.getElementById('ai-sidebar-container');
+          if (drawer) drawer.style.right = '0px';
+        }
       });
     </script>
   </head>
@@ -72,7 +92,43 @@
     </div>
 
     <!-- Persistent AI Trading Partner Sidebar Drawer -->
-    <aside class="ai-sidebar-drawer" id="ai-sidebar-container" style="position: fixed; right: -450px; top: 0; bottom: 0; width: 400px; max-width: 92vw; z-index: 1000; background: var(--dl-card, #191b21); border-left: 2px solid var(--accent-lilac, #ac9fd2); transition: right 0.25s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: -10px 0 30px rgba(0,0,0,0.5);"></aside>
+    <aside class="ai-sidebar-drawer" id="ai-sidebar-container" style="position: fixed; right: -450px; top: 0; bottom: 0; width: 400px; max-width: 92vw; z-index: 1000; background: var(--dl-card, #191b21); border-left: 2px solid var(--accent-lilac, #ac9fd2); transition: right 0.25s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: -10px 0 30px rgba(0,0,0,0.5);">
+      <div class="ai-panel" id="ai-panel">
+        <div class="ai-panel__header">
+          <div class="ai-panel__header-left">
+            <div class="ai-orb" style="width: 24px; height: 24px; border-radius: 50%; background: var(--accent-lilac-tint); color: var(--accent-lilac); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700;">✦</div>
+            <span class="ai-panel__title" style="font-family: var(--font-sans); font-size: 0.92rem; font-weight: 600; color: var(--dl-fg);">Trading Partner</span>
+            <span class="ai-panel__conv-title" id="ai-conv-title"></span>
+          </div>
+          <div class="ai-panel__header-right">
+            <button class="ai-btn ai-btn--sm" id="ai-btn-new" title="New conversation">+ New</button>
+            <button class="ai-btn ai-btn--sm" id="ai-btn-history" title="Conversation history">History</button>
+            <button class="ai-btn ai-btn--ghost" id="ai-btn-collapse" title="Collapse">❯</button>
+          </div>
+        </div>
+
+        <div class="ai-panel__body" id="ai-panel-body">
+          <div class="ai-messages" id="ai-messages"></div>
+          <div class="ai-starters" id="ai-starters">
+            <p class="ai-starters__label">Ask me something to start:</p>
+            <button class="ai-starter-btn">Walk me through today's market open — what's setting up?</button>
+            <button class="ai-starter-btn">Given India VIX is at the 8th percentile, what setups favor this regime?</button>
+            <button class="ai-starter-btn">Anything on the calendar this week I should NOT trade around?</button>
+            <button class="ai-starter-btn">Based on my last 5 trades, what mistake am I repeating?</button>
+          </div>
+          <div class="ai-error" id="ai-error" style="display:none;"></div>
+        </div>
+
+        <div class="ai-panel__input-area" id="ai-input-area">
+          <textarea class="ai-textarea" id="ai-textarea" rows="2" placeholder="Ask anything about this trade, regime, or your method..."></textarea>
+          <button class="ai-btn ai-btn--primary" id="ai-btn-send">Send</button>
+        </div>
+
+        <div class="ai-panel__footer" id="ai-footer">
+          <span id="ai-cost-display">Today's AI spend: ₹0.00 (0 requests)</span>
+        </div>
+      </div>
+    </aside>
 
     <!-- AI Voice & Memory Settings Drawer Container -->
     <div id="ai-settings-drawer-container"></div>

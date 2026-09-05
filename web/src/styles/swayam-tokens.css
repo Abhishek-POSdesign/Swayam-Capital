@@ -86,9 +86,9 @@
   --dl-bg: #fafaf8;
   --dl-card: #ffffff;
   --dl-card-2: #f8f9fa;
-  --dl-rail: #16171c; /* Left nav / header stays dark charcoal like Atlas */
-  --dl-line: #e5e7eb;
-  --dl-line-2: #f3f4f6;
+  --dl-rail: #ffffff; /* Header and left sidebar are pure clean white in Light mode */
+  --dl-line: #e2e8f0;
+  --dl-line-2: #f1f5f9;
   --dl-fg: #0f172a;
   --dl-fg-2: #334155;
   --dl-fg-3: #64748b;
@@ -122,7 +122,7 @@
 
   --dl-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 6px 16px rgba(0, 0, 0, 0.04);
   --dl-shadow-2: 0 4px 8px rgba(0, 0, 0, 0.07), 0 12px 24px rgba(0, 0, 0, 0.06);
-  --theme-switcher-bg: rgba(255, 255, 255, 0.1);
+  --theme-switcher-bg: rgba(0, 0, 0, 0.06);
   --plotly-bg: #ffffff;
   --plotly-grid: #f1f5f9;
 }
@@ -132,13 +132,13 @@
   :root[data-theme="auto"] {
     --surface-0: #fafaf8;  --surface-1: #ffffff;  --surface-1-hover: #fbfbfc;
     --surface-2: #f3f4f6;
-    --border: #e5e7eb;
+    --border: #e2e8f0;
     --text-primary: #0f172a;
     --text-secondary: #334155;
     --text-muted: #64748b;
     --text-inverse: #ffffff;
     --dl-bg: #fafaf8;  --dl-card: #ffffff;  --dl-card-2: #f8f9fa;
-    --dl-rail: #16171c;  --dl-line: #e5e7eb;  --dl-line-2: #f3f4f6;
+    --dl-rail: #ffffff;  --dl-line: #e2e8f0;  --dl-line-2: #f1f5f9;
     --dl-fg: #0f172a;  --dl-fg-2: #334155;  --dl-fg-3: #64748b;
     --dl-track: #e2e8f0;  --dl-ink-tile: #0f172a;
     --accent-sage: #15803d;  --accent-sage-tint: rgba(21, 128, 61, 0.12);
@@ -147,7 +147,7 @@
     --accent-coral: #dc2626;  --accent-coral-tint: rgba(220, 38, 38, 0.12);
     --accent-amber: #d97706;  --accent-amber-tint: rgba(217, 119, 6, 0.12);
     --dl-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 6px 16px rgba(0, 0, 0, 0.04);
-    --theme-switcher-bg: rgba(255, 255, 255, 0.1);
+    --theme-switcher-bg: rgba(0, 0, 0, 0.06);
     --plotly-bg: #ffffff;  --plotly-grid: #f1f5f9;
   }
 }
@@ -320,30 +320,182 @@ body {
   font-weight: 600;
 }
 
-/* Header navigation on dark rail background */
-.swayam-header .nav-pill {
+/* Header navigation in Dark mode / default */
+:root[data-theme="dark"] .swayam-header .nav-pill,
+:root:not([data-theme="light"]) .swayam-header .nav-pill {
   color: #94a3b8;
 }
 
-.swayam-header .nav-pill:hover:not(.active) {
+:root[data-theme="dark"] .swayam-header .nav-pill:hover:not(.active),
+:root:not([data-theme="light"]) .swayam-header .nav-pill:hover:not(.active) {
   color: #f1f5f9;
   background: rgba(255, 255, 255, 0.08);
 }
 
-.swayam-header .nav-pill.active {
+:root[data-theme="dark"] .swayam-header .nav-pill.active,
+:root:not([data-theme="light"]) .swayam-header .nav-pill.active {
   background: rgba(134, 171, 146, 0.2);
   color: #86ab92;
   border-color: rgba(134, 171, 146, 0.4);
 }
 
-.swayam-header .header-spot-pill {
+:root[data-theme="dark"] .swayam-header .header-spot-pill,
+:root:not([data-theme="light"]) .swayam-header .header-spot-pill {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.12);
   color: #edeff4;
 }
 
-.swayam-header .swayam-logo-mark circle {
+:root[data-theme="dark"] .swayam-header .swayam-logo-mark circle,
+:root:not([data-theme="light"]) .swayam-header .swayam-logo-mark circle {
   fill: #101116;
+}
+
+/* Light mode header, left rails, and navigation */
+:root[data-theme="light"] .swayam-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+:root[data-theme="light"] .swayam-brand {
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .swayam-logo-mark circle {
+  fill: #ffffff;
+}
+
+:root[data-theme="light"] .swayam-header .header-spot-pill {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .swayam-header .nav-pill {
+  color: #475569;
+}
+
+:root[data-theme="light"] .swayam-header .nav-pill:hover:not(.active) {
+  color: #0f172a;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+:root[data-theme="light"] .swayam-header .nav-pill.active {
+  background: rgba(21, 128, 61, 0.1);
+  color: #15803d;
+  border-color: rgba(21, 128, 61, 0.3);
+}
+
+:root[data-theme="light"] #theme-switcher-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] #theme-switcher-btn:hover {
+  background: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+}
+
+:root[data-theme="light"] .user-avatar-pill {
+  background: rgba(21, 128, 61, 0.1);
+  border: 1px solid #15803d;
+  color: #15803d;
+}
+
+/* Light Mode Card Styling: Soft Pastel Tint Treatment across Strategy & Journal */
+:root[data-theme="light"] .tile {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+/* Strategy Builder Cards in Light Mode */
+:root[data-theme="light"] .leg-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+:root[data-theme="light"] .leg-card.leg-buy {
+  background: rgba(21, 128, 61, 0.04);
+  border-color: rgba(21, 128, 61, 0.25);
+}
+
+:root[data-theme="light"] .leg-card.leg-sell {
+  background: rgba(220, 38, 38, 0.04);
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+:root[data-theme="light"] .payoff-chart-tile {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
+:root[data-theme="light"] #payoff-greeks-strip {
+  background: rgba(124, 58, 237, 0.04);
+  border-color: rgba(124, 58, 237, 0.18);
+}
+
+:root[data-theme="light"] .rule-validation-panel {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
+:root[data-theme="light"] .rule-validation-panel > div:nth-child(2) > div:nth-child(1) {
+  background: rgba(21, 128, 61, 0.04);
+  border-color: rgba(21, 128, 61, 0.22);
+}
+
+:root[data-theme="light"] .rule-validation-panel > div:nth-child(2) > div:nth-child(2) {
+  background: rgba(21, 128, 61, 0.04);
+  border-color: rgba(21, 128, 61, 0.22);
+}
+
+:root[data-theme="light"] .rule-validation-panel > div:nth-child(3) {
+  background: rgba(37, 99, 235, 0.03);
+  border-color: rgba(37, 99, 235, 0.18);
+}
+
+/* Trade Journal KPI Cards in Light Mode */
+:root[data-theme="light"] .kpi-card:nth-child(1) {
+  background: rgba(37, 99, 235, 0.04);
+  border-color: rgba(37, 99, 235, 0.18);
+}
+
+:root[data-theme="light"] .kpi-card:nth-child(2) {
+  background: rgba(21, 128, 61, 0.05);
+  border-color: rgba(21, 128, 61, 0.2);
+}
+
+:root[data-theme="light"] .kpi-card:nth-child(3) {
+  background: rgba(124, 58, 237, 0.04);
+  border-color: rgba(124, 58, 237, 0.18);
+}
+
+:root[data-theme="light"] .kpi-card:nth-child(4) {
+  background: rgba(21, 128, 61, 0.04);
+  border-color: rgba(21, 128, 61, 0.2);
+}
+
+:root[data-theme="light"] .kpi-card:nth-child(5) {
+  background: rgba(21, 128, 61, 0.05);
+  border-color: rgba(21, 128, 61, 0.2);
+}
+
+:root[data-theme="light"] .kpi-card:nth-child(6) {
+  background: rgba(217, 119, 6, 0.04);
+  border-color: rgba(217, 119, 6, 0.18);
+}
+
+:root[data-theme="light"] .kpi-card:nth-child(7) {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+:root[data-theme="light"] .trades-table-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
 }
 
 .user-avatar-pill {

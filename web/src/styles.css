@@ -481,17 +481,33 @@ body:has(.ai-panel-open) .home-canvas,
 body:has(.ai-panel-open) .dashboard-container,
 body:has(.ai-panel-open) #header-container,
 body:has(.ai-panel-open) #strategy-builder-layout,
+body:has(.ai-panel-open) #journal-view,
+body:has(.ai-panel-open) .journal-page-canvas,
 body.ai-panel-open .home-canvas,
 body.ai-panel-open .dashboard-container,
 body.ai-panel-open #header-container,
-body.ai-panel-open #strategy-builder-layout {
+body.ai-panel-open #strategy-builder-layout,
+body.ai-panel-open #journal-view,
+body.ai-panel-open .journal-page-canvas {
   margin-right: 400px;
   transition: margin-right var(--dur-base, 180ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
-/* Auto-collapse Strategy Builder left rail when AI drawer opens to give full space to builder and charts */
+body:has(.ai-panel-open) #ai-sidebar-container,
+body.ai-panel-open #ai-sidebar-container {
+  right: 0px !important;
+}
+
+body:has(.ai-panel-open) .home-canvas,
+body.ai-panel-open .home-canvas {
+  gap: 0px !important;
+}
+
+/* Auto-collapse Strategy Builder and Home left rails when AI drawer opens to give full space to content */
 body:has(.ai-panel-open) #strategy-left-rail,
-body.ai-panel-open #strategy-left-rail {
+body.ai-panel-open #strategy-left-rail,
+body:has(.ai-panel-open) #home-left-sidebar,
+body.ai-panel-open #home-left-sidebar {
   flex: 0 0 0px !important;
   width: 0px !important;
   min-width: 0px !important;
@@ -533,15 +549,19 @@ body.ai-panel-open #strategy-left-rail {
   body:has(.ai-panel-open) .dashboard-container,
   body:has(.ai-panel-open) #header-container,
   body:has(.ai-panel-open) #strategy-builder-layout,
+  body:has(.ai-panel-open) #journal-view,
+  body:has(.ai-panel-open) .journal-page-canvas,
   body.ai-panel-open .home-canvas,
   body.ai-panel-open .dashboard-container,
   body.ai-panel-open #header-container,
-  body.ai-panel-open #strategy-builder-layout {
+  body.ai-panel-open #strategy-builder-layout,
+  body.ai-panel-open #journal-view,
+  body.ai-panel-open .journal-page-canvas {
     margin-right: 0;
   }
 }
 
-.home-canvas, .dashboard-container, #header-container, #strategy-builder-layout {
+.home-canvas, .dashboard-container, #header-container, #strategy-builder-layout, #journal-view, .journal-page-canvas {
   transition: margin-right var(--dur-base, 180ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
@@ -567,9 +587,10 @@ body.ai-panel-open #strategy-left-rail {
 }
 
 /* Clean cards inside solid rail */
-.swayam-rail .tile {
-  background: var(--dl-card);
-  border: 1px solid var(--dl-line);
-  box-shadow: none;
+/* Instant transition override for deterministic rendering */
+:root[data-no-transitions] *,
+body.no-transitions * {
+  transition-duration: 0s !important;
+  animation-duration: 0s !important;
 }
 
