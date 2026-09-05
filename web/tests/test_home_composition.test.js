@@ -50,10 +50,9 @@ describe('Home Page & Subsystem Composition', () => {
     const macro = new MacroEventsCardComponent(container);
     macro.render();
 
-    expect(container.textContent).toContain('MACRO EVENTS · NEXT 5 DAYS');
-    expect(container.textContent).toContain('RBI Policy Meet');
-    expect(container.textContent).toContain('US CPI Print');
-    expect(container.textContent).toContain('FOMC Minutes');
+    expect(container.textContent).toContain('MACRO EVENTS · NEXT 7 DAYS');
+    expect(container.textContent).toContain('India CPI Inflation');
+    expect(container.textContent).toContain('US Fed Interest Rate Decision');
   });
 
   it('renders ReadingQueueCardComponent as honest SOON tile (BUILD-11.6)', () => {

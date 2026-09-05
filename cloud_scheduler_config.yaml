@@ -48,3 +48,30 @@ jobs:
       body: '{"job": "eod_summary"}'
       oidc_token:
         service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+
+  - name: swayam-macro-nightly-ingest
+    description: "Daily 02:00 IST automated ingestion of high-impact macro announcements from Trading Economics"
+    schedule: "0 2 * * *"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_macro_refresh?mode=ingest"
+      headers:
+        Content-Type: "application/json"
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+
+  - name: swayam-macro-weekly-curate
+    description: "Sunday 10:00 IST weekly Gemini curation of top 3-5 high-impact NIFTY F&O risk events"
+    schedule: "0 10 * * 0"
+    time_zone: "Asia/Kolkata"
+    region: "asia-southeast1"
+    http_target:
+      http_method: POST
+      uri: "https://asia-southeast1-swayam-capital.cloudfunctions.net/cron_macro_refresh?mode=curate"
+      headers:
+        Content-Type: "application/json"
+      oidc_token:
+        service_account_email: "swayam-backend-sa@swayam-capital.iam.gserviceaccount.com"
+

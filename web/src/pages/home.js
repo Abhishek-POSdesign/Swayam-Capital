@@ -279,10 +279,10 @@ export class HomePage {
     this.vixComponent = new VixCardComponent(vixContainer);
     this.vixComponent.render();
 
-    // 7. Macro Events
+    // 8. Macro Events — dual source with click-to-expand impact brief
     const macroContainer = this.container.querySelector('#home-macro-container');
     this.macroEventsComponent = new MacroEventsCardComponent(macroContainer);
-    this.macroEventsComponent.render();
+    this.macroEventsComponent.init();
 
     // 8. Reading Queue
     const readingContainer = this.container.querySelector('#home-reading-container');

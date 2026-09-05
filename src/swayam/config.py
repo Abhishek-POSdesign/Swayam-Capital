@@ -113,6 +113,10 @@ class Settings:
     vapid_public_key: str = field(default_factory=lambda: os.getenv("VAPID_PUBLIC_KEY", ""))
     vapid_private_key: str = field(default_factory=lambda: os.getenv("VAPID_PRIVATE_KEY", ""))
 
+    # Macro Calendar & Cron Authentication (BUILD-11.10)
+    trading_economics_api_key: str = field(default_factory=lambda: os.getenv("TRADING_ECONOMICS_API_KEY", ""))
+    cron_shared_secret: str = field(default_factory=lambda: os.getenv("CRON_SHARED_SECRET", "swayam-cron-internal-secret-2026"))
+
     def validate_required_vars(self) -> list[str]:
         """Checks for missing required environment variables and returns a list of missing names."""
         missing: list[str] = []

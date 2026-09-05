@@ -1,0 +1,5 @@
+functions-framework==3.*
+requests==2.*
+google-genai>=0.1.1
+supabase==2.*
+python-dotenv==1.*
