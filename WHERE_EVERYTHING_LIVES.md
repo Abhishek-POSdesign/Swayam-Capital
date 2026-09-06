@@ -4,7 +4,7 @@
 >
 > **If you are a coding agent (Antigravity, Claude Code, etc.) picking up this repo — read this file first.** It tells you where everything is, what depends on what, and what NOT to change without checking.
 >
-> **Last updated:** 2026-09-06.
+> **Last updated:** 2026-09-06 by Antigravity (post PR #10, #11, #12, #13 — 102 vitest + 51 pytest passing, UI debts documented in docs/HANDOVER_2026_09_06.md).
 
 ---
 
