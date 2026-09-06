@@ -9,7 +9,7 @@ BUILD-9-FIXES-A additions:
   GET /api/market/vix/history?days=N                 — for VIX percentile band
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import time
 from typing import Any, Optional
 from fastapi import APIRouter, HTTPException, Query
@@ -77,26 +77,42 @@ def get_option_chain(
             return entry["data"]
 
     try:
-        raw_chain = fyers_client.get_option_chain(symbol="NSE:NIFTY50-INDEX", expiry=expiry)
-        # Parse and format into OptionChainResponse
-        spot = raw_chain.get("spot", 25000.0)
-        strikes_raw = raw_chain.get("strikes", [])
+        raw_chain = fyers_client.get_option_chain(underlying="NSE:NIFTY50-INDEX", strike_count=strike_count)
+        rows = raw_chain.get("optionsChain", []) or []
+
+        # Real spot from the underlying row (option_type ""), else live spot; else fail loudly.
+        spot: Optional[float] = None
+        for r in rows:
+            if not r.get("option_type"):
+                spot = float(r.get("ltp") or 0) or None
+                break
+        if spot is None:
+            spot = float(fyers_client.get_nifty_spot())
+        if not rows:
+            raise RuntimeError("FYERS returned an empty option chain.")
+
+        # Group CE/PE by strike. IV is not provided by FYERS and not solved here (this endpoint
+        # is not the builder's per-leg path); it is left null rather than faked.
+        by_strike: dict[float, dict[str, StrikeQuote]] = {}
+        for r in rows:
+            ot = r.get("option_type")
+            if ot not in ("CE", "PE"):
+                continue
+            k = float(r.get("strike_price", r.get("strike", 0)) or 0)
+            lp = float(r.get("ltp", 0) or 0)
+            by_strike.setdefault(k, {})[ot] = StrikeQuote(
+                ltp=lp if lp > 0 else None,
+                iv=None,
+                oi=int(r.get("oi", 0) or 0),
+            )
 
         strike_rows: list[StrikeRow] = []
-        for s in strikes_raw:
+        for k in sorted(by_strike):
             strike_rows.append(
                 StrikeRow(
-                    strike=s["strike"],
-                    ce=StrikeQuote(
-                        ltp=s["ce"]["ltp"],
-                        iv=s["ce"].get("iv", 0.15),
-                        oi=s["ce"].get("oi", 0),
-                    ),
-                    pe=StrikeQuote(
-                        ltp=s["pe"]["ltp"],
-                        iv=s["pe"].get("iv", 0.15),
-                        oi=s["pe"].get("oi", 0),
-                    ),
+                    strike=k,
+                    ce=by_strike[k].get("CE", StrikeQuote()),
+                    pe=by_strike[k].get("PE", StrikeQuote()),
                 )
             )
 
@@ -122,105 +138,105 @@ def get_option_quote(
     type: str = Query(..., description="Option type: CE or PE"),
     symbol: str = Query(default="NSE:NIFTY50-INDEX", description="Option underlying symbol"),
 ) -> dict[str, Any]:
-    """Returns live quote (LTP, IV, and Black-Scholes Greeks) for a single option contract.
+    """Returns a leg quote for the Strategy Builder.
 
-    Used by the Strategy Builder to price individual legs in real time.
+    No-fake-numbers law: LTP/IV/Greeks are returned ONLY when a real market price is found
+    in the live FYERS chain. IV is implied from that real LTP; Greeks are computed from it.
+    If no real price is available (market closed, data gap, or a non-nearest expiry we can't
+    yet resolve), `available` is False and every price field is null — the UI must then let
+    the user type a price, from which IV and Delta are computed elsewhere. We never invent an
+    LTP, IV, or Delta here.
+
+    NOTE (live verification pending, Monday 2026-09-08): the live-chain parse below targets
+    FYERS' `optionsChain` shape and is confirmed offline to fail *safe* (-> available False).
+    Real-tick behaviour and non-nearest-expiry epoch resolution get verified during market hours.
     """
     opt_type = type.upper()
     if opt_type not in ("CE", "PE"):
         raise HTTPException(status_code=400, detail="Invalid option type. Must be CE or PE.")
 
-    spot = 24842.65
-    try:
-        spot = fyers_client.get_nifty_spot()
-    except Exception:
-        pass
+    from swayam.options_math.engine import greeks as bs_greeks, implied_volatility, IVSolveFailed
+    from swayam.options_math.models import OptionType
 
-    # Parse expiry to calculate days to expiry
+    # Real spot — no fake fallback. None if unavailable.
+    spot: Optional[float] = None
+    try:
+        spot = float(fyers_client.get_nifty_spot())
+    except Exception:
+        spot = None
+
+    # Days to expiry (real calendar math; None if the date is unparseable).
+    days_to_expiry: Optional[int] = None
+    tte_years: Optional[float] = None
     try:
         exp_date = datetime.strptime(expiry, "%Y-%m-%d").date()
-        today = date.today()
-        days_to_expiry = max((exp_date - today).days, 0)
+        days_to_expiry = max((exp_date - date.today()).days, 0)
         tte_years = max(days_to_expiry, 0.5) / 365.0
     except Exception:
-        days_to_expiry = 7
-        tte_years = 7 / 365.0
+        days_to_expiry = None
+        tte_years = None
 
+    # Attempt the real live chain (nearest expiry). Only trust a row with a positive LTP.
     ltp: Optional[float] = None
-    iv: float = 0.14
-    oi: int = 0
-
-    # Try fetching live option chain
+    oi: Optional[int] = None
+    bid: Optional[float] = None
+    ask: Optional[float] = None
     try:
-        raw_chain = fyers_client.get_option_chain(symbol=symbol, expiry=expiry)
-        spot_val = raw_chain.get("spot")
-        if spot_val and spot_val > 0:
-            spot = float(spot_val)
-        for s in raw_chain.get("strikes", []):
-            if abs(s.get("strike", 0.0) - strike) < 0.01:
-                leg_data = s.get("ce" if opt_type == "CE" else "pe", {})
-                ltp = float(leg_data.get("ltp", 0.0) or 0.0)
-                iv = float(leg_data.get("iv", 0.14) or 0.14)
-                oi = int(leg_data.get("oi", 0) or 0)
+        raw_chain = fyers_client.get_option_chain(underlying=symbol, strike_count=50)
+        for row in raw_chain.get("optionsChain", []) or []:
+            if row.get("option_type") != opt_type:
+                continue
+            row_strike = float(row.get("strike_price", row.get("strike", 0)) or 0)
+            if abs(row_strike - strike) < 0.01:
+                cand = float(row.get("ltp", 0) or 0)
+                if cand > 0:
+                    ltp = cand
+                    oi = int(row.get("oi", 0) or 0)
+                    bid = row.get("bid")
+                    ask = row.get("ask")
                 break
     except Exception as exc:
         logger.debug("Live option chain fetch failed for quote (%s): %s", strike, exc)
 
-    # If LTP not available from chain, calculate via Black-Scholes model
-    from swayam.options_math.engine import black_scholes_price, greeks
-    from swayam.options_math.models import OptionType
-
-    model_type = OptionType.CALL if opt_type == "CE" else OptionType.PUT
-
-    if ltp is None or ltp <= 0.0:
+    # Real IV implied from the real LTP; Greeks computed from that IV. No LTP => all null.
+    iv_val: Optional[float] = None
+    delta = gamma = theta = vega = None
+    available = bool(ltp and ltp > 0 and spot and tte_years and tte_years > 0)
+    if available:
+        model_type = OptionType.CALL if opt_type == "CE" else OptionType.PUT
         try:
-            ltp = black_scholes_price(
-                spot=spot,
-                strike=strike,
-                tte_years=tte_years,
-                iv=iv,
-                option_type=model_type,
+            iv_val = implied_volatility(
+                market_price=ltp, spot=spot, strike=strike, tte_years=tte_years, option_type=model_type
             )
-            ltp = max(0.05, round(ltp, 2))
-        except Exception:
-            ltp = 50.0
-
-    calc_greeks = {
-        "delta": 0.5 if opt_type == "CE" else -0.5,
-        "gamma": 0.001,
-        "theta": -10.0,
-        "vega": 15.0,
-    }
-    try:
-        bs_g = greeks(
-            spot=spot,
-            strike=strike,
-            tte_years=tte_years,
-            iv=iv,
-            option_type=model_type,
-        )
-        calc_greeks["delta"] = round(bs_g.get("delta", 0.0), 3)
-        calc_greeks["gamma"] = round(bs_g.get("gamma", 0.0), 5)
-        calc_greeks["theta"] = round(bs_g.get("theta", 0.0), 2)
-        calc_greeks["vega"] = round(bs_g.get("vega", 0.0), 2)
-    except Exception:
-        pass
+            g = bs_greeks(spot=spot, strike=strike, tte_years=tte_years, iv=iv_val, option_type=model_type)
+            delta = round(g.get("delta", 0.0), 3)
+            gamma = round(g.get("gamma", 0.0), 5)
+            theta = round(g.get("theta", 0.0), 2)
+            vega = round(g.get("vega", 0.0), 2)
+        except (IVSolveFailed, Exception):
+            iv_val = None
+            available = False  # could not imply IV from the price -> do not show partial fakes
 
     return {
         "symbol": symbol,
         "strike": strike,
         "expiry": expiry,
         "option_type": opt_type,
-        "ltp": round(float(ltp), 2),
-        "iv": round(float(iv), 4),
-        "oi": oi,
-        "delta": calc_greeks["delta"],
-        "gamma": calc_greeks["gamma"],
-        "theta": calc_greeks["theta"],
-        "vega": calc_greeks["vega"],
-        "spot": round(float(spot), 2),
+        "available": available,
+        "source": "market" if available else "unavailable",
+        "ltp": round(float(ltp), 2) if available else None,
+        "iv": round(float(iv_val), 4) if (available and iv_val) else None,
+        "oi": oi if available else None,
+        "bid": bid if available else None,
+        "ask": ask if available else None,
+        "delta": delta,
+        "gamma": gamma,
+        "theta": theta,
+        "vega": vega,
+        "spot": round(float(spot), 2) if spot else None,
         "days_to_expiry": days_to_expiry,
         "as_of": datetime.now(timezone.utc).isoformat(),
+        "note": None if available else "Live price unavailable (market closed or data gap) — type your price to compute IV & Delta.",
     }
 
 

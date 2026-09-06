@@ -213,10 +213,10 @@ class StrategyComputeResponse(BaseModel):
 
 
 class StrikeQuote(BaseModel):
-    """Quote for an option contract."""
-    ltp: float
-    iv: float
-    oi: int
+    """Quote for an option contract. Null fields mean 'not available' — never faked."""
+    ltp: Optional[float] = None
+    iv: Optional[float] = None
+    oi: Optional[int] = None
 
 
 class StrikeRow(BaseModel):
