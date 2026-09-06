@@ -23,6 +23,7 @@ import { MiniReadinessCardComponent } from '../components/mini-readiness-card.js
 import { MiniPositionsListComponent } from '../components/mini-positions-list.js';
 import { SessionRecapComponent } from '../components/session-recap.js';
 import { OvernightBlockModalComponent } from '../components/overnight-block-modal.js';
+import { ExecutionTicketComponent } from '../components/execution-ticket.js';
 
 export class StrategyBuilderPage {
   constructor(container, options = {}) {
@@ -47,6 +48,7 @@ export class StrategyBuilderPage {
     this.miniPositions = null;
     this.sessionRecap = null;
     this.overnightModal = null;
+    this.executionTicket = null;
 
     this.cronTimer = null;
     this.lastValidationData = null;
@@ -263,6 +265,9 @@ export class StrategyBuilderPage {
 
       <!-- Overnight Naked Auto-Block Modal Mount -->
       <div id="overnight-modal-container"></div>
+
+      <!-- Execution Ticket Modal Mount -->
+      <div id="execution-ticket-container"></div>
     `;
 
     // Hook Back to Home button
@@ -329,15 +334,22 @@ export class StrategyBuilderPage {
       this.validationPanel.render();
     }
 
-    // 5. Execute Row
+    // 5. Execute Row → opens the Execution Ticket (per-leg Market/Limit + price + margin)
     const execMount = this.container.querySelector('#execute-row-mount');
     if (execMount) {
       this.executeRow = new ExecuteRowComponent(execMount, {
-        onExecute: (orderType) => this.handleExecuteAllLegs(orderType),
-        onAIOrder: (orderType) => this.handleAIOrderLegs(orderType),
-        onPreviewSequence: () => this.handleShowPreviewModal(),
+        onExecute: () => this.openExecutionTicket(),
+        onPreviewSequence: () => this.openExecutionTicket(),
       });
       this.executeRow.render(false);
+    }
+
+    // 5b. Execution Ticket modal
+    const ticketMount = this.container.querySelector('#execution-ticket-container');
+    if (ticketMount) {
+      this.executionTicket = new ExecutionTicketComponent(ticketMount, {
+        onConfirm: (legs) => this.confirmExecute(legs),
+      });
     }
 
     // 6. Left Rail Mini Components
@@ -586,66 +598,42 @@ export class StrategyBuilderPage {
     } catch (_) {}
   }
 
-  handleShowPreviewModal() {
-    if (!this.lastPreviewData || !this.lastPreviewData.ordered_legs) {
-      alert('Add at least one leg to preview the execution order.');
-      return;
-    }
-
-    const steps = this.lastPreviewData.ordered_legs.map((s) =>
-      `• Step ${s.sequence}: ${s.direction} ${s.strike} ${s.option_type} (${s.quantity_lots} lot) — Est. Margin: ₹${Math.round(s.estimated_margin_inr).toLocaleString('en-IN')}\n  ${s.action_note}`
-    ).join('\n\n');
-
-    alert(`PRE-ORDER SEQUENCE (BUYS FIRST):\n\n${steps}\n\nTotal Hedged Margin: ₹${Math.round(this.lastPreviewData.final_hedged_margin_inr).toLocaleString('en-IN')}\nMargin Saved vs Unhedged: ₹${Math.round(this.lastPreviewData.margin_saved_inr).toLocaleString('en-IN')}`);
+  openExecutionTicket() {
+    const legs = this.legBuilder?.getLegs() || [];
+    if (!legs.length) return;
+    this.executionTicket?.open({
+      legs,
+      preview: this.lastPreviewData,
+      verdict: this.lastValidationData,
+    });
   }
 
-  async handleAIOrderLegs(orderType) {
-    if (!this.lastPreviewData) {
-      alert('Configure strategy legs before requesting AI margin ordering.');
-      return;
-    }
-
-    const legs = this.legBuilder.getLegs();
-    const buyCount = legs.filter((l) => l.direction?.toLowerCase() === 'buy').length;
-    const sellCount = legs.filter((l) => l.direction?.toLowerCase() === 'sell').length;
-
-    const prompt = `AI, please review my proposed ${this.strategyName} with ${buyCount} buy legs and ${sellCount} sell legs. Order the legs safely for exchange margin benefits and confirm readiness.`;
-
-    if (this.chatSurface) {
-      await this.chatSurface.sendMessage(prompt);
-    }
-  }
-
-  async handleExecuteAllLegs(orderType) {
-    const legs = this.legBuilder.getLegs();
-    if (!legs || legs.length === 0) return;
-
-    try {
-      const payload = {
-        strategy_name: this.strategyName,
-        underlying: 'NIFTY',
-        current_spot: this.currentSpot,
-        order_type: orderType,
-        session_id: this.sessionId,
-        mode: 'paper',
-        legs: legs.map((l) => ({
-          strike: l.strike,
-          option_type: l.option_type,
-          direction: l.direction,
-          quantity_lots: l.quantity_lots || 1,
-          lot_size: l.lot_size || 75,
-          entry_premium: l.entry_premium || 0,
-          expiry_date: l.expiry_date,
-        })),
-      };
-
-      const res = await api.executeMultiLeg(payload);
-      if (res && res.status === 'opened') {
-        alert(`✅ Trade Executed!\n\nPaper Position #${res.position_id.slice(0, 8)} opened successfully in margin-safe sequence (Buys first).\nTrade journal note recorded at: ${res.journal_path}`);
-        await this.refreshPositions();
-      }
-    } catch (err) {
-      alert(`❌ Execution Failed: ${err.message || err}`);
+  async confirmExecute(legs) {
+    const payload = {
+      strategy_name: this.strategyName,
+      underlying: 'NIFTY',
+      current_spot: this.currentSpot,
+      order_type: 'LIMIT',
+      session_id: this.sessionId,
+      mode: 'paper',
+      legs: legs.map((l) => ({
+        strike: l.strike,
+        option_type: l.option_type,
+        direction: l.direction,
+        quantity_lots: l.quantity_lots || 1,
+        lot_size: l.lot_size || 75,
+        entry_premium: l.entry_premium || 0,
+        expiry_date: l.expiry_date,
+        order_type: l.order_type || 'LIMIT',
+      })),
+    };
+    // api.executeMultiLeg throws on failure -> the ticket surfaces the error inline (no alert()).
+    const res = await api.executeMultiLeg(payload);
+    if (res && res.status === 'opened') {
+      await this.refreshPositions();
+      this.executionTicket?.showSuccess(`Position #${res.position_id.slice(0, 8)} opened · journal recorded.`);
+    } else {
+      throw new Error(res?.detail || 'Unexpected response from execution.');
     }
   }
 

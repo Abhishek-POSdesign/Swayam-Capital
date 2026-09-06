@@ -73,29 +73,6 @@ export class ExecuteRowComponent {
 
         <!-- RIGHT: Action Buttons -->
         <div style="display: flex; align-items: center; gap: 10px;">
-          <!-- AI Order Legs Button -->
-          <button
-            type="button"
-            id="btn-ai-order"
-            style="
-              height: 40px;
-              padding: 0 16px;
-              border-radius: 9px;
-              font-size: 0.82rem;
-              font-weight: 700;
-              background: var(--accent-lilac-tint);
-              color: var(--accent-lilac);
-              border: 1px solid rgba(172, 159, 210, 0.4);
-              cursor: pointer;
-              display: flex;
-              align-items: center;
-              gap: 6px;
-              transition: all var(--dur-fast) ease;
-            "
-          >
-            <span>⚡ AI-order the legs</span>
-          </button>
-
           <!-- Execute All Legs Button -->
           <button
             type="button"
@@ -135,15 +112,6 @@ export class ExecuteRowComponent {
       btnPreview.addEventListener('click', () => {
         if (this.options.onPreviewSequence) {
           this.options.onPreviewSequence();
-        }
-      });
-    }
-
-    const btnAI = this.container.querySelector('#btn-ai-order');
-    if (btnAI) {
-      btnAI.addEventListener('click', () => {
-        if (this.options.onAIOrder) {
-          this.options.onAIOrder(this.orderType);
         }
       });
     }

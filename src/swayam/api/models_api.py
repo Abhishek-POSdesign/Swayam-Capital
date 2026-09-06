@@ -16,9 +16,10 @@ class LegRequest(BaseModel):
     option_type: str = Field(..., description="CE or PE")
     direction: str = Field(..., description="buy or sell")
     quantity_lots: int = Field(default=1, ge=1, description="Quantity in lots")
-    entry_premium: float = Field(default=0.0, ge=0.0, description="Option premium per share")
+    entry_premium: float = Field(default=0.0, ge=0.0, description="Option premium per share (limit price for a LIMIT leg; the fill for paper)")
     expiry_date: str = Field(..., description="Expiration date in YYYY-MM-DD format")
     lot_size: int = Field(default=75, ge=1, description="Underlying lot size")
+    order_type: str = Field(default="LIMIT", description="Per-leg order type: LIMIT or MARKET (chosen at the execution ticket; maps to FYERS multi-leg legs in Phase 2)")
 
     @field_validator("option_type")
     @classmethod
