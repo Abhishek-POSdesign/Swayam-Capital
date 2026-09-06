@@ -82,7 +82,7 @@ export class AIChatPanel {
           </div>
           <div class="ai-panel__header-right">
             <div class="ai-model-wrap" style="position: relative;">
-              <button class="ai-model-pill" id="ai-model-pill" title="Model">☁ Cloud · Gemini ▾</button>
+              <button class="ai-model-pill" id="ai-model-pill" title="Model: Cloud (Gemini)">☁ Gemini ▾</button>
               <div class="ai-model-menu" id="ai-model-menu" style="display:none;">
                 <div class="ai-model-menu__label">Model</div>
                 <button class="ai-model-opt ai-model-opt--sel" type="button">☁ Cloud (Gemini)<span class="ai-model-opt__check">✓</span></button>
@@ -794,17 +794,22 @@ export class AIChatPanel {
         background: var(--dl-rail);
         flex-shrink: 0;
       }
-      .ai-panel__header-left { display: flex; align-items: center; gap: 6px; }
-      .ai-panel__header-right { display: flex; align-items: center; gap: 4px; }
+      .ai-panel__header { flex-wrap: nowrap; overflow: hidden; }
+      /* Left side shrinks (title/convo-title truncate) so the right-side controls —
+         including the ⚙ settings gear — are NEVER pushed off the 370px panel edge.
+         (Bug: a past chat's conversation title used to shove the gear off-screen.) */
+      .ai-panel__header-left { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; overflow: hidden; }
+      .ai-panel__header-right { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
       .ai-panel__icon { font-size: 16px; color: var(--accent-blue); }
-      .ai-panel__title { font-weight: 600; font-size: 14px; color: var(--dl-fg); }
+      .ai-panel__title { font-weight: 600; font-size: 14px; color: var(--dl-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
       .ai-panel__conv-title {
         font-size: 11px;
         color: var(--dl-fg-3);
-        max-width: 120px;
+        max-width: 84px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        flex-shrink: 1;
       }
       .ai-panel__body {
         flex: 1;
