@@ -137,9 +137,9 @@ export class PresetBarComponent {
               border-radius: var(--radius-pill);
               font-size: 0.8rem;
               font-weight: 600;
-              background: var(--accent-lilac-tint);
-              color: var(--accent-lilac);
-              border: 1px solid rgba(172, 159, 210, 0.35);
+              background: var(--accent-blue-tint);
+              color: var(--accent-blue);
+              border: 1px solid rgba(117, 154, 208, 0.35);
               cursor: pointer;
               transition: transform var(--dur-fast) ease;
             "

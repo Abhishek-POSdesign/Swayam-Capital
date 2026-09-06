@@ -46,7 +46,7 @@ function updateButtonUI(btn, state) {
 
   if (state === 'loading') {
     btn.innerHTML = `
-      <svg class="tts-waveform-anim" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-lilac); animation: tts-pulse 1s infinite alternate;">
+      <svg class="tts-waveform-anim" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-blue); animation: tts-pulse 1s infinite alternate;">
         <line x1="6" y1="9" x2="6" y2="15"></line>
         <line x1="12" y1="5" x2="12" y2="19"></line>
         <line x1="18" y1="8" x2="18" y2="16"></line>
@@ -55,7 +55,7 @@ function updateButtonUI(btn, state) {
     btn.title = 'Generating audio...';
   } else if (state === 'playing') {
     btn.innerHTML = `
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-lilac);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-blue);">
         <rect x="6" y="4" width="4" height="16" fill="currentColor"></rect>
         <rect x="14" y="4" width="4" height="16" fill="currentColor"></rect>
       </svg>
@@ -191,7 +191,7 @@ export function createTTSButton(textProvider) {
   updateButtonUI(btn, 'idle');
 
   btn.addEventListener('mouseenter', () => {
-    btn.style.background = 'var(--accent-lilac-tint, rgba(172, 159, 210, 0.14))';
+    btn.style.background = 'var(--accent-blue-tint, rgba(117, 154, 208, 0.14))';
   });
   btn.addEventListener('mouseleave', () => {
     btn.style.background = 'transparent';

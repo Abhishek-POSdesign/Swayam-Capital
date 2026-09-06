@@ -80,7 +80,7 @@ export class LessonEditorModal {
             <button type="button" id="btn-cancel-lesson" style="background: transparent; border: 1px solid var(--dl-line); color: var(--dl-fg-2); border-radius: 4px; padding: 6px 14px; font-size: 0.8rem; cursor: pointer;">
               Cancel
             </button>
-            <button type="button" id="btn-save-lesson" style="background: var(--accent-lilac); border: none; color: #101116; font-weight: 600; border-radius: 4px; padding: 6px 16px; font-size: 0.8rem; cursor: pointer;">
+            <button type="button" id="btn-save-lesson" style="background: var(--accent-blue); border: none; color: #101116; font-weight: 600; border-radius: 4px; padding: 6px 16px; font-size: 0.8rem; cursor: pointer;">
               Save Refined Lesson
             </button>
           </div>

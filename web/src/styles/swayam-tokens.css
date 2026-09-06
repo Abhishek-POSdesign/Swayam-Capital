@@ -32,10 +32,12 @@
   --accent-blue-tint-hover: rgba(117, 154, 208, 0.32);
   --dl-task: #c3dcff;  --dl-task-on: #0f4680;  --dl-task-mark: #c3dcff;
 
-  --accent-lilac: #ac9fd2;
-  --accent-lilac-tint: rgba(172, 159, 210, 0.17);
-  --accent-lilac-tint-hover: rgba(172, 159, 210, 0.32);
-  --dl-project: #d8ccff;  --dl-project-on: #4a2a8a;  --dl-project-mark: #d8ccff;
+  /* Purple/lilac removed per Abhishek's standing directive — these alias BLUE so every
+     component that still references --accent-lilac renders blue, never purple. */
+  --accent-lilac: var(--accent-blue);
+  --accent-lilac-tint: var(--accent-blue-tint);
+  --accent-lilac-tint-hover: var(--accent-blue-tint-hover);
+  --dl-project: var(--dl-task);  --dl-project-on: var(--dl-task-on);  --dl-project-mark: var(--dl-task-mark);
 
   --accent-coral: #dd8170;
   --accent-coral-tint: rgba(221, 129, 112, 0.17);
@@ -105,10 +107,11 @@
   --accent-blue-tint-hover: rgba(37, 99, 235, 0.22);
   --dl-task: #dbeafe;  --dl-task-on: #1e3a8a;  --dl-task-mark: #2563eb;
 
-  --accent-lilac: #7c3aed;
-  --accent-lilac-tint: rgba(124, 58, 237, 0.12);
-  --accent-lilac-tint-hover: rgba(124, 58, 237, 0.22);
-  --dl-project: #ede9fe;  --dl-project-on: #4c1d95;  --dl-project-mark: #7c3aed;
+  /* Purple/lilac removed — alias BLUE (light theme). */
+  --accent-lilac: var(--accent-blue);
+  --accent-lilac-tint: var(--accent-blue-tint);
+  --accent-lilac-tint-hover: var(--accent-blue-tint-hover);
+  --dl-project: var(--dl-task);  --dl-project-on: var(--dl-task-on);  --dl-project-mark: var(--dl-task-mark);
 
   --accent-coral: #dc2626;
   --accent-coral-tint: rgba(220, 38, 38, 0.12);
@@ -143,7 +146,7 @@
     --dl-track: #e2e8f0;  --dl-ink-tile: #0f172a;
     --accent-sage: #15803d;  --accent-sage-tint: rgba(21, 128, 61, 0.12);
     --accent-blue: #2563eb;  --accent-blue-tint: rgba(37, 99, 235, 0.12);
-    --accent-lilac: #7c3aed;  --accent-lilac-tint: rgba(124, 58, 237, 0.12);
+    --accent-lilac: var(--accent-blue);  --accent-lilac-tint: var(--accent-blue-tint);
     --accent-coral: #dc2626;  --accent-coral-tint: rgba(220, 38, 38, 0.12);
     --accent-amber: #d97706;  --accent-amber-tint: rgba(217, 119, 6, 0.12);
     --dl-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 6px 16px rgba(0, 0, 0, 0.04);
@@ -438,8 +441,8 @@ body {
 }
 
 :root[data-theme="light"] #payoff-greeks-strip {
-  background: rgba(124, 58, 237, 0.04);
-  border-color: rgba(124, 58, 237, 0.18);
+  background: rgba(37, 99, 235, 0.04);
+  border-color: rgba(37, 99, 235, 0.18);
 }
 
 :root[data-theme="light"] .rule-validation-panel {
@@ -474,8 +477,8 @@ body {
 }
 
 :root[data-theme="light"] .kpi-card:nth-child(3) {
-  background: rgba(124, 58, 237, 0.04);
-  border-color: rgba(124, 58, 237, 0.18);
+  background: rgba(37, 99, 235, 0.04);
+  border-color: rgba(37, 99, 235, 0.18);
 }
 
 :root[data-theme="light"] .kpi-card:nth-child(4) {
@@ -526,13 +529,13 @@ body {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--accent-lilac);
+  background: var(--accent-blue);
   color: #101116;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 16px rgba(172, 159, 210, 0.4);
+  box-shadow: 0 0 16px rgba(117, 154, 208, 0.4);
   cursor: pointer;
   z-index: 999;
   transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
@@ -540,11 +543,11 @@ body {
 
 .ai-floating-launcher:hover {
   transform: scale(1.08);
-  box-shadow: 0 0 24px rgba(172, 159, 210, 0.6);
+  box-shadow: 0 0 24px rgba(117, 154, 208, 0.6);
 }
 
 /* Range Slider Primitives (Sensibull-pattern) */
-input[type="range"].swayam-slider-lilac,
+input[type="range"].swayam-slider-blue,
 input[type="range"].swayam-slider-amber {
   -webkit-appearance: none;
   appearance: none;
@@ -555,13 +558,13 @@ input[type="range"].swayam-slider-amber {
   transition: background var(--dur-fast) ease;
 }
 
-input[type="range"].swayam-slider-lilac::-webkit-slider-thumb {
+input[type="range"].swayam-slider-blue::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--accent-lilac);
+  background: var(--accent-blue);
   cursor: pointer;
   border: 2px solid var(--dl-card);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);

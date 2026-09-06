@@ -77,7 +77,7 @@ header {
   font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: var(--accent-lilac);
+  color: var(--accent-blue);
 }
 
 .header-spot {
@@ -238,7 +238,7 @@ select, input {
 
 select:focus, input:focus {
   outline: none;
-  border-color: var(--accent-lilac);
+  border-color: var(--accent-blue);
 }
 
 /* Legs Table */
@@ -289,9 +289,9 @@ td {
 }
 
 .badge-pe {
-  background-color: var(--accent-lilac-tint);
-  color: var(--dl-project);
-  border: 1px solid var(--accent-lilac);
+  background-color: var(--accent-blue-tint);
+  color: var(--dl-task);
+  border: 1px solid var(--accent-blue);
 }
 
 .badge-buy {
@@ -458,7 +458,7 @@ td {
 .toast {
   background-color: var(--bg-elevated);
   color: var(--text-primary);
-  border: 1px solid var(--accent-lilac);
+  border: 1px solid var(--accent-blue);
   padding: 0.75rem 1.25rem;
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);

@@ -117,7 +117,7 @@ export class TradesTableComponent {
             </div>
           </td>
           <td style="padding: 10px 12px; text-align: center; font-family: var(--font-mono, monospace); font-size: 0.76rem;">
-            <div style="color: var(--accent-lilac); font-weight: 600;">
+            <div style="color: var(--accent-blue); font-weight: 600;">
               ${t.rr_actual != null ? `1 : ${t.rr_actual.toFixed(2)}` : '—'}
             </div>
             <div style="font-size: 0.68rem; color: var(--dl-fg-3);">
@@ -245,7 +245,7 @@ export class TradesTableComponent {
                 `}
                 ${t.journal_path ? `
                   <div style="margin-top: 6px; font-size: 0.72rem; color: var(--dl-fg-3); font-family: var(--font-mono, monospace);">
-                    Obsidian Vault: <span style="color: var(--accent-lilac);">${t.journal_path}</span>
+                    Obsidian Vault: <span style="color: var(--accent-blue);">${t.journal_path}</span>
                   </div>
                 ` : ''}
               </div>
@@ -258,11 +258,11 @@ export class TradesTableComponent {
                   <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dl-fg-3); font-weight: 600;">
                     💡 Lesson Ledger
                   </span>
-                  <span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.06); color: var(--accent-lilac); font-weight: 600;">
+                  <span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.06); color: var(--accent-blue); font-weight: 600;">
                     ${isUserEdited ? 'Refined by Abhishek' : 'AI Trading Partner'}
                   </span>
                 </div>
-                <p style="margin: 0; font-size: 0.8rem; line-height: 1.4; color: var(--dl-fg); font-style: italic; border-left: 2px solid var(--accent-lilac); padding-left: 10px;">
+                <p style="margin: 0; font-size: 0.8rem; line-height: 1.4; color: var(--dl-fg); font-style: italic; border-left: 2px solid var(--accent-blue); padding-left: 10px;">
                   "${lessonText}"
                 </p>
               </div>
@@ -272,7 +272,7 @@ export class TradesTableComponent {
                     ✏️ Refine Lesson
                   </button>
                 ` : `
-                  <button type="button" class="btn-generate-lesson" data-pos-id="${t.position_id}" style="background: var(--accent-lilac); border: none; color: #101116; font-weight: 600; border-radius: 4px; padding: 4px 10px; font-size: 0.72rem; cursor: pointer;">
+                  <button type="button" class="btn-generate-lesson" data-pos-id="${t.position_id}" style="background: var(--accent-blue); border: none; color: #101116; font-weight: 600; border-radius: 4px; padding: 4px 10px; font-size: 0.72rem; cursor: pointer;">
                     ✨ Generate AI Lesson
                   </button>
                 `}

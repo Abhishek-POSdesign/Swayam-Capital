@@ -198,7 +198,7 @@ export class PayoffChartComponent {
               step="1"
               value="${this.timeSliderVal}"
               id="payoff-time-slider"
-              class="swayam-slider-lilac"
+              class="swayam-slider-blue"
               style="width: 100%; cursor: pointer;"
             />
             <div id="payoff-time-ticks" style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-mono); padding: 0 2px;">

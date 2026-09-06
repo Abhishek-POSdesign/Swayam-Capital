@@ -29,10 +29,10 @@ export class SessionRecapComponent {
           line-height: 1.4;
         ">
           <div style="display: flex; align-items: center; gap: 6px;">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="var(--accent-lilac)">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="var(--accent-blue)">
               <path d="M8 0L9.8 6.2L16 8L9.8 9.8L8 16L6.2 9.8L0 8L6.2 6.2L8 0Z"/>
             </svg>
-            <span class="eyebrow" style="color: var(--accent-lilac);">TODAY'S SESSION RECAP</span>
+            <span class="eyebrow" style="color: var(--accent-blue);">TODAY'S SESSION RECAP</span>
           </div>
           <div style="color: var(--dl-fg-3); font-size: 0.75rem; margin-top: 2px;">
             No prior session context yet. Start a chat with your AI Trading Partner on Home,
@@ -61,10 +61,10 @@ export class SessionRecapComponent {
       ">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <div style="display: flex; align-items: center; gap: 6px;">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="var(--accent-lilac)">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="var(--accent-blue)">
               <path d="M8 0L9.8 6.2L16 8L9.8 9.8L8 16L6.2 9.8L0 8L6.2 6.2L8 0Z"/>
             </svg>
-            <span class="eyebrow" style="color: var(--accent-lilac);">HOME SESSION RECAP</span>
+            <span class="eyebrow" style="color: var(--accent-blue);">HOME SESSION RECAP</span>
           </div>
           <span style="font-size: 0.68rem; color: var(--dl-fg-3); font-family: var(--font-mono);">CONTINUOUS</span>
         </div>
