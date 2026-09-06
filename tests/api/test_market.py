@@ -114,9 +114,11 @@ def test_get_vix_history_returns_percentiles(mocker) -> None:
     assert len(data["history_60d"]["values"]) == 25
 
 
-def test_get_vix_history_baseline_fallback(mocker) -> None:
+def test_get_vix_history_unavailable_when_no_real_rows(mocker) -> None:
+    """No-fake-numbers law: too few real bhavcopy rows must fail loudly (503), never synthesize
+    a baseline VIX curve dressed up as live data."""
     mock_table = mocker.MagicMock()
-    # Return empty rows to trigger baseline fallback
+    # Return empty rows — previously this synthesized a fake baseline series; now it must 503.
     mock_table.select.return_value.gte.return_value.order.return_value.execute.return_value.data = []
     mocker.patch("swayam.api.routes.market.db.client.table", return_value=mock_table)
 
@@ -124,7 +126,5 @@ def test_get_vix_history_baseline_fallback(mocker) -> None:
     _vix_cache["data"] = None
 
     response = client.get("/api/market/vix/history?days=60")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["current"] > 0
-    assert len(data["history_60d"]["values"]) == 60
+    assert response.status_code == 503
+    assert "unavailable" in response.json()["detail"].lower()

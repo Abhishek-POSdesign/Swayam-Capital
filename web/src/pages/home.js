@@ -290,7 +290,7 @@ export class HomePage {
     // 7. India VIX — own row with percentile band
     const vixContainer = this.container.querySelector('#home-vix-container');
     this.vixComponent = new VixCardComponent(vixContainer);
-    this.vixComponent.render();
+    this.vixComponent.renderUnavailable('Loading India VIX…');
 
     // 8. Macro Events — dual source with click-to-expand impact brief
     const macroContainer = this.container.querySelector('#home-macro-container');
@@ -352,7 +352,11 @@ export class HomePage {
         this.vixComponent.render(vixData);
       }
     } catch (err) {
-      console.warn('Could not load VIX history, using defaults:', err);
+      console.warn('Could not load VIX history:', err);
+      // No fakes: show an explicit unavailable state rather than placeholder numbers.
+      if (this.vixComponent) {
+        this.vixComponent.renderUnavailable('VIX history unavailable — service unreachable.');
+      }
     }
   }
 

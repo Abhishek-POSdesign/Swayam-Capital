@@ -37,13 +37,25 @@ describe('Home Page & Subsystem Composition', () => {
     expect(container.textContent).toContain('BRENT');
   });
 
-  it('renders VixCardComponent with 20-day value and sparkline', () => {
+  it('renders the compact VixCardComponent with the real value, regime, and sparkline', () => {
     const vix = new VixCardComponent(container);
     vix.render({ value: 12.85, regime: 'Low Vol Regime', sparkline_20d: [13, 12.8, 12.85] });
 
-    expect(container.textContent).toContain('INDIA VIX · 20-DAY');
+    expect(container.textContent).toContain('INDIA VIX');
     expect(container.textContent).toContain('12.85');
     expect(container.textContent).toContain('Low Vol Regime');
+    // day change computed from the real series (12.85 vs prior 12.8 → +0.05)
+    expect(container.textContent).toContain('+0.05');
+    expect(container.querySelector('svg')).not.toBeNull(); // sparkline
+  });
+
+  it('renders an honest unavailable state when there is no real VIX value (no fakes)', () => {
+    const vix = new VixCardComponent(container);
+    vix.render(null);
+
+    expect(container.textContent).toContain('INDIA VIX');
+    expect(container.textContent).toContain('—');
+    expect(container.textContent.toLowerCase()).toContain('unavailable');
   });
 
   it('renders MacroEventsCardComponent with upcoming central bank dates', () => {
