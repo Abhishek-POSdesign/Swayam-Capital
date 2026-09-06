@@ -16,6 +16,7 @@ from fastapi import APIRouter, HTTPException, Query
 from swayam.api.models_api import OptionChainResponse, StrikeQuote, StrikeRow
 from swayam.fyers_client import fyers_client
 from swayam.db import db
+from swayam.services.expiry import get_expiry_metadata
 import logging
 
 logger = logging.getLogger(__name__)
@@ -237,6 +238,42 @@ def get_option_quote(
         "days_to_expiry": days_to_expiry,
         "as_of": datetime.now(timezone.utc).isoformat(),
         "note": None if available else "Live price unavailable (market closed or data gap) — type your price to compute IV & Delta.",
+    }
+
+
+@router.get("/api/market/expiries")
+def get_expiries() -> dict[str, Any]:
+    """Returns the real upcoming NIFTY expiries (Tuesday-migrated, holiday-adjusted) for the
+    per-leg expiry dropdown. Sourced from the FYERS contract master with disk-cache + computed
+    fallback, so it works off-hours. Each item carries a human label and weekly/monthly flags.
+    """
+    try:
+        meta = get_expiry_metadata()
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Expiry metadata unavailable: {e}") from e
+
+    today = date.today()
+    items: list[dict[str, Any]] = []
+    for iso in meta.get("upcoming_expiries", []):
+        try:
+            d = date.fromisoformat(iso)
+        except ValueError:
+            continue
+        cal = (d - today).days
+        items.append(
+            {
+                "date": iso,
+                "calendar_days": cal,
+                "label": f"{d.strftime('%d %b')} ({cal}d)",
+                "is_weekly": iso == meta.get("weekly_expiry"),
+                "is_monthly": iso == meta.get("monthly_expiry"),
+            }
+        )
+
+    return {
+        "expiries": items,
+        "weekly_expiry": meta.get("weekly_expiry"),
+        "monthly_expiry": meta.get("monthly_expiry"),
     }
 
 
