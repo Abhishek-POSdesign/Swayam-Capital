@@ -12,8 +12,21 @@
  */
 
 import { openImageModal } from './chat-surface.js';
+import {
+  createTTSButton,
+  playText,
+  stopCurrentPlayback,
+  getTTSPreferences,
+  setTTSPreferences,
+} from './tts-player.js';
 
 const API_BASE = '';
+
+// The voices the TTS backend actually supports (src/swayam/ai/tts.py). No fake options.
+const VOICE_OPTIONS = [
+  { id: 'swayam_calm', label: 'Swayam Calm', lang: 'Indian English · male' },
+  { id: 'swayam_warm', label: 'Swayam Warm', lang: 'Indian English · female' },
+];
 
 const STARTER_PROMPTS = [
   "Walk me through today's market open — what's setting up?",
@@ -49,6 +62,7 @@ export class AIChatPanel {
     this.isCollapsed = false;
     this.currentEventSource = null;
     this.pendingImage = null;
+    this.showingSettings = false;
   }
 
   async init() {
@@ -67,8 +81,17 @@ export class AIChatPanel {
             <span class="ai-panel__conv-title" id="ai-conv-title"></span>
           </div>
           <div class="ai-panel__header-right">
+            <div class="ai-model-wrap" style="position: relative;">
+              <button class="ai-model-pill" id="ai-model-pill" title="Model">☁ Cloud · Gemini ▾</button>
+              <div class="ai-model-menu" id="ai-model-menu" style="display:none;">
+                <div class="ai-model-menu__label">Model</div>
+                <button class="ai-model-opt ai-model-opt--sel" type="button">☁ Cloud (Gemini)<span class="ai-model-opt__check">✓</span></button>
+                <div class="ai-model-menu__note">Swayam runs one cloud model (Vertex AI · Gemini). No local model configured.</div>
+              </div>
+            </div>
             <button class="ai-btn ai-btn--sm" id="ai-btn-new" title="New conversation">+ New</button>
             <button class="ai-btn ai-btn--sm" id="ai-btn-history" title="Conversation history">History</button>
+            <button class="ai-icon-btn" id="ai-btn-settings" title="Voice &amp; AI settings" aria-label="Settings">⚙</button>
             <button class="ai-btn ai-btn--ghost" id="ai-btn-collapse" title="Collapse">❯</button>
           </div>
         </div>
@@ -113,6 +136,15 @@ export class AIChatPanel {
         <div class="ai-panel__footer" id="ai-footer">
           <span id="ai-cost-display">Loading usage...</span>
         </div>
+
+        <!-- Settings sub-view (voice + AI), overlays the panel when open -->
+        <div class="ai-settings-view" id="ai-settings-view" style="display:none;">
+          <div class="ai-settings-view__bar">
+            <button class="ai-icon-btn" id="ai-settings-back" title="Back to chat" aria-label="Back">←</button>
+            <span class="ai-settings-view__title">Voice &amp; AI settings</span>
+          </div>
+          <div class="ai-settings-view__body" id="ai-settings-body"></div>
+        </div>
       </div>
 
       <!-- History drawer -->
@@ -139,6 +171,23 @@ export class AIChatPanel {
     // History drawer
     document.getElementById('ai-btn-history').addEventListener('click', () => this._openHistory());
     document.getElementById('ai-history-close').addEventListener('click', () => this._closeHistory());
+
+    // Settings sub-view (voice + AI)
+    document.getElementById('ai-btn-settings').addEventListener('click', () => this._openSettings());
+    document.getElementById('ai-settings-back').addEventListener('click', () => this._closeSettings());
+
+    // Model pill menu (honest: one cloud model)
+    const modelPill = document.getElementById('ai-model-pill');
+    const modelMenu = document.getElementById('ai-model-menu');
+    if (modelPill && modelMenu) {
+      modelPill.addEventListener('click', (e) => {
+        e.stopPropagation();
+        modelMenu.style.display = modelMenu.style.display === 'none' ? 'block' : 'none';
+      });
+      document.addEventListener('click', (e) => {
+        if (!modelMenu.contains(e.target) && e.target !== modelPill) modelMenu.style.display = 'none';
+      });
+    }
 
     // Attachment upload button and file input
     const uploadBtn = document.getElementById('ai-btn-upload');
@@ -324,6 +373,9 @@ export class AIChatPanel {
     }
 
     div.appendChild(inner);
+    if (role === 'assistant' && !isStreaming && content) {
+      this._addAssistantMeta(div, content);
+    }
     container.appendChild(div);
     this._scrollToBottom();
     return inner; // Return inner for streaming delta appends
@@ -354,11 +406,12 @@ export class AIChatPanel {
     const imageToUpload = this.pendingImage;
     if ((!content && !imageToUpload) || !this.conversationId) return;
 
-    // Abort any in-progress stream
+    // Abort any in-progress stream + stop any voice playback
     if (this.currentEventSource) {
       this.currentEventSource.close();
       this.currentEventSource = null;
     }
+    stopCurrentPlayback();
 
     let localAttachmentUrl = null;
     if (imageToUpload) {
@@ -460,6 +513,14 @@ export class AIChatPanel {
       const cursor = inner.querySelector('.ai-typing');
       if (cursor) cursor.remove();
       document.getElementById('ai-streaming-msg')?.removeAttribute('id');
+      // Add model tag + Play/Save to the finished reply; auto-play it if Voice replies is on.
+      if (fullText && fullText.trim()) {
+        this._addAssistantMeta(assistantDiv, fullText);
+        if (getTTSPreferences().autoPlay) {
+          const playBtn = assistantDiv.querySelector('.ai-msg-action-icon');
+          playText(fullText, playBtn || null);
+        }
+      }
       textarea.disabled = false;
       document.getElementById('ai-btn-send').disabled = false;
       textarea.focus();
@@ -537,6 +598,158 @@ export class AIChatPanel {
 
   _closeHistory() {
     document.getElementById('ai-history-drawer').style.display = 'none';
+  }
+
+  // ---- Settings sub-view (voice replies + Indian voice + speaking speed) ----
+
+  _openSettings() {
+    this.showingSettings = true;
+    this._renderSettingsBody();
+    const v = document.getElementById('ai-settings-view');
+    if (v) v.style.display = 'flex';
+  }
+
+  _closeSettings() {
+    this.showingSettings = false;
+    const v = document.getElementById('ai-settings-view');
+    if (v) v.style.display = 'none';
+  }
+
+  _renderSettingsBody() {
+    const body = document.getElementById('ai-settings-body');
+    if (!body) return;
+    const { voice, rate, autoPlay } = getTTSPreferences();
+
+    body.innerHTML = `
+      <div class="ai-set-block">
+        <div class="ai-set-label">Voice</div>
+
+        <div class="ai-set-row" id="ai-set-voicereply-row">
+          <div>
+            <div class="ai-set-row__title">Voice replies</div>
+            <div class="ai-set-row__sub">Read Trading Partner's answers aloud automatically</div>
+          </div>
+          <button type="button" role="switch" aria-checked="${autoPlay ? 'true' : 'false'}"
+            class="ai-switch ${autoPlay ? '' : 'ai-switch--off'}" id="ai-set-voicereply"></button>
+        </div>
+
+        <div class="ai-set-field">
+          <label for="ai-set-voice">Voice</label>
+          <select id="ai-set-voice" class="ai-set-select">
+            ${VOICE_OPTIONS.map(
+              (o) =>
+                `<option value="${o.id}" ${o.id === voice ? 'selected' : ''}>${o.label} — ${o.lang}</option>`
+            ).join('')}
+          </select>
+        </div>
+
+        <div class="ai-set-field">
+          <div class="ai-set-slider-head">
+            <label for="ai-set-rate">Speaking speed</label>
+            <span class="ai-set-rate-val" id="ai-set-rate-val">${Number(rate).toFixed(2)}×</span>
+          </div>
+          <input type="range" id="ai-set-rate" class="ai-set-range" min="0.75" max="1.5" step="0.05" value="${rate}" />
+          <div class="ai-set-scale"><span>0.75×</span><span>1.0×</span><span>1.5×</span></div>
+          <button type="button" class="ai-set-preview" id="ai-set-preview">▸ Preview voice</button>
+        </div>
+      </div>
+
+      <div class="ai-set-block">
+        <div class="ai-set-label">Model</div>
+        <div class="ai-set-row">
+          <div>
+            <div class="ai-set-row__title">Cloud (Gemini)</div>
+            <div class="ai-set-row__sub">Vertex AI · Gemini — the one model Swayam runs</div>
+          </div>
+          <span class="ai-set-badge">Active</span>
+        </div>
+      </div>
+    `;
+
+    // Voice replies toggle
+    const toggle = document.getElementById('ai-set-voicereply');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        const next = toggle.classList.contains('ai-switch--off');
+        toggle.classList.toggle('ai-switch--off', !next);
+        toggle.setAttribute('aria-checked', next ? 'true' : 'false');
+        setTTSPreferences({ autoPlay: next });
+      });
+    }
+
+    // Voice selection
+    const sel = document.getElementById('ai-set-voice');
+    if (sel) sel.addEventListener('change', (e) => setTTSPreferences({ voice: e.target.value }));
+
+    // Speaking rate
+    const rateInput = document.getElementById('ai-set-rate');
+    const rateVal = document.getElementById('ai-set-rate-val');
+    if (rateInput) {
+      rateInput.addEventListener('input', (e) => {
+        const r = parseFloat(e.target.value);
+        if (rateVal) rateVal.textContent = `${r.toFixed(2)}×`;
+        setTTSPreferences({ rate: r });
+      });
+    }
+
+    // Preview
+    const preview = document.getElementById('ai-set-preview');
+    if (preview) {
+      preview.addEventListener('click', () =>
+        playText('This is your Trading Partner. I will read your answers aloud at this speed.', preview)
+      );
+    }
+  }
+
+  /** Append the model tag + Play + Save controls under an assistant message. */
+  _addAssistantMeta(msgDiv, text) {
+    if (!msgDiv || !text || !text.trim()) return;
+    if (msgDiv.querySelector('.ai-msg-meta')) return;
+
+    const meta = document.createElement('div');
+    meta.className = 'ai-msg-meta';
+
+    const tag = document.createElement('span');
+    tag.className = 'ai-msg-model';
+    tag.textContent = 'Cloud · Gemini';
+
+    const actions = document.createElement('div');
+    actions.className = 'ai-msg-actions';
+
+    const playBtn = createTTSButton(() => text);
+    playBtn.classList.add('ai-msg-action-icon');
+
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'ai-msg-action';
+    saveBtn.innerHTML = '<span aria-hidden="true">⤓</span> Save';
+    saveBtn.title = 'Save to memory';
+    saveBtn.addEventListener('click', () => this._saveToNotebook(text, saveBtn));
+
+    actions.appendChild(playBtn);
+    actions.appendChild(saveBtn);
+    meta.appendChild(tag);
+    meta.appendChild(actions);
+    msgDiv.appendChild(meta);
+  }
+
+  async _saveToNotebook(text, btn) {
+    try {
+      const resp = await fetch(`${API_BASE}/api/ai/notebook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entry_text: text, source_conversation_id: this.conversationId }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      if (btn) {
+        btn.innerHTML = '<span aria-hidden="true">✓</span> Saved';
+        btn.classList.add('saved');
+        btn.disabled = true;
+      }
+    } catch (err) {
+      if (btn) btn.title = `Save failed: ${err.message}`;
+      this._showError(`Could not save to memory: ${err.message}`);
+    }
   }
 
   _showError(msg) {
@@ -787,6 +1000,116 @@ export class AIChatPanel {
       .ai-history-item--active { border-left: 3px solid var(--accent-blue); padding-left: 11px; color: var(--dl-fg); font-weight: 600; }
       .ai-history-item--empty, .ai-history-item--error { color: var(--dl-fg-3); cursor: default; }
       .ai-history-item--error { color: var(--accent-coral); }
+
+      /* Header: settings gear + model pill */
+      .ai-panel { position: relative; }
+      .ai-icon-btn {
+        width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent;
+        color: var(--dl-fg-3); cursor: pointer; font-size: 15px; display: flex;
+        align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s;
+      }
+      .ai-icon-btn:hover { color: var(--dl-fg); background: var(--dl-card-2); }
+      .ai-model-pill {
+        background: var(--dl-card-2); border: 1px solid var(--dl-line); color: var(--dl-fg-2);
+        font-family: inherit; font-size: 10.5px; font-weight: 600; padding: 4px 8px;
+        border-radius: 999px; cursor: pointer; white-space: nowrap;
+      }
+      .ai-model-pill:hover { color: var(--dl-fg); border-color: var(--dl-fg-3); }
+      .ai-model-menu {
+        position: absolute; top: calc(100% + 6px); right: 0; z-index: 120;
+        background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: 10px;
+        box-shadow: var(--dl-shadow); padding: 6px; min-width: 210px;
+      }
+      .ai-model-menu__label {
+        font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+        color: var(--dl-fg-3); padding: 4px 8px 6px;
+      }
+      .ai-model-opt {
+        display: flex; align-items: center; justify-content: space-between; width: 100%;
+        background: none; border: 0; font-family: inherit; font-size: 12.5px; color: var(--dl-fg);
+        padding: 8px 9px; border-radius: 7px; cursor: pointer;
+      }
+      .ai-model-opt--sel { color: var(--accent-blue); font-weight: 600; }
+      .ai-model-opt__check { color: var(--accent-blue); }
+      .ai-model-menu__note { font-size: 10.5px; color: var(--dl-fg-3); padding: 6px 9px 3px; line-height: 1.4; }
+
+      /* Assistant message meta row: model tag + Play/Save */
+      .ai-message--assistant { flex-direction: column; align-items: flex-start; }
+      .ai-msg-meta {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        margin-top: 3px; padding: 0 2px; width: 100%;
+      }
+      .ai-msg-model {
+        font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--dl-fg-3); opacity: 0.75;
+      }
+      .ai-msg-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+      .ai-msg-action {
+        background: none; border: 0; color: var(--dl-fg-3); font-family: inherit;
+        font-size: 12px; font-weight: 500; cursor: pointer; display: inline-flex;
+        align-items: center; gap: 4px; padding: 2px 4px; border-radius: 5px;
+      }
+      .ai-msg-action:hover { color: var(--accent-blue); }
+      .ai-msg-action.saved { color: var(--accent-sage); cursor: default; }
+      .ai-msg-action:disabled { cursor: default; }
+
+      /* Settings sub-view */
+      .ai-settings-view {
+        position: absolute; inset: 0; z-index: 130; background: var(--dl-card);
+        display: flex; flex-direction: column;
+      }
+      .ai-settings-view__bar {
+        display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+        border-bottom: 1px solid var(--dl-line); background: var(--dl-rail); flex-shrink: 0;
+      }
+      .ai-settings-view__title { font-size: 13px; font-weight: 600; color: var(--dl-fg); }
+      .ai-settings-view__body {
+        flex: 1; overflow-y: auto; padding: 16px 14px; display: flex; flex-direction: column; gap: 18px;
+      }
+      .ai-set-block { display: flex; flex-direction: column; gap: 10px; }
+      .ai-set-label {
+        font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+        color: var(--dl-fg-3);
+      }
+      .ai-set-row {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        background: var(--dl-card-2); border: 1px solid var(--dl-line); border-radius: 9px; padding: 11px 13px;
+      }
+      .ai-set-row__title { font-size: 13px; color: var(--dl-fg); }
+      .ai-set-row__sub { font-size: 11px; color: var(--dl-fg-3); margin-top: 2px; line-height: 1.4; }
+      .ai-set-badge {
+        font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+        color: var(--accent-sage); background: var(--accent-sage-tint); padding: 3px 9px; border-radius: 999px;
+      }
+      .ai-switch {
+        width: 38px; height: 22px; border-radius: 999px; background: var(--accent-blue);
+        position: relative; flex-shrink: 0; cursor: pointer; border: none; padding: 0; transition: background 0.15s;
+      }
+      .ai-switch::after {
+        content: ""; position: absolute; top: 2px; left: 18px; width: 18px; height: 18px;
+        border-radius: 50%; background: #fff; transition: left 0.15s;
+      }
+      .ai-switch--off { background: var(--dl-track); }
+      .ai-switch--off::after { left: 2px; }
+      .ai-set-field { display: flex; flex-direction: column; gap: 6px; }
+      .ai-set-field label {
+        font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dl-fg-3);
+      }
+      .ai-set-select {
+        width: 100%; background: var(--dl-card-2); border: 1px solid var(--dl-line); border-radius: 8px;
+        padding: 10px 11px; color: var(--dl-fg); font-family: inherit; font-size: 13px; cursor: pointer;
+      }
+      .ai-set-slider-head { display: flex; align-items: center; justify-content: space-between; }
+      .ai-set-rate-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--dl-fg); }
+      .ai-set-range { width: 100%; accent-color: var(--accent-blue); }
+      .ai-set-scale {
+        display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace;
+        font-size: 10px; color: var(--dl-fg-3); margin-top: 2px;
+      }
+      .ai-set-preview {
+        align-self: flex-start; margin-top: 8px; background: var(--dl-card-2); border: 1px solid var(--dl-line);
+        color: var(--dl-fg-2); font-family: inherit; font-size: 12px; padding: 6px 12px; border-radius: 7px; cursor: pointer;
+      }
+      .ai-set-preview:hover { color: var(--accent-blue); border-color: var(--accent-blue); }
     `;
     document.head.appendChild(style);
   }
