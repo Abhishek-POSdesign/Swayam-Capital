@@ -11,7 +11,7 @@ describe('LegBuilderComponent', () => {
     document.body.appendChild(container);
   });
 
-  it('orders BUY legs at top and SELL legs at bottom with margin safety divider', () => {
+  it('groups BUY legs in the left column and SELL legs in the right column', () => {
     const builder = new LegBuilderComponent(container);
     builder.setLegs([
       { strike: 24700, option_type: 'PE', direction: 'sell', quantity_lots: 1, lot_size: 75, entry_premium: 45 },
@@ -19,7 +19,11 @@ describe('LegBuilderComponent', () => {
     ]);
 
     expect(container.textContent).toContain('STRATEGY LEGS (2)');
-    expect(container.textContent).toContain('Buys execute first (margin-safe)');
+    expect(container.textContent).toContain('Buys-first sequencing happens at');
+    expect(container.textContent).toContain('Buy legs');
+    expect(container.textContent).toContain('Sell legs');
+    // Global expiry selector present (per-card expiry removed in Option B)
+    expect(container.querySelector('#global-expiry')).not.toBeNull();
 
     const buyMount = container.querySelector('#buy-legs-container');
     const sellMount = container.querySelector('#sell-legs-container');
@@ -40,18 +44,33 @@ describe('LegBuilderComponent', () => {
     expect(container.textContent).toContain('4,500');
   });
 
-  it('adds a new leg when + Add Leg button is clicked', () => {
+  // NOTE: each add is a separate test with its own builder. The in-memory test DOM keeps a global
+  // id->element map that isn't cleared on innerHTML reset, so re-rendering then clicking the same id
+  // accumulates a stale listener (a mock artifact — real browsers discard the old node). One render
+  // per click keeps the assertion honest.
+  it("'+ Add Buy Leg' adds a leg to the buy column", () => {
     const builder = new LegBuilderComponent(container, { currentSpot: 24850 });
     builder.setLegs([]);
 
-    const btnAdd = container.querySelector('#btn-add-leg');
-    expect(btnAdd).not.toBeNull();
-    btnAdd.click();
+    expect(container.querySelector('#btn-add-buy-leg')).not.toBeNull();
+    container.querySelector('#btn-add-buy-leg').click();
 
     expect(builder.getLegs().length).toBe(1);
+    expect(builder.getLegs()[0].direction).toBe('buy');
   });
 
-  it('lays out legs in a vertical Buys-then-Sells stack regardless of count', () => {
+  it("'+ Add Sell Leg' adds a leg to the sell column", () => {
+    const builder = new LegBuilderComponent(container, { currentSpot: 24850 });
+    builder.setLegs([]);
+
+    expect(container.querySelector('#btn-add-sell-leg')).not.toBeNull();
+    container.querySelector('#btn-add-sell-leg').click();
+
+    expect(builder.getLegs().length).toBe(1);
+    expect(builder.getLegs()[0].direction).toBe('sell');
+  });
+
+  it('lays out legs in a two-column Buy / Sell grid regardless of count', () => {
     const builder = new LegBuilderComponent(container);
 
     [1, 2, 4].forEach((count) => {
