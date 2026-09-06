@@ -11,17 +11,17 @@ describe('LegCardComponent', () => {
     document.body.appendChild(container);
   });
 
-  it('renders leg attributes including badge, strike, lots, and LTP', () => {
+  it('renders badge, CE/PE, editable price, and inline IV & Delta', () => {
     const legData = {
       strike: 24900,
       option_type: 'PE',
       direction: 'buy',
       quantity_lots: 1,
       entry_premium: 110.5,
-      expiry_date: '2026-09-10',
+      expiry_date: '2026-09-16',
       delta: -0.45,
-      theta: -8.2,
-      vega: 14.1,
+      iv: 0.12,
+      iv_available: true,
     };
 
     const card = new LegCardComponent(container, legData, 0);
@@ -29,27 +29,40 @@ describe('LegCardComponent', () => {
 
     expect(container.textContent).toContain('B');
     expect(container.textContent).toContain('PE');
-    expect(container.textContent).toContain('1 lot');
-    expect(container.textContent).toContain('₹110.50');
-    expect(container.textContent).not.toContain('Δ');
-    expect(container.textContent).not.toContain('θ');
-    expect(container.querySelector('.leg-greeks-strip')).toBeNull();
+    expect(container.textContent).toContain('IV');
+    expect(container.textContent).toContain('Delta');
+    expect(container.textContent).toContain('-0.45');
+
+    const priceInput = container.querySelector('.input-price');
+    expect(priceInput).not.toBeNull();
+    expect(Number(priceInput.value)).toBe(110.5);
+  });
+
+  it("shows '—' for IV/Delta when not derivable from a price (no fake numbers)", () => {
+    const card = new LegCardComponent(container, {
+      strike: 24800,
+      option_type: 'CE',
+      direction: 'buy',
+      iv_available: false,
+    }, 0);
+    card.render();
+
+    expect(container.querySelector('.leg-iv').textContent).toBe('—');
+    expect(container.querySelector('.leg-delta').textContent).toBe('—');
   });
 
   it('toggles direction when badge is clicked', () => {
     const onChange = vi.fn();
-    const legData = {
+    const card = new LegCardComponent(container, {
       strike: 24900,
       option_type: 'PE',
       direction: 'buy',
       quantity_lots: 1,
       entry_premium: 110.5,
-    };
-
-    const card = new LegCardComponent(container, legData, 0, { onChange });
+    }, 0, { onChange });
     card.render();
 
-    const btnDir = container.querySelector('#btn-toggle-dir-0');
+    const btnDir = container.querySelector('.btn-toggle-direction');
     expect(btnDir.textContent.trim()).toBe('B');
     btnDir.click();
 
@@ -59,14 +72,28 @@ describe('LegCardComponent', () => {
 
   it('triggers onRemove when close button is clicked', () => {
     const onRemove = vi.fn();
-    const legData = { strike: 24800, option_type: 'CE', direction: 'sell' };
-
-    const card = new LegCardComponent(container, legData, 2, { onRemove });
+    const card = new LegCardComponent(container, { strike: 24800, option_type: 'CE', direction: 'sell' }, 2, { onRemove });
     card.render();
 
-    const btnRemove = container.querySelector('#btn-remove-leg-2');
-    btnRemove.click();
+    container.querySelector('.btn-remove-leg').click();
 
     expect(onRemove).toHaveBeenCalledWith(2);
+  });
+
+  it('updates the price and fires onPriceInput without re-rendering (focus preserved)', () => {
+    const onPriceInput = vi.fn();
+    const card = new LegCardComponent(container, {
+      strike: 24900, option_type: 'PE', direction: 'buy', quantity_lots: 1, entry_premium: 110,
+    }, 0, { onPriceInput });
+    card.render();
+
+    const priceInput = container.querySelector('.input-price');
+    const before = priceInput; // same node must persist (no re-render)
+    priceInput.value = '150';
+    priceInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(card.leg.entry_premium).toBe(150);
+    expect(onPriceInput).toHaveBeenCalled();
+    expect(container.querySelector('.input-price')).toBe(before);
   });
 });
