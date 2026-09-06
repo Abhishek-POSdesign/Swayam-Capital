@@ -33,6 +33,7 @@ export class StrategyBuilderPage {
     this.strategyName = 'Bear Put Spread';
     this.targetDate = null;
     this.ivShiftPct = 0;
+    this.targetSpot = null;
     this.isRailCollapsed = false;
 
     // Sub-components
@@ -281,10 +282,14 @@ export class StrategyBuilderPage {
     }
   }
 
-  async handleSliderChange({ targetDays, targetDate, ivShiftPct }) {
+  async handleSliderChange({ targetDays, targetDate, ivShiftPct, targetSpot }) {
+    // Sliders now recompute for real (this used to call a method that didn't exist, so
+    // dragging did nothing). Route through the same live compute+validate path as leg edits.
     this.targetDate = targetDate;
     this.ivShiftPct = ivShiftPct;
-    await this.recomputeAndValidate();
+    if (targetSpot !== undefined) this.targetSpot = targetSpot;
+    const legs = this.legBuilder?.getLegs() || [];
+    if (legs.length) await this.handleLegsChanged(legs);
   }
 
   initSubComponents() {
@@ -512,6 +517,9 @@ export class StrategyBuilderPage {
       if (this.ivShiftPct !== 0) {
         computePayload.iv_shift_pct = this.ivShiftPct;
       }
+      if (this.targetSpot) {
+        computePayload.target_spot = this.targetSpot;
+      }
 
       const computeRes = await api.computeStrategy(computePayload);
 
@@ -528,7 +536,11 @@ export class StrategyBuilderPage {
             maxLoss: curveExpiry.max_loss_inr,
             maxProfit: curveExpiry.max_profit_inr,
             breakevens: curveExpiry.breakevens,
-            realisticRisk: curveExpiry.max_loss_inr * 0.8,
+            // Single source of truth: the 2-sigma "realistic risk" line uses the REAL number
+            // from validation (set via setRealisticRisk below), not a max_loss*0.8 fudge.
+            realisticRisk: this.lastValidationData?.realistic_risk?.loss_inr ?? null,
+            projectedPnl: computeRes.projected_pnl_target_inr ?? null,
+            projectedPnlPct: computeRes.projected_pnl_target_pct ?? null,
             greeks: computeRes.greeks,
             pop: computeRes.pop ?? computeRes.greeks?.pop,
             expiryDate,
@@ -561,6 +573,10 @@ export class StrategyBuilderPage {
       this.lastValidationData = valRes;
       if (this.validationPanel) {
         this.validationPanel.render(valRes, hasNaked);
+      }
+      // Feed the REAL 2-sigma realistic-risk number to the chart's risk line (single source).
+      if (this.payoffChart && valRes.realistic_risk) {
+        this.payoffChart.setRealisticRisk(valRes.realistic_risk.loss_inr);
       }
 
       const canExecute = (valRes.passed || valRes.overall_passed) && !hasNaked;
