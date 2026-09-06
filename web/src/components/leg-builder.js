@@ -3,10 +3,12 @@
  *
  * Legs are cards in two columns: BUY on the left, SELL on the right. A leg's side is decided by
  * its column — you add legs with "+ Add Buy Leg" / "+ Add Sell Leg"; there is no Buy/Sell toggle.
- * Expiry is chosen once for every leg via the global "Expiry · all legs" selector.
+ * Expiry is PER LEG (each card has its own expiry) so calendar / diagonal spreads work; the
+ * "Set all legs →" selector is a convenience that stamps one expiry onto every leg at once.
  *
- * Real prices only: real LTP pre-fills each card's price when the market is open (or on ↻ refresh);
- * IV/Delta are computed from whatever price is set; Bid/Ask/OI come straight from the live chain.
+ * Real prices only: the real last-traded (or live) price for each leg's strike+expiry pre-fills the
+ * card (or on ↻ refresh); IV/Delta are computed from it; Bid/Ask/OI come straight from the chain.
+ * No fabricated prices — if none is available the card says so and you type your own.
  * Lots are free (never restricted). Net Debit/Credit stays in sync with the live compute.
  */
 
@@ -56,28 +58,28 @@ export class LegBuilderComponent {
   }
 
   /**
-   * Pick the one authoritative expiry for the whole basket and stamp it on every leg.
+   * Repair each leg's expiry WITHOUT collapsing distinct per-leg expiries.
    *
-   * Presets guess a weekly expiry BEFORE the real list loads, and that guess can be a day that is
-   * no longer a real NIFTY expiry (e.g. a Thursday after the Tuesday migration). Once real expiries
-   * are known, we only keep the derived expiry if it's actually in the list — otherwise we snap to
-   * the real nearest weekly, so the payoff chart's DTE tracks a real expiry, never a phantom one.
-   * A user's explicit pick from the selector always wins.
+   * Per-leg expiry is real now (calendar / diagonal spreads). This only *fills or fixes* a leg
+   * that has no expiry, or a stale placeholder expiry that isn't a real NIFTY expiry (e.g. a
+   * preset's pre-load guess). Legs flagged `back_month` (the far leg of a calendar preset) get the
+   * SECOND real expiry; everything else gets the nearest. A valid per-leg pick is always kept.
+   * The "Set all legs →" selector is the only thing that deliberately equalises every leg.
    */
   _reconcileExpiry() {
-    if (this._expiryUserChosen && this.globalExpiry) {
-      // still enforce one expiry across all legs
-      this.legs.forEach((l) => (l.expiry_date = this.globalExpiry));
-      return;
-    }
-    const derived = this._deriveGlobalExpiry();
-    if (this.expiries.length) {
-      const validDates = new Set(this.expiries.map((e) => e.date));
-      this.globalExpiry = validDates.has(derived) ? derived : this.weeklyExpiry || derived;
-    } else {
-      this.globalExpiry = derived; // expiries not loaded yet — use the leg guess for now
-    }
-    if (this.globalExpiry) this.legs.forEach((l) => (l.expiry_date = this.globalExpiry));
+    const validDates = this.expiries.length ? new Set(this.expiries.map((e) => e.date)) : null;
+    const nearest = this.weeklyExpiry || this.expiries[0]?.date || null;
+    const second = this.expiries[1]?.date || nearest;
+    if (!this.globalExpiry) this.globalExpiry = nearest || this._deriveGlobalExpiry();
+
+    this.legs.forEach((l) => {
+      const missing = !l.expiry_date;
+      const stale = validDates && l.expiry_date && !validDates.has(l.expiry_date);
+      if (missing || stale) {
+        l.expiry_date = l.back_month ? second : nearest;
+      }
+      if ('back_month' in l) delete l.back_month; // one-shot hint from presets
+    });
   }
 
   setLegs(legs) {
@@ -147,8 +149,8 @@ export class LegBuilderComponent {
           <span class="eyebrow" style="color:var(--dl-fg-3);">STRATEGY LEGS (${this.legs.length})</span>
           <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
             <label style="display:flex; align-items:center; gap:7px; font-size:0.74rem; color:var(--dl-fg-3);">
-              <span style="text-transform:uppercase; letter-spacing:0.05em; font-weight:700;">Expiry · all legs</span>
-              <select id="global-expiry" title="Sets the expiry for every leg" style="height:30px; background:var(--dl-card-2); color:var(--dl-fg); border:1px solid var(--dl-line); border-radius:7px; padding:0 8px; font-size:0.76rem; font-family:var(--font-mono); font-weight:600; cursor:pointer;">${this._expiryOptions()}</select>
+              <span style="text-transform:uppercase; letter-spacing:0.05em; font-weight:700;">Set all legs →</span>
+              <select id="global-expiry" title="Stamps this expiry onto EVERY leg at once. For a calendar/diagonal spread, leave this and set each leg's own expiry on its card instead." style="height:30px; background:var(--dl-card-2); color:var(--dl-fg); border:1px solid var(--dl-line); border-radius:7px; padding:0 8px; font-size:0.76rem; font-family:var(--font-mono); font-weight:600; cursor:pointer;">${this._expiryOptions()}</select>
             </label>
             <div style="display:flex; align-items:baseline; gap:7px;">
               <span id="leg-net-label" style="font-size:0.78rem; color:var(--dl-fg-3); font-weight:500;">${isCredit ? 'Net Credit' : 'Net Debit'}</span>
@@ -184,10 +186,12 @@ export class LegBuilderComponent {
       const wrap = document.createElement('div');
       parent.appendChild(wrap);
       const card = new LegCardComponent(wrap, leg, idx, {
+        expiries: this.expiries,
         onChange: (i, l) => this.handleStructuralChange(i, l),
         onPriceInput: (i, l) => this.handlePriceInput(i, l),
         onRefresh: (i) => this.handleRefreshLeg(i),
         onRemove: (i) => this.handleLegRemove(i),
+        onExpiryChange: (i, exp) => this.handleLegExpiryChange(i, exp),
       });
       card.render();
       this.legCards.push({ idx, card });
@@ -206,6 +210,7 @@ export class LegBuilderComponent {
       ?.addEventListener('change', (e) => this.handleGlobalExpiryChange(e.target.value));
   }
 
+  /** "Set all legs →": stamp ONE expiry onto every leg at once (convenience), then re-price all. */
   handleGlobalExpiryChange(expiry) {
     if (!expiry) return;
     this._expiryUserChosen = true;
@@ -213,6 +218,15 @@ export class LegBuilderComponent {
     this.legs.forEach((l) => (l.expiry_date = expiry));
     this.render();
     this.fetchQuotesForAllLegs().finally(() => this.options.onLegsUpdated?.(this.legs));
+  }
+
+  /** Per-leg expiry change (for calendar / diagonal spreads) — re-price only that leg. */
+  handleLegExpiryChange(idx, expiry) {
+    if (!expiry || !this.legs[idx]) return;
+    this.legs[idx].expiry_date = expiry;
+    this.legs[idx].price_source = undefined; // force a fresh real quote for the new expiry
+    this.render();
+    this.fetchQuoteForLeg(idx).finally(() => this.options.onLegsUpdated?.(this.legs));
   }
 
   handleStructuralChange(idx, leg) {
