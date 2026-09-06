@@ -73,4 +73,38 @@ The risk *engine* (`validation.py`) is genuinely real (live margin, real 20-day 
 - What the risk section *allows/blocks* is tuned after he watches Monday's behaviour with real paper trades.
 
 ---
+
+## FINAL BUILD PLAN — approved by Abhishek 2026-09-06 (EXECUTE AFTER COMPACTION)
+
+> The **data layer is already done and merged-ready in PR #15** (branch `feature/swayam-strategy-builder-v2-001`): real IV/Delta-from-price, honest quote, `/api/market/expiries`, working sliders, NIFTY-target projection, execution ticket, honest spot/status, tests green (103 frontend + backend). **What remains is the visual re-skin + VIX + AI panel below.** Approved design mockups: Strategy Builder `https://claude.ai/code/artifact/f3ea243c-ee61-41b9-b20c-e8cc5cf6535c`, VIX `https://claude.ai/code/artifact/aedf8882-4f91-4280-98a0-caab82366bab`. Build to match these 1:1. Verify each in a browser, commit per chunk on the same branch.
+
+### 1. Legs → Option B (buy-left / sell-right cards) — `leg-card.js` + `leg-builder.js`
+- Two columns: **BUY legs (left), SELL legs (right)**. A leg's side is decided by its column.
+- **No Buy/Sell toggle on the card.** Only a **CE/PE** toggle. Add legs via **"+ Add Buy Leg"** (buy column) and **"+ Add Sell Leg"** (sell column). Subtle green(left)/coral(right) accent so side reads at a glance.
+- Per card, top row: CE/PE toggle · **strike − / + stepper** · **lots dropdown** · **price input + ↻ refresh** (refresh re-fetches live LTP via getOptionQuote; if unavailable, leave user's price, no fake).
+- Per card, stats row below (small mono): **Bid / Ask / IV / Delta / OI**.
+- **Global "Expiry · all legs"** dropdown at top (from `/api/market/expiries`), in addition to (or replacing) per-card expiry.
+- Net Debit/Credit foot. Note: "Buys-first sequencing happens at execution, not here."
+- Keep the price→real-IV/Delta wiring already built; just re-skin to cards.
+
+### 2. Payoff graph — `payoff-chart.js` (approved as mocked)
+- **Solid high-contrast lines**: expiry = solid green (thick), T+0 = solid blue (`#3a6ea5`/`#7fb0d9`), NOT faint dashes. Bigger axis + label fonts. Clear Spot line, Breakeven diamond, projected-P&L tag.
+- **Fix bug #6**: the Time slider must read correct DTE (a 2-day expiry shows "2 days · Today/+1/Expiry", never "43 days"). Trace `daysToExpiry` from the real leg expiry.
+
+### 3. Pre-trade risk panel — approved as-is (two-tier gating). No change.
+
+### 4. VIX home card — `vix-card.js` (approved)
+- Replace the tall chart + 3 stacked cards with **one compact card**: VIX + change + regime chip, a 1-year **percentile band**, and a short **60-day sparkline**. Roughly half the height.
+
+### 5. AI side panel — mirror the Atlas side panel (no mockup; follow Atlas)
+- Read Atlas's AI side-panel component + tokens (`D:\Claude\POS\Atlas`) and replicate in Swayam's side panel: **Play / Save** on messages, **Cloud (Gemini) picker**, and in settings **Voice replies** toggle, **Indian English male/female voice** dropdown, **speaking-speed** slider, clean Atlas layout. Font: match the screenshot Abhishek will provide.
+
+### Build order (post-compaction)
+1. Option B leg cards (`leg-card.js`, `leg-builder.js`) + global expiry + ↻ refresh.
+2. Payoff graph high-contrast + fix DTE bug (`payoff-chart.js`).
+3. Compact VIX (`vix-card.js`).
+4. AI side panel from Atlas.
+Each: build → browser-verify → commit on `feature/swayam-strategy-builder-v2-001`. Then update PR #15 / handoff. Abhishek merges.
+
+---
 *Branch: `feature/swayam-strategy-builder-v2-001`. Mirror this into the vault `06 - Platform Plan/` when G: access is available.*
