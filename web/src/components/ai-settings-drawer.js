@@ -44,7 +44,7 @@ export class AISettingsDrawer {
     const { voice, rate, autoPlay } = getTTSPreferences();
 
     this.container.innerHTML = `
-      <div id="ai-settings-drawer-panel" style="position: fixed; top: 0; right: 0; width: 380px; max-width: 90vw; height: 100vh; background: var(--dl-card); border-left: 2px solid var(--accent-lilac); box-shadow: -6px 0 24px rgba(0,0,0,0.5); transform: translateX(100%); transition: transform var(--dur-base, 200ms) ease; z-index: 1000; display: flex; flex-direction: column;">
+      <div id="ai-settings-drawer-panel" style="position: fixed; top: 0; right: 0; width: 380px; max-width: 90vw; height: 100vh; background: var(--dl-card); border-left: 2px solid var(--accent-blue); box-shadow: -6px 0 24px rgba(0,0,0,0.5); transform: translateX(100%); transition: transform var(--dur-base, 200ms) ease; z-index: 1000; display: flex; flex-direction: column;">
         
         <!-- Header -->
         <div style="background: var(--dl-rail); padding: 16px 20px; border-bottom: 1px solid var(--dl-line); display: flex; justify-content: space-between; align-items: center;">
@@ -60,7 +60,7 @@ export class AISettingsDrawer {
           
           <!-- Section 1: Voice & Speech Engine -->
           <div style="display: flex; flex-direction: column; gap: 10px;">
-            <span class="eyebrow" style="color: var(--accent-lilac); font-size: 0.72rem; font-weight: 700;">VOICE & SPEECH (INDIAN ENGLISH)</span>
+            <span class="eyebrow" style="color: var(--accent-blue); font-size: 0.72rem; font-weight: 700;">VOICE & SPEECH (INDIAN ENGLISH)</span>
             
             <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; color: var(--dl-fg);">
               <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
@@ -79,7 +79,7 @@ export class AISettingsDrawer {
                 <span>Speech Rate</span>
                 <span id="label-speech-rate" style="font-family: var(--font-mono); font-weight: 600; color: var(--dl-fg);">${rate.toFixed(2)}x</span>
               </div>
-              <input id="slider-speech-rate" type="range" min="0.5" max="2.0" step="0.05" value="${rate}" style="accent-color: var(--accent-lilac); cursor: pointer;">
+              <input id="slider-speech-rate" type="range" min="0.5" max="2.0" step="0.05" value="${rate}" style="accent-color: var(--accent-blue); cursor: pointer;">
             </div>
 
             <!-- Auto-play Toggle -->
@@ -92,13 +92,13 @@ export class AISettingsDrawer {
           <!-- Section 2: Pinned Rules & Constraints (Layer 3) -->
           <div style="display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--dl-line); padding-top: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span class="eyebrow" style="color: var(--accent-lilac); font-size: 0.72rem; font-weight: 700;">PINNED RULES (PERMANENT CONTEXT)</span>
+              <span class="eyebrow" style="color: var(--accent-blue); font-size: 0.72rem; font-weight: 700;">PINNED RULES (PERMANENT CONTEXT)</span>
               <span id="pinned-count-badge" style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--dl-fg-3);">0 rules</span>
             </div>
             
             <div style="display: flex; gap: 6px;">
               <input id="input-new-rule" type="text" placeholder="Add permanent trading rule..." style="flex: 1; background: var(--dl-card-2); color: var(--dl-fg); border: 1px solid var(--dl-line); border-radius: 6px; padding: 4px 8px; font-size: 0.78rem;">
-              <button id="btn-add-rule" type="button" style="background: var(--accent-lilac); color: #101116; border: none; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Add</button>
+              <button id="btn-add-rule" type="button" style="background: var(--accent-blue); color: #101116; border: none; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Add</button>
             </div>
 
             <div id="settings-pinned-list" style="max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
@@ -109,13 +109,13 @@ export class AISettingsDrawer {
           <!-- Section 3: Memory Notebook Entries (Layer 3) -->
           <div style="display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--dl-line); padding-top: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span class="eyebrow" style="color: var(--accent-lilac); font-size: 0.72rem; font-weight: 700;">MEMORY NOTEBOOK (INSIGHTS)</span>
+              <span class="eyebrow" style="color: var(--accent-blue); font-size: 0.72rem; font-weight: 700;">MEMORY NOTEBOOK (INSIGHTS)</span>
               <span id="notebook-count-badge" style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--dl-fg-3);">0 notes</span>
             </div>
             
             <div style="display: flex; gap: 6px;">
               <input id="input-new-note" type="text" placeholder="Add manual memory note..." style="flex: 1; background: var(--dl-card-2); color: var(--dl-fg); border: 1px solid var(--dl-line); border-radius: 6px; padding: 4px 8px; font-size: 0.78rem;">
-              <button id="btn-add-note" type="button" style="background: var(--accent-lilac); color: #101116; border: none; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Add</button>
+              <button id="btn-add-note" type="button" style="background: var(--accent-blue); color: #101116; border: none; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Add</button>
             </div>
 
             <div id="settings-notebook-list" style="max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">

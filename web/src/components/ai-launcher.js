@@ -1,6 +1,6 @@
 /**
  * Floating AI Launcher Component for Swayam Capital (BUILD-9).
- * Persistent 48px lilac circular orb in bottom-right viewport with sparkle icon.
+ * Persistent 48px blue circular orb in bottom-right viewport with sparkle icon.
  * Clicking toggles the AI Trading Partner drawer.
  */
 

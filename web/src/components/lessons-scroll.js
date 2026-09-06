@@ -57,7 +57,7 @@ export class LessonsScrollComponent {
           </p>
           <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.68rem; color: var(--dl-fg-3); margin-top: 2px;">
             <span>${isEdited ? '✏️ Refined' : '🤖 AI Generated'}</span>
-            <button type="button" class="btn-scroll-edit" data-id="${l.id}" data-text="${encodeURIComponent(l.lesson_text)}" style="background: none; border: none; color: var(--accent-lilac); cursor: pointer; padding: 0; font-size: 0.68rem;">
+            <button type="button" class="btn-scroll-edit" data-id="${l.id}" data-text="${encodeURIComponent(l.lesson_text)}" style="background: none; border: none; color: var(--accent-blue); cursor: pointer; padding: 0; font-size: 0.68rem;">
               Edit
             </button>
           </div>
@@ -71,7 +71,7 @@ export class LessonsScrollComponent {
           <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dl-fg-3); font-weight: 600;">
             💡 Recent Lesson Ledger
           </span>
-          <span style="font-size: 0.7rem; color: var(--accent-lilac); font-weight: 600;">
+          <span style="font-size: 0.7rem; color: var(--accent-blue); font-weight: 600;">
             ${this.lessons.length} Lessons
           </span>
         </div>

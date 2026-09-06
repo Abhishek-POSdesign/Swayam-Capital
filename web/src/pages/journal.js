@@ -84,7 +84,7 @@ export class JournalPage {
               <h1 style="margin: 0; font-size: 1.35rem; font-weight: 700; color: var(--dl-fg); letter-spacing: -0.01em;">
                 Trade Journal &amp; Performance Ledger
               </h1>
-              <span id="journal-trades-badge" style="background: rgba(255,255,255,0.06); color: var(--accent-lilac); padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; font-family: var(--font-mono);">
+              <span id="journal-trades-badge" style="background: rgba(255,255,255,0.06); color: var(--accent-blue); padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; font-family: var(--font-mono);">
                 Loading...
               </span>
             </div>

@@ -90,7 +90,7 @@ export class KPIStripComponent {
         <!-- 3. Realised R:R -->
         <div class="kpi-card" style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: var(--radius-card); padding: 12px 14px;">
           <div style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 4px; font-weight: 600;">Realised R:R</div>
-          <div style="font-size: 1.4rem; font-weight: 700; color: ${totalTrades > 0 ? 'var(--accent-lilac)' : 'var(--text-muted)'}; font-family: var(--font-mono, monospace); line-height: 1.2;">
+          <div style="font-size: 1.4rem; font-weight: 700; color: ${totalTrades > 0 ? 'var(--accent-blue)' : 'var(--text-muted)'}; font-family: var(--font-mono, monospace); line-height: 1.2;">
             ${avgRRDisplay}
           </div>
           <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">

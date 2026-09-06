@@ -62,7 +62,7 @@ export class AIChatPanel {
       <div class="ai-panel" id="ai-panel">
         <div class="ai-panel__header">
           <div class="ai-panel__header-left">
-            <div class="ai-orb" style="width: 24px; height: 24px; border-radius: 50%; background: var(--accent-lilac-tint); color: var(--accent-lilac); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700;">✦</div>
+            <div class="ai-orb" style="width: 24px; height: 24px; border-radius: 50%; background: var(--accent-blue-tint); color: var(--accent-blue); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700;">✦</div>
             <span class="ai-panel__title" style="font-family: var(--font-sans); font-size: 0.92rem; font-weight: 600; color: var(--dl-fg);">Trading Partner</span>
             <span class="ai-panel__conv-title" id="ai-conv-title"></span>
           </div>
@@ -567,7 +567,7 @@ export class AIChatPanel {
         flex-direction: column;
         height: 100%;
         background: var(--dl-card);
-        border-left: 2px solid var(--accent-lilac);
+        border-left: 2px solid var(--accent-blue);
         font-family: var(--font-sans, system-ui, sans-serif);
         font-size: 13px;
         color: var(--dl-fg);
@@ -583,7 +583,7 @@ export class AIChatPanel {
       }
       .ai-panel__header-left { display: flex; align-items: center; gap: 6px; }
       .ai-panel__header-right { display: flex; align-items: center; gap: 4px; }
-      .ai-panel__icon { font-size: 16px; color: var(--accent-lilac); }
+      .ai-panel__icon { font-size: 16px; color: var(--accent-blue); }
       .ai-panel__title { font-weight: 600; font-size: 14px; color: var(--dl-fg); }
       .ai-panel__conv-title {
         font-size: 11px;
@@ -621,7 +621,7 @@ export class AIChatPanel {
         word-break: break-word;
       }
       .ai-message--user .ai-message__content {
-        background: var(--accent-lilac);
+        background: var(--accent-blue);
         color: #101116;
         border-bottom-right-radius: 3px;
         font-weight: 500;
@@ -653,7 +653,7 @@ export class AIChatPanel {
       .ai-typing {
         display: inline-block;
         animation: blink 1s step-end infinite;
-        color: var(--accent-lilac);
+        color: var(--accent-blue);
       }
       @keyframes blink { 50% { opacity: 0; } }
       .ai-starters {
@@ -685,7 +685,7 @@ export class AIChatPanel {
       }
       .ai-starter-btn:hover {
         background: var(--dl-card);
-        border-color: var(--accent-lilac);
+        border-color: var(--accent-blue);
       }
       .ai-panel__input-area {
         display: flex;
@@ -709,7 +709,7 @@ export class AIChatPanel {
         outline: none;
         line-height: 1.4;
       }
-      .ai-textarea:focus { border-color: var(--accent-lilac); }
+      .ai-textarea:focus { border-color: var(--accent-blue); }
       .ai-panel__footer {
         padding: 6px 14px;
         font-size: 11px;
@@ -743,8 +743,8 @@ export class AIChatPanel {
       .ai-btn--sm { padding: 4px 8px; font-size: 11px; }
       .ai-btn--ghost { background: transparent; border-color: transparent; }
       .ai-btn--primary {
-        background: var(--accent-lilac);
-        border-color: var(--accent-lilac);
+        background: var(--accent-blue);
+        border-color: var(--accent-blue);
         color: #101116;
         font-weight: 700;
         min-width: 64px;
@@ -784,7 +784,7 @@ export class AIChatPanel {
         transition: background 0.1s;
       }
       .ai-history-item:hover { background: var(--dl-card-2); color: var(--dl-fg); }
-      .ai-history-item--active { border-left: 3px solid var(--accent-lilac); padding-left: 11px; color: var(--dl-fg); font-weight: 600; }
+      .ai-history-item--active { border-left: 3px solid var(--accent-blue); padding-left: 11px; color: var(--dl-fg); font-weight: 600; }
       .ai-history-item--empty, .ai-history-item--error { color: var(--dl-fg-3); cursor: default; }
       .ai-history-item--error { color: var(--accent-coral); }
     `;

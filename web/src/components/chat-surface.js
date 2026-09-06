@@ -3,7 +3,7 @@
  *
  * Refactors "What Matters Today" into an inline conversation surface with:
  * - AI Pre-market Brief at top with speaker/note/pin toolbar
- * - Scrollable dialogue history (lilac user bubbles right, dark AI bubbles left)
+ * - Scrollable dialogue history (blue user bubbles right, dark AI bubbles left)
  * - Per-response actions: TTS speech playback (Indian English), notebook memory, rule pinning
  * - Real-time SSE streaming for AI replies
  * - Session continuity via ?session= query parameter
@@ -68,7 +68,7 @@ function inlineMarkdown(text) {
   return text
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
-    .replace(/`([^`]+)`/g, '<code style="font-family: var(--font-mono); font-size: 0.85em; background: var(--dl-card-2); padding: 1px 5px; border-radius: 4px; color: var(--accent-lilac);">$1</code>');
+    .replace(/`([^`]+)`/g, '<code style="font-family: var(--font-mono); font-size: 0.85em; background: var(--dl-card-2); padding: 1px 5px; border-radius: 4px; color: var(--accent-blue);">$1</code>');
 }
 
 export function openImageModal(imgSrc) {
@@ -170,10 +170,10 @@ export class ChatSurfaceComponent {
         <!-- Header -->
         <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 2px;">
           <div style="display: flex; align-items: center; gap: 10px;">
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" style="color: var(--accent-lilac);">
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" style="color: var(--accent-blue);">
               <path d="M8 0L9.8 6.2L16 8L9.8 9.8L8 16L6.2 9.8L0 8L6.2 6.2L8 0Z" fill="currentColor"/>
             </svg>
-            <span class="eyebrow" style="color: var(--accent-lilac); font-weight: 700; font-size: 0.84rem; letter-spacing: 0.05em;">AI TRADING PARTNER · WHAT MATTERS TODAY</span>
+            <span class="eyebrow" style="color: var(--accent-blue); font-weight: 700; font-size: 0.84rem; letter-spacing: 0.05em;">AI TRADING PARTNER · WHAT MATTERS TODAY</span>
           </div>
           <div style="display: flex; align-items: center; gap: 12px;">
             <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--dl-fg-3);">DAILY PRE-MARKET</span>
@@ -307,7 +307,7 @@ export class ChatSurfaceComponent {
     if (btnBriefPin) {
       btnBriefPin.addEventListener('click', () => {
         this.pinRule('Daily Pre-market Directives: ' + this.briefText.slice(0, 150));
-        btnBriefPin.style.color = 'var(--accent-lilac)';
+        btnBriefPin.style.color = 'var(--accent-blue)';
       });
     }
 
@@ -634,7 +634,7 @@ export class ChatSurfaceComponent {
       pinBtn.style.cssText = 'background: transparent; border: none; cursor: pointer; padding: 2px 4px; font-size: 0.8rem; color: var(--dl-fg-3);';
       pinBtn.addEventListener('click', () => {
         this.pinRule(bubble.textContent.slice(0, 180), messageId);
-        pinBtn.style.color = 'var(--accent-lilac)';
+        pinBtn.style.color = 'var(--accent-blue)';
       });
       toolbar.appendChild(pinBtn);
 

@@ -558,19 +558,20 @@ def get_vix_history(
         rows = res.data or []
 
         if not rows or len(rows) < 20:
+            # No-fake-numbers law: never synthesize a VIX series. If the real bhavcopy history
+            # isn't ingested yet, fail loudly so the UI shows an honest "unavailable" instead of
+            # a fabricated curve dressed up as live data.
             logger.warning(
-                "VIX history in database has %d rows (< 20). Using baseline historical reference series.",
+                "VIX history in database has %d rows (< 20) — returning 503, not a synthetic series.",
                 len(rows) if rows else 0,
             )
-            import math
-
-            base_date = datetime.now(timezone.utc)
-            baseline_rows = []
-            for i in range(60, 0, -1):
-                dt = (base_date - timedelta(days=i)).strftime("%Y-%m-%d")
-                vix_val = round(13.5 + 0.9 * math.sin(i / 4.0) + 0.4 * math.cos(i / 7.0), 2)
-                baseline_rows.append({"date": dt, "vix_close": vix_val})
-            rows = baseline_rows
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    f"VIX history unavailable: only {len(rows) if rows else 0} real bhavcopy rows "
+                    "(need >= 20). Ingest NSE bhavcopy before the VIX card can show real data."
+                ),
+            )
 
         dates = [r["date"] for r in rows]
         values = [float(r["vix_close"]) for r in rows]

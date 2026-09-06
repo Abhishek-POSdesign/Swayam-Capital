@@ -82,7 +82,7 @@ export function renderPayoffChart(containerId, payoffData, currentSpot) {
         x1: be,
         y0: Math.min(...pnlExpiry, -1000),
         y1: Math.max(...pnlExpiry, 1000),
-        line: { color: '#a78bfa', width: 1.5, dash: 'dash' },
+        line: { color: '#c9a04a', width: 1.5, dash: 'dash' },
       });
       annotations.push({
         x: be,
@@ -92,9 +92,9 @@ export function renderPayoffChart(containerId, payoffData, currentSpot) {
         arrowhead: 1,
         ax: 0,
         ay: 30,
-        font: { color: '#c4b5fd', size: 10 },
-        bgcolor: '#2e1065',
-        bordercolor: '#7c3aed',
+        font: { color: '#c9a04a', size: 10 },
+        bgcolor: 'rgba(25, 27, 33, 0.9)',
+        bordercolor: '#c9a04a',
       });
     });
   }
