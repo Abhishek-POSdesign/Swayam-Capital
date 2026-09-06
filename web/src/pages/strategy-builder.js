@@ -494,7 +494,7 @@ export class StrategyBuilderPage {
         strategy_name: this.strategyName,
         underlying: 'NIFTY',
         current_spot: this.currentSpot,
-        iv_per_leg: { default: 0.135 },
+        iv_per_leg: {},
         legs: legs.map((l) => ({
           strike: l.strike,
           option_type: l.option_type,
@@ -546,7 +546,7 @@ export class StrategyBuilderPage {
         strategy_name: this.strategyName,
         underlying: 'NIFTY',
         current_spot: this.currentSpot,
-        iv_per_leg: { default: 0.135 },
+        iv_per_leg: {},
         legs: legs.map((l) => ({
           strike: l.strike,
           option_type: l.option_type,
