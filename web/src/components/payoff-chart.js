@@ -101,15 +101,15 @@ export class PayoffChartComponent {
           <div style="display: flex; align-items: center; gap: 8px;">
             <span class="eyebrow" style="color: var(--dl-fg-3);">STRATEGY PAYOFF PROFILE</span>
           </div>
-          <div style="display: flex; align-items: center; gap: 10px; font-size: 0.72rem;">
-            <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-sage); font-weight: 600;">
-              <span style="display: inline-block; width: 14px; height: 3px; background: var(--accent-sage); border-radius: 2px;"></span> At Expiry
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 0.76rem;">
+            <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-sage); font-weight: 700;">
+              <span style="display: inline-block; width: 16px; height: 4px; background: var(--accent-sage); border-radius: 2px;"></span> At Expiry
             </span>
-            <span style="display: flex; align-items: center; gap: 4px; color: #5f86b3; font-weight: 600;">
-              <span style="display: inline-block; width: 14px; height: 2px; border-top: 2px dashed #5f86b3;"></span> Today (T+0)
+            <span style="display: flex; align-items: center; gap: 4px; color: #5f86b3; font-weight: 700;">
+              <span style="display: inline-block; width: 16px; height: 4px; background: #5f86b3; border-radius: 2px;"></span> Today (T+0)
             </span>
-            <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-amber); font-weight: 600;">
-              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-amber);"></span> Breakeven
+            <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-amber); font-weight: 700;">
+              <span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--accent-amber);"></span> Breakeven
             </span>
           </div>
         </div>
@@ -506,13 +506,6 @@ export class PayoffChartComponent {
         }
       }
 
-      console.log('[PayoffChart.renderPlot]', {
-        curve_expiry_0: yExpiry[0],
-        curve_target_0: yToday[0],
-        targetDays: this.timeSliderVal,
-        ivShiftPct: this.ivSliderVal,
-      });
-
       // Shaded green area for positive profit zone
       const profitShadeTrace = {
         x: xVals,
@@ -545,7 +538,7 @@ export class PayoffChartComponent {
         type: 'scatter',
         mode: 'lines',
         name: 'Expiry P&L',
-        line: { color: '#86ab92', width: 2.6 },
+        line: { color: isDark ? '#86ab92' : '#2f8a55', width: 3.4 },
         hovertemplate: 'Spot: %{x:,.0f}<br>Expiry P&L: ₹%{y:,.0f}<extra></extra>',
       };
 
@@ -556,7 +549,8 @@ export class PayoffChartComponent {
         type: 'scatter',
         mode: 'lines',
         name: targetLabel,
-        line: { color: isDark ? '#7fb0d9' : '#4f7aa6', width: 2.5, dash: 'dash' },
+        // Solid high-contrast blue (not a faint dash) so both curves read clearly.
+        line: { color: isDark ? '#7fb0d9' : '#3a6ea5', width: 3.0 },
         opacity: 1.0,
         hovertemplate: `Spot: %{x:,.0f}<br>${targetLabel} P&L: ₹%{y:,.0f}<extra></extra>`,
       };
@@ -570,8 +564,8 @@ export class PayoffChartComponent {
         name: 'Breakeven',
         text: [`BE ${Math.round(be).toLocaleString('en-IN')}`],
         textposition: 'top center',
-        textfont: { size: 9, color: '#c9a04a', family: 'JetBrains Mono, monospace' },
-        marker: { color: '#c9a04a', size: 9, symbol: 'diamond' },
+        textfont: { size: 11, color: '#c9a04a', family: 'JetBrains Mono, monospace' },
+        marker: { color: '#c9a04a', size: 11, symbol: 'diamond' },
         hovertemplate: 'Breakeven: %{x:,.0f}<extra></extra>',
       }));
 
@@ -627,7 +621,7 @@ export class PayoffChartComponent {
           y: 0.98,
           text: `● Spot: ${this.currentSpot.toFixed(1)}`,
           showarrow: false,
-          font: { color: '#c9a04a', size: 9, family: 'JetBrains Mono, monospace', weight: 700 },
+          font: { color: '#c9a04a', size: 11, family: 'JetBrains Mono, monospace', weight: 700 },
           bgcolor: isDark ? 'rgba(25, 27, 33, 0.92)' : 'rgba(255, 255, 255, 0.92)',
           bordercolor: '#c9a04a',
           borderwidth: 1,
@@ -636,7 +630,7 @@ export class PayoffChartComponent {
       ];
 
       const layout = {
-        margin: { l: 55, r: 20, t: 15, b: 30 },
+        margin: { l: 64, r: 22, t: 18, b: 40 },
         paper_bgcolor: bgColor,
         plot_bgcolor: bgColor,
         showlegend: false,
@@ -645,14 +639,14 @@ export class PayoffChartComponent {
           showgrid: true,
           gridcolor: gridColor,
           zeroline: false,
-          tickfont: { color: textColor, size: 9, family: 'JetBrains Mono, monospace' },
+          tickfont: { color: textColor, size: 12, family: 'JetBrains Mono, monospace' },
           tickformat: ',.0f',
         },
         yaxis: {
           showgrid: true,
           gridcolor: gridColor,
           zeroline: false,
-          tickfont: { color: textColor, size: 9, family: 'JetBrains Mono, monospace' },
+          tickfont: { color: textColor, size: 12, family: 'JetBrains Mono, monospace' },
           tickformat: '+,.0f',
         },
         shapes,

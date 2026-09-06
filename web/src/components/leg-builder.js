@@ -22,6 +22,7 @@ export class LegBuilderComponent {
     this.expiries = [];
     this.weeklyExpiry = null;
     this.globalExpiry = null;
+    this._expiryUserChosen = false; // becomes true once the user picks from the global selector
     this._priceDebounce = null;
     this._loadExpiries();
   }
@@ -31,8 +32,17 @@ export class LegBuilderComponent {
       const res = await api.getExpiries();
       this.expiries = res.expiries || [];
       this.weeklyExpiry = res.weekly_expiry || this.expiries[0]?.date || null;
-      if (!this.globalExpiry) this.globalExpiry = this._deriveGlobalExpiry();
-      if (this.legs.length) this.render(); // repopulate the selector once real expiries arrive
+
+      const before = this.globalExpiry;
+      this._reconcileExpiry();
+      if (this.legs.length) {
+        this.render(); // repopulate the selector + reflect any snap once real expiries arrive
+        // If the reconcile snapped to a different (real) expiry, refresh quotes + recompute so the
+        // payoff chart's days-to-expiry follows the real leg expiry, not the preset's guess.
+        if (this.globalExpiry !== before) {
+          this.fetchQuotesForAllLegs().finally(() => this.options.onLegsUpdated?.(this.legs));
+        }
+      }
     } catch (_) {
       this.expiries = [];
     }
@@ -45,11 +55,34 @@ export class LegBuilderComponent {
     return this.weeklyExpiry || this.expiries[0]?.date || this.legs[0]?.expiry_date || null;
   }
 
+  /**
+   * Pick the one authoritative expiry for the whole basket and stamp it on every leg.
+   *
+   * Presets guess a weekly expiry BEFORE the real list loads, and that guess can be a day that is
+   * no longer a real NIFTY expiry (e.g. a Thursday after the Tuesday migration). Once real expiries
+   * are known, we only keep the derived expiry if it's actually in the list — otherwise we snap to
+   * the real nearest weekly, so the payoff chart's DTE tracks a real expiry, never a phantom one.
+   * A user's explicit pick from the selector always wins.
+   */
+  _reconcileExpiry() {
+    if (this._expiryUserChosen && this.globalExpiry) {
+      // still enforce one expiry across all legs
+      this.legs.forEach((l) => (l.expiry_date = this.globalExpiry));
+      return;
+    }
+    const derived = this._deriveGlobalExpiry();
+    if (this.expiries.length) {
+      const validDates = new Set(this.expiries.map((e) => e.date));
+      this.globalExpiry = validDates.has(derived) ? derived : this.weeklyExpiry || derived;
+    } else {
+      this.globalExpiry = derived; // expiries not loaded yet — use the leg guess for now
+    }
+    if (this.globalExpiry) this.legs.forEach((l) => (l.expiry_date = this.globalExpiry));
+  }
+
   setLegs(legs) {
     this.legs = legs.map((l) => ({ ...l }));
-    this.globalExpiry = this._deriveGlobalExpiry();
-    // One expiry for the whole basket.
-    if (this.globalExpiry) this.legs.forEach((l) => (l.expiry_date = this.globalExpiry));
+    this._reconcileExpiry();
     this.render();
     this.fetchQuotesForAllLegs().finally(() => this.options.onLegsUpdated?.(this.legs));
   }
@@ -175,6 +208,7 @@ export class LegBuilderComponent {
 
   handleGlobalExpiryChange(expiry) {
     if (!expiry) return;
+    this._expiryUserChosen = true;
     this.globalExpiry = expiry;
     this.legs.forEach((l) => (l.expiry_date = expiry));
     this.render();
