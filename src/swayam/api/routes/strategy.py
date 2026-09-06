@@ -26,16 +26,26 @@ from swayam.options_math import (
     compute_position_greeks,
     iron_condor,
 )
-from swayam.options_math.engine import greeks as calc_greeks
+from swayam.options_math.engine import greeks as calc_greeks, implied_volatility, IVSolveFailed
 from swayam.options_math.payoff import _spread_expiry_pnl
 
 router = APIRouter()
 
 
-def build_spread_from_request(req: StrategyComputeRequest) -> tuple[Spread, dict[Leg, float]]:
-    """Converts a StrategyComputeRequest into a typed Spread and Leg-to-IV mapping."""
+def build_spread_from_request(
+    req: StrategyComputeRequest,
+) -> tuple[Spread, dict[Leg, float], dict[Leg, bool]]:
+    """Converts a StrategyComputeRequest into a typed Spread, a Leg->IV map, and a
+    Leg->iv_available map.
+
+    IV per leg is resolved as: explicit iv_per_leg override > IV IMPLIED FROM THE LEG'S
+    PRICE (real LTP or user-entered limit) > unavailable. When unavailable, iv_available
+    is False and a neutral value is used ONLY for curve-math continuity — callers must
+    surface '-' to the UI, never the neutral number (Abhishek's no-fake-numbers law).
+    """
     legs_list: list[Leg] = []
     iv_map: dict[Leg, float] = {}
+    iv_available: dict[Leg, bool] = {}
 
     for idx, leg_req in enumerate(req.legs):
         opt_type = OptionType.CALL if leg_req.option_type == "CE" else OptionType.PUT
@@ -53,22 +63,47 @@ def build_spread_from_request(req: StrategyComputeRequest) -> tuple[Spread, dict
         )
         legs_list.append(leg)
 
-        # Resolve IV for this leg from iv_per_leg dict
+        # Resolve IV. PRIORITY: explicit iv_per_leg override > implied from the leg's
+        # price (real LTP or user-entered limit) > unavailable.
         key1 = f"{int(leg.strike)}_{leg.option_type.value}"
         key2 = f"{int(leg.strike)}_{leg_req.option_type}"
         key3 = str(idx)
 
-        iv = req.iv_per_leg.get(key1) or req.iv_per_leg.get(key2) or req.iv_per_leg.get(key3)
-        if iv is None:
-            # Check if caller passed a general default IV, or fallback to current market baseline (13.5%)
-            iv = req.iv_per_leg.get("default", 0.135)
-        if iv <= 0.0:
-            iv = 0.135
+        explicit_iv = (
+            req.iv_per_leg.get(key1)
+            or req.iv_per_leg.get(key2)
+            or req.iv_per_leg.get(key3)
+            or req.iv_per_leg.get("default")
+        )
 
-        iv_map[leg] = float(iv)
+        resolved_iv: Optional[float] = None
+        if explicit_iv and explicit_iv > 0.0:
+            resolved_iv = float(explicit_iv)
+        elif leg_req.entry_premium and leg_req.entry_premium > 0.0:
+            tte_years = max((exp_date - date.today()).days, 0) / 365.0
+            if tte_years > 0.0:
+                try:
+                    resolved_iv = implied_volatility(
+                        market_price=leg_req.entry_premium,
+                        spot=req.current_spot,
+                        strike=leg.strike,
+                        tte_years=tte_years,
+                        option_type=opt_type,
+                    )
+                except IVSolveFailed:
+                    resolved_iv = None
+
+        if resolved_iv and resolved_iv > 0.0:
+            iv_map[leg] = resolved_iv
+            iv_available[leg] = True
+        else:
+            # No real price to imply from — flag unavailable. Neutral value used ONLY so
+            # the curve math does not crash; the UI shows '-' because iv_available is False.
+            iv_map[leg] = 0.135
+            iv_available[leg] = False
 
     spread = Spread(name=req.strategy_name, legs=tuple(legs_list), underlying=req.underlying)
-    return spread, iv_map
+    return spread, iv_map, iv_available
 
 
 @router.post("/api/strategy/preset")
@@ -195,7 +230,7 @@ def compute_probability_of_profit(
 @router.post("/api/strategy/compute", response_model=StrategyComputeResponse)
 def compute_strategy(req: StrategyComputeRequest) -> StrategyComputeResponse:
     """Computes dual-horizon payoff curve and portfolio Greeks for a spread."""
-    spread, iv_map = build_spread_from_request(req)
+    spread, iv_map, iv_available = build_spread_from_request(req)
 
     # 1. Validate target_date
     as_of = date.today()
@@ -305,9 +340,25 @@ def compute_strategy(req: StrategyComputeRequest) -> StrategyComputeResponse:
         breakevens=breakevens_rounded,
     )
 
-    # 4. Compute per-leg Greeks
+    # 4. Compute per-leg Greeks. When a leg's IV could not be implied from a real price,
+    # its Greeks are shown as unavailable ('-') rather than computed off a neutral guess.
     per_leg_items: list[LegGreeksItem] = []
     for leg in spread.legs:
+        if not iv_available[leg]:
+            per_leg_items.append(
+                LegGreeksItem(
+                    strike=leg.strike,
+                    option_type=leg.option_type.value,
+                    direction=leg.direction.value,
+                    delta=None,
+                    theta=None,
+                    vega=None,
+                    gamma=None,
+                    iv=None,
+                    iv_available=False,
+                )
+            )
+            continue
         iv = iv_map[leg]
         days_to_expiry = max((leg.expiry_date - as_of).days, 0)
         tte_years = days_to_expiry / 365.0
@@ -330,8 +381,37 @@ def compute_strategy(req: StrategyComputeRequest) -> StrategyComputeResponse:
                 theta=round(g["theta"] * qty_shares, 1),
                 vega=round(g["vega"] * qty_shares, 1),
                 gamma=round(g["gamma"] * direction_sign, 4),
+                iv=round(iv, 4),
+                iv_available=True,
             )
         )
+
+    # 4b. NIFTY-target slider projection: P&L at target_spot on the target date.
+    # Interpolated from the already-computed T+ curve (pnl_today), no extra math needed.
+    projected_pnl_target_inr: Optional[float] = None
+    projected_pnl_target_pct: Optional[float] = None
+    target_spot_used: Optional[float] = None
+    if req.target_spot:
+        target_spot_used = round(req.target_spot, 2)
+        pts = sorted(curve.points, key=lambda p: p.spot)
+        ts = req.target_spot
+        proj: Optional[float] = None
+        if ts <= pts[0].spot:
+            proj = pts[0].pnl_today
+        elif ts >= pts[-1].spot:
+            proj = pts[-1].pnl_today
+        else:
+            for i in range(1, len(pts)):
+                if pts[i].spot >= ts:
+                    p0, p1 = pts[i - 1], pts[i]
+                    span = (p1.spot - p0.spot) or 1.0
+                    frac = (ts - p0.spot) / span
+                    proj = p0.pnl_today + frac * (p1.pnl_today - p0.pnl_today)
+                    break
+        if proj is not None:
+            projected_pnl_target_inr = round(proj, 2)
+            denom = abs(curve.net_debit_credit_inr) or 1.0
+            projected_pnl_target_pct = round(projected_pnl_target_inr / denom * 100.0, 2)
 
     greeks_resp = GreeksResponse(
         net_delta=round(greeks_summary.net_delta, 4),
@@ -350,4 +430,7 @@ def compute_strategy(req: StrategyComputeRequest) -> StrategyComputeResponse:
         greeks=greeks_resp,
         pop=pop,
         per_leg=per_leg_items,
+        projected_pnl_target_inr=projected_pnl_target_inr,
+        projected_pnl_target_pct=projected_pnl_target_pct,
+        target_spot_used=target_spot_used,
     )

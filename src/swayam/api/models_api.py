@@ -51,6 +51,11 @@ class StrategyComputeRequest(BaseModel):
         default=None,
         description="Optional valuation date YYYY-MM-DD for T+N payoff evaluation (must not exceed expiry)",
     )
+    target_spot: Optional[float] = Field(
+        default=None,
+        gt=0.0,
+        description="Optional 'what-if' spot for the NIFTY-target slider; returns projected P&L at this spot on target_date",
+    )
     iv_shift_pct: float = Field(
         default=0.0,
         description="Optional IV percentage shift [-90, +200] for stress-testing payoff curve",
@@ -158,14 +163,21 @@ class PayoffCurveResponse(BaseModel):
 
 
 class LegGreeksItem(BaseModel):
-    """Individual option leg Greek metrics."""
+    """Individual option leg Greek metrics.
+
+    iv is the volatility IMPLIED FROM THE LEG'S PRICE (real LTP or user-entered limit),
+    never a placeholder. iv_available is False when it could not be solved from a price —
+    in which case the UI must show '—', not a fake number.
+    """
     strike: float
     option_type: str
     direction: str
-    delta: float
-    theta: float
-    vega: float
-    gamma: float
+    delta: Optional[float] = None
+    theta: Optional[float] = None
+    vega: Optional[float] = None
+    gamma: Optional[float] = None
+    iv: Optional[float] = None
+    iv_available: bool = True
 
 
 class GreeksResponse(BaseModel):
@@ -187,6 +199,17 @@ class StrategyComputeResponse(BaseModel):
     greeks: GreeksResponse
     pop: Optional[float] = Field(default=None, description="Top-level Probability of Profit percentage")
     per_leg: list[LegGreeksItem] = Field(default_factory=list, description="Per-leg calculated Greeks")
+    projected_pnl_target_inr: Optional[float] = Field(
+        default=None,
+        description="P&L (₹) at target_spot on target_date, for the NIFTY-target slider readout. Null if target_spot not given.",
+    )
+    projected_pnl_target_pct: Optional[float] = Field(
+        default=None,
+        description="Projected P&L as % of net debit/credit, for the slider readout.",
+    )
+    target_spot_used: Optional[float] = Field(
+        default=None, description="Echo of the target_spot the projection was computed at."
+    )
 
 
 class StrikeQuote(BaseModel):

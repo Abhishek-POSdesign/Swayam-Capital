@@ -32,7 +32,7 @@ router = APIRouter()
 
 def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
     """Performs full Method rule audit on a candidate strategy."""
-    spread, iv_map = build_spread_from_request(req)
+    spread, iv_map, _iv_available = build_spread_from_request(req)
 
     # Calculate analytical max profit and loss in rupees
     max_profit, max_loss = compute_max_profit_loss(spread)
