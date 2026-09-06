@@ -75,6 +75,7 @@ export const api = {
   getVixHistory: (days = 365) => request(`/api/market/vix/history?days=${days}`),
   getOptionQuote: ({ strike, expiry, type, symbol = 'NSE:NIFTY50-INDEX' }) =>
     request(`/api/market/option/quote?strike=${strike}&expiry=${expiry}&type=${type}&symbol=${symbol}`),
+  getExpiries: () => request('/api/market/expiries'),
   previewOrder: (payload) =>
     request('/api/execute/preview-order', {
       method: 'POST',

@@ -11,7 +11,7 @@ describe('ExecuteRowComponent', () => {
     document.body.appendChild(container);
   });
 
-  it('renders order type controls and execution action buttons', () => {
+  it('renders order type controls and the Execute button (no dead AI-order button)', () => {
     const row = new ExecuteRowComponent(container);
     row.render(false);
 
@@ -19,7 +19,8 @@ describe('ExecuteRowComponent', () => {
     expect(container.textContent).toContain('Limit (Default)');
     expect(container.textContent).toContain('Market');
     expect(container.textContent).toContain('Execute All Legs');
-    expect(container.textContent).toContain('AI-order the legs');
+    // The dead 'AI-order the legs' button was removed (pointed at a chat panel not on this page).
+    expect(container.querySelector('#btn-ai-order')).toBeNull();
   });
 
   it('disables Execute All Legs button when canExecute is false', () => {
@@ -42,15 +43,5 @@ describe('ExecuteRowComponent', () => {
     const btnExec = container.querySelector('#btn-execute-all');
     btnExec.click();
     expect(onExecute).toHaveBeenCalledWith('LIMIT');
-  });
-
-  it('triggers onAIOrder when AI order button is clicked', () => {
-    const onAIOrder = vi.fn();
-    const row = new ExecuteRowComponent(container, { onAIOrder });
-    row.render(true);
-
-    const btnAI = container.querySelector('#btn-ai-order');
-    btnAI.click();
-    expect(onAIOrder).toHaveBeenCalledWith('LIMIT');
   });
 });

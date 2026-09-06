@@ -23,16 +23,19 @@ import { MiniReadinessCardComponent } from '../components/mini-readiness-card.js
 import { MiniPositionsListComponent } from '../components/mini-positions-list.js';
 import { SessionRecapComponent } from '../components/session-recap.js';
 import { OvernightBlockModalComponent } from '../components/overnight-block-modal.js';
+import { ExecutionTicketComponent } from '../components/execution-ticket.js';
 
 export class StrategyBuilderPage {
   constructor(container, options = {}) {
     this.container = container;
     this.options = options; // { onNavigateHome, onOpenSettings }
-    this.currentSpot = 24842.65;
+    this.currentSpot = 24842.65; // math fallback only — NEVER displayed as the live spot
+    this.spotIsLive = false;
     this.sessionId = this._resolveSessionId();
     this.strategyName = 'Bear Put Spread';
     this.targetDate = null;
     this.ivShiftPct = 0;
+    this.targetSpot = null;
     this.isRailCollapsed = false;
 
     // Sub-components
@@ -46,6 +49,7 @@ export class StrategyBuilderPage {
     this.miniPositions = null;
     this.sessionRecap = null;
     this.overnightModal = null;
+    this.executionTicket = null;
 
     this.cronTimer = null;
     this.lastValidationData = null;
@@ -205,7 +209,7 @@ export class StrategyBuilderPage {
               </div>
             </div>
             <div id="strategy-spot-display" class="mono-nums" style="font-size: 0.95rem; font-weight: 700; color: var(--accent-sage);">
-              NIFTY 50: ${this.currentSpot.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              NIFTY 50: <span style="color: var(--dl-fg-3);">—</span>
             </div>
           </div>
 
@@ -248,7 +252,7 @@ export class StrategyBuilderPage {
       ">
         <div style="display: flex; align-items: center; gap: 12px;">
           <span style="color: var(--dl-fg-3);">NIFTY SPOT:</span>
-          <span id="ticker-spot-val" style="color: var(--accent-sage); font-weight: 700;">${this.currentSpot.toFixed(2)}</span>
+          <span id="ticker-spot-val" style="color: var(--dl-fg-3); font-weight: 700;">—</span>
         </div>
         <div style="display: flex; align-items: center; gap: 12px;">
           <span style="color: var(--dl-fg-3);">TODAY'S P&amp;L:</span>
@@ -256,12 +260,15 @@ export class StrategyBuilderPage {
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="color: var(--accent-amber);">MARKET STATUS:</span>
-          <span id="ticker-market-status" style="color: var(--dl-fg-2);">TRADING OPEN</span>
+          <span id="ticker-market-status" style="color: var(--dl-fg-3);">—</span>
         </div>
       </footer>
 
       <!-- Overnight Naked Auto-Block Modal Mount -->
       <div id="overnight-modal-container"></div>
+
+      <!-- Execution Ticket Modal Mount -->
+      <div id="execution-ticket-container"></div>
     `;
 
     // Hook Back to Home button
@@ -281,10 +288,14 @@ export class StrategyBuilderPage {
     }
   }
 
-  async handleSliderChange({ targetDays, targetDate, ivShiftPct }) {
+  async handleSliderChange({ targetDays, targetDate, ivShiftPct, targetSpot }) {
+    // Sliders now recompute for real (this used to call a method that didn't exist, so
+    // dragging did nothing). Route through the same live compute+validate path as leg edits.
     this.targetDate = targetDate;
     this.ivShiftPct = ivShiftPct;
-    await this.recomputeAndValidate();
+    if (targetSpot !== undefined) this.targetSpot = targetSpot;
+    const legs = this.legBuilder?.getLegs() || [];
+    if (legs.length) await this.handleLegsChanged(legs);
   }
 
   initSubComponents() {
@@ -324,15 +335,22 @@ export class StrategyBuilderPage {
       this.validationPanel.render();
     }
 
-    // 5. Execute Row
+    // 5. Execute Row → opens the Execution Ticket (per-leg Market/Limit + price + margin)
     const execMount = this.container.querySelector('#execute-row-mount');
     if (execMount) {
       this.executeRow = new ExecuteRowComponent(execMount, {
-        onExecute: (orderType) => this.handleExecuteAllLegs(orderType),
-        onAIOrder: (orderType) => this.handleAIOrderLegs(orderType),
-        onPreviewSequence: () => this.handleShowPreviewModal(),
+        onExecute: () => this.openExecutionTicket(),
+        onPreviewSequence: () => this.openExecutionTicket(),
       });
       this.executeRow.render(false);
+    }
+
+    // 5b. Execution Ticket modal
+    const ticketMount = this.container.querySelector('#execution-ticket-container');
+    if (ticketMount) {
+      this.executionTicket = new ExecutionTicketComponent(ticketMount, {
+        onConfirm: (legs) => this.confirmExecute(legs),
+      });
     }
 
     // 6. Left Rail Mini Components
@@ -367,17 +385,18 @@ export class StrategyBuilderPage {
   }
 
   async loadInitialData() {
-    // 1. Spot fetch
+    // 1. Spot fetch — show the REAL spot or an honest '—' (never the hardcoded default).
     try {
       const spotRes = await api.getNiftySpot();
       if (spotRes && spotRes.spot) {
         this.currentSpot = spotRes.spot;
-        const spotEl = this.container.querySelector('#strategy-spot-display');
-        const tickerSpot = this.container.querySelector('#ticker-spot-val');
-        if (spotEl) spotEl.textContent = `NIFTY 50: ${this.currentSpot.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-        if (tickerSpot) tickerSpot.textContent = this.currentSpot.toFixed(2);
+        this.spotIsLive = true;
       }
-    } catch (_) {}
+    } catch (_) {
+      this.spotIsLive = false;
+    }
+    this._updateSpotDisplay();
+    this._updateMarketStatus();
 
     // 2. Load default Bear Put Spread legs
     const initialLegs = generatePresetLegs('bear-put', this.currentSpot);
@@ -405,6 +424,44 @@ export class StrategyBuilderPage {
         this.miniReadiness.render(readRes);
       }
     } catch (_) {}
+  }
+
+  _marketOpen() {
+    // NIFTY F&O trades 09:15–15:30 IST, Mon–Fri. (Public-holiday calendar not applied here.)
+    const now = new Date();
+    const istMs = now.getTime() + now.getTimezoneOffset() * 60000 + 5.5 * 3600000;
+    const ist = new Date(istMs);
+    const day = ist.getDay();
+    if (day === 0 || day === 6) return false;
+    const mins = ist.getHours() * 60 + ist.getMinutes();
+    return mins >= 9 * 60 + 15 && mins <= 15 * 60 + 30;
+  }
+
+  _updateMarketStatus() {
+    const el = this.container.querySelector('#ticker-market-status');
+    if (!el) return;
+    const open = this._marketOpen();
+    el.textContent = open ? 'OPEN · 09:15–15:30 IST' : 'CLOSED';
+    el.style.color = open ? 'var(--accent-sage)' : 'var(--dl-fg-3)';
+  }
+
+  _updateSpotDisplay() {
+    const spotEl = this.container.querySelector('#strategy-spot-display');
+    const tickerSpot = this.container.querySelector('#ticker-spot-val');
+    if (this.spotIsLive) {
+      const val = this.currentSpot.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+      if (spotEl) spotEl.innerHTML = `NIFTY 50: ${val} <span style="font-size:0.6rem; color:var(--accent-sage); font-weight:700; letter-spacing:0.05em;">LIVE</span>`;
+      if (tickerSpot) {
+        tickerSpot.textContent = this.currentSpot.toFixed(2);
+        tickerSpot.style.color = 'var(--accent-sage)';
+      }
+    } else {
+      if (spotEl) spotEl.innerHTML = `NIFTY 50: <span style="color:var(--dl-fg-3);">— no live price</span>`;
+      if (tickerSpot) {
+        tickerSpot.textContent = '—';
+        tickerSpot.style.color = 'var(--dl-fg-3)';
+      }
+    }
   }
 
   async refreshPositions() {
@@ -494,7 +551,7 @@ export class StrategyBuilderPage {
         strategy_name: this.strategyName,
         underlying: 'NIFTY',
         current_spot: this.currentSpot,
-        iv_per_leg: { default: 0.135 },
+        iv_per_leg: {},
         legs: legs.map((l) => ({
           strike: l.strike,
           option_type: l.option_type,
@@ -512,6 +569,9 @@ export class StrategyBuilderPage {
       if (this.ivShiftPct !== 0) {
         computePayload.iv_shift_pct = this.ivShiftPct;
       }
+      if (this.targetSpot) {
+        computePayload.target_spot = this.targetSpot;
+      }
 
       const computeRes = await api.computeStrategy(computePayload);
 
@@ -528,7 +588,11 @@ export class StrategyBuilderPage {
             maxLoss: curveExpiry.max_loss_inr,
             maxProfit: curveExpiry.max_profit_inr,
             breakevens: curveExpiry.breakevens,
-            realisticRisk: curveExpiry.max_loss_inr * 0.8,
+            // Single source of truth: the 2-sigma "realistic risk" line uses the REAL number
+            // from validation (set via setRealisticRisk below), not a max_loss*0.8 fudge.
+            realisticRisk: this.lastValidationData?.realistic_risk?.loss_inr ?? null,
+            projectedPnl: computeRes.projected_pnl_target_inr ?? null,
+            projectedPnlPct: computeRes.projected_pnl_target_pct ?? null,
             greeks: computeRes.greeks,
             pop: computeRes.pop ?? computeRes.greeks?.pop,
             expiryDate,
@@ -546,7 +610,7 @@ export class StrategyBuilderPage {
         strategy_name: this.strategyName,
         underlying: 'NIFTY',
         current_spot: this.currentSpot,
-        iv_per_leg: { default: 0.135 },
+        iv_per_leg: {},
         legs: legs.map((l) => ({
           strike: l.strike,
           option_type: l.option_type,
@@ -562,6 +626,10 @@ export class StrategyBuilderPage {
       if (this.validationPanel) {
         this.validationPanel.render(valRes, hasNaked);
       }
+      // Feed the REAL 2-sigma realistic-risk number to the chart's risk line (single source).
+      if (this.payoffChart && valRes.realistic_risk) {
+        this.payoffChart.setRealisticRisk(valRes.realistic_risk.loss_inr);
+      }
 
       const canExecute = (valRes.passed || valRes.overall_passed) && !hasNaked;
       if (this.executeRow) {
@@ -570,66 +638,42 @@ export class StrategyBuilderPage {
     } catch (_) {}
   }
 
-  handleShowPreviewModal() {
-    if (!this.lastPreviewData || !this.lastPreviewData.ordered_legs) {
-      alert('Add at least one leg to preview the execution order.');
-      return;
-    }
-
-    const steps = this.lastPreviewData.ordered_legs.map((s) =>
-      `• Step ${s.sequence}: ${s.direction} ${s.strike} ${s.option_type} (${s.quantity_lots} lot) — Est. Margin: ₹${Math.round(s.estimated_margin_inr).toLocaleString('en-IN')}\n  ${s.action_note}`
-    ).join('\n\n');
-
-    alert(`PRE-ORDER SEQUENCE (BUYS FIRST):\n\n${steps}\n\nTotal Hedged Margin: ₹${Math.round(this.lastPreviewData.final_hedged_margin_inr).toLocaleString('en-IN')}\nMargin Saved vs Unhedged: ₹${Math.round(this.lastPreviewData.margin_saved_inr).toLocaleString('en-IN')}`);
+  openExecutionTicket() {
+    const legs = this.legBuilder?.getLegs() || [];
+    if (!legs.length) return;
+    this.executionTicket?.open({
+      legs,
+      preview: this.lastPreviewData,
+      verdict: this.lastValidationData,
+    });
   }
 
-  async handleAIOrderLegs(orderType) {
-    if (!this.lastPreviewData) {
-      alert('Configure strategy legs before requesting AI margin ordering.');
-      return;
-    }
-
-    const legs = this.legBuilder.getLegs();
-    const buyCount = legs.filter((l) => l.direction?.toLowerCase() === 'buy').length;
-    const sellCount = legs.filter((l) => l.direction?.toLowerCase() === 'sell').length;
-
-    const prompt = `AI, please review my proposed ${this.strategyName} with ${buyCount} buy legs and ${sellCount} sell legs. Order the legs safely for exchange margin benefits and confirm readiness.`;
-
-    if (this.chatSurface) {
-      await this.chatSurface.sendMessage(prompt);
-    }
-  }
-
-  async handleExecuteAllLegs(orderType) {
-    const legs = this.legBuilder.getLegs();
-    if (!legs || legs.length === 0) return;
-
-    try {
-      const payload = {
-        strategy_name: this.strategyName,
-        underlying: 'NIFTY',
-        current_spot: this.currentSpot,
-        order_type: orderType,
-        session_id: this.sessionId,
-        mode: 'paper',
-        legs: legs.map((l) => ({
-          strike: l.strike,
-          option_type: l.option_type,
-          direction: l.direction,
-          quantity_lots: l.quantity_lots || 1,
-          lot_size: l.lot_size || 75,
-          entry_premium: l.entry_premium || 0,
-          expiry_date: l.expiry_date,
-        })),
-      };
-
-      const res = await api.executeMultiLeg(payload);
-      if (res && res.status === 'opened') {
-        alert(`✅ Trade Executed!\n\nPaper Position #${res.position_id.slice(0, 8)} opened successfully in margin-safe sequence (Buys first).\nTrade journal note recorded at: ${res.journal_path}`);
-        await this.refreshPositions();
-      }
-    } catch (err) {
-      alert(`❌ Execution Failed: ${err.message || err}`);
+  async confirmExecute(legs) {
+    const payload = {
+      strategy_name: this.strategyName,
+      underlying: 'NIFTY',
+      current_spot: this.currentSpot,
+      order_type: 'LIMIT',
+      session_id: this.sessionId,
+      mode: 'paper',
+      legs: legs.map((l) => ({
+        strike: l.strike,
+        option_type: l.option_type,
+        direction: l.direction,
+        quantity_lots: l.quantity_lots || 1,
+        lot_size: l.lot_size || 75,
+        entry_premium: l.entry_premium || 0,
+        expiry_date: l.expiry_date,
+        order_type: l.order_type || 'LIMIT',
+      })),
+    };
+    // api.executeMultiLeg throws on failure -> the ticket surfaces the error inline (no alert()).
+    const res = await api.executeMultiLeg(payload);
+    if (res && res.status === 'opened') {
+      await this.refreshPositions();
+      this.executionTicket?.showSuccess(`Position #${res.position_id.slice(0, 8)} opened · journal recorded.`);
+    } else {
+      throw new Error(res?.detail || 'Unexpected response from execution.');
     }
   }
 

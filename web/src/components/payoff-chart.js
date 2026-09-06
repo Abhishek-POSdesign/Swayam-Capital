@@ -20,6 +20,9 @@ export class PayoffChartComponent {
     this.pop = null;
     this.timeSliderVal = 0;
     this.ivSliderVal = 0;
+    this.spotSliderVal = null; // null = at current spot (no what-if shift)
+    this.projectedPnl = null;
+    this.projectedPnlPct = null;
     this.daysToExpiry = 7;
     this.expiryDate = null;
     this._themeListenerAttached = false;
@@ -102,8 +105,8 @@ export class PayoffChartComponent {
             <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-sage); font-weight: 600;">
               <span style="display: inline-block; width: 14px; height: 3px; background: var(--accent-sage); border-radius: 2px;"></span> At Expiry
             </span>
-            <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-lilac); font-weight: 600;">
-              <span style="display: inline-block; width: 14px; height: 2px; border-top: 2px dashed var(--accent-lilac);"></span> Today (T+0)
+            <span style="display: flex; align-items: center; gap: 4px; color: #5f86b3; font-weight: 600;">
+              <span style="display: inline-block; width: 14px; height: 2px; border-top: 2px dashed #5f86b3;"></span> Today (T+0)
             </span>
             <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-amber); font-weight: 600;">
               <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-amber);"></span> Breakeven
@@ -153,6 +156,23 @@ export class PayoffChartComponent {
         </div>
 
         <div id="payoff-plotly-canvas" style="width: 100%; flex: 1; min-height: 320px;"></div>
+
+        <!-- NIFTY Target (spot) slider — what-if: where does P&L sit if NIFTY moves? -->
+        <div id="payoff-spot-slider-row" style="display: flex; flex-direction: column; gap: 4px; padding: 10px 4px 6px 4px; border-top: 1px solid var(--dl-line);">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem;">
+            <span style="font-weight: 600; color: var(--text-primary); font-family: var(--font-mono);">
+              <span id="payoff-spot-label">NIFTY Target: ${Math.round(this.currentSpot)} (0.0%)</span>
+            </span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="payoff-projected-pnl" style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--dl-fg-3);">Projected P&amp;L: —</span>
+              <button type="button" id="btn-reset-spot" style="background: transparent; border: 1px solid var(--dl-line); color: var(--dl-fg-2); border-radius: 4px; padding: 2px 8px; font-size: 0.68rem; cursor: pointer;">Reset</button>
+            </div>
+          </div>
+          <input type="range" id="payoff-spot-slider" class="swayam-slider-sage" min="${Math.round(this.currentSpot * 0.95)}" max="${Math.round(this.currentSpot * 1.05)}" step="25" value="${Math.round(this.currentSpot)}" style="width: 100%; cursor: pointer;" />
+          <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--dl-fg-3); font-family: var(--font-mono); padding: 0 2px;">
+            <span>−5%</span><span>Spot</span><span>+5%</span>
+          </div>
+        </div>
 
         <!-- Sensibull-style Interactive Time & IV Sliders -->
         <div id="payoff-sliders-section" style="
@@ -288,6 +308,29 @@ export class PayoffChartComponent {
         this._notifySliderChange();
       });
     }
+
+    // NIFTY Target (spot) slider
+    const spotSlider = this.container.querySelector('#payoff-spot-slider');
+    const spotLabel = this.container.querySelector('#payoff-spot-label');
+    const btnResetSpot = this.container.querySelector('#btn-reset-spot');
+
+    if (spotSlider) {
+      spotSlider.addEventListener('input', (e) => {
+        this.spotSliderVal = parseFloat(e.target.value);
+        const pct = this.currentSpot ? ((this.spotSliderVal - this.currentSpot) / this.currentSpot) * 100 : 0;
+        if (spotLabel) spotLabel.textContent = `NIFTY Target: ${Math.round(this.spotSliderVal)} (${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%)`;
+        this._notifySliderChange();
+      });
+    }
+
+    if (btnResetSpot) {
+      btnResetSpot.addEventListener('click', () => {
+        this.spotSliderVal = null;
+        if (spotSlider) spotSlider.value = String(Math.round(this.currentSpot));
+        if (spotLabel) spotLabel.textContent = `NIFTY Target: ${Math.round(this.currentSpot)} (0.0%)`;
+        this._notifySliderChange();
+      });
+    }
   }
 
   _notifySliderChange() {
@@ -296,16 +339,18 @@ export class PayoffChartComponent {
     target.setDate(today.getDate() + this.timeSliderVal);
     const targetDateStr = target.toISOString().slice(0, 10);
 
+    const spotShift = this.spotSliderVal && Math.abs(this.spotSliderVal - this.currentSpot) > 0.5;
     if (this.options.onSliderChange) {
       this.options.onSliderChange({
         targetDays: this.timeSliderVal,
         targetDate: this.timeSliderVal > 0 ? targetDateStr : null,
         ivShiftPct: this.ivSliderVal,
+        targetSpot: spotShift ? this.spotSliderVal : null,
       });
     }
   }
 
-  async updateData({ curveData, curveExpiry, curveTarget, currentSpot, maxLoss, maxProfit, breakevens, realisticRisk, greeks, pop, expiryDate }) {
+  async updateData({ curveData, curveExpiry, curveTarget, currentSpot, maxLoss, maxProfit, breakevens, realisticRisk, greeks, pop, expiryDate, projectedPnl, projectedPnlPct }) {
     this._hasData = true;
     this.chartData = curveData || this.chartData;
     this.curveExpiry = curveExpiry || curveData || this.curveExpiry;
@@ -314,7 +359,9 @@ export class PayoffChartComponent {
     this.maxLoss = Math.abs(maxLoss || 0);
     this.maxProfit = maxProfit || 0;
     this.breakevens = breakevens || [];
-    this.realisticRisk = Math.abs(realisticRisk || 0);
+    if (realisticRisk != null) this.realisticRisk = Math.abs(realisticRisk);
+    if (projectedPnl !== undefined) this.projectedPnl = projectedPnl;
+    if (projectedPnlPct !== undefined) this.projectedPnlPct = projectedPnlPct;
     if (greeks !== undefined) this.greeks = greeks;
     if (pop !== undefined) this.pop = pop;
 
@@ -375,7 +422,34 @@ export class PayoffChartComponent {
       greeksStrip.innerHTML = this._renderGreeksContent();
     }
 
+    // Projected P&L readout (NIFTY-target slider). '—' when no what-if spot is set.
+    const projEl = this.container.querySelector('#payoff-projected-pnl');
+    if (projEl) {
+      if (this.projectedPnl != null && this.spotSliderVal != null) {
+        const c = this.projectedPnl >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)';
+        const pctStr = this.projectedPnlPct != null ? ` (${this.projectedPnlPct >= 0 ? '+' : ''}${this.projectedPnlPct.toFixed(1)}%)` : '';
+        projEl.innerHTML = `Projected P&L: <span style="color:${c}; font-weight:700;">${this.projectedPnl >= 0 ? '+' : ''}₹${Math.round(this.projectedPnl).toLocaleString('en-IN')}${pctStr}</span>`;
+      } else {
+        projEl.textContent = 'Projected P&L: —';
+      }
+    }
+
+    // Re-center the NIFTY-target slider on the real spot (unless the user is dragging it).
+    const spotSlider = this.container.querySelector('#payoff-spot-slider');
+    if (spotSlider && document.activeElement !== spotSlider && this.currentSpot) {
+      spotSlider.min = String(Math.round(this.currentSpot * 0.95));
+      spotSlider.max = String(Math.round(this.currentSpot * 1.05));
+      if (this.spotSliderVal == null) spotSlider.value = String(Math.round(this.currentSpot));
+    }
+
     await this.renderPlot();
+  }
+
+  /** Set the 2-sigma realistic-risk line from the REAL validation number (single source). */
+  setRealisticRisk(value) {
+    if (value == null) return;
+    this.realisticRisk = Math.abs(value);
+    this.renderPlot();
   }
 
   async renderPlot() {
@@ -482,7 +556,7 @@ export class PayoffChartComponent {
         type: 'scatter',
         mode: 'lines',
         name: targetLabel,
-        line: { color: isDark ? '#ac9fd2' : '#7b6ea8', width: 2.5, dash: 'dash' },
+        line: { color: isDark ? '#7fb0d9' : '#4f7aa6', width: 2.5, dash: 'dash' },
         opacity: 1.0,
         hovertemplate: `Spot: %{x:,.0f}<br>${targetLabel} P&L: ₹%{y:,.0f}<extra></extra>`,
       };
@@ -524,6 +598,16 @@ export class PayoffChartComponent {
           type: 'line', xref: 'paper', x0: 0, x1: 1,
           y0: -this.realisticRisk, y1: -this.realisticRisk,
           line: { color: '#c9a04a', width: 1.2, dash: 'dot' },
+        });
+      }
+
+      // NIFTY-target (what-if spot) vertical marker
+      if (this.spotSliderVal && Math.abs(this.spotSliderVal - this.currentSpot) > 0.5) {
+        shapes.push({
+          type: 'line',
+          x0: this.spotSliderVal, x1: this.spotSliderVal,
+          yref: 'paper', y0: 0, y1: 1,
+          line: { color: '#86ab92', width: 1.4, dash: 'dot' },
         });
       }
 

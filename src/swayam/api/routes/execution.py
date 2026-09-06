@@ -167,7 +167,7 @@ def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
         )
 
     # Step 2: Compute payoff and Greeks for journal and record
-    spread, iv_map = build_spread_from_request(req)
+    spread, iv_map, _iv_available = build_spread_from_request(req)
     curve = compute_payoff_curve(
         spread=spread,
         current_spot=req.current_spot,
