@@ -105,8 +105,8 @@ export class PayoffChartComponent {
             <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-sage); font-weight: 600;">
               <span style="display: inline-block; width: 14px; height: 3px; background: var(--accent-sage); border-radius: 2px;"></span> At Expiry
             </span>
-            <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-lilac); font-weight: 600;">
-              <span style="display: inline-block; width: 14px; height: 2px; border-top: 2px dashed var(--accent-lilac);"></span> Today (T+0)
+            <span style="display: flex; align-items: center; gap: 4px; color: #5f86b3; font-weight: 600;">
+              <span style="display: inline-block; width: 14px; height: 2px; border-top: 2px dashed #5f86b3;"></span> Today (T+0)
             </span>
             <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-amber); font-weight: 600;">
               <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-amber);"></span> Breakeven
@@ -556,7 +556,7 @@ export class PayoffChartComponent {
         type: 'scatter',
         mode: 'lines',
         name: targetLabel,
-        line: { color: isDark ? '#ac9fd2' : '#7b6ea8', width: 2.5, dash: 'dash' },
+        line: { color: isDark ? '#7fb0d9' : '#4f7aa6', width: 2.5, dash: 'dash' },
         opacity: 1.0,
         hovertemplate: `Spot: %{x:,.0f}<br>${targetLabel} P&L: ₹%{y:,.0f}<extra></extra>`,
       };

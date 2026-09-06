@@ -29,7 +29,8 @@ export class StrategyBuilderPage {
   constructor(container, options = {}) {
     this.container = container;
     this.options = options; // { onNavigateHome, onOpenSettings }
-    this.currentSpot = 24842.65;
+    this.currentSpot = 24842.65; // math fallback only — NEVER displayed as the live spot
+    this.spotIsLive = false;
     this.sessionId = this._resolveSessionId();
     this.strategyName = 'Bear Put Spread';
     this.targetDate = null;
@@ -208,7 +209,7 @@ export class StrategyBuilderPage {
               </div>
             </div>
             <div id="strategy-spot-display" class="mono-nums" style="font-size: 0.95rem; font-weight: 700; color: var(--accent-sage);">
-              NIFTY 50: ${this.currentSpot.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              NIFTY 50: <span style="color: var(--dl-fg-3);">—</span>
             </div>
           </div>
 
@@ -251,7 +252,7 @@ export class StrategyBuilderPage {
       ">
         <div style="display: flex; align-items: center; gap: 12px;">
           <span style="color: var(--dl-fg-3);">NIFTY SPOT:</span>
-          <span id="ticker-spot-val" style="color: var(--accent-sage); font-weight: 700;">${this.currentSpot.toFixed(2)}</span>
+          <span id="ticker-spot-val" style="color: var(--dl-fg-3); font-weight: 700;">—</span>
         </div>
         <div style="display: flex; align-items: center; gap: 12px;">
           <span style="color: var(--dl-fg-3);">TODAY'S P&amp;L:</span>
@@ -259,7 +260,7 @@ export class StrategyBuilderPage {
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="color: var(--accent-amber);">MARKET STATUS:</span>
-          <span id="ticker-market-status" style="color: var(--dl-fg-2);">TRADING OPEN</span>
+          <span id="ticker-market-status" style="color: var(--dl-fg-3);">—</span>
         </div>
       </footer>
 
@@ -384,17 +385,18 @@ export class StrategyBuilderPage {
   }
 
   async loadInitialData() {
-    // 1. Spot fetch
+    // 1. Spot fetch — show the REAL spot or an honest '—' (never the hardcoded default).
     try {
       const spotRes = await api.getNiftySpot();
       if (spotRes && spotRes.spot) {
         this.currentSpot = spotRes.spot;
-        const spotEl = this.container.querySelector('#strategy-spot-display');
-        const tickerSpot = this.container.querySelector('#ticker-spot-val');
-        if (spotEl) spotEl.textContent = `NIFTY 50: ${this.currentSpot.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-        if (tickerSpot) tickerSpot.textContent = this.currentSpot.toFixed(2);
+        this.spotIsLive = true;
       }
-    } catch (_) {}
+    } catch (_) {
+      this.spotIsLive = false;
+    }
+    this._updateSpotDisplay();
+    this._updateMarketStatus();
 
     // 2. Load default Bear Put Spread legs
     const initialLegs = generatePresetLegs('bear-put', this.currentSpot);
@@ -422,6 +424,44 @@ export class StrategyBuilderPage {
         this.miniReadiness.render(readRes);
       }
     } catch (_) {}
+  }
+
+  _marketOpen() {
+    // NIFTY F&O trades 09:15–15:30 IST, Mon–Fri. (Public-holiday calendar not applied here.)
+    const now = new Date();
+    const istMs = now.getTime() + now.getTimezoneOffset() * 60000 + 5.5 * 3600000;
+    const ist = new Date(istMs);
+    const day = ist.getDay();
+    if (day === 0 || day === 6) return false;
+    const mins = ist.getHours() * 60 + ist.getMinutes();
+    return mins >= 9 * 60 + 15 && mins <= 15 * 60 + 30;
+  }
+
+  _updateMarketStatus() {
+    const el = this.container.querySelector('#ticker-market-status');
+    if (!el) return;
+    const open = this._marketOpen();
+    el.textContent = open ? 'OPEN · 09:15–15:30 IST' : 'CLOSED';
+    el.style.color = open ? 'var(--accent-sage)' : 'var(--dl-fg-3)';
+  }
+
+  _updateSpotDisplay() {
+    const spotEl = this.container.querySelector('#strategy-spot-display');
+    const tickerSpot = this.container.querySelector('#ticker-spot-val');
+    if (this.spotIsLive) {
+      const val = this.currentSpot.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+      if (spotEl) spotEl.innerHTML = `NIFTY 50: ${val} <span style="font-size:0.6rem; color:var(--accent-sage); font-weight:700; letter-spacing:0.05em;">LIVE</span>`;
+      if (tickerSpot) {
+        tickerSpot.textContent = this.currentSpot.toFixed(2);
+        tickerSpot.style.color = 'var(--accent-sage)';
+      }
+    } else {
+      if (spotEl) spotEl.innerHTML = `NIFTY 50: <span style="color:var(--dl-fg-3);">— no live price</span>`;
+      if (tickerSpot) {
+        tickerSpot.textContent = '—';
+        tickerSpot.style.color = 'var(--dl-fg-3)';
+      }
+    }
   }
 
   async refreshPositions() {
