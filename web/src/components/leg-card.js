@@ -111,44 +111,43 @@ export class LegCardComponent {
 
     this.container.innerHTML = `
       <div class="leg-card ${isBuy ? 'leg-buy' : 'leg-sell'}" style="border:1px solid var(--dl-line); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:10px;">
-        <div class="legcard-top" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-          <span class="bs-chip" title="${isBuy ? 'Buy leg' : 'Sell leg'}" style="flex:0 0 auto; width:26px; height:26px; display:flex; align-items:center; justify-content:center; border-radius:7px; font-weight:800; font-size:0.8rem; background:${sideTint}; color:${sideColor};">${isBuy ? 'B' : 'S'}</span>
+        <div class="legcard-top" style="display:flex; align-items:center; gap:7px; flex-wrap:wrap;">
+          <span class="bs-chip" title="${isBuy ? 'Buy leg' : 'Sell leg'}" style="flex:0 0 auto; width:24px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:6px; font-weight:800; font-size:0.78rem; background:${sideTint}; color:${sideColor};">${isBuy ? 'B' : 'S'}</span>
 
-          <div class="ce-pe-toggle" style="flex:0 0 auto; display:flex; background:var(--dl-card-2); border-radius:7px; border:1px solid var(--dl-line); padding:2px;">
-            <button type="button" class="btn-type-ce" style="padding:5px 10px; font-size:0.74rem; font-weight:700; border:none; border-radius:5px; cursor:pointer; background:${isCE ? 'var(--accent-sage-tint)' : 'transparent'}; color:${isCE ? 'var(--accent-sage)' : 'var(--dl-fg-3)'};">CE</button>
-            <button type="button" class="btn-type-pe" style="padding:5px 10px; font-size:0.74rem; font-weight:700; border:none; border-radius:5px; cursor:pointer; background:${!isCE ? 'var(--accent-coral-tint)' : 'transparent'}; color:${!isCE ? 'var(--accent-coral)' : 'var(--dl-fg-3)'};">PE</button>
+          <div class="ce-pe-toggle" style="flex:0 0 auto; display:flex; background:var(--dl-card-2); border-radius:6px; border:1px solid var(--dl-line); padding:2px; height:30px; align-items:center;">
+            <button type="button" class="btn-type-ce" style="padding:4px 8px; font-size:0.72rem; font-weight:700; border:none; border-radius:4px; cursor:pointer; background:${isCE ? 'var(--accent-sage-tint)' : 'transparent'}; color:${isCE ? 'var(--accent-sage)' : 'var(--dl-fg-3)'};">CE</button>
+            <button type="button" class="btn-type-pe" style="padding:4px 8px; font-size:0.72rem; font-weight:700; border:none; border-radius:4px; cursor:pointer; background:${!isCE ? 'var(--accent-coral-tint)' : 'transparent'}; color:${!isCE ? 'var(--accent-coral)' : 'var(--dl-fg-3)'};">PE</button>
           </div>
 
-          <div class="stepper" style="flex:0 0 auto; display:flex; align-items:center; background:var(--dl-card-2); border:1px solid var(--dl-line); border-radius:7px; height:32px;">
-            <button type="button" class="btn-strike-dec" title="Strike −50" style="width:26px; height:100%; border:none; background:transparent; color:var(--dl-fg-2); cursor:pointer; font-weight:700; font-size:0.95rem;">−</button>
-            <span class="strike-val" style="min-width:58px; text-align:center; font-family:var(--font-mono); font-size:0.82rem; font-weight:700; color:var(--dl-fg);">${strikeStr}</span>
-            <button type="button" class="btn-strike-inc" title="Strike +50" style="width:26px; height:100%; border:none; background:transparent; color:var(--dl-fg-2); cursor:pointer; font-weight:700; font-size:0.95rem;">+</button>
+          <div class="stepper" style="flex:0 0 auto; display:flex; align-items:center; background:var(--dl-card-2); border:1px solid var(--dl-line); border-radius:6px; height:30px;">
+            <button type="button" class="btn-strike-dec" title="Strike −50" style="width:24px; height:100%; border:none; background:transparent; color:var(--dl-fg-2); cursor:pointer; font-weight:700; font-size:0.9rem;">−</button>
+            <span class="strike-val" style="min-width:52px; text-align:center; font-family:var(--font-mono); font-size:0.8rem; font-weight:700; color:var(--dl-fg);">${strikeStr}</span>
+            <button type="button" class="btn-strike-inc" title="Strike +50" style="width:24px; height:100%; border:none; background:transparent; color:var(--dl-fg-2); cursor:pointer; font-weight:700; font-size:0.9rem;">+</button>
           </div>
 
-          <select class="input-expiry" title="Expiry for THIS leg — change per leg to build calendar / diagonal spreads" style="flex:0 0 auto; height:32px; max-width:140px; background:var(--dl-card-2); color:var(--dl-fg); border:1px solid var(--dl-line); border-radius:7px; padding:0 6px; font-size:0.74rem; font-family:var(--font-mono); font-weight:600; cursor:pointer;">${this._expiryOptions()}</select>
+          <select class="input-expiry" title="Expiry for THIS leg — change per leg to build calendar / diagonal spreads" style="flex:0 0 auto; height:30px; max-width:120px; background:var(--dl-card-2); color:var(--dl-fg); border:1px solid var(--dl-line); border-radius:6px; padding:0 5px; font-size:0.72rem; font-family:var(--font-mono); font-weight:600; cursor:pointer;">${this._expiryOptions()}</select>
 
-          <select class="input-lots" title="Lots (free — never restricted)" style="flex:0 0 auto; height:32px; background:var(--dl-card-2); color:var(--dl-fg); border:1px solid var(--dl-line); border-radius:7px; padding:0 6px; font-size:0.78rem; font-family:var(--font-mono); font-weight:600; cursor:pointer;">${this._lotOptions()}</select>
+          <select class="input-lots" title="Lots (free — never restricted)" style="flex:0 0 auto; height:30px; background:var(--dl-card-2); color:var(--dl-fg); border:1px solid var(--dl-line); border-radius:6px; padding:0 5px; font-size:0.76rem; font-family:var(--font-mono); font-weight:600; cursor:pointer;">${this._lotOptions()}</select>
+
+          <!-- Price: compact inline stepper (− price +), Sensibull-style — no extra row -->
+          <div class="price-ctl" title="Price for this leg — real last-traded fills it; − / + or type to override" style="flex:0 0 auto; display:flex; align-items:stretch; height:30px; background:var(--dl-card-2); border:1px solid var(--dl-line); border-radius:6px; overflow:hidden;">
+            <button type="button" class="btn-price-dec" title="−0.05" style="flex:0 0 26px; border:none; background:transparent; color:var(--dl-fg-2); cursor:pointer; font-size:1.05rem; font-weight:700; line-height:1;">−</button>
+            <input type="number" step="0.05" min="0" class="input-price" value="${priceVal}" placeholder="₹—" style="flex:0 0 62px; width:62px; min-width:0; border:none; border-left:1px solid var(--dl-line); border-right:1px solid var(--dl-line); background:transparent; color:var(--dl-fg); text-align:center; font-family:var(--font-mono); font-weight:700; font-size:0.86rem; padding:0 2px;" />
+            <button type="button" class="btn-price-inc" title="+0.05" style="flex:0 0 26px; border:none; background:transparent; color:var(--dl-fg-2); cursor:pointer; font-size:1.05rem; font-weight:700; line-height:1;">+</button>
+          </div>
+
+          <button type="button" class="btn-refresh-price" title="Refresh real price for this strike + expiry" style="flex:0 0 auto; width:30px; height:30px; border-radius:6px; border:1px solid var(--dl-line); background:var(--dl-card-2); color:var(--dl-fg-2); cursor:pointer; font-size:0.9rem;" onmouseover="this.style.color='var(--accent-sage)'; this.style.borderColor='var(--accent-sage)';" onmouseout="this.style.color='var(--dl-fg-2)'; this.style.borderColor='var(--dl-line)';">↻</button>
 
           <button type="button" class="btn-remove-leg" title="Remove leg" style="flex:0 0 auto; margin-left:auto; background:transparent; border:none; color:var(--dl-fg-3); font-size:0.95rem; cursor:pointer; padding:4px 6px; border-radius:4px;" onmouseover="this.style.color='var(--accent-coral)'" onmouseout="this.style.color='var(--dl-fg-3)'">✕</button>
         </div>
 
-        <div class="legcard-price" style="display:flex; align-items:center; gap:8px;">
-          <span style="flex:0 0 auto; font-size:0.72rem; color:var(--dl-fg-3); font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">Price</span>
-          <div class="price-ctl" style="flex:1 1 auto; display:flex; align-items:stretch; height:38px; background:var(--dl-card-2); border:1px solid var(--dl-line); border-radius:9px; overflow:hidden;">
-            <button type="button" class="btn-price-dec" title="−0.05" style="flex:0 0 44px; border:none; background:transparent; color:var(--dl-fg-2); cursor:pointer; font-size:1.35rem; font-weight:700; line-height:1;" onmouseover="this.style.color='var(--accent-coral)'" onmouseout="this.style.color='var(--dl-fg-2)'">−</button>
-            <input type="number" step="0.05" min="0" class="input-price" value="${priceVal}" placeholder="—" title="Price per share for this leg — real last-traded price pre-fills; use − / + or type to override" style="flex:1 1 auto; min-width:0; border:none; border-left:1px solid var(--dl-line); border-right:1px solid var(--dl-line); background:transparent; color:var(--dl-fg); text-align:center; font-family:var(--font-mono); font-weight:700; font-size:1.05rem; padding:0 4px;" />
-            <button type="button" class="btn-price-inc" title="+0.05" style="flex:0 0 44px; border:none; background:transparent; color:var(--dl-fg-2); cursor:pointer; font-size:1.35rem; font-weight:700; line-height:1;" onmouseover="this.style.color='var(--accent-sage)'" onmouseout="this.style.color='var(--dl-fg-2)'">+</button>
-          </div>
-          <button type="button" class="btn-refresh-price" title="Refresh real price for this strike + expiry" style="flex:0 0 auto; width:38px; height:38px; border-radius:9px; border:1px solid var(--dl-line); background:var(--dl-card-2); color:var(--dl-fg-2); cursor:pointer; font-size:1rem;" onmouseover="this.style.color='var(--accent-sage)'; this.style.borderColor='var(--accent-sage)';" onmouseout="this.style.color='var(--dl-fg-2)'; this.style.borderColor='var(--dl-line)';">↻</button>
-        </div>
-        <div class="price-src" style="font-size:0.66rem; font-family:var(--font-mono); color:${this._sourceColor()}; min-height:0.9rem;">${this._sourceLabel()}</div>
-
-        <div class="legcard-stats" style="display:flex; gap:8px 16px; flex-wrap:wrap; font-family:var(--font-mono); font-size:0.74rem; color:var(--dl-fg-2); border-top:1px solid var(--dl-line); padding-top:9px;">
+        <div class="legcard-stats" style="display:flex; gap:6px 14px; flex-wrap:wrap; align-items:center; font-family:var(--font-mono); font-size:0.72rem; color:var(--dl-fg-2); border-top:1px solid var(--dl-line); padding-top:7px;">
           <span>Bid <b class="leg-bid" style="color:var(--dl-fg);">${this._fmtNum(this.leg.bid)}</b></span>
           <span>Ask <b class="leg-ask" style="color:var(--dl-fg);">${this._fmtNum(this.leg.ask)}</b></span>
           <span>IV <b class="leg-iv" style="color:var(--dl-fg);">${this._fmtIv()}</b></span>
           <span>Δ <b class="leg-delta" style="color:${this._deltaColor()};">${this._fmtDelta()}</b></span>
           <span>OI <b class="leg-oi" style="color:var(--dl-fg);">${this._fmtOi(this.leg.oi)}</b></span>
+          <span class="price-src" style="margin-left:auto; color:${this._sourceColor()};">${this._sourceLabel()}</span>
         </div>
       </div>
     `;

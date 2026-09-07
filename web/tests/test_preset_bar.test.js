@@ -35,9 +35,12 @@ describe('PresetBarComponent', () => {
     chip.click();
 
     expect(onSelect).toHaveBeenCalled();
-    const [name, legs] = onSelect.mock.calls[0];
+    // New contract: preset bar passes (name, presetId); the PAGE builds strikes from the live spot.
+    const [name, presetId] = onSelect.mock.calls[0];
     expect(name).toBe('Iron Condor');
-    expect(legs.length).toBe(4);
+    expect(presetId).toBe('iron-condor');
+    // The generator (used by the page) still yields the 4 iron-condor legs from a real spot.
+    expect(generatePresetLegs(presetId, 23800).length).toBe(4);
   });
 
   it('triggers onImportAI when import button is clicked', () => {

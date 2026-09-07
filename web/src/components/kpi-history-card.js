@@ -17,12 +17,13 @@ export class KPIHistoryCardComponent {
    * @param {Object} kpiData Data from /api/readiness/kpis
    */
   render(kpiData = {}) {
-    const alcoholDays = kpiData.alcohol_streak_days ?? 0;
-    const rampTier = kpiData.ramp_tier_label || 'Ramp tier 4 · 1.0% cap';
-    const streakDots = kpiData.readiness_last_7_days || ['green', 'green', 'green', 'green', 'green', 'green', 'yellow'];
-    const ratioStr = kpiData.readiness_ratio_str || '6 / 7';
-    const routinePct = kpiData.morning_routine_pct ?? 92;
-    const sparkline = kpiData.morning_routine_sparkline || [85, 88, 90, 89, 94, 91, 92];
+    // Real values or honest blanks — never fabricated streaks/percentages.
+    const alcoholDays = kpiData.alcohol_streak_days ?? null;
+    const rampTier = kpiData.ramp_tier_label || null;
+    const streakDots = kpiData.readiness_last_7_days || [];
+    const ratioStr = kpiData.readiness_ratio_str || '—';
+    const routinePct = (kpiData.morning_routine_pct === null || kpiData.morning_routine_pct === undefined) ? null : kpiData.morning_routine_pct;
+    const sparkline = kpiData.morning_routine_sparkline || [];
 
     // Build 7 dots HTML
     // Pad to 7 if fewer
@@ -54,13 +55,11 @@ export class KPIHistoryCardComponent {
       <div class="tile kpi-streak-card" style="display: flex; flex-direction: column; gap: 8px;">
         <span class="eyebrow" style="color: var(--dl-fg-3);">ALCOHOL-FREE STREAK</span>
         <div style="display: flex; align-items: baseline; gap: 4px;">
-          <span class="fig-xl">${alcoholDays}</span>
+          <span class="fig-xl">${alcoholDays ?? '—'}</span>
           <span style="font-family: var(--font-serif); font-size: 1.15rem; color: var(--dl-fg-2);">days</span>
         </div>
         <div style="margin-top: 2px;">
-          <span style="font-size: 0.72rem; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--accent-sage-tint); color: var(--accent-sage); border: 1px solid rgba(134,171,146,0.3);">
-            ${rampTier}
-          </span>
+          ${rampTier ? `<span style="font-size: 0.72rem; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--accent-sage-tint); color: var(--accent-sage); border: 1px solid rgba(134,171,146,0.3);">${rampTier}</span>` : ''}
         </div>
       </div>
 
@@ -79,11 +78,12 @@ export class KPIHistoryCardComponent {
       <div class="tile kpi-routine-card" style="display: flex; flex-direction: column; gap: 8px;">
         <span class="eyebrow" style="color: var(--dl-fg-3);">MORNING ROUTINE COMPLETION</span>
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div class="fig-xl">${routinePct}%</div>
+          <div class="fig-xl">${routinePct === null ? '—' : routinePct + '%'}</div>
           <div style="width: 100px; height: 36px;">
             ${sparklineSvg}
           </div>
         </div>
+        ${routinePct === null ? `<div style="font-size: 0.68rem; color: var(--dl-fg-3);">Not tracked yet</div>` : ''}
       </div>
     `;
   }

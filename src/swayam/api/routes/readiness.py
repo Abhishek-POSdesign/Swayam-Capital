@@ -180,7 +180,7 @@ def get_readiness_kpis() -> dict[str, Any]:
         )
         ramp_tier_res = client.table("swayam_config").select("value").eq("key", "current_reentry_ramp_tier").execute()
         raw_tier = ramp_tier_res.data[0]["value"] if ramp_tier_res.data and ramp_tier_res.data[0].get("value") is not None else None
-        ramp_tier = f"Ramp tier {raw_tier}" if raw_tier else "Ramp tier 4 · 1.0% cap"
+        ramp_tier = f"Ramp tier {raw_tier}" if raw_tier else None
 
         # 2. Last 7 days readiness
         history_res = client.table("swayam_readiness_log").select("log_date,verdict,trading_allowed").order("log_date", desc=True).limit(7).execute()
@@ -190,9 +190,10 @@ def get_readiness_kpis() -> dict[str, Any]:
         green_count = sum(1 for r in rows if r.get("verdict") == "green")
         total_logged = len(rows)
 
-        # 3. Morning routine completion
-        routine_pct = 92 if total_logged > 0 else 0
-        sparkline = [85, 88, 90, 89, 94, 91, 92] if total_logged > 0 else []
+        # 3. Morning routine completion — NO real data source wired yet. Never fabricate it
+        #    (was hardcoded 92% + a fake sparkline). Return None/empty → UI shows "unavailable".
+        routine_pct = None
+        sparkline = []
 
         return {
             "alcohol_streak_days": alcohol_streak,

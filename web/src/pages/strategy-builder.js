@@ -304,7 +304,7 @@ export class StrategyBuilderPage {
     if (presetMount) {
       this.presetBar = new PresetBarComponent(presetMount, {
         currentSpot: this.currentSpot,
-        onSelectPreset: (name, legs) => this.handlePresetSelected(name, legs),
+        onSelectPreset: (name, presetId) => this.handlePresetSelected(name, presetId),
         onImportAI: () => this.handleImportFromAI(),
       });
       this.presetBar.render();
@@ -391,6 +391,7 @@ export class StrategyBuilderPage {
       if (spotRes && spotRes.spot) {
         this.currentSpot = spotRes.spot;
         this.spotIsLive = true;
+        if (this.legBuilder) this.legBuilder.options.currentSpot = this.currentSpot;
       }
     } catch (_) {
       this.spotIsLive = false;
@@ -398,10 +399,15 @@ export class StrategyBuilderPage {
     this._updateSpotDisplay();
     this._updateMarketStatus();
 
-    // 2. Load default Bear Put Spread legs
-    const initialLegs = generatePresetLegs('bear-put', this.currentSpot);
-    if (this.legBuilder) {
-      this.legBuilder.setLegs(initialLegs);
+    // 2. Load default Bear Put Spread legs — ONLY with a real spot, so strikes are at-the-money.
+    if (this.spotIsLive) {
+      const initialLegs = generatePresetLegs('bear-put', this.currentSpot);
+      if (this.legBuilder) {
+        this.legBuilder.setLegs(initialLegs);
+      }
+    } else if (this.legBuilder) {
+      this.legBuilder.setLegs([]); // never seed far-OTM strikes off the fallback spot
+      this._toast('Live NIFTY price unavailable — pick a strategy once the spot is live so strikes land at-the-money. Refresh your FYERS session if this persists.');
     }
 
     // 3. Load active positions
@@ -487,11 +493,49 @@ export class StrategyBuilderPage {
     }
   }
 
-  handlePresetSelected(name, legs) {
+  async handlePresetSelected(name, presetId) {
     this.strategyName = name;
+    await this._ensureLiveSpot();
+    if (!this.spotIsLive) {
+      this._toast("Live NIFTY price unavailable — refresh your FYERS session. Strikes need the real spot; I won't place far-OTM guesses.");
+      return; // never build strikes off the fallback spot
+    }
+    const legs = generatePresetLegs(presetId, this.currentSpot);
     if (this.legBuilder) {
       this.legBuilder.setLegs(legs);
     }
+  }
+
+  /** Re-fetch the real spot on demand (e.g. right before building strikes). Never invents one. */
+  async _ensureLiveSpot() {
+    if (this.spotIsLive) return;
+    try {
+      const spotRes = await api.getNiftySpot();
+      if (spotRes && spotRes.spot) {
+        this.currentSpot = spotRes.spot;
+        this.spotIsLive = true;
+        if (this.legBuilder) this.legBuilder.options.currentSpot = this.currentSpot;
+        this._updateSpotDisplay();
+        this._updateMarketStatus();
+      }
+    } catch (_) {
+      /* stays not-live; caller shows an honest message */
+    }
+  }
+
+  /** Transient bottom-center notice (used when strikes can't be placed without a real spot). */
+  _toast(msg) {
+    let t = this.container.querySelector('#sb-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'sb-toast';
+      t.style.cssText = 'position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--dl-card); color:var(--accent-coral); border:1px solid var(--accent-coral); padding:10px 18px; border-radius:8px; font-size:0.85rem; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,0.4); z-index:2000; max-width:90vw; text-align:center;';
+      this.container.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.display = 'block';
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => { if (t) t.style.display = 'none'; }, 6000);
   }
 
   async handleImportFromAI() {
@@ -499,9 +543,8 @@ export class StrategyBuilderPage {
     try {
       const summary = await api.getSessionContextSummary(this.sessionId);
       if (summary && summary.bullets) {
-        // AI usually recommends Bear Put Spread around 24,800 or 24,700
-        const legs = generatePresetLegs('bear-put', this.currentSpot);
-        this.handlePresetSelected('Bear Put Spread (AI Suggested)', legs);
+        // Build from the LIVE spot via the gated path (no far-OTM guesses off a fallback spot).
+        await this.handlePresetSelected('Bear Put Spread (AI Suggested)', 'bear-put');
         if (this.chatSurface) {
           this.chatSurface.appendSystemNotice('Imported strategy structure recommended in Home AI dialogue.');
         }

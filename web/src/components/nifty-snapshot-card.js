@@ -95,23 +95,25 @@ export class NiftySnapshotCardComponent {
     const fno = this.data?.fno_pane || {};
     const inst = fno.institutional || {};
 
-    const spot = Number(cash.spot || 24864.2).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const dayChg = Number(cash.day_change_pct || 0);
-    const dayChgSign = dayChg >= 0 ? '+' : '';
-    const dayChgColor = dayChg >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)';
+    // Honest formatting: real value or '—'. NEVER a fabricated fallback number.
+    const has = (v) => !(v === null || v === undefined || v === '' || (typeof v === 'number' && isNaN(v)));
+    const dash = (v, fn) => (has(v) ? (fn ? fn(v) : v) : '—');
+    const pctStr = (v) => (has(v) ? `${v >= 0 ? '+' : ''}${Number(v).toFixed(2)}%` : '—');
+    const pctColor = (v) => (!has(v) ? 'var(--dl-fg-3)' : (v >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)'));
 
-    const weekChg = Number(cash.week_change_pct || 0);
-    const weekChgSign = weekChg >= 0 ? '+' : '';
-    const weekChgColor = weekChg >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)';
+    const spotStr = dash(cash.spot, (v) => Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    const dayChgStr = pctStr(cash.day_change_pct);
+    const dayChgColor = pctColor(cash.day_change_pct);
+    const weekChgStr = pctStr(cash.week_change_pct);
+    const weekChgColor = pctColor(cash.week_change_pct);
+    const monthChgStr = pctStr(cash.month_change_pct);
+    const monthChgColor = pctColor(cash.month_change_pct);
 
-    const monthChg = Number(cash.month_change_pct || 0);
-    const monthChgSign = monthChg >= 0 ? '+' : '';
-    const monthChgColor = monthChg >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)';
-
-    const spotPosPct = Math.min(100, Math.max(0, Number(cash.spot_position_pct_20d || 50)));
+    const hasSpotPos = has(cash.spot_position_pct_20d);
+    const spotPosPct = hasSpotPos ? Math.min(100, Math.max(0, Number(cash.spot_position_pct_20d))) : null;
 
     // Sentiment pill color
-    const sentiment = cash.sentiment || 'Neutral';
+    const sentiment = has(cash.sentiment) ? cash.sentiment : null;
     let sentColor = 'var(--dl-fg-2)';
     let sentBg = 'var(--dl-card-2)';
     if (sentiment === 'Bullish') {
@@ -122,27 +124,25 @@ export class NiftySnapshotCardComponent {
       sentBg = 'rgba(248, 113, 113, 0.12)';
     }
 
-    // Sector rotation HTML
+    // Sector rotation HTML — '—' when there's no real quote, never a fabricated move.
     const sectors = cash.sector_rotation || [];
     const sectorStripHtml = sectors.map(sec => {
-      const sign = sec.change_pct >= 0 ? '+' : '';
-      const col = sec.change_pct >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)';
+      const c = sec.change_pct;
+      const col = !has(c) ? 'var(--dl-fg-3)' : (c >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)');
+      const val = has(c) ? `${c >= 0 ? '+' : ''}${Number(c).toFixed(1)}%` : '—';
       return `
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--dl-card-2); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--dl-line); min-width: 80px; flex: 0 0 auto;">
           <span style="font-size: 0.80rem; color: var(--dl-fg-2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">${sec.name}</span>
-          <span class="mono-nums" style="font-size: 0.98rem; color: ${col}; font-weight: 800; margin-top: 2px;">${sign}${sec.change_pct.toFixed(1)}%</span>
+          <span class="mono-nums" style="font-size: 0.98rem; color: ${col}; font-weight: 800; margin-top: 2px;">${val}</span>
         </div>
       `;
     }).join('');
 
-    // FII / DII formatting
-    const fiiCashVal = inst.fii_cash_net_cr || 0;
-    const fiiCashStr = `${fiiCashVal >= 0 ? '+' : ''}${fiiCashVal.toLocaleString('en-IN')} cr`;
-    const fiiCashColor = fiiCashVal >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)';
-
-    const diiCashVal = inst.dii_cash_net_cr || 0;
-    const diiCashStr = `${diiCashVal >= 0 ? '+' : ''}${diiCashVal.toLocaleString('en-IN')} cr`;
-    const diiCashColor = diiCashVal >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)';
+    // FII / DII — '—' when unavailable (no real source), never +0 cr.
+    const fiiCashStr = dash(inst.fii_cash_net_cr, (v) => `${v >= 0 ? '+' : ''}${Number(v).toLocaleString('en-IN')} cr`);
+    const fiiCashColor = pctColor(inst.fii_cash_net_cr);
+    const diiCashStr = dash(inst.dii_cash_net_cr, (v) => `${v >= 0 ? '+' : ''}${Number(v).toLocaleString('en-IN')} cr`);
+    const diiCashColor = pctColor(inst.dii_cash_net_cr);
 
     this.container.innerHTML = `
       <div class="tile nifty-snapshot-tile span-12" style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: 10px; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px;">
@@ -170,30 +170,30 @@ export class NiftySnapshotCardComponent {
             </div>
             <div style="display: flex; align-items: center; gap: 10px;">
               <span style="font-size: 0.8rem; color: var(--dl-fg-3); font-weight: 600;">Market Breadth:</span>
-              <span class="mono-nums" style="font-size: 0.95rem; color: var(--accent-sage); font-weight: 700;">▲ ${cash.advances || 32} Adv</span>
-              <span class="mono-nums" style="font-size: 0.95rem; color: var(--accent-coral); font-weight: 700;">▼ ${cash.declines || 18} Dec</span>
+              <span class="mono-nums" style="font-size: 0.95rem; color: var(--accent-sage); font-weight: 700;">▲ ${dash(cash.advances)} Adv</span>
+              <span class="mono-nums" style="font-size: 0.95rem; color: var(--accent-coral); font-weight: 700;">▼ ${dash(cash.declines)} Dec</span>
             </div>
           </div>
 
           <!-- Spot + % Changes Row -->
           <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 24px;">
             <div style="display: flex; align-items: baseline; gap: 12px;">
-              <span class="mono-nums" style="font-size: 2.35rem; font-weight: 800; color: var(--dl-fg); letter-spacing: -0.02em;">${spot}</span>
-              <span class="mono-nums" style="font-size: 1.35rem; font-weight: 700; color: ${dayChgColor};">${dayChgSign}${dayChg.toFixed(2)}%</span>
+              <span class="mono-nums" style="font-size: 2.35rem; font-weight: 800; color: var(--dl-fg); letter-spacing: -0.02em;">${spotStr}</span>
+              <span class="mono-nums" style="font-size: 1.35rem; font-weight: 700; color: ${dayChgColor};">${dayChgStr}</span>
             </div>
 
             <div style="display: flex; align-items: center; gap: 20px; margin-left: auto; flex-wrap: wrap;">
               <div style="display: flex; flex-direction: column; align-items: flex-end;">
                 <span style="font-size: 0.72rem; color: var(--dl-fg-3); font-weight: 700; text-transform: uppercase;">Week %</span>
-                <span class="mono-nums" style="font-size: 1.15rem; font-weight: 700; color: ${weekChgColor};">${weekChgSign}${weekChg.toFixed(2)}%</span>
+                <span class="mono-nums" style="font-size: 1.15rem; font-weight: 700; color: ${weekChgColor};">${weekChgStr}</span>
               </div>
               <div style="display: flex; flex-direction: column; align-items: flex-end;">
                 <span style="font-size: 0.72rem; color: var(--dl-fg-3); font-weight: 700; text-transform: uppercase;">Month %</span>
-                <span class="mono-nums" style="font-size: 1.15rem; font-weight: 700; color: ${monthChgColor};">${monthChgSign}${monthChg.toFixed(2)}%</span>
+                <span class="mono-nums" style="font-size: 1.15rem; font-weight: 700; color: ${monthChgColor};">${monthChgStr}</span>
               </div>
               <div style="display: flex; flex-direction: column; align-items: flex-end;">
                 <span style="font-size: 0.72rem; color: var(--dl-fg-3); font-weight: 700; text-transform: uppercase;">Sentiment</span>
-                <span style="font-size: 0.95rem; font-weight: 800; color: ${sentColor}; background: ${sentBg}; padding: 3px 10px; border-radius: 6px; letter-spacing: 0.02em;">${sentiment}</span>
+                <span style="font-size: 0.95rem; font-weight: 800; color: ${sentColor}; background: ${sentBg}; padding: 3px 10px; border-radius: 6px; letter-spacing: 0.02em;">${sentiment || '—'}</span>
               </div>
             </div>
           </div>
@@ -209,11 +209,11 @@ export class NiftySnapshotCardComponent {
                 <span>20D High: <strong class="mono-nums" style="color: var(--dl-fg); font-size: 0.9rem;">${cash.range_20d?.high || '-'}</strong></span>
               </div>
               <div style="width: 100%; height: 10px; background: var(--dl-track); border-radius: 5px; position: relative; border: 1px solid var(--dl-line); overflow: visible;">
-                <div style="position: absolute; left: ${spotPosPct}%; top: -3px; width: 6px; height: 16px; background: var(--accent-amber); border-radius: 3px; transform: translateX(-50%); box-shadow: 0 0 8px rgba(234,179,8,0.8);" title="Current spot at ${spotPosPct}% of 20D range"></div>
+                ${hasSpotPos ? `<div style="position: absolute; left: ${spotPosPct}%; top: -3px; width: 6px; height: 16px; background: var(--accent-amber); border-radius: 3px; transform: translateX(-50%); box-shadow: 0 0 8px rgba(234,179,8,0.8);" title="Current spot at ${spotPosPct}% of 20D range"></div>` : ''}
               </div>
               <div style="display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--dl-fg-3);">
-                <span>50D Range: <span class="mono-nums" style="color: var(--dl-fg-2); font-weight: 600;">${cash.range_50d?.low || '-'} – ${cash.range_50d?.high || '-'}</span></span>
-                <span>Spot Position: <strong class="mono-nums" style="color: var(--accent-amber); font-size: 0.88rem; font-weight: 700;">${spotPosPct}%</strong></span>
+                <span>50D Range: <span class="mono-nums" style="color: var(--dl-fg-2); font-weight: 600;">${cash.range_50d?.low || '—'} – ${cash.range_50d?.high || '—'}</span></span>
+                <span>Spot Position: <strong class="mono-nums" style="color: var(--accent-amber); font-size: 0.88rem; font-weight: 700;">${hasSpotPos ? spotPosPct + '%' : '—'}</strong></span>
               </div>
             </div>
 
@@ -221,15 +221,15 @@ export class NiftySnapshotCardComponent {
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center;">
               <div style="background: var(--dl-card-2); padding: 12px 8px; border-radius: 8px; border: 1px solid var(--dl-line); display: flex; flex-direction: column; justify-content: center;">
                 <div style="font-size: 0.72rem; color: var(--dl-fg-3); font-weight: 700; text-transform: uppercase;">20-DMA Dist</div>
-                <div class="mono-nums" style="font-size: 1.18rem; font-weight: 800; color: var(--dl-fg); margin-top: 4px;">${cash.distance_20_dma_atr !== undefined ? `${cash.distance_20_dma_atr >= 0 ? '+' : ''}${cash.distance_20_dma_atr} ATR` : '+0.42 ATR'}</div>
+                <div class="mono-nums" style="font-size: 1.18rem; font-weight: 800; color: var(--dl-fg); margin-top: 4px;">${has(cash.distance_20_dma_atr) ? `${cash.distance_20_dma_atr >= 0 ? '+' : ''}${cash.distance_20_dma_atr} ATR` : '—'}</div>
               </div>
               <div style="background: var(--dl-card-2); padding: 12px 8px; border-radius: 8px; border: 1px solid var(--dl-line); display: flex; flex-direction: column; justify-content: center;">
                 <div style="font-size: 0.72rem; color: var(--dl-fg-3); font-weight: 700; text-transform: uppercase;">20-Day ATR</div>
-                <div class="mono-nums" style="font-size: 1.18rem; font-weight: 800; color: var(--dl-fg); margin-top: 4px;">₹${cash.atr_20 || '185.50'}</div>
+                <div class="mono-nums" style="font-size: 1.18rem; font-weight: 800; color: var(--dl-fg); margin-top: 4px;">${has(cash.atr_20) ? '₹' + cash.atr_20 : '—'}</div>
               </div>
               <div style="background: var(--dl-card-2); padding: 12px 8px; border-radius: 8px; border: 1px solid var(--dl-line); display: flex; flex-direction: column; justify-content: center;">
                 <div style="font-size: 0.72rem; color: var(--dl-fg-3); font-weight: 700; text-transform: uppercase;">Realized Vol</div>
-                <div class="mono-nums" style="font-size: 1.18rem; font-weight: 800; color: var(--dl-fg); margin-top: 4px;">${cash.realized_vol_20 !== undefined ? `${cash.realized_vol_20}%` : '11.8%'}</div>
+                <div class="mono-nums" style="font-size: 1.18rem; font-weight: 800; color: var(--dl-fg); margin-top: 4px;">${has(cash.realized_vol_20) ? `${cash.realized_vol_20}%` : '—'}</div>
               </div>
             </div>
 
@@ -257,9 +257,9 @@ export class NiftySnapshotCardComponent {
             </div>
             <div style="display: flex; align-items: center; gap: 10px;">
               <span style="font-size: 0.82rem; color: var(--dl-fg-3); font-weight: 600;">India VIX:</span>
-              <span class="mono-nums" style="font-size: 1.25rem; font-weight: 800; color: var(--dl-fg);">${fno.india_vix || 13.10}</span>
-              <span class="mono-nums" style="font-size: 0.95rem; color: ${(fno.india_vix_change_pct || 0) >= 0 ? 'var(--accent-coral)' : 'var(--accent-sage)'}; font-weight: 700;">
-                ${(fno.india_vix_change_pct || 0) >= 0 ? '+' : ''}${fno.india_vix_change_pct !== undefined ? fno.india_vix_change_pct : '1.95'}%
+              <span class="mono-nums" style="font-size: 1.25rem; font-weight: 800; color: var(--dl-fg);">${dash(fno.india_vix)}</span>
+              <span class="mono-nums" style="font-size: 0.95rem; color: ${!has(fno.india_vix_change_pct) ? 'var(--dl-fg-3)' : (fno.india_vix_change_pct >= 0 ? 'var(--accent-coral)' : 'var(--accent-sage)')}; font-weight: 700;">
+                ${has(fno.india_vix_change_pct) ? `${fno.india_vix_change_pct >= 0 ? '+' : ''}${fno.india_vix_change_pct}%` : '—'}
               </span>
             </div>
           </div>
@@ -293,11 +293,11 @@ export class NiftySnapshotCardComponent {
                 <span style="font-size: 0.72rem; color: var(--dl-fg-3); font-weight: 700; text-transform: uppercase;">Put-Call Ratio (PCR)</span>
               </div>
               <div style="display: flex; align-items: baseline; gap: 14px;">
-                <div><span style="font-size: 0.75rem; color: var(--dl-fg-3);">W: </span><strong class="mono-nums" style="font-size: 1.25rem; color: var(--dl-fg); font-weight: 800;">${fno.weekly_pcr || '-'}</strong></div>
-                <div><span style="font-size: 0.75rem; color: var(--dl-fg-3);">M: </span><strong class="mono-nums" style="font-size: 1.25rem; color: var(--dl-fg); font-weight: 800;">${fno.monthly_pcr || '-'}</strong></div>
+                <div><span style="font-size: 0.75rem; color: var(--dl-fg-3);">W: </span><strong class="mono-nums" style="font-size: 1.25rem; color: var(--dl-fg); font-weight: 800;">${dash(fno.weekly_pcr)}</strong></div>
+                <div><span style="font-size: 0.75rem; color: var(--dl-fg-3);">M: </span><strong class="mono-nums" style="font-size: 1.25rem; color: var(--dl-fg); font-weight: 800;">${dash(fno.monthly_pcr)}</strong></div>
               </div>
-              <div style="font-size: 0.78rem; color: ${fno.weekly_pcr > 1.2 ? 'var(--accent-sage)' : (fno.weekly_pcr < 0.8 ? 'var(--accent-coral)' : 'var(--dl-fg-2)')}; font-weight: 700;">
-                ${fno.weekly_pcr > 1.2 ? '▲ Bullish bias (>1.2)' : (fno.weekly_pcr < 0.8 ? '▼ Bearish bias (<0.8)' : '● Balanced band (0.8–1.2)')}
+              <div style="font-size: 0.78rem; color: ${!has(fno.weekly_pcr) ? 'var(--dl-fg-3)' : (fno.weekly_pcr > 1.2 ? 'var(--accent-sage)' : (fno.weekly_pcr < 0.8 ? 'var(--accent-coral)' : 'var(--dl-fg-2)'))}; font-weight: 700;">
+                ${!has(fno.weekly_pcr) ? 'PCR unavailable' : (fno.weekly_pcr > 1.2 ? '▲ Bullish bias (>1.2)' : (fno.weekly_pcr < 0.8 ? '▼ Bearish bias (<0.8)' : '● Balanced band (0.8–1.2)'))}
               </div>
             </div>
 
