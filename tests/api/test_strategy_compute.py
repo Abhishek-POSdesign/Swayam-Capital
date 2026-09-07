@@ -49,10 +49,14 @@ def test_compute_strategy_returns_dual_curve_and_greeks() -> None:
 
     pc = data["payoff_curve"]
     assert len(pc["points"]) == 100
-    assert abs(pc["max_profit_inr"] - 45000.0) < 1.0
-    assert abs(pc["max_loss_inr"] - 11250.0) < 1.0
+    # 39,000 not 45,000: the contract size is 65, not the 75 this used to
+    # assume. 45,000 x 65/75 = 39,000.
+    assert abs(pc["max_profit_inr"] - 39000.0) < 1.0
+    # 9,750 not 11,250, same 65/75 correction.
+    assert abs(pc["max_loss_inr"] - 9750.0) < 1.0
     assert abs(pc["rr_implied"] - 4.0) < 0.1
-    assert pc["net_debit_credit_inr"] == -11250.0
+    # -9,750 not -11,250, same 65/75 correction.
+    assert pc["net_debit_credit_inr"] == -9750.0
 
     g = data["greeks"]
     assert "net_delta" in g

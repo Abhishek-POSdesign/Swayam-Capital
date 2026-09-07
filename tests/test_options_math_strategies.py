@@ -1,4 +1,8 @@
 """
+Contract size is passed explicitly as 65, the real NIFTY lot read from the
+FYERS contract master. These tests used to rely on a default of 75, which was
+wrong and made every contract-scaled figure 15.4% too large.
+
 Unit tests for Swayam Capital Options Math Engine - Strategy Presets.
 """
 
@@ -23,7 +27,7 @@ def test_snap_to_strike_rounds_to_nearest_fifty() -> None:
 
 def test_bear_put_spread_generates_valid_two_leg_pe_spread() -> None:
     expiry = date(2026, 9, 24)
-    spread = bear_put_spread(current_spot=24867.0, expiry=expiry)
+    spread = bear_put_spread(current_spot=24867.0, expiry=expiry, lot_size=65)
 
     assert spread.name == "Bear Put Spread"
     assert len(spread.legs) == 2
@@ -45,7 +49,7 @@ def test_bear_put_spread_generates_valid_two_leg_pe_spread() -> None:
 
 def test_bull_call_spread_generates_valid_two_leg_ce_spread() -> None:
     expiry = date(2026, 9, 24)
-    spread = bull_call_spread(current_spot=24867.0, expiry=expiry)
+    spread = bull_call_spread(current_spot=24867.0, expiry=expiry, lot_size=65)
 
     assert spread.name == "Bull Call Spread"
     assert len(spread.legs) == 2
@@ -66,7 +70,7 @@ def test_bull_call_spread_generates_valid_two_leg_ce_spread() -> None:
 
 def test_iron_condor_generates_four_distinct_legs_snapped_to_grid() -> None:
     expiry = date(2026, 9, 24)
-    spread = iron_condor(current_spot=24867.0, expiry=expiry)
+    spread = iron_condor(current_spot=24867.0, expiry=expiry, lot_size=65)
 
     assert spread.name == "Iron Condor"
     assert len(spread.legs) == 4
@@ -88,7 +92,7 @@ def test_iron_condor_generates_four_distinct_legs_snapped_to_grid() -> None:
 def test_calendar_spread_generates_time_spread_at_same_strike() -> None:
     near = date(2026, 9, 17)
     far = date(2026, 9, 24)
-    spread = calendar_spread(current_spot=24867.0, near_expiry=near, far_expiry=far)
+    spread = calendar_spread(current_spot=24867.0, near_expiry=near, far_expiry=far, lot_size=65)
 
     assert spread.name == "Calendar Spread"
     assert len(spread.legs) == 2
@@ -108,4 +112,4 @@ def test_calendar_spread_rejects_inverted_expiries() -> None:
     far = date(2026, 9, 17)
 
     with pytest.raises(ValueError, match="must be strictly earlier"):
-        calendar_spread(current_spot=24867.0, near_expiry=near, far_expiry=far)
+        calendar_spread(current_spot=24867.0, near_expiry=near, far_expiry=far, lot_size=65)

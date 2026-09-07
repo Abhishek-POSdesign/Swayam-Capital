@@ -29,7 +29,8 @@ def bear_put_spread(
     otm_pct: float = 0.02,
     wing_pct: float = 0.03,
     quantity_lots: int = 1,
-    lot_size: int = 75,
+    *,
+    lot_size: int,
 ) -> Spread:
     """Creates a Bear Put Spread template (Long Higher PE + Short Lower PE).
 
@@ -39,7 +40,8 @@ def bear_put_spread(
         otm_pct: OTM distance for long put (default: 2% below spot).
         wing_pct: Spread width distance for short put (default: 3% further below).
         quantity_lots: Number of lots (default: 1).
-        lot_size: Shares per lot (default: 75).
+        lot_size: Shares per lot. Required, from the FYERS contract
+            master. No default: the old default of 75 was wrong (65).
 
     Returns:
         Spread: Pre-populated Bear Put Spread.
@@ -82,7 +84,8 @@ def bull_call_spread(
     otm_pct: float = 0.02,
     wing_pct: float = 0.03,
     quantity_lots: int = 1,
-    lot_size: int = 75,
+    *,
+    lot_size: int,
 ) -> Spread:
     """Creates a Bull Call Spread template (Long Lower CE + Short Higher CE).
 
@@ -92,7 +95,8 @@ def bull_call_spread(
         otm_pct: OTM distance for long call (default: 2% above spot).
         wing_pct: Spread width distance for short call (default: 3% further above).
         quantity_lots: Number of lots (default: 1).
-        lot_size: Shares per lot (default: 75).
+        lot_size: Shares per lot. Required, from the FYERS contract
+            master. No default: the old default of 75 was wrong (65).
 
     Returns:
         Spread: Pre-populated Bull Call Spread.
@@ -135,7 +139,8 @@ def iron_condor(
     wing_pct: float = 0.04,
     tail_pct: float = 0.06,
     quantity_lots: int = 1,
-    lot_size: int = 75,
+    *,
+    lot_size: int,
 ) -> Spread:
     """Creates a 4-leg Iron Condor template (Short Call Spread + Short Put Spread).
 
@@ -145,7 +150,8 @@ def iron_condor(
         wing_pct: Distance for short strikes (default: 4% OTM).
         tail_pct: Distance for protective long strikes (default: 6% OTM).
         quantity_lots: Number of lots (default: 1).
-        lot_size: Shares per lot (default: 75).
+        lot_size: Shares per lot. Required, from the FYERS contract
+            master. No default: the old default of 75 was wrong (65).
 
     Returns:
         Spread: Pre-populated 4-leg Iron Condor.
@@ -180,7 +186,8 @@ def calendar_spread(
     far_expiry: date,
     atm_pct: float = 0.0,
     quantity_lots: int = 1,
-    lot_size: int = 75,
+    *,
+    lot_size: int,
 ) -> Spread:
     """Creates a Calendar Spread template (Short Near-Expiry + Long Far-Expiry at same strike).
 
@@ -190,7 +197,8 @@ def calendar_spread(
         far_expiry: Far-month expiration date.
         atm_pct: Distance from spot (default: 0.0 for ATM).
         quantity_lots: Number of lots (default: 1).
-        lot_size: Shares per lot (default: 75).
+        lot_size: Shares per lot. Required, from the FYERS contract
+            master. No default: the old default of 75 was wrong (65).
 
     Returns:
         Spread: Pre-populated Calendar Spread.

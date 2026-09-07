@@ -18,7 +18,15 @@ class LegRequest(BaseModel):
     quantity_lots: int = Field(default=1, ge=1, description="Quantity in lots")
     entry_premium: float = Field(default=0.0, ge=0.0, description="Option premium per share (limit price for a LIMIT leg; the fill for paper)")
     expiry_date: str = Field(..., description="Expiration date in YYYY-MM-DD format")
-    lot_size: int = Field(default=75, ge=1, description="Underlying lot size")
+    lot_size: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Contract size. IGNORED if supplied. The server reads it from the "
+            "FYERS contract master, because a browser that hardcodes 75 is how "
+            "every contract-scaled figure came to be 15.4% too large."
+        ),
+    )
     order_type: str = Field(default="LIMIT", description="Per-leg order type: LIMIT or MARKET (chosen at the execution ticket; maps to FYERS multi-leg legs in Phase 2)")
 
     @field_validator("option_type")
@@ -78,7 +86,11 @@ class PreviewLegItem(BaseModel):
     quantity_lots: int = Field(default=1, ge=1, description="Quantity in lots")
     entry_premium: float = Field(default=0.0, ge=0.0, description="Option premium per share")
     expiry_date: str = Field(..., description="Expiration date YYYY-MM-DD")
-    lot_size: int = Field(default=75, ge=1, description="Lot size")
+    lot_size: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Contract size. IGNORED if supplied; resolved server-side.",
+    )
     order_type: str = Field(default="LIMIT", description="LIMIT or MARKET")
 
 
@@ -99,19 +111,47 @@ class OrderedLegStep(BaseModel):
     lot_size: int
     entry_premium: float
     order_type: str
-    estimated_margin_inr: float
+    estimated_margin_inr: Optional[float] = Field(
+        default=None,
+        description=(
+            "Always null. The broker prices a basket, not a leg, so a per-leg "
+            "margin is not a real number. It used to be a hardcoded constant."
+        ),
+    )
     action_note: str
 
 
 class MultiLegPreviewResponse(BaseModel):
-    """Output with legs sorted BUY first and margin analysis."""
+    """Legs sorted BUY first, with the broker's real margin for the basket.
+
+    Every margin figure is Optional and every one of them may be null. That is
+    deliberate. These used to be hardcoded constants of Rs 32,000 hedged and
+    Rs 1,15,000 naked, which understated the real requirement by roughly half.
+    They now come from the FYERS margin endpoint, and when FYERS cannot be
+    reached the answer is null with a reason, never an estimate.
+    """
     ordered_legs: list[OrderedLegStep]
     buy_count: int
     sell_count: int
     total_debit_credit_inr: float
-    initial_margin_required_inr: float
-    final_hedged_margin_inr: float
-    margin_saved_inr: float
+
+    margin_required_inr: Optional[float] = Field(
+        default=None, description="Broker margin for the basket as ordered. Null means unavailable."
+    )
+    margin_if_unhedged_inr: Optional[float] = Field(
+        default=None, description="Broker margin for the short legs alone, for comparison."
+    )
+    margin_saved_by_hedge_inr: Optional[float] = Field(
+        default=None, description="Difference between the two above. Null if either is unavailable."
+    )
+    margin_available_inr: Optional[float] = Field(
+        default=None, description="Broker's available margin at the time of the quote."
+    )
+    margin_source: Optional[str] = Field(default=None, description="Where the margin figure came from.")
+    margin_fetched_at: Optional[str] = Field(default=None, description="When the margin was quoted.")
+    margin_unavailable_reason: Optional[str] = Field(
+        default=None, description="Why margin could not be established. Show this instead of a number."
+    )
 
 
 class ValidationCheck(BaseModel):

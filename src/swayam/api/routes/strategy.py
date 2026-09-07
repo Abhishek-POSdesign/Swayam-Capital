@@ -28,6 +28,7 @@ from swayam.options_math import (
 )
 from swayam.options_math.engine import greeks as calc_greeks, implied_volatility, IVSolveFailed
 from swayam.options_math.payoff import _spread_expiry_pnl
+from swayam.services.contract_master import ContractMasterUnavailable, get_lot_size
 
 router = APIRouter()
 
@@ -52,6 +53,21 @@ def build_spread_from_request(
         direction = Direction.BUY if leg_req.direction == "buy" else Direction.SELL
         exp_date = datetime.strptime(leg_req.expiry_date, "%Y-%m-%d").date()
 
+        # Contract size comes from the FYERS contract master, per expiry, and
+        # never from the request. A browser-supplied 75 is exactly how every
+        # contract-scaled rupee figure came to be 15.4% too large. If the
+        # contract master cannot answer, this fails rather than guesses.
+        try:
+            lot_size = get_lot_size(req.underlying, exp_date)
+        except ContractMasterUnavailable as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    f"Contract size unavailable for {req.underlying} expiring "
+                    f"{exp_date:%d %b %Y}, so this strategy cannot be priced. {exc}"
+                ),
+            ) from exc
+
         leg = Leg(
             strike=leg_req.strike,
             option_type=opt_type,
@@ -59,7 +75,7 @@ def build_spread_from_request(
             quantity_lots=leg_req.quantity_lots,
             entry_premium=leg_req.entry_premium,
             expiry_date=exp_date,
-            lot_size=leg_req.lot_size,
+            lot_size=lot_size,
         )
         legs_list.append(leg)
 
@@ -121,17 +137,31 @@ def get_strategy_preset(
 
     norm_name = name.lower().replace("-", "_").replace(" ", "_")
 
+    # Contract size from the FYERS contract master, never a default.
+    try:
+        lot_size = get_lot_size("NIFTY", exp_date)
+    except ContractMasterUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"Contract size unavailable for NIFTY expiring {exp_date:%d %b %Y}, "
+                f"so this preset cannot be built. {exc}"
+            ),
+        ) from exc
+
     if norm_name in ("bear_put_spread", "bear_put"):
-        spread = bear_put_spread(current_spot=spot, expiry=exp_date)
+        spread = bear_put_spread(current_spot=spot, expiry=exp_date, lot_size=lot_size)
     elif norm_name in ("bull_call_spread", "bull_call"):
-        spread = bull_call_spread(current_spot=spot, expiry=exp_date)
+        spread = bull_call_spread(current_spot=spot, expiry=exp_date, lot_size=lot_size)
     elif norm_name in ("iron_condor", "condor"):
-        spread = iron_condor(current_spot=spot, expiry=exp_date)
+        spread = iron_condor(current_spot=spot, expiry=exp_date, lot_size=lot_size)
     elif norm_name in ("calendar_spread", "calendar"):
         if not far_expiry:
             raise HTTPException(status_code=400, detail="far_expiry is required for calendar_spread.")
         far_date = datetime.strptime(far_expiry, "%Y-%m-%d").date()
-        spread = calendar_spread(current_spot=spot, near_expiry=exp_date, far_expiry=far_date)
+        spread = calendar_spread(
+            current_spot=spot, near_expiry=exp_date, far_expiry=far_date, lot_size=lot_size
+        )
     else:
         raise HTTPException(status_code=400, detail=f"Unknown preset name: {name}")
 

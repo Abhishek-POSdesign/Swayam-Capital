@@ -22,6 +22,8 @@ from swayam.api.routes.validation import audit_strategy_rules
 from swayam.db import db
 from swayam.notifications.events import dispatch
 from swayam.options_math import compute_payoff_curve, compute_position_greeks
+from swayam.services.contract_master import ContractMasterUnavailable, get_lot_size
+from swayam.services.margin import MarginLeg, try_get_margin
 
 logger = logging.getLogger(__name__)
 
@@ -46,23 +48,30 @@ def preview_order_sequence(req: MultiLegPreviewRequest) -> MultiLegPreviewRespon
     for idx, leg in enumerate(sorted_legs):
         seq = idx + 1
         is_buy = leg.direction.lower() == "buy"
-        lot_size = leg.lot_size or 75
+        expiry = datetime.strptime(leg.expiry_date, "%Y-%m-%d").date()
+        try:
+            lot_size = get_lot_size(req.underlying, expiry)
+        except ContractMasterUnavailable as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    f"Contract size unavailable for {req.underlying} expiring "
+                    f"{expiry:%d %b %Y}, so this order cannot be previewed. {exc}"
+                ),
+            ) from exc
+
         contracts = leg.quantity_lots * lot_size
         cost = round(leg.entry_premium * contracts, 2)
 
         if is_buy:
             cumulative_debit += cost
-            step_margin = cost
-            note = f"Step {seq}: Buy hedge leg first. Locks premium debit ₹{cost:,.0f} and establishes margin cover."
+            note = (
+                f"Step {seq}: buy the hedge leg first, debit ₹{cost:,.0f}. "
+                f"Ordering buys first is what earns the hedged margin."
+            )
         else:
             cumulative_credit += cost
-            # Hedged short margin ~ ₹32,000 per lot with hedge vs ₹1,15,000 naked
-            has_long_cover = len(buy_legs) > 0
-            step_margin = round(32000.0 * leg.quantity_lots if has_long_cover else 115000.0 * leg.quantity_lots, 2)
-            note = (
-                f"Step {seq}: Sell leg with hedged margin cover (₹{step_margin:,.0f} required). "
-                f"Collects ₹{cost:,.0f} credit."
-            )
+            note = f"Step {seq}: sell leg, collecting ₹{cost:,.0f} credit."
 
         ordered_steps.append(
             OrderedLegStep(
@@ -74,30 +83,55 @@ def preview_order_sequence(req: MultiLegPreviewRequest) -> MultiLegPreviewRespon
                 lot_size=lot_size,
                 entry_premium=leg.entry_premium,
                 order_type=leg.order_type,
-                estimated_margin_inr=step_margin,
+                estimated_margin_inr=None,  # the broker prices the basket, not the leg
                 action_note=note,
             )
         )
 
     net_debit_credit = round(cumulative_credit - cumulative_debit, 2)
-    initial_margin = round(cumulative_debit, 2)
-    # Hedged margin is lower when long wings are present
-    hedged_margin = round(
-        (len(sell_legs) * 32000.0) + (cumulative_debit if cumulative_debit > 0 else 0),
-        2
-    ) if sell_legs else round(cumulative_debit, 2)
 
-    naked_hypothetical_margin = round(len(sell_legs) * 115000.0 + cumulative_debit, 2)
-    margin_saved = max(0.0, round(naked_hypothetical_margin - hedged_margin, 2))
+    # The real broker margin. This used to be two invented constants: ₹32,000
+    # per lot hedged and ₹1,15,000 naked. Measured against the live account on
+    # 2026-09-07, one lot of NIFTY actually cost ₹66,836 hedged and ₹2,00,441
+    # naked, so both understated the requirement by roughly half, in the
+    # dangerous direction. If FYERS cannot answer, this returns null with a
+    # reason and the interface shows "unavailable" rather than a guess.
+    def to_margin_legs(legs) -> list[MarginLeg]:
+        return [
+            MarginLeg(
+                strike=l.strike,
+                option_type=l.option_type,
+                direction=l.direction.lower(),
+                quantity_lots=l.quantity_lots,
+                expiry=datetime.strptime(l.expiry_date, "%Y-%m-%d").date(),
+                underlying=req.underlying,
+            )
+            for l in legs
+        ]
+
+    quote, reason = try_get_margin(to_margin_legs(sorted_legs))
+
+    unhedged: float | None = None
+    if quote is not None and sell_legs and buy_legs:
+        unhedged_quote, _ = try_get_margin(to_margin_legs(sell_legs))
+        unhedged = unhedged_quote.total_inr if unhedged_quote else None
+
+    saved = None
+    if quote is not None and unhedged is not None:
+        saved = round(max(0.0, unhedged - quote.total_inr), 2)
 
     return MultiLegPreviewResponse(
         ordered_legs=ordered_steps,
         buy_count=len(buy_legs),
         sell_count=len(sell_legs),
         total_debit_credit_inr=net_debit_credit,
-        initial_margin_required_inr=initial_margin,
-        final_hedged_margin_inr=hedged_margin,
-        margin_saved_inr=margin_saved,
+        margin_required_inr=round(quote.total_inr, 2) if quote else None,
+        margin_if_unhedged_inr=round(unhedged, 2) if unhedged is not None else None,
+        margin_saved_by_hedge_inr=saved,
+        margin_available_inr=round(quote.available_inr, 2) if quote else None,
+        margin_source=quote.source if quote else None,
+        margin_fetched_at=quote.fetched_at.isoformat() if quote else None,
+        margin_unavailable_reason=reason,
     )
 
 
@@ -119,11 +153,12 @@ def execute_multi_leg(req: ExecuteRequest) -> dict[str, Any]:
     sorted_legs = buy_legs + sell_legs
     req.legs = sorted_legs
 
-    if not req.iv_per_leg:
-        req.iv_per_leg = {"default": 0.14}
-    elif "default" not in req.iv_per_leg:
-        req.iv_per_leg["default"] = 0.14
-
+    # Removed 2026-09-08: this used to inject a hardcoded implied volatility of
+    # 0.14 whenever the request carried none, which meant a trade could be
+    # priced, valued and risk-checked off a volatility nobody measured. No
+    # audit had listed it. Implied volatility is now solved from each leg's
+    # real market price, and a leg that has no price is refused rather than
+    # given a number.
     return execute_trade(req)
 
 

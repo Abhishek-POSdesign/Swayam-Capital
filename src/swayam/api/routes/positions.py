@@ -71,6 +71,7 @@ class LivePositionResponse(BaseModel):
     unrealized_pnl_inr: Optional[float] = None
     unrealized_pnl_pct_of_risk: Optional[float] = None
     current_greeks: Optional[LivePositionGreeks] = None
+    greeks_unavailable_reason: Optional[str] = None
     days_held: int
     days_remaining_to_expiry: int
     journal_path: Optional[str] = None
@@ -137,38 +138,54 @@ def _build_chain_lookup(raw_chain: dict[str, Any]) -> tuple[float, dict[tuple[fl
     options_chain = raw_chain.get("optionsChain") or raw_chain.get("strikes") or []
     lookup: dict[tuple[float, str], dict[str, Any]] = {}
 
+    def _num(value: Any) -> Optional[float]:
+        """A real number, or None. Never a substitute.
+
+        This used to default a missing last-traded price to 0.0 and a missing
+        implied volatility to 0.15. A price of zero is not "no price", it is a
+        claim that the option is worthless, and it flowed straight into
+        position P&L. A volatility of 0.15 was simply invented.
+        """
+        if value is None:
+            return None
+        try:
+            num = float(value)
+        except (TypeError, ValueError):
+            return None
+        return num if num > 0 else None
+
     for item in options_chain:
         strike = float(item.get("strike_price") or item.get("strike") or 0.0)
 
         # Dual CE/PE format (FYERS standard optionsChain item)
         if "call_ltp" in item or "call_symbol" in item:
             lookup[(strike, "CE")] = {
-                "ltp": float(item.get("call_ltp", 0.0) or 0.0),
-                "iv": float(item.get("call_iv", 0.15) or 0.15),
+                "ltp": _num(item.get("call_ltp")),
+                "iv": _num(item.get("call_iv")),
             }
         if "put_ltp" in item or "put_symbol" in item:
             lookup[(strike, "PE")] = {
-                "ltp": float(item.get("put_ltp", 0.0) or 0.0),
-                "iv": float(item.get("put_iv", 0.15) or 0.15),
+                "ltp": _num(item.get("put_ltp")),
+                "iv": _num(item.get("put_iv")),
             }
 
         # Nested CE/PE format (models_api StrikeRow item)
         if "ce" in item and isinstance(item["ce"], dict):
             lookup[(strike, "CE")] = {
-                "ltp": float(item["ce"].get("ltp", 0.0) or 0.0),
-                "iv": float(item["ce"].get("iv", 0.15) or 0.15),
+                "ltp": _num(item["ce"].get("ltp")),
+                "iv": _num(item["ce"].get("iv")),
             }
         if "pe" in item and isinstance(item["pe"], dict):
             lookup[(strike, "PE")] = {
-                "ltp": float(item["pe"].get("ltp", 0.0) or 0.0),
-                "iv": float(item["pe"].get("iv", 0.15) or 0.15),
+                "ltp": _num(item["pe"].get("ltp")),
+                "iv": _num(item["pe"].get("iv")),
             }
 
         # Single contract item
         if "option_type" in item and "ltp" in item:
             lookup[(strike, str(item["option_type"]).upper())] = {
-                "ltp": float(item.get("ltp", 0.0) or 0.0),
-                "iv": float(item.get("iv", 0.15) or 0.15),
+                "ltp": _num(item.get("ltp")),
+                "iv": _num(item.get("iv")),
             }
 
     return spot, lookup
@@ -294,6 +311,7 @@ def get_positions_live() -> list[LivePositionResponse]:
         unrealized_pnl_total = 0.0
         current_position_value = 0.0
         missing_strike = False
+        greeks_unavailable_reason: Optional[str] = None
         enriched_legs: list[dict[str, Any]] = []
         spread_legs: list[Leg] = []
         iv_map: dict[Leg, float] = {}
@@ -302,7 +320,19 @@ def get_positions_live() -> list[LivePositionResponse]:
             strike = float(leg.get("strike", 0.0))
             opt_type = str(leg.get("option_type", "CE")).upper()
             qty_lots = int(leg.get("quantity_lots", 1) or 1)
-            lot_size = int(leg.get("lot_size", 75) or 75)
+            # The contract size recorded when the position was opened. A stored
+            # position must be valued at the size it was actually booked with,
+            # not at today's contract master. Missing is an error, not a 75:
+            # the 67 legacy rows were booked at 75, which was never the real
+            # NIFTY lot, and they are quarantined rather than re-valued.
+            stored_lot = leg.get("lot_size")
+            if not stored_lot:
+                missing_strike = True
+                leg_copy = dict(leg)
+                leg_copy["error"] = "lot_size_missing_on_stored_leg"
+                enriched_legs.append(leg_copy)
+                continue
+            lot_size = int(stored_lot)
             contracts = qty_lots * lot_size
             direction = str(leg.get("direction", "buy")).lower()
             is_buy = direction in ("buy", "long")
@@ -325,7 +355,7 @@ def get_positions_live() -> list[LivePositionResponse]:
 
             leg_copy = dict(leg)
             leg_copy["current_ltp"] = current_ltp
-            leg_copy["current_iv"] = quote.get("iv", 0.15)
+            leg_copy["current_iv"] = quote.get("iv")  # may be None: show "-", never 0.15
             leg_copy["current_value_inr"] = leg_val
             leg_copy["unrealized_pnl_inr"] = leg_pnl
             enriched_legs.append(leg_copy)
@@ -338,6 +368,16 @@ def get_positions_live() -> list[LivePositionResponse]:
                     if leg.get("expiry_date")
                     else date.today()
                 )
+                # Leg carries no iv field; implied volatility belongs in the
+                # iv_map. Passing iv= here raised TypeError on EVERY leg, and a
+                # bare "except Exception: pass" swallowed it, so live position
+                # greeks silently never worked at all. Fixed 2026-09-08.
+                leg_iv = quote.get("iv")
+                if leg_iv is None:
+                    greeks_unavailable_reason = (
+                        "implied volatility is not published for at least one leg"
+                    )
+                    continue
                 leg_obj = Leg(
                     strike=strike,
                     option_type=OptionType.CALL if opt_type == "CE" else OptionType.PUT,
@@ -346,12 +386,14 @@ def get_positions_live() -> list[LivePositionResponse]:
                     lot_size=lot_size,
                     entry_premium=float(leg.get("entry_premium", 0.0) or 0.0),
                     expiry_date=exp_date,
-                    iv=float(quote.get("iv", 0.15) or 0.15),
                 )
                 spread_legs.append(leg_obj)
-                iv_map[leg_obj] = float(quote.get("iv", 0.15) or 0.15)
-            except Exception:
-                pass
+                iv_map[leg_obj] = float(leg_iv)
+            except Exception as exc:
+                # Never silent again. A leg that cannot be modelled makes the
+                # greeks unavailable and says so.
+                greeks_unavailable_reason = f"could not model a leg: {exc}"
+                logger.warning("Position leg could not be modelled for greeks: %s", exc)
 
         # Compute Greeks
         live_greeks: Optional[LivePositionGreeks] = None
@@ -366,7 +408,8 @@ def get_positions_live() -> list[LivePositionResponse]:
                     net_vega=round(g_calc.net_vega, 2),
                 )
             except Exception as e:
-                logger.debug("Failed to compute live Greeks: %s", e)
+                greeks_unavailable_reason = f"greeks calculation failed: {e}"
+                logger.warning("Failed to compute live greeks: %s", e)
 
         # Days held & days to expiry
         try:
@@ -428,6 +471,9 @@ def get_positions_live() -> list[LivePositionResponse]:
                     unrealized_pnl_inr=round(unrealized_pnl, 2),
                     unrealized_pnl_pct_of_risk=round(unrealized_pct, 4),
                     current_greeks=live_greeks,
+                    greeks_unavailable_reason=(
+                        None if live_greeks else (greeks_unavailable_reason or "greeks not computed")
+                    ),
                     days_held=days_held,
                     days_remaining_to_expiry=days_remaining,
                     journal_path=journal_path,
@@ -494,7 +540,17 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
         strike = float(leg.get("strike", 0.0))
         opt_type = str(leg.get("option_type", "CE")).upper()
         qty_lots = int(leg.get("quantity_lots", 1) or 1)
-        lot_size = int(leg.get("lot_size", 75) or 75)
+        # As above: the size the position was booked with, never a default.
+        stored_lot = leg.get("lot_size")
+        if not stored_lot:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "This position has a leg with no recorded contract size, so it "
+                    "cannot be valued. It needs reconciling rather than guessing."
+                ),
+            )
+        lot_size = int(stored_lot)
         contracts = qty_lots * lot_size
         direction = str(leg.get("direction", "buy")).lower()
         is_buy = direction in ("buy", "long")

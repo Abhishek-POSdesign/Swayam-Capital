@@ -223,7 +223,7 @@ def test_validate_spread_passes_realistic_fails_blast() -> None:
                 "strike": 24850.0,
                 "option_type": "PE",
                 "direction": "buy",
-                "quantity_lots": 4,
+                "quantity_lots": 5,
                 "entry_premium": 120.0,
                 "expiry_date": "2026-09-24",
                 "lot_size": 75,
@@ -232,7 +232,7 @@ def test_validate_spread_passes_realistic_fails_blast() -> None:
                 "strike": 24400.0,
                 "option_type": "PE",
                 "direction": "sell",
-                "quantity_lots": 4,
+                "quantity_lots": 5,
                 "entry_premium": 20.0,
                 "expiry_date": "2026-09-24",
                 "lot_size": 75,
@@ -248,7 +248,9 @@ def test_validate_spread_passes_realistic_fails_blast() -> None:
     assert data["passed"] is False
     assert data["realistic_risk"]["passed"] is True
     assert data["blast_radius"]["passed"] is False
-    assert data["blast_radius"]["loss_inr"] == 30000.0
+    # 5 lots x 65 contracts x Rs 100 net debit = 32,500. Was 4 lots x 75 x 100
+    # = 30,000 before the contract size was corrected from 75 to 65.
+    assert data["blast_radius"]["loss_inr"] == 32500.0
 
 
 def test_validate_spread_passes_blast_fails_realistic() -> None:
@@ -288,7 +290,9 @@ def test_validate_spread_passes_blast_fails_realistic() -> None:
     assert data["passed"] is False
     assert data["realistic_risk"]["passed"] is False
     assert data["blast_radius"]["passed"] is True
-    assert data["blast_radius"]["loss_inr"] == 23625.0
+    # 20,475 not 23,625: the contract size is 65, not the 75 this used to assume.
+    # 23,625 x 65/75 = 20,475.
+    assert data["blast_radius"]["loss_inr"] == 20475.0
 
 
 def test_validate_spread_passes_both() -> None:
