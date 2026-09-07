@@ -7,10 +7,19 @@ automated trade journal notes in Obsidian Second Brain.
 
 from datetime import date, datetime, timezone
 import uuid
-from typing import Any
+from typing import Any, Optional
 from fastapi import APIRouter, HTTPException
 import logging
 from swayam.api.journal_writer import write_new_trade_journal
+from swayam.services.execution_safety import (
+    DuplicateExecution,
+    ReplayedExecution,
+    abandon_execution,
+    claim_execution,
+    complete_execution,
+    mark_journal_status,
+    queue_journal_note,
+)
 from swayam.api.models_api import (
     ExecuteRequest,
     MultiLegPreviewRequest,
@@ -177,6 +186,34 @@ def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
             detail="Real execution disabled until Phase 2 begins (per Personal Trading Brief roadmap)",
         )
 
+    # Step 0: claim the execution key BEFORE any work, so a double click cannot
+    # become two positions. The browser generates the key, keeps it in local
+    # storage, and reuses it on every retry until it gets a final answer.
+    idem_key = getattr(req, "idempotency_key", None)
+    if idem_key:
+        try:
+            claim_execution(idem_key, req.model_dump(mode="json"))
+        except ReplayedExecution as replay:
+            # The same trade, sent again. Return the first answer rather than
+            # opening a second position. This is a success, not an error.
+            return replay.response
+        except DuplicateExecution as clash:
+            raise HTTPException(status_code=409, detail=str(clash)) from clash
+
+    try:
+        return _execute_trade_inner(req, idem_key)
+    except HTTPException:
+        if idem_key:
+            abandon_execution(idem_key, "execution failed")
+        raise
+    except Exception as exc:
+        if idem_key:
+            abandon_execution(idem_key, str(exc))
+        raise
+
+
+def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[str, Any]:
+    """The trade itself. Wrapped by execute_trade, which owns the key."""
     # Step 1: Pre-trade rule audit gate
     validation = audit_strategy_rules(req)
     if not validation.passed:
@@ -300,34 +337,59 @@ def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
             margin_base_inr=margin_base_inr,
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                f"Trade recorded in Supabase (position_id={position_id}) but journal file write failed. "
-                f"Manually create journal or re-run journal generation for this position_id. "
-                f"Underlying error: {e}"
-            ),
-        ) from e
+        # A note is not a trade. The vault is unreachable from Cloud Run (no
+        # route to a Windows path on his PC), and the old behaviour returned
+        # HTTP 500 on a trade that had already been recorded, which then made
+        # him click again. Queue the note instead and let the trade succeed.
+        journal_rel_path = None
+        journal_status = "pending"
+        queued = queue_journal_note(
+            position_id=position_id,
+            payload={
+                "spread_data": spread_payload,
+                "validation_data": validation.model_dump(mode="json"),
+                "current_spot": req.current_spot,
+                "margin_base_inr": margin_base_inr,
+                "opened_at": opened_at,
+            },
+            kind="new_trade",
+            error=str(e),
+        )
+        if not queued:
+            journal_status = "failed"
+        logger.warning(
+            "Journal note for %s could not be written (%s); queued=%s",
+            position_id, e, queued,
+        )
+    else:
+        journal_status = "written"
 
     # Step 6: Update local record with journal path + insert journal_entries row
     db_record["journal_path"] = journal_rel_path
-    try:
-        client.table("swayam_journal_entries").insert({
-            "position_id": position_id,
-            "entry_date": opened_at.split("T")[0],
-            "entry_type": "entry",
-            "md_path": journal_rel_path,
-            "created_at": opened_at,
-        }).execute()
-    except Exception as e:
-        # Position is recorded, journal file exists — this is the only step that's recoverable later
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                f"Position {position_id} recorded and journal file written to {journal_rel_path}, "
-                f"but swayam_journal_entries index INSERT failed. Reconcile later. Error: {e}"
-            ),
-        ) from e
+    if journal_rel_path is not None:
+        try:
+            client.table("swayam_journal_entries").insert({
+                "position_id": position_id,
+                "entry_date": opened_at.split("T")[0],
+                "entry_type": "entry",
+                "md_path": journal_rel_path,
+                "created_at": opened_at,
+            }).execute()
+        except Exception as e:
+            # The note exists on disk but its index row does not. Recoverable,
+            # and not worth failing a recorded trade over.
+            journal_status = "pending"
+            queue_journal_note(
+                position_id=position_id,
+                payload={"md_path": journal_rel_path, "entry_date": opened_at.split("T")[0],
+                         "opened_at": opened_at, "index_only": True},
+                kind="new_trade",
+                error=f"journal index insert failed: {e}",
+            )
+            logger.warning("Journal index insert failed for %s: %s", position_id, e)
+
+    mark_journal_status(position_id, journal_status)
+    db_record["journal_status"] = journal_status
 
     # Step 7: Best-effort event notification dispatch (Telegram + Browser Push)
     strikes_desc = " / ".join([f"{l.direction.upper()} {l.strike} {l.option_type}" for l in req.legs])
@@ -343,9 +405,31 @@ def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
     except Exception as exc:
         logger.warning("Could not dispatch trade_opened event: %s", exc)
 
-    return {
+    if journal_status == "written":
+        message = f"Paper trade #{position_id[:8]} opened. Journal at {journal_rel_path}."
+    elif journal_status == "pending":
+        message = (
+            f"Paper trade #{position_id[:8]} opened and recorded. The journal note "
+            f"could not be written to your vault from here, so it is queued and will "
+            f"be written when the vault is reachable. The trade itself is safe."
+        )
+    else:
+        message = (
+            f"Paper trade #{position_id[:8]} opened and recorded, but the journal note "
+            f"could not be written OR queued. Write it by hand for this position."
+        )
+
+    response = {
         "position_id": position_id,
         "journal_path": journal_rel_path,
+        "journal_status": journal_status,
         "status": "opened",
-        "message": f"Paper trade #{position_id[:8]} opened. Journal at {journal_rel_path}.",
+        "message": message,
     }
+
+    # Store the answer so a retry with the same key replays it rather than
+    # opening a second position.
+    if idem_key:
+        complete_execution(idem_key, position_id, response)
+
+    return response

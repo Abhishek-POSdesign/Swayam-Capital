@@ -2,6 +2,7 @@
 Tests for trade execution endpoint in Swayam Capital.
 """
 
+import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
@@ -45,6 +46,12 @@ def test_execute_blocks_real_mode_with_403() -> None:
     assert "Real execution disabled" in response.json()["detail"]
 
 
+# These two tests drive the real execution path, which inserts a position and a
+# journal row. They previously patched `swayam.db.db`, but `execution.py` does
+# `from swayam.db import db` at import time, so the patch never reached the name
+# the route actually uses and every run wrote into the LIVE record. The marker
+# swaps in an in-memory database instead. See tests/db_guard.py.
+@pytest.mark.fake_db
 def test_execute_allows_a_non_compliant_intraday_strategy() -> None:
     payload = {
         "strategy_name": "Violating Spread",
@@ -73,6 +80,12 @@ def test_execute_allows_a_non_compliant_intraday_strategy() -> None:
     assert response.status_code == 200
 
 
+# These two tests drive the real execution path, which inserts a position and a
+# journal row. They previously patched `swayam.db.db`, but `execution.py` does
+# `from swayam.db import db` at import time, so the patch never reached the name
+# the route actually uses and every run wrote into the LIVE record. The marker
+# swaps in an in-memory database instead. See tests/db_guard.py.
+@pytest.mark.fake_db
 def test_execute_paper_mode_creates_journal_and_position(tmp_path: Path) -> None:
     from swayam.config import settings
     original_vault = settings.vault_path
