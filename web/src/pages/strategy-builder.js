@@ -391,6 +391,7 @@ export class StrategyBuilderPage {
       if (spotRes && spotRes.spot) {
         this.currentSpot = spotRes.spot;
         this.spotIsLive = true;
+        if (this.legBuilder) this.legBuilder.options.currentSpot = this.currentSpot;
       }
     } catch (_) {
       this.spotIsLive = false;
@@ -513,6 +514,7 @@ export class StrategyBuilderPage {
       if (spotRes && spotRes.spot) {
         this.currentSpot = spotRes.spot;
         this.spotIsLive = true;
+        if (this.legBuilder) this.legBuilder.options.currentSpot = this.currentSpot;
         this._updateSpotDisplay();
         this._updateMarketStatus();
       }

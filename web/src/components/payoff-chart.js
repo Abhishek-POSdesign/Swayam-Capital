@@ -491,19 +491,10 @@ export class PayoffChartComponent {
         yExpiry = this.chartData.points.map((p) => p.pnl_expiry);
         yToday = this.chartData.points.map((p) => p.pnl_today);
       } else {
-        // Fallback default Bear Put curve around current spot
-        const s = this.currentSpot || 24850;
-        for (let pt = s - 600; pt <= s + 600; pt += 25) {
-          xVals.push(pt);
-          // Bear put spread (Long 24900 PE @ 116, Short 24700 PE @ 59 -> Net Debit 57 pts = ₹4275)
-          const longPut = Math.max(0, 24900 - pt) - 116.62;
-          const shortPut = Math.max(0, 24700 - pt) - 59.13;
-          const pnlExpiry = (longPut - shortPut) * 75;
-          yExpiry.push(Math.round(pnlExpiry));
-          // T+0 smooth transition
-          const diff = (24850 - pt) / 600;
-          yToday.push(Math.round(pnlExpiry * 0.45 + diff * 1500));
-        }
+        // No real payoff data yet — draw NOTHING. Never a fabricated bear-put curve.
+        xVals = [];
+        yExpiry = [];
+        yToday = [];
       }
 
       // Shaded green area for positive profit zone

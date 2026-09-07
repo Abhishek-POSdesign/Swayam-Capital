@@ -255,8 +255,11 @@ export class LegBuilderComponent {
   }
 
   handleAddLeg(direction) {
-    const spot = this.options.currentSpot || 24850;
-    const base = Math.round(spot / 50) * 50;
+    // Base a new leg's strike on the existing basket (already built from the real spot), else the
+    // real spot; never seed from a fabricated 24,850.
+    const refStrike = this.legs.length ? this.legs[0].strike : null;
+    const spot = this.options.currentSpot;
+    const base = refStrike ? refStrike : (spot && spot > 0 ? Math.round(spot / 50) * 50 : 0);
     this.legs.push({
       strike: base,
       option_type: direction === 'sell' ? 'CE' : 'PE',
