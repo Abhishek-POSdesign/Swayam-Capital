@@ -98,10 +98,14 @@ class TestContextAssemblyDataSourcing:
             _setup_db_mock(
                 mock_db,
                 readiness_data=[{
+                    # The real columns on swayam_readiness_log. The previous
+                    # fixture used score/reasons/flagged_factors, none of which
+                    # exist, which is why the live query failed with Postgres
+                    # 42703 on every call and the AI never saw readiness at all.
                     "verdict": "🟢 GREEN",
-                    "score": 9,
-                    "reasons": ["Good sleep", "Low stress"],
-                    "flagged_factors": [],
+                    "factors": {"sleep": "7h", "workout": "yes", "alcohol": "no"},
+                    "trading_allowed": True,
+                    "size_cap_pct": 100,
                 }]
             )
             mock_fyers.get_nifty_spot.return_value = 24000.0
@@ -110,8 +114,11 @@ class TestContextAssemblyDataSourcing:
             context, snapshot = assemble_context()
 
         assert "GREEN" in context
+        assert "sleep: 7h" in context
+        # The AI must be told the form has no power, or it will invent limits.
+        assert "no power over his trading" in context
         assert snapshot["readiness_verdict"] == "🟢 GREEN"
-        assert snapshot["readiness_score"] == 9
+        assert snapshot["readiness_score"] is None
 
     def test_open_positions_count_in_snapshot(self):
         """Snapshot should record how many open positions exist."""

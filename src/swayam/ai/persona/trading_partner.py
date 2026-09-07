@@ -387,26 +387,42 @@ def assemble_context(conversation_id: Optional[str] = None) -> tuple[str, dict]:
         snapshot["realistic_vol_pct"] = None
         logger.debug("Could not compute realized vol for AI context: %s", exc)
 
-    # 4. Today's readiness verdict (non-fatal — may not be logged yet)
+    # 4. Today's readiness verdict (non-fatal - may not be logged yet)
+    #
+    # This query used to select verdict/score/reasons/flagged_factors ordered by
+    # created_at. NONE of score, reasons, flagged_factors or created_at exists on
+    # swayam_readiness_log, so every call failed with Postgres 42703 and the AI
+    # silently never saw his readiness at all. The real columns are log_date,
+    # verdict, factors, trading_allowed, size_cap_pct and computed_at.
     try:
         today_str = date.today().isoformat()
-        res = db.client.table("swayam_readiness_log").select(
-            "verdict, score, reasons, flagged_factors"
-        ).eq("log_date", today_str).order("created_at", desc=True).limit(1).execute()
+        res = (
+            db.client.table("swayam_readiness_log")
+            .select("verdict, factors, trading_allowed, size_cap_pct")
+            .eq("log_date", today_str)
+            .order("computed_at", desc=True)
+            .limit(1)
+            .execute()
+        )
         if res.data:
             row = res.data[0]
             verdict = row.get("verdict", "?")
-            score = row.get("score", "?")
-            reasons = row.get("reasons", [])
-            flagged = row.get("flagged_factors", [])
+            factors = row.get("factors") or {}
+            if isinstance(factors, dict):
+                factor_text = ", ".join(f"{k}: {v}" for k, v in factors.items()) or "none"
+            else:
+                factor_text = str(factors)
             readiness_text = (
-                f"Verdict: {verdict} (score {score}/10)\n"
-                f"Reasons: {', '.join(reasons) if reasons else 'none'}\n"
-                f"Flagged: {', '.join(flagged) if flagged else 'none'}"
+                f"Verdict: {verdict}\n"
+                f"Factors: {factor_text}\n"
+                "This is a journal ONLY. It has no power over his trading: it "
+                "cannot block a trade and it cannot shrink his size. He removed "
+                "that on 2026-09-07 because a form he fills in himself can be "
+                "lied to. Never tell him a readiness verdict limits him."
             )
             parts.append(f"# Today's Readiness Check ({today_str})\n{readiness_text}")
             snapshot["readiness_verdict"] = verdict
-            snapshot["readiness_score"] = score
+            snapshot["readiness_score"] = None
         else:
             parts.append(f"# Today's Readiness Check ({today_str})\nNot yet logged today.")
             snapshot["readiness_verdict"] = None
@@ -491,6 +507,38 @@ def assemble_context(conversation_id: Optional[str] = None) -> tuple[str, dict]:
     except Exception as exc:
         logger.warning("Could not load macro planning context: %s", exc)
 
+    # 15. "So Far Today" — the grounded market summary he pays for.
+    #
+    # He said it plainly on 2026-09-08: "I want my AI to see this info as well,
+    # because I'm paying to get that info. When I brainstorm with the AI, it
+    # must read this data." Until now the summary was generated, shown on the
+    # home page, and never reached the model, so the same grounded search was
+    # effectively paid for twice: once for him to read, once for the model to
+    # guess at the same thing.
+    #
+    # Cache only. Generating here would fire a paid grounded search on every AI
+    # turn, which breaks his standing rule that AI-heavy work is always a manual
+    # button with a cache and a daily cap.
+    try:
+        from swayam.services.so_far_today import get_cached_so_far_today
+
+        so_far = get_cached_so_far_today(max_age_minutes=180)
+        if so_far and so_far.get("text"):
+            age = so_far.get("age_minutes")
+            stamp = f" (generated {age} minutes ago)" if age is not None else ""
+            sources = so_far.get("sources") or []
+            src_line = ""
+            if sources:
+                named = ", ".join(
+                    str(s.get("title") or s.get("uri") or s)[:80] for s in sources[:5]
+                )
+                src_line = f"\nSources: {named}"
+            parts.append(
+                "# So Far Today, the grounded market summary he has already read"
+                f"{stamp}\n{so_far['text']}{src_line}"
+            )
+    except Exception as exc:
+        logger.warning("Could not load So Far Today for AI context: %s", exc)
     context_text = "\n\n".join(parts)
     return context_text, snapshot
 
