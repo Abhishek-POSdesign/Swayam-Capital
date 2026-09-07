@@ -56,7 +56,8 @@ def test_vault_reader_parses_real_method_files_successfully() -> None:
     assert rules.rr_target == 2.5
     assert rules.daily_loss_cap_pct == 0.02
     assert rules.weekly_loss_cap_pct == 0.04
-    assert rules.blast_radius_pct == 0.03
+    # Raised from 3% to 5% on Abhishek's written instruction, 2026-09-07.
+    assert rules.blast_radius_pct == 0.05
     assert rules.overnight_hedge_cap_pct == 0.02
 
     # Verify readiness thresholds
@@ -77,7 +78,7 @@ def test_vault_reader_parses_real_method_files_successfully() -> None:
     assert rules.calculate_realistic_risk_rupee_cap(margin) == 8500.0
     assert rules.calculate_daily_loss_rupee_cap(margin) == 17000.0
     assert rules.calculate_weekly_loss_rupee_cap(margin) == 34000.0
-    assert rules.calculate_blast_radius_rupee_cap(margin) == 25500.0
+    assert rules.calculate_blast_radius_rupee_cap(margin) == 42500.0  # 5% of 8.5L; the fuse rose from 3% to 5% on 2026-09-07
     assert rules.calculate_overnight_hedge_rupee_cap(margin) == 17000.0
 
 

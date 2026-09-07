@@ -53,10 +53,44 @@ def test_log_readiness_saves_and_returns_verdict(mocker) -> None:
     assert verdict["size_cap_pct"] == 0.01
 
 
-def test_readiness_red_verdict_blocks_strategy_validation(mocker) -> None:
-    today_str = date.today().strftime("%Y-%m-%d")
+def _compliant_payload(quantity_lots: int = 1) -> dict:
+    return {
+        "strategy_name": "Valid Spread",
+        "underlying": "NIFTY",
+        "legs": [
+            {
+                "strike": 24850.0,
+                "option_type": "PE",
+                "direction": "buy",
+                "quantity_lots": quantity_lots,
+                "entry_premium": 150.0,
+                "expiry_date": "2026-09-24",
+            },
+            {
+                "strike": 24100.0,
+                "option_type": "PE",
+                "direction": "sell",
+                "quantity_lots": quantity_lots,
+                "entry_premium": 50.0,
+                "expiry_date": "2026-09-24",
+            },
+        ],
+        "current_spot": 24867.5,
+        "iv_per_leg": {"default": 0.15},
+    }
 
-    # Mock that today's readiness is RED
+
+def test_readiness_red_verdict_has_no_power_over_the_trade_path(mocker) -> None:
+    """A RED readiness day must not appear in the trade gate at all.
+
+    This test used to assert the opposite. Abhishek's decision of 2026-09-07:
+    the readiness form is a self-reported questionnaire and can be lied to, so
+    it must have zero authority over money. It survives as a ceremonial
+    journal. Its old implementation also failed OPEN three separate ways, so
+    forgetting to fill it in allowed a full-size trade while filling it in
+    honestly could shrink one.
+    """
+    today_str = date.today().strftime("%Y-%m-%d")
     mock_row = {
         "log_date": today_str,
         "verdict": "red",
@@ -67,48 +101,26 @@ def test_readiness_red_verdict_blocks_strategy_validation(mocker) -> None:
     mock_table = mocker.MagicMock()
     mock_table.select.return_value.eq.return_value.execute.return_value.data = [mock_row]
     mocker.patch.object(db.client, "table", return_value=mock_table)
-    mocker.patch("swayam.db.db.get_margin_base_inr", return_value=850000.0)
 
-    payload = {
-        "strategy_name": "Valid Spread",
-        "underlying": "NIFTY",
-        "legs": [
-            {
-                "strike": 24850.0,
-                "option_type": "PE",
-                "direction": "buy",
-                "quantity_lots": 1,
-                "entry_premium": 150.0,
-                "expiry_date": "2026-09-24",
-                "lot_size": 75,
-            },
-            {
-                "strike": 24100.0,
-                "option_type": "PE",
-                "direction": "sell",
-                "quantity_lots": 1,
-                "entry_premium": 50.0,
-                "expiry_date": "2026-09-24",
-                "lot_size": 75,
-            },
-        ],
-        "current_spot": 24867.5,
-        "iv_per_leg": {"default": 0.15},
-    }
-
-    response = client.post("/api/strategy/validate", json=payload)
+    response = client.post("/api/strategy/validate", json=_compliant_payload())
     assert response.status_code == 200
     data = response.json()
-    assert data["passed"] is False
-    readiness_check = next((c for c in data["checks"] if c["rule"] == "readiness_gate"), None)
-    assert readiness_check is not None
-    assert readiness_check["verdict"] == "FAIL"
+
+    # The check must not exist any more, under any name.
+    assert not [c for c in data["checks"] if "readiness" in c["rule"]]
+
+    # And the cap must be the full 1% of live capital, untouched by the RED row.
+    cap_check = next(c for c in data["checks"] if c["rule"] == "realistic_risk")
+    assert cap_check["cap_inr"] == 9710.02
 
 
-def test_readiness_yellow_verdict_enforces_reduced_size_cap(mocker) -> None:
+def test_readiness_size_cap_no_longer_shrinks_the_risk_cap(mocker) -> None:
+    """A YELLOW row carrying size_cap_pct must not throttle the cap.
+
+    The old behaviour read size_cap_pct straight into the sizing rule, which is
+    how a 0.3% throttle ended up in force without Abhishek choosing it.
+    """
     today_str = date.today().strftime("%Y-%m-%d")
-
-    # Mock that today's readiness is YELLOW with 0.0075 (0.75%) sizing cap
     mock_row = {
         "log_date": today_str,
         "verdict": "yellow",
@@ -119,46 +131,14 @@ def test_readiness_yellow_verdict_enforces_reduced_size_cap(mocker) -> None:
     mock_table = mocker.MagicMock()
     mock_table.select.return_value.eq.return_value.execute.return_value.data = [mock_row]
     mocker.patch.object(db.client, "table", return_value=mock_table)
-    mocker.patch("swayam.db.db.get_margin_base_inr", return_value=850000.0)
 
-    # 1% cap on ₹8,50,000 = ₹8,500.
-    # 0.75% cap on ₹8,50,000 = ₹6,375. With 2% tolerance = ₹6,502.5.
-    # We construct a spread with max loss = ₹7,500 (100 pts x 75).
-    # Under standard 1% cap (₹8,500), ₹7,500 PASSES.
-    # Under Yellow 0.75% cap (₹6,375), ₹7,500 FAILS!
-    payload = {
-        "strategy_name": "Spread Exceeding Yellow Cap",
-        "underlying": "NIFTY",
-        "legs": [
-            {
-                "strike": 24850.0,
-                "option_type": "PE",
-                "direction": "buy",
-                "quantity_lots": 4,
-                "entry_premium": 150.0,
-                "expiry_date": "2026-09-24",
-                "lot_size": 75,
-            },
-            {
-                "strike": 24700.0,
-                "option_type": "PE",
-                "direction": "sell",
-                "quantity_lots": 4,
-                "entry_premium": 87.0,
-                "expiry_date": "2026-09-24",
-                "lot_size": 75,
-            },
-        ],
-        "current_spot": 24867.5,
-        "iv_per_leg": {"default": 0.15},
-    }
-
-    response = client.post("/api/strategy/validate", json=payload)
+    response = client.post("/api/strategy/validate", json=_compliant_payload(quantity_lots=4))
     assert response.status_code == 200
-    data = response.json()
-    cap_check = next(c for c in data["checks"] if c["rule"] == "realistic_risk")
-    assert cap_check["verdict"] == "FAIL"
-    assert cap_check["cap_inr"] == 6375.0
+    cap_check = next(c for c in response.json()["checks"] if c["rule"] == "realistic_risk")
+
+    # 1% of the live 9,71,002.38, not 0.75% of a stale 8,50,000 (which was 6,375).
+    assert cap_check["cap_inr"] == 9710.02
+
 
 
 def test_log_readiness_raises_503_when_config_db_fails(mocker) -> None:

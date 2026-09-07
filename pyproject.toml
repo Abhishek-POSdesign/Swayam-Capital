@@ -43,6 +43,7 @@ dev = [
 where = ["src"]
 
 [tool.pytest.ini_options]
+markers = ["real_capital: uses the live broker account instead of the pinned snapshot"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]

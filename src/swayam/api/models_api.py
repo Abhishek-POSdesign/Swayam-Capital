@@ -164,14 +164,48 @@ class ValidationCheck(BaseModel):
     floor: Optional[float] = None
     tolerance_pct: Optional[float] = None
     note: Optional[str] = None
+    blocking: bool = Field(
+        default=True,
+        description="False for checks that inform but never stop a trade.",
+    )
 
 
 class RiskVerdict(BaseModel):
-    """Verdict and metrics for a risk cap evaluation."""
+    """Verdict and metrics for a risk cap evaluation.
+
+    pct_of_margin is a PERCENTAGE already, e.g. 0.62 means 0.62%. The frontend
+    multiplied it by 100 again and printed 62% where the truth was 0.62%.
+    Do not multiply it. It is named badly for history's sake; the field to
+    trust when displaying is `arithmetic`.
+    """
     loss_inr: float
     cap_inr: float
     pct_of_margin: float
     passed: bool
+    cost_reserve_inr: Optional[float] = Field(
+        default=None,
+        description="Round-trip cost reserved and included in loss_inr. Null when not applicable.",
+    )
+    arithmetic: Optional[str] = Field(
+        default=None,
+        description="The whole sum in words, e.g. 'price loss + costs = total vs cap'. Display this.",
+    )
+
+
+class CapitalContext(BaseModel):
+    """The account figures the caps were computed from, with provenance."""
+    risk_capital_inr: float
+    free_cash_inr: float
+    collateral_inr: float
+    cash_equivalent_pledged_inr: Optional[float] = None
+    cash_equivalent_as_of: Optional[str] = None
+    deployable_margin_ceiling_inr: Optional[float] = None
+    ceiling_unavailable_reason: Optional[str] = None
+    reconciliation_note: Optional[str] = None
+    primary_risk_cap_inr: float
+    black_swan_fuse_inr: float
+    source: str
+    taken_at: str
 
 
 class ValidationResponse(BaseModel):
@@ -182,6 +216,11 @@ class ValidationResponse(BaseModel):
     blast_radius: RiskVerdict
     checks: list[ValidationCheck]
     warnings: list[str] = []
+    capital: Optional[CapitalContext] = None
+    execution_blocked_reason: Optional[str] = Field(
+        default=None,
+        description="Set when the structure may be viewed but must not be executed.",
+    )
 
 
 class PayoffPointResponse(BaseModel):

@@ -119,7 +119,7 @@ def test_execute_paper_mode_creates_journal_and_position(tmp_path: Path) -> None
     }
 
     try:
-        with patch("swayam.api.routes.validation.db") as mock_val_db:
+        with patch("swayam.db.db") as mock_val_db:
             mock_val_db.get_margin_base_inr.return_value = 850000.0
             mock_val_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
             response = client.post("/api/execute", json=payload)

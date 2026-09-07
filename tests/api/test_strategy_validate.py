@@ -133,11 +133,22 @@ def test_validate_excessive_loss_fails_blast_radius() -> None:
     assert rule_checks["blast_radius"] == "FAIL"
 
 
-def test_validate_raises_503_when_supabase_unreachable_for_margin_base(mocker) -> None:
-    """If db.get_margin_base_inr raises, validate returns 503, not silent fallback."""
-    from swayam.db import DatabaseError
-    mocker.patch("swayam.db.db.get_margin_base_inr", side_effect=DatabaseError("Config row missing"))
-    valid_payload = {
+def test_validate_blocks_when_live_capital_is_unavailable(mocker) -> None:
+    """Capital is a hard dependency: no live balance, no trade.
+
+    This test used to check a stale `margin_base_inr` row in the config table.
+    That figure is gone. Risk caps are now a percentage of the live broker
+    balance, and if the broker cannot be reached the gate refuses rather than
+    falling back to a remembered number.
+    """
+    from swayam.services.capital import CapitalUnavailable
+
+    mocker.patch(
+        "swayam.api.routes.validation.get_capital",
+        side_effect=CapitalUnavailable("Could not reach the broker for funds"),
+    )
+
+    payload = {
         "strategy_name": "Valid Spread",
         "underlying": "NIFTY",
         "legs": [
@@ -148,7 +159,6 @@ def test_validate_raises_503_when_supabase_unreachable_for_margin_base(mocker) -
                 "quantity_lots": 1,
                 "entry_premium": 150.0,
                 "expiry_date": "2026-09-24",
-                "lot_size": 75,
             },
             {
                 "strike": 24100.0,
@@ -157,15 +167,14 @@ def test_validate_raises_503_when_supabase_unreachable_for_margin_base(mocker) -
                 "quantity_lots": 1,
                 "entry_premium": 50.0,
                 "expiry_date": "2026-09-24",
-                "lot_size": 75,
             },
         ],
         "current_spot": 24867.5,
         "iv_per_leg": {"default": 0.15},
     }
-    response = client.post("/api/strategy/validate", json=valid_payload)
+    response = client.post("/api/strategy/validate", json=payload)
     assert response.status_code == 503
-    assert "margin base unavailable" in response.json()["detail"].lower()
+    assert "capital is unavailable" in response.json()["detail"].lower()
 
 
 def test_validate_uses_settings_tolerance_not_hardcoded_002() -> None:
@@ -212,30 +221,69 @@ def test_validate_uses_settings_tolerance_not_hardcoded_002() -> None:
 
 
 def test_validate_spread_passes_realistic_fails_blast() -> None:
-    """Spread passing realistic risk but failing 3% blast radius ceiling."""
-    # 4 lots of 450-pt wide Bear Put: max loss = 4 * 7500 = ₹30,000 > ₹25,500 blast cap
-    # Overnight 2-sigma move loss: ~₹8,000 <= ₹8,500 realistic cap
+    """A far-OTM credit spread: tiny loss at 2 sigma, catastrophic worst case.
+
+    Sizes changed 2026-09-08. The old fixture no longer separated the two caps
+    once the contract size became 65 and the fuse rose from 3% to 5%. This
+    shape separates them cleanly: the short strike is far enough away that a 2
+    sigma move barely touches it, while the 1000-point wing makes the absolute
+    worst case enormous.
+    """
     payload = {
-        "strategy_name": "Pass Realistic Fail Blast",
+        "strategy_name": "Far OTM Credit Spread",
+        "underlying": "NIFTY",
+        "legs": [
+            {
+                "strike": 23000.0,
+                "option_type": "PE",
+                "direction": "sell",
+                "quantity_lots": 2,
+                "entry_premium": 8.0,
+                "expiry_date": "2026-09-24",
+            },
+            {
+                "strike": 22000.0,
+                "option_type": "PE",
+                "direction": "buy",
+                "quantity_lots": 2,
+                "entry_premium": 3.0,
+                "expiry_date": "2026-09-24",
+            },
+        ],
+        "current_spot": 24867.5,
+        "iv_per_leg": {"default": 0.15},
+    }
+    response = client.post("/api/strategy/validate", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["overall_passed"] is False
+    assert data["realistic_risk"]["passed"] is True
+    assert data["blast_radius"]["passed"] is False
+    # 5% of the live 9,71,002.38.
+    assert data["blast_radius"]["cap_inr"] == 48550.12
+
+
+def test_validate_spread_passes_blast_fails_realistic() -> None:
+    """A debit spread sized so the 2 sigma loss breaches 1% but the worst case does not breach 5%."""
+    payload = {
+        "strategy_name": "Oversized Debit Spread",
         "underlying": "NIFTY",
         "legs": [
             {
                 "strike": 24850.0,
                 "option_type": "PE",
                 "direction": "buy",
-                "quantity_lots": 5,
+                "quantity_lots": 7,
                 "entry_premium": 120.0,
                 "expiry_date": "2026-09-24",
-                "lot_size": 75,
             },
             {
                 "strike": 24400.0,
                 "option_type": "PE",
                 "direction": "sell",
-                "quantity_lots": 5,
+                "quantity_lots": 7,
                 "entry_premium": 20.0,
                 "expiry_date": "2026-09-24",
-                "lot_size": 75,
             },
         ],
         "current_spot": 24867.5,
@@ -245,55 +293,13 @@ def test_validate_spread_passes_realistic_fails_blast() -> None:
     assert response.status_code == 200
     data = response.json()
     assert data["overall_passed"] is False
-    assert data["passed"] is False
-    assert data["realistic_risk"]["passed"] is True
-    assert data["blast_radius"]["passed"] is False
-    # 5 lots x 65 contracts x Rs 100 net debit = 32,500. Was 4 lots x 75 x 100
-    # = 30,000 before the contract size was corrected from 75 to 65.
-    assert data["blast_radius"]["loss_inr"] == 32500.0
-
-
-def test_validate_spread_passes_blast_fails_realistic() -> None:
-    """Spread passing blast radius fuse but failing 1% realistic risk cap."""
-    # 5 lots of 150-pt wide Bear Put: max loss = 5 * 63 * 75 = ₹23,625 <= ₹25,500 blast cap
-    # Overnight 2-sigma move loss: ~₹10,225 > ₹8,500 realistic cap
-    payload = {
-        "strategy_name": "Pass Blast Fail Realistic",
-        "underlying": "NIFTY",
-        "legs": [
-            {
-                "strike": 24850.0,
-                "option_type": "PE",
-                "direction": "buy",
-                "quantity_lots": 5,
-                "entry_premium": 150.0,
-                "expiry_date": "2026-09-24",
-                "lot_size": 75,
-            },
-            {
-                "strike": 24700.0,
-                "option_type": "PE",
-                "direction": "sell",
-                "quantity_lots": 5,
-                "entry_premium": 87.0,
-                "expiry_date": "2026-09-24",
-                "lot_size": 75,
-            },
-        ],
-        "current_spot": 24867.5,
-        "iv_per_leg": {"default": 0.15},
-    }
-    response = client.post("/api/strategy/validate", json=payload)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["overall_passed"] is False
-    assert data["passed"] is False
     assert data["realistic_risk"]["passed"] is False
     assert data["blast_radius"]["passed"] is True
-    # 20,475 not 23,625: the contract size is 65, not the 75 this used to assume.
-    # 23,625 x 65/75 = 20,475.
-    assert data["blast_radius"]["loss_inr"] == 20475.0
-
+    # 7 lots x 65 x Rs 100 net debit = 45,500, inside the 48,550 fuse.
+    assert data["blast_radius"]["loss_inr"] == 45500.0
+    # The primary gate now includes the round-trip cost reserve, and says so.
+    assert data["realistic_risk"]["cost_reserve_inr"] > 0
+    assert "round-trip costs" in data["realistic_risk"]["arithmetic"]
 
 def test_validate_spread_passes_both() -> None:
     """Compliant spread that passes both realistic and blast radius caps."""
@@ -410,6 +416,6 @@ def test_validate_insufficient_history_raises_503(mocker) -> None:
     }
     response = client.post("/api/strategy/validate", json=payload)
     assert response.status_code == 503
-    assert "insufficient nifty history (10/20 bars)" in response.json()["detail"].lower()
+    assert "insufficient nifty history (10/20 sessions)" in response.json()["detail"].lower()
     assert "backfill_bhavcopy.py" in response.json()["detail"]
 

@@ -16,3 +16,38 @@ def default_mock_realized_vol(request):
 
     with patch("swayam.api.routes.validation.compute_realized_vol", return_value=0.14):
         yield
+
+
+@pytest.fixture(autouse=True)
+def deterministic_capital(request):
+    """Pins the account snapshot so tests never call the live broker.
+
+    The risk gate reads real capital from FYERS. Left unmocked, every
+    validation test would make a network call to Abhishek's live account, be
+    slow, and change its answer whenever his balance moved. The figures below
+    are his real ones as at 2026-09-07, so the numbers in these tests are the
+    numbers he actually sees.
+
+    Opt out with @pytest.mark.real_capital.
+    """
+    if request.node.get_closest_marker("real_capital"):
+        yield
+        return
+
+    from datetime import date, datetime, timezone
+    from swayam.services.capital import CapitalSnapshot
+
+    snapshot = CapitalSnapshot(
+        risk_capital_inr=971002.38,
+        free_cash_inr=100000.0,
+        collateral_inr=871002.38,
+        cash_equivalent_pledged_inr=177480.46,
+        cash_equivalent_as_of="2026-09-07",
+        deployable_margin_ceiling_inr=554960.92,
+        ceiling_unavailable_reason=None,
+        reconciliation_note=None,
+        taken_at=datetime(2026, 9, 7, 20, 0, tzinfo=timezone.utc),
+        trading_day=date(2026, 9, 7),
+    )
+    with patch("swayam.api.routes.validation.get_capital", return_value=snapshot):
+        yield

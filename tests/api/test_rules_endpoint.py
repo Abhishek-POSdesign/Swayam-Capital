@@ -17,7 +17,8 @@ def test_get_rules_returns_parsed_method_percentages() -> None:
     assert rules["rr_minimum"] == 2.0
     assert rules["daily_loss_cap_pct"] == 0.02
     assert rules["weekly_loss_cap_pct"] == 0.04
-    assert rules["blast_radius_pct"] == 0.03
+    # Raised from 3% to 5% on Abhishek's written instruction, 2026-09-07.
+    assert rules["blast_radius_pct"] == 0.05
     assert rules["overnight_hedge_cap_pct"] == 0.02
     assert rules["alcohol_lockout_days"] == 90
     assert rules["sleep_no_trade_threshold_hours"] == 5.0
