@@ -171,17 +171,19 @@ def compute_technical_metrics(candles: list[list[Any]], current_spot: float) -> 
 
     Candles format: [[timestamp, open, high, low, close, volume], ...]
     """
-    if not candles or len(candles) < 5:
-        # Fallback values if historical candles unavailable
+    if not candles or len(candles) < 5 or current_spot is None:
+        # No fabricated metrics. If real candles aren't available, everything is null (UI shows '—').
         return {
-            "dma_20": round(current_spot * 0.995, 2),
-            "distance_20_dma_atr": 0.42,
-            "atr_20": 185.50,
-            "realized_vol_20": 11.8,
-            "range_20d": {"low": round(current_spot * 0.97, 2), "high": round(current_spot * 1.02, 2)},
-            "range_50d": {"low": round(current_spot * 0.95, 2), "high": round(current_spot * 1.03, 2)},
-            "spot_position_pct_20d": 65.0,
-            "sentiment": "Neutral",
+            "dma_20": None,
+            "distance_20_dma_atr": None,
+            "atr_20": None,
+            "realized_vol_20": None,
+            "range_20d": None,
+            "range_50d": None,
+            "spot_position_pct_20d": None,
+            "sentiment": None,
+            "week_change_pct": None,
+            "month_change_pct": None,
         }
 
     # Sort candles ascending by timestamp
@@ -240,6 +242,10 @@ def compute_technical_metrics(candles: list[list[Any]], current_spot: float) -> 
     else:
         sentiment = "Neutral"
 
+    # Week / month change from REAL closes (never hardcoded).
+    week_change = round(((current_spot - closes[-6]) / closes[-6]) * 100, 2) if len(closes) >= 6 else None
+    month_change = round(((current_spot - closes[-21]) / closes[-21]) * 100, 2) if len(closes) >= 21 else None
+
     return {
         "dma_20": round(dma_20, 2),
         "distance_20_dma_atr": dist_atr,
@@ -249,6 +255,8 @@ def compute_technical_metrics(candles: list[list[Any]], current_spot: float) -> 
         "range_50d": {"low": round(low_50d, 2), "high": round(high_50d, 2)},
         "spot_position_pct_20d": spot_pos_pct,
         "sentiment": sentiment,
+        "week_change_pct": week_change,
+        "month_change_pct": month_change,
     }
 
 
@@ -316,15 +324,19 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
 
     nifty_quote = quotes.get("NSE:NIFTY50-INDEX", {})
     spot_live = nifty_quote.get("lp") is not None
-    spot = float(nifty_quote.get("lp") or 24864.20)
-    prev_close = float(nifty_quote.get("prev_close_price") or 24842.10)
-    day_chg_pct = round(((spot - prev_close) / prev_close) * 100, 2) if prev_close > 0 else 0.0
+    # No fabricated spot — None when FYERS returns no real price (UI shows '—', never 24,864).
+    spot = float(nifty_quote["lp"]) if spot_live else None
+    _pc = nifty_quote.get("prev_close_price")
+    prev_close = float(_pc) if _pc is not None else None
+    day_chg_pct = round(((spot - prev_close) / prev_close) * 100, 2) if (spot and prev_close) else None
 
-    # India VIX
+    # India VIX — real or None (never the old 12.85 / 13.10 placeholders)
     vix_quote = quotes.get("NSE:INDIAVIX-INDEX") or quotes.get("NSE:INDIAVIX", {})
-    vix_current = float(vix_quote.get("lp") or 13.10)
-    vix_prev = float(vix_quote.get("prev_close_price") or 12.85)
-    vix_chg_pct = round(((vix_current - vix_prev) / vix_prev) * 100, 2) if vix_prev > 0 else 0.0
+    _vl = vix_quote.get("lp")
+    vix_current = float(_vl) if _vl is not None else None
+    _vp = vix_quote.get("prev_close_price")
+    vix_prev = float(_vp) if _vp is not None else None
+    vix_chg_pct = round(((vix_current - vix_prev) / vix_prev) * 100, 2) if (vix_current and vix_prev) else None
 
     # Sector rotation strip
     sector_strip = []
@@ -335,12 +347,12 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
         if s_lp > 0 and s_prev > 0:
             s_chg = round(((s_lp - s_prev) / s_prev) * 100, 2)
         else:
-            s_chg = sec.get("prev_session_change", 0.0)
+            s_chg = None  # no fabricated sector move — real quote or nothing
         sector_strip.append({
             "name": sec["name"],
             "symbol": sec["symbol"],
             "change_pct": s_chg,
-            "direction": "up" if s_chg >= 0 else "down",
+            "direction": ("up" if s_chg >= 0 else "down") if s_chg is not None else None,
         })
 
     # 4. Fetch Historical Daily Candles for Range, DMA, ATR, Volatility
@@ -363,11 +375,12 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
     # 5. Fetch FYERS Option Chains (Weekly and Monthly) with 50-strike boundary validation
     weekly_chain = []
     monthly_chain = []
-    weekly_pcr = 1.05
-    monthly_pcr = 1.15
-    max_pain = round(spot / 50) * 50
-    max_call_oi_k = max_pain + 200
-    max_put_oi_k = max_pain - 200
+    # No fabricated F&O stats. These stay None unless a real option chain is fetched below.
+    weekly_pcr = None
+    monthly_pcr = None
+    max_pain = None
+    max_call_oi_k = None
+    max_put_oi_k = None
 
     try:
         # Request wide band around spot (strikecount 50)
@@ -396,30 +409,34 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
     # DII Cash: ₹ crore
     # DII F&O: Index Futures & Options contracts
     # Note: Mandatory rule: NEVER combine cash and F&O into a single score.
+    # Institutional FII/DII flows have NO real data source wired yet (NSE publishes these EOD,
+    # but we don't ingest them). Show honest "unavailable" — never the old hardcoded numbers.
     institutional = {
-        "fii_cash_net_cr": -485.50,  # ₹ crore net sell
-        "fii_cash_freshness": "PREVIOUS SESSION",
-        "fii_fno_net_contracts": "+14,230",  # Long contracts net
-        "fii_fno_detail": "58% Long (74,210 Long / 59,980 Short)",
-        "fii_fno_freshness": "PREVIOUS SESSION",
-        "dii_cash_net_cr": +1240.20,  # ₹ crore net buy
-        "dii_cash_freshness": "PREVIOUS SESSION",
-        "dii_fno_net_contracts": "-8,150",  # Short contracts net
-        "dii_fno_detail": "44% Long (38,400 Long / 46,550 Short)",
-        "dii_fno_freshness": "PREVIOUS SESSION",
+        "fii_cash_net_cr": None,
+        "fii_cash_freshness": "UNAVAILABLE",
+        "fii_fno_net_contracts": None,
+        "fii_fno_detail": None,
+        "fii_fno_freshness": "UNAVAILABLE",
+        "dii_cash_net_cr": None,
+        "dii_cash_freshness": "UNAVAILABLE",
+        "dii_fno_net_contracts": None,
+        "dii_fno_detail": None,
+        "dii_fno_freshness": "UNAVAILABLE",
     }
 
     # 7. Assemble Full Snapshot with Badges
     # Freshness states: LIVE, CALCULATED, PREVIOUS SESSION, STALE
-    primary_state = "LIVE" if spot_live else "PREVIOUS SESSION"
+    primary_state = "LIVE" if spot_live else "UNAVAILABLE"
+    metrics_state = "CALCULATED" if tech.get("atr_20") is not None else "UNAVAILABLE"
+    sectors_have_real = any(s["change_pct"] is not None for s in sector_strip)
 
     payload: dict[str, Any] = {
         "generated_at": now_utc.isoformat(),
         "cash_pane": {
             "spot": spot,
             "day_change_pct": day_chg_pct,
-            "week_change_pct": 0.85,
-            "month_change_pct": 2.10,
+            "week_change_pct": tech.get("week_change_pct"),
+            "month_change_pct": tech.get("month_change_pct"),
             "spot_freshness": primary_state,
             "range_20d": tech["range_20d"],
             "spot_position_pct_20d": tech["spot_position_pct_20d"],
@@ -428,14 +445,14 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
             "distance_20_dma_atr": tech["distance_20_dma_atr"],
             "atr_20": tech["atr_20"],
             "realized_vol_20": tech["realized_vol_20"],
-            "metrics_freshness": "CALCULATED",
+            "metrics_freshness": metrics_state,
             "sentiment": tech["sentiment"],
-            "sentiment_freshness": "CALCULATED",
-            "advances": 32,
-            "declines": 18,
-            "breadth_freshness": primary_state,
+            "sentiment_freshness": metrics_state,
+            "advances": None,
+            "declines": None,
+            "breadth_freshness": "UNAVAILABLE",
             "sector_rotation": sector_strip,
-            "sector_freshness": primary_state,
+            "sector_freshness": primary_state if sectors_have_real else "UNAVAILABLE",
         },
         "fno_pane": {
             "weekly_expiry": weekly_exp_str,
@@ -445,15 +462,15 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
             "expiry_freshness": "CALCULATED",
             "weekly_pcr": weekly_pcr,
             "monthly_pcr": monthly_pcr,
-            "pcr_freshness": "CALCULATED",
+            "pcr_freshness": "CALCULATED" if weekly_pcr is not None else "UNAVAILABLE",
             "max_pain": max_pain,
-            "max_pain_freshness": "CALCULATED",
+            "max_pain_freshness": "CALCULATED" if max_pain is not None else "UNAVAILABLE",
             "max_call_oi_strike": max_call_oi_k,
             "max_put_oi_strike": max_put_oi_k,
-            "walls_freshness": "CALCULATED",
+            "walls_freshness": "CALCULATED" if max_call_oi_k is not None else "UNAVAILABLE",
             "india_vix": vix_current,
             "india_vix_change_pct": vix_chg_pct,
-            "vix_freshness": primary_state,
+            "vix_freshness": "LIVE" if vix_current is not None else "UNAVAILABLE",
             "institutional": institutional,
             "is_rollover_window": expiry_meta["is_rollover_window"],
             "rollover_pct": 68.5 if expiry_meta["is_rollover_window"] else None,
