@@ -7,7 +7,6 @@ import { api } from '../api.js';
 import { ReadinessRitualComponent } from '../components/readiness-ritual.js';
 import { VerdictCardComponent } from '../components/verdict-card.js';
 import { KPIHistoryCardComponent } from '../components/kpi-history-card.js';
-import { OvernightStripComponent } from '../components/overnight-strip.js';
 import { VixCardComponent } from '../components/vix-card.js';
 import { SoFarTodayCardComponent } from '../components/so-far-today-card.js';
 import { NiftySnapshotCardComponent } from '../components/nifty-snapshot-card.js';
@@ -110,9 +109,6 @@ export class HomePage {
 
           <!-- 12-Column Bento Grid for Market Prep Tiles -->
           <div class="bento-grid">
-            <!-- Row 1: Overnight Global Strip (Span 12) — big numbers -->
-            <div id="home-overnight-container" class="span-12"></div>
-
             <!-- Row 2: NIFTY 50 Snapshot (Cash + F&O Panes) — FULL WIDTH (Span 12) -->
             <div id="home-nifty-container" class="span-12"></div>
 
@@ -275,11 +271,6 @@ export class HomePage {
       this.soFarTodayComponent.init();
     }
 
-    // 5. Overnight Strip — big numbers
-    const overnightContainer = this.container.querySelector('#home-overnight-container');
-    this.overnightComponent = new OvernightStripComponent(overnightContainer);
-    this.overnightComponent.render();
-
     // 6. NIFTY 50 Snapshot — numeric Cash + F&O panes
     const niftyContainer = this.container.querySelector('#home-nifty-container');
     if (niftyContainer) {
@@ -326,7 +317,6 @@ export class HomePage {
   async loadData() {
     await Promise.allSettled([
       this.loadKpiData(),
-      this.loadAIBrief(),
       this.loadVixData(),
     ]);
   }
@@ -356,42 +346,6 @@ export class HomePage {
       // No fakes: show an explicit unavailable state rather than placeholder numbers.
       if (this.vixComponent) {
         this.vixComponent.renderUnavailable('VIX history unavailable — service unreachable.');
-      }
-    }
-  }
-
-  async loadAIBrief() {
-    try {
-      const brief = await api.getAIBrief();
-      if (this.aiBriefComponent && brief) {
-        this.aiBriefComponent.render(brief);
-        if (brief.reading_queue && this.readingQueueComponent) {
-          this.readingQueueComponent.render(brief.reading_queue);
-        }
-        if (brief.macro_events_next_5_days && this.macroEventsComponent) {
-          this.macroEventsComponent.render(brief.macro_events_next_5_days);
-        }
-        if (brief.overnight_global && this.overnightComponent) {
-          const mapped = {};
-          for (const [k, v] of Object.entries(brief.overnight_global)) {
-            mapped[k] = {
-              value: typeof v.value === 'number' ? v.value.toLocaleString('en-US') : v.value,
-              pct: v.pct !== undefined ? `${v.pct > 0 ? '+' : ''}${v.pct}%` : (v.abs_change !== undefined ? `${v.abs_change > 0 ? '+' : ''}${v.abs_change}` : ''),
-              positive: v.pct !== undefined ? v.pct >= 0 : (v.abs_change !== undefined ? v.abs_change >= 0 : true),
-              neutral: k === 'USDINR',
-            };
-          }
-          this.overnightComponent.render(mapped);
-        }
-        if (brief.india_vix && this.vixComponent) {
-          // AI brief may include a simplified vix snapshot — only use if no full history loaded
-          // (loadVixData runs in parallel and takes priority)
-        }
-      }
-    } catch (err) {
-      console.warn('Could not load AI brief, rendering notice:', err);
-      if (this.aiBriefComponent) {
-        this.aiBriefComponent.render(null, err.message || 'Service unavailable');
       }
     }
   }

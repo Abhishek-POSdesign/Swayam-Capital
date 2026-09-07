@@ -11,13 +11,17 @@ export class OvernightStripComponent {
   }
 
   render(overnightData = null) {
-    const data = overnightData || {
-      DJI: { value: '45,203.47', pct: '+0.42%', positive: true, neutral: false },
-      'S&P 500': { value: '6,124.11', pct: '+0.31%', positive: true, neutral: false },
-      NASDAQ: { value: '20,556.82', pct: '-0.18%', positive: false, neutral: false },
-      'USD/INR': { value: '83.42', pct: '+0.05', positive: null, neutral: true },
-      BRENT: { value: '$71.23', pct: '-1.2%', positive: false, neutral: false },
-    };
+    // No fabricated defaults. If no real overnight-global feed is wired, render an honest
+    // "not connected" state — never invented index levels. (This component is currently
+    // unused on the home page for exactly this reason: FYERS does not provide US indices/Brent.)
+    if (!overnightData || Object.keys(overnightData).length === 0) {
+      this.container.innerHTML = `
+        <div class="tile overnight-strip-tile span-12" style="display:flex; align-items:center; gap:8px; padding:14px 16px; min-height:56px; color:var(--dl-fg-3); font-size:0.8rem;">
+          <span>🌐</span><span>Overnight global feed not connected — no live data source.</span>
+        </div>`;
+      return;
+    }
+    const data = overnightData;
 
     const cellsHtml = Object.entries(data).map(([ticker, info], idx) => {
       let deltaColor = 'var(--dl-fg-2)';

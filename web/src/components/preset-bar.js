@@ -17,55 +17,54 @@ export const STRATEGY_PRESETS = [
 ];
 
 export function generatePresetLegs(presetId, spotPrice = 24850, expiryDate = null) {
-  // Round spot to nearest 50
+  // Round spot to nearest 50 for the strikes.
   const base = Math.round(spotPrice / 50) * 50;
-  const exp = expiryDate || getNextWeeklyThursday();
+  // No fabricated premiums, no guessed expiry. Legs ship with entry_premium 0 and a blank expiry;
+  // the leg builder fills each leg's REAL expiry and REAL last-traded/live price on mount.
+  // `back_month: true` tells the builder to put that leg on the SECOND real expiry (calendars).
+  const exp = expiryDate || '';
+  const L = (strike, option_type, direction, extra = {}) => ({
+    strike,
+    option_type,
+    direction,
+    quantity_lots: 1,
+    lot_size: 75,
+    expiry_date: exp,
+    entry_premium: 0,
+    ...extra,
+  });
 
   switch (presetId) {
     case 'bear-put':
-      return [
-        { strike: base + 50, option_type: 'PE', direction: 'buy', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 110.0 },
-        { strike: base - 150, option_type: 'PE', direction: 'sell', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 45.0 },
-      ];
+      return [L(base + 50, 'PE', 'buy'), L(base - 150, 'PE', 'sell')];
     case 'bull-call':
-      return [
-        { strike: base - 50, option_type: 'CE', direction: 'buy', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 115.0 },
-        { strike: base + 150, option_type: 'CE', direction: 'sell', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 48.0 },
-      ];
+      return [L(base - 50, 'CE', 'buy'), L(base + 150, 'CE', 'sell')];
     case 'iron-condor':
       return [
-        { strike: base - 350, option_type: 'PE', direction: 'buy', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 18.0 },
-        { strike: base - 150, option_type: 'PE', direction: 'sell', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 45.0 },
-        { strike: base + 150, option_type: 'CE', direction: 'sell', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 46.0 },
-        { strike: base + 350, option_type: 'CE', direction: 'buy', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 16.0 },
+        L(base - 350, 'PE', 'buy'),
+        L(base - 150, 'PE', 'sell'),
+        L(base + 150, 'CE', 'sell'),
+        L(base + 350, 'CE', 'buy'),
       ];
     case 'iron-fly':
       return [
-        { strike: base - 200, option_type: 'PE', direction: 'buy', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 32.0 },
-        { strike: base, option_type: 'PE', direction: 'sell', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 95.0 },
-        { strike: base, option_type: 'CE', direction: 'sell', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 98.0 },
-        { strike: base + 200, option_type: 'CE', direction: 'buy', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 30.0 },
+        L(base - 200, 'PE', 'buy'),
+        L(base, 'PE', 'sell'),
+        L(base, 'CE', 'sell'),
+        L(base + 200, 'CE', 'buy'),
       ];
     case 'bear-call':
-      return [
-        { strike: base + 200, option_type: 'CE', direction: 'buy', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 35.0 },
-        { strike: base + 50, option_type: 'CE', direction: 'sell', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 85.0 },
-      ];
+      return [L(base + 200, 'CE', 'buy'), L(base + 50, 'CE', 'sell')];
     case 'bull-put':
-      return [
-        { strike: base - 200, option_type: 'PE', direction: 'buy', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 35.0 },
-        { strike: base - 50, option_type: 'PE', direction: 'sell', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 82.0 },
-      ];
+      return [L(base - 200, 'PE', 'buy'), L(base - 50, 'PE', 'sell')];
     case 'calendar':
-      const nextExp = getFollowingThursday(exp);
+      // Front-month short + back-month long at the same strike (different expiries).
       return [
-        { strike: base, option_type: 'CE', direction: 'sell', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 95.0 },
-        { strike: base, option_type: 'CE', direction: 'buy', quantity_lots: 1, lot_size: 75, expiry_date: nextExp, entry_premium: 145.0 },
+        L(base, 'CE', 'sell'),
+        L(base, 'CE', 'buy', { back_month: true }),
       ];
     default:
-      return [
-        { strike: base, option_type: 'PE', direction: 'buy', quantity_lots: 1, lot_size: 75, expiry_date: exp, entry_premium: 85.0 },
-      ];
+      return [L(base, 'PE', 'buy')];
   }
 }
 

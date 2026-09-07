@@ -5,16 +5,19 @@
  * there is NO Buy/Sell toggle on the card; the "B"/"S" chip is a static accent only.
  *
  * Card layout:
- *   top:   [B|S chip] [CE/PE toggle] [− strike +] [lots ▼] [price + ↻]
- *   stats: Bid · Ask · IV · Δ · OI   (small mono, real-or-'—')
+ *   row 1: [B|S chip] [CE/PE] [− strike +] [expiry ▼] [lots ▼]            [✕]
+ *   row 2: Price   [ −  |  <big editable price>  |  + ]  [↻]   <source tag>
+ *   row 3: Bid · Ask · IV · Δ · OI   (small mono, real-or-'—')
  *
- * Expiry is chosen once globally ("Expiry · all legs"), not per card.
+ * Expiry is PER LEG (each leg has its own expiry dropdown) so calendar / diagonal spreads with
+ * different expiries per leg are possible. A "Set all legs →" control on the builder is a
+ * convenience that stamps one expiry onto every leg at once.
  *
  * No-fake-numbers law:
- *  - Bid/Ask/IV/Delta/OI show '—' when they aren't real; never a placeholder.
- *  - Price is editable: real LTP pre-fills it when the market is open, or ↻ refreshes it;
- *    otherwise you type your (limit) price. IV/Delta are computed from whatever price is set.
- *  - Editing the price updates the stats WITHOUT re-rendering the card, so the input keeps focus.
+ *  - Price/Bid/Ask/IV/Delta/OI show '—' when they aren't real; never a fabricated placeholder.
+ *  - The price is the real last-traded (or live) price for THIS strike+expiry when available; if
+ *    no real price exists, the field is left for you to type and the tag reads "no real price".
+ *  - The source tag says exactly where the price came from: live / prev close / your price.
  */
 
 export class LegCardComponent {
@@ -22,7 +25,7 @@ export class LegCardComponent {
     this.container = container;
     this.leg = { ...legData };
     this.index = index;
-    this.options = options; // { onChange, onPriceInput, onRemove, onRefresh }
+    this.options = options; // { onChange, onPriceInput, onRemove, onRefresh, onExpiryChange, expiries }
   }
 
   _fmtIv() {
@@ -64,6 +67,37 @@ export class LegCardComponent {
     return html;
   }
 
+  _expiryOptions() {
+    const list = this.options.expiries || [];
+    const cur = this.leg.expiry_date || '';
+    if (!list.length) return `<option value="${cur}" selected>${cur || '—'}</option>`;
+    const opts = list
+      .map(
+        (e) =>
+          `<option value="${e.date}" ${e.date === cur ? 'selected' : ''}>${e.label || e.date}</option>`
+      )
+      .join('');
+    // If the leg's expiry isn't in the loaded list yet, keep it visible so we never lose the pick.
+    const known = list.some((e) => e.date === cur);
+    return known || !cur ? opts : `<option value="${cur}" selected>${cur}</option>${opts}`;
+  }
+
+  _sourceLabel() {
+    const s = this.leg.price_source;
+    if (s === 'live') return '● live price';
+    if (s === 'prev_close') return '● prev close (real last-traded)';
+    if (s === 'manual') return '● your typed price';
+    if (s === 'unavailable') return '⚠ no real price — type your price';
+    return '';
+  }
+
+  _sourceColor() {
+    const s = this.leg.price_source;
+    if (s === 'live') return 'var(--accent-sage)';
+    if (s === 'unavailable') return 'var(--accent-amber)';
+    return 'var(--dl-fg-3)';
+  }
+
   render() {
     const isBuy = this.leg.direction?.toLowerCase() === 'buy';
     const isCE = this.leg.option_type === 'CE';
@@ -91,15 +125,23 @@ export class LegCardComponent {
             <button type="button" class="btn-strike-inc" title="Strike +50" style="width:26px; height:100%; border:none; background:transparent; color:var(--dl-fg-2); cursor:pointer; font-weight:700; font-size:0.95rem;">+</button>
           </div>
 
-          <select class="input-lots" title="Lots (free — never restricted)" style="flex:0 0 auto; height:32px; background:var(--dl-card-2); color:var(--dl-fg); border:1px solid var(--dl-line); border-radius:7px; padding:0 6px; font-size:0.78rem; font-family:var(--font-mono); font-weight:600; cursor:pointer;">${this._lotOptions()}</select>
+          <select class="input-expiry" title="Expiry for THIS leg — change per leg to build calendar / diagonal spreads" style="flex:0 0 auto; height:32px; max-width:140px; background:var(--dl-card-2); color:var(--dl-fg); border:1px solid var(--dl-line); border-radius:7px; padding:0 6px; font-size:0.74rem; font-family:var(--font-mono); font-weight:600; cursor:pointer;">${this._expiryOptions()}</select>
 
-          <div class="price" style="flex:1 1 120px; min-width:112px; display:flex; align-items:center; gap:6px;">
-            <input type="number" step="0.05" min="0" class="input-price" value="${priceVal}" placeholder="—" title="Price per share — real LTP pre-fills when the market is open; ↻ refreshes it; type to override" style="flex:1 1 auto; min-width:0; height:32px; background:var(--dl-card-2); color:var(--dl-fg); border:1px solid var(--dl-line); border-radius:7px; padding:0 8px; font-size:0.82rem; font-family:var(--font-mono); font-weight:700; text-align:right;" />
-            <button type="button" class="btn-refresh-price" title="Refresh live LTP" style="flex:0 0 auto; width:32px; height:32px; border-radius:7px; border:1px solid var(--dl-line); background:var(--dl-card-2); color:var(--dl-fg-2); cursor:pointer; font-size:0.95rem;" onmouseover="this.style.color='var(--accent-sage)'; this.style.borderColor='var(--accent-sage)';" onmouseout="this.style.color='var(--dl-fg-2)'; this.style.borderColor='var(--dl-line)';">↻</button>
-          </div>
+          <select class="input-lots" title="Lots (free — never restricted)" style="flex:0 0 auto; height:32px; background:var(--dl-card-2); color:var(--dl-fg); border:1px solid var(--dl-line); border-radius:7px; padding:0 6px; font-size:0.78rem; font-family:var(--font-mono); font-weight:600; cursor:pointer;">${this._lotOptions()}</select>
 
           <button type="button" class="btn-remove-leg" title="Remove leg" style="flex:0 0 auto; margin-left:auto; background:transparent; border:none; color:var(--dl-fg-3); font-size:0.95rem; cursor:pointer; padding:4px 6px; border-radius:4px;" onmouseover="this.style.color='var(--accent-coral)'" onmouseout="this.style.color='var(--dl-fg-3)'">✕</button>
         </div>
+
+        <div class="legcard-price" style="display:flex; align-items:center; gap:8px;">
+          <span style="flex:0 0 auto; font-size:0.72rem; color:var(--dl-fg-3); font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">Price</span>
+          <div class="price-ctl" style="flex:1 1 auto; display:flex; align-items:stretch; height:38px; background:var(--dl-card-2); border:1px solid var(--dl-line); border-radius:9px; overflow:hidden;">
+            <button type="button" class="btn-price-dec" title="−0.05" style="flex:0 0 44px; border:none; background:transparent; color:var(--dl-fg-2); cursor:pointer; font-size:1.35rem; font-weight:700; line-height:1;" onmouseover="this.style.color='var(--accent-coral)'" onmouseout="this.style.color='var(--dl-fg-2)'">−</button>
+            <input type="number" step="0.05" min="0" class="input-price" value="${priceVal}" placeholder="—" title="Price per share for this leg — real last-traded price pre-fills; use − / + or type to override" style="flex:1 1 auto; min-width:0; border:none; border-left:1px solid var(--dl-line); border-right:1px solid var(--dl-line); background:transparent; color:var(--dl-fg); text-align:center; font-family:var(--font-mono); font-weight:700; font-size:1.05rem; padding:0 4px;" />
+            <button type="button" class="btn-price-inc" title="+0.05" style="flex:0 0 44px; border:none; background:transparent; color:var(--dl-fg-2); cursor:pointer; font-size:1.35rem; font-weight:700; line-height:1;" onmouseover="this.style.color='var(--accent-sage)'" onmouseout="this.style.color='var(--dl-fg-2)'">+</button>
+          </div>
+          <button type="button" class="btn-refresh-price" title="Refresh real price for this strike + expiry" style="flex:0 0 auto; width:38px; height:38px; border-radius:9px; border:1px solid var(--dl-line); background:var(--dl-card-2); color:var(--dl-fg-2); cursor:pointer; font-size:1rem;" onmouseover="this.style.color='var(--accent-sage)'; this.style.borderColor='var(--accent-sage)';" onmouseout="this.style.color='var(--dl-fg-2)'; this.style.borderColor='var(--dl-line)';">↻</button>
+        </div>
+        <div class="price-src" style="font-size:0.66rem; font-family:var(--font-mono); color:${this._sourceColor()}; min-height:0.9rem;">${this._sourceLabel()}</div>
 
         <div class="legcard-stats" style="display:flex; gap:8px 16px; flex-wrap:wrap; font-family:var(--font-mono); font-size:0.74rem; color:var(--dl-fg-2); border-top:1px solid var(--dl-line); padding-top:9px;">
           <span>Bid <b class="leg-bid" style="color:var(--dl-fg);">${this._fmtNum(this.leg.bid)}</b></span>
@@ -137,12 +179,18 @@ export class LegCardComponent {
       this.leg.strike = (this.leg.strike || 0) + 50;
       this._structural();
     });
+    q('.input-expiry')?.addEventListener('change', (e) => {
+      this.options.onExpiryChange?.(this.index, e.target.value);
+    });
     q('.input-lots')?.addEventListener('change', (e) => {
       this.leg.quantity_lots = parseInt(e.target.value, 10) || 1;
       this._structural();
     });
     q('.btn-refresh-price')?.addEventListener('click', () => this.options.onRefresh?.(this.index));
     q('.btn-remove-leg')?.addEventListener('click', () => this.options.onRemove?.(this.index));
+
+    q('.btn-price-dec')?.addEventListener('click', () => this._nudgePrice(-0.05));
+    q('.btn-price-inc')?.addEventListener('click', () => this._nudgePrice(0.05));
 
     // Price edit: update the model + trigger a (debounced) recompute WITHOUT re-rendering,
     // so the field keeps focus while you type. IV/Delta refresh in place via updateComputed().
@@ -151,8 +199,30 @@ export class LegCardComponent {
       price.addEventListener('input', (e) => {
         const v = parseFloat(e.target.value);
         this.leg.entry_premium = isNaN(v) || v < 0 ? 0 : v;
+        this.leg.price_source = 'manual';
+        this._refreshSourceTag();
         this.options.onPriceInput?.(this.index, this.leg);
       });
+    }
+  }
+
+  /** Step the price by delta, rounded to the 0.05 tick, and recompute (keeps card in place). */
+  _nudgePrice(delta) {
+    const cur = typeof this.leg.entry_premium === 'number' ? this.leg.entry_premium : 0;
+    const v = Math.max(0, Math.round((cur + delta) * 20) / 20);
+    this.leg.entry_premium = v;
+    this.leg.price_source = 'manual';
+    const inp = this.container.querySelector('.input-price');
+    if (inp) inp.value = v;
+    this._refreshSourceTag();
+    this.options.onPriceInput?.(this.index, this.leg);
+  }
+
+  _refreshSourceTag() {
+    const el = this.container.querySelector('.price-src');
+    if (el) {
+      el.textContent = this._sourceLabel();
+      el.style.color = this._sourceColor();
     }
   }
 
@@ -175,9 +245,14 @@ export class LegCardComponent {
     }
   }
 
-  /** Live quote fill: set price if the user isn't editing it, refresh Bid/Ask/IV/Delta/OI. */
+  /**
+   * Real quote fill: set price from the real last-traded/live value if the user isn't editing it,
+   * refresh Bid/Ask/IV/Delta/OI, and label where the price came from. When no real price exists,
+   * we leave the field for the user and flag it "no real price" — never a fabricated number.
+   */
   updateQuote(quote) {
     if (!quote) return;
+    this.leg.price_source = quote.source || (quote.available ? 'live' : 'unavailable');
     if (quote.available && quote.ltp != null) {
       this.leg.entry_premium = quote.ltp;
       const priceEl = this.container.querySelector('.input-price');
@@ -192,6 +267,7 @@ export class LegCardComponent {
     if (bidEl) bidEl.textContent = this._fmtNum(this.leg.bid);
     if (askEl) askEl.textContent = this._fmtNum(this.leg.ask);
     if (oiEl) oiEl.textContent = this._fmtOi(this.leg.oi);
+    this._refreshSourceTag();
     this.updateComputed({ iv: quote.iv, iv_available: quote.available, delta: quote.delta });
   }
 }

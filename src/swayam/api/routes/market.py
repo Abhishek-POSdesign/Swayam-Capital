@@ -177,14 +177,40 @@ def get_option_quote(
         days_to_expiry = None
         tte_years = None
 
-    # Attempt the real live chain (nearest expiry). Only trust a row with a positive LTP.
+    # --- Resolve the REAL price for the REQUESTED expiry (not just the nearest). ---
+    # FYERS optionchain returns expiryData (date -> epoch); we pass that epoch as `timestamp`
+    # to fetch the exact expiry's chain. Off-hours this returns the last-traded (previous close)
+    # price, which is REAL market data — we never fabricate an LTP.
+    from datetime import timedelta as _timedelta, time as _dtime
+
+    # Market status in IST (NIFTY F&O trades Mon-Fri 09:15-15:30 IST).
+    now_ist = datetime.now(timezone.utc) + _timedelta(hours=5, minutes=30)
+    market_open = now_ist.weekday() < 5 and _dtime(9, 15) <= now_ist.time() <= _dtime(15, 30)
+
     ltp: Optional[float] = None
     oi: Optional[int] = None
     bid: Optional[float] = None
     ask: Optional[float] = None
     try:
-        raw_chain = fyers_client.get_option_chain(underlying=symbol, strike_count=50)
-        for row in raw_chain.get("optionsChain", []) or []:
+        base_chain = fyers_client.get_option_chain(underlying=symbol, strike_count=50)
+        # Map requested expiry (YYYY-MM-DD) -> FYERS epoch via expiryData (dates are DD-MM-YYYY).
+        want_ddmmyyyy = None
+        try:
+            want_ddmmyyyy = datetime.strptime(expiry, "%Y-%m-%d").strftime("%d-%m-%Y")
+        except Exception:
+            want_ddmmyyyy = None
+        want_epoch = None
+        for ed in base_chain.get("expiryData", []) or []:
+            if want_ddmmyyyy and ed.get("date") == want_ddmmyyyy:
+                want_epoch = str(ed.get("expiry"))
+                break
+        # Use the base chain if the requested expiry is the nearest; else fetch that expiry by epoch.
+        chain = base_chain
+        if want_epoch:
+            chain = fyers_client.get_option_chain(
+                underlying=symbol, strike_count=50, timestamp=want_epoch
+            )
+        for row in chain.get("optionsChain", []) or []:
             if row.get("option_type") != opt_type:
                 continue
             row_strike = float(row.get("strike_price", row.get("strike", 0)) or 0)
@@ -197,13 +223,14 @@ def get_option_quote(
                     ask = row.get("ask")
                 break
     except Exception as exc:
-        logger.debug("Live option chain fetch failed for quote (%s): %s", strike, exc)
+        logger.debug("Option chain fetch failed for quote (strike=%s expiry=%s): %s", strike, expiry, exc)
 
-    # Real IV implied from the real LTP; Greeks computed from that IV. No LTP => all null.
+    # Real IV implied from the real LTP; Greeks computed from that IV. Keep the real price even
+    # if the IV solve fails (show the price, just omit Greeks) — never hide a real number.
     iv_val: Optional[float] = None
     delta = gamma = theta = vega = None
-    available = bool(ltp and ltp > 0 and spot and tte_years and tte_years > 0)
-    if available:
+    can_greek = bool(ltp and ltp > 0 and spot and tte_years and tte_years > 0)
+    if can_greek:
         model_type = OptionType.CALL if opt_type == "CE" else OptionType.PUT
         try:
             iv_val = implied_volatility(
@@ -216,28 +243,36 @@ def get_option_quote(
             vega = round(g.get("vega", 0.0), 2)
         except (IVSolveFailed, Exception):
             iv_val = None
-            available = False  # could not imply IV from the price -> do not show partial fakes
+
+    price_available = bool(ltp and ltp > 0)
+    source = "unavailable"
+    if price_available:
+        source = "live" if market_open else "prev_close"
 
     return {
         "symbol": symbol,
         "strike": strike,
         "expiry": expiry,
         "option_type": opt_type,
-        "available": available,
-        "source": "market" if available else "unavailable",
-        "ltp": round(float(ltp), 2) if available else None,
-        "iv": round(float(iv_val), 4) if (available and iv_val) else None,
-        "oi": oi if available else None,
-        "bid": bid if available else None,
-        "ask": ask if available else None,
+        "available": price_available,
+        "source": source,
+        "ltp": round(float(ltp), 2) if price_available else None,
+        "iv": round(float(iv_val), 4) if iv_val else None,
+        "oi": oi if price_available else None,
+        "bid": bid if price_available else None,
+        "ask": ask if price_available else None,
         "delta": delta,
         "gamma": gamma,
         "theta": theta,
         "vega": vega,
         "spot": round(float(spot), 2) if spot else None,
+        "market_open": market_open,
         "days_to_expiry": days_to_expiry,
         "as_of": datetime.now(timezone.utc).isoformat(),
-        "note": None if available else "Live price unavailable (market closed or data gap) — type your price to compute IV & Delta.",
+        "note": (
+            None if price_available
+            else "No real price found for this strike/expiry — type your own price. (No fabricated prices, ever.)"
+        ),
     }
 
 
@@ -408,6 +443,11 @@ def _get_nifty_candle_fallback(
             c = [round(float(r["close"]), 2) for r in rows]
             return d, o, h, l, c, True
 
+        # No-fake law: never synthesize intraday candles from daily OHLC. If FYERS has no
+        # real intraday data, report unavailable so the UI shows nothing rather than fiction.
+        return [], [], [], [], [], False
+
+        # (Legacy synthesis below is intentionally unreachable, kept only for reference.)
         # For intraday (1h, 15m), synthesize realistic bars from recent daily bars
         recent_rows = rows[-5:] if len(rows) >= 5 else rows
         synth_dates: list[str] = []

@@ -48,7 +48,8 @@ def test_get_option_quote_real_path_implies_iv_from_ltp(monkeypatch):
     assert r.status_code == 200
     d = r.json()
     assert d["available"] is True
-    assert d["source"] == "market"
+    # Real price → source is "live" during market hours, else "prev_close" (real last-traded).
+    assert d["source"] in ("live", "prev_close")
     assert d["ltp"] == 95.0
     assert d["iv"] is not None and d["iv"] > 0
     assert d["delta"] is not None and d["delta"] <= 0  # put delta is negative
