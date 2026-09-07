@@ -1,0 +1,420 @@
+<title>Swayam Home</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --bg:#ffffff; --panel:#ffffff; --panel-2:#f7f8f8; --sunk:#f1f3f3;
+    --line:#e4e7e7; --line-2:#c9cfcf;
+    --fg:#101414; --fg-2:#59625f; --fg-3:#8a9391;
+    --up:#0a7a45; --up-bg:#e6f4ec;
+    --down:#c02718; --down-bg:#fbe9e6;
+    --warn:#8a5b00; --warn-bg:#fbf1dc;
+    --info:#0b5f78; --info-bg:#e2f0f4;
+    --brand:#7d9d84;
+    --f:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --m:"Roboto Mono",ui-monospace,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0d0f0f; --panel:#141717; --panel-2:#1a1e1e; --sunk:#101313;
+      --line:#262c2c; --line-2:#3a4342;
+      --fg:#eef2f1; --fg-2:#a4adab; --fg-3:#78827f;
+      --up:#3ec27f; --up-bg:#123024; --down:#f47163; --down-bg:#2f1614;
+      --warn:#e3a63f; --warn-bg:#2c2110; --info:#4bb4d0; --info-bg:#0d2b34;
+      --brand:#9dbba3;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d0f0f; --panel:#141717; --panel-2:#1a1e1e; --sunk:#101313;
+    --line:#262c2c; --line-2:#3a4342;
+    --fg:#eef2f1; --fg-2:#a4adab; --fg-3:#78827f;
+    --up:#3ec27f; --up-bg:#123024; --down:#f47163; --down-bg:#2f1614;
+    --warn:#e3a63f; --warn-bg:#2c2110; --info:#4bb4d0; --info-bg:#0d2b34;
+    --brand:#9dbba3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f);font-size:14px;line-height:1.45}
+  .app{max-width:1440px;margin:0 auto;padding:14px 14px 70px}
+
+  .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:8px 2px 12px}
+  .brand{font-weight:700;font-size:15px;display:flex;align-items:baseline;gap:9px}
+  .brand .mark{font-size:25px;color:var(--brand);line-height:1;font-weight:600;
+               letter-spacing:-.02em;position:relative;top:2px}
+  .brand span{color:var(--fg-3);font-weight:500}
+
+  /* record toggle */
+  .seg{display:inline-flex;background:var(--sunk);border:1px solid var(--line);
+       border-radius:7px;padding:2px;margin-left:auto}
+  .seg button{font-family:var(--m);font-size:10.5px;font-weight:600;letter-spacing:.05em;
+              text-transform:uppercase;border:none;background:none;color:var(--fg-3);
+              padding:5px 12px;border-radius:5px;cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--panel);color:var(--fg);
+              box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  .nav{display:flex;gap:3px;margin-left:6px;flex-wrap:wrap}
+  .nav a{font-size:12.5px;color:var(--fg-2);text-decoration:none;padding:6px 11px;border-radius:6px}
+  .nav a.on{background:var(--fg);color:var(--bg);font-weight:600}
+  .nav a:hover:not(.on){background:var(--panel-2);color:var(--fg)}
+  button.tog{font-family:var(--m);font-size:11px;background:var(--panel-2);color:var(--fg-2);
+             border:1px solid var(--line);border-radius:5px;padding:5px 10px;cursor:pointer;margin-left:auto}
+
+  /* ticker */
+  .ticker{overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+          background:var(--panel-2);margin-bottom:12px}
+  .run{display:inline-flex;white-space:nowrap;animation:slide 48s linear infinite;padding:7px 0}
+  .ticker:hover .run{animation-play-state:paused}
+  @keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  @media (prefers-reduced-motion:reduce){.run{animation:none}}
+  .tk{font-family:var(--m);font-size:12px;padding:0 18px;border-right:1px solid var(--line);
+      display:inline-flex;gap:7px;align-items:baseline}
+  .tk i{font-style:normal;color:var(--fg-3);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase}
+  .tk b{font-weight:600;font-variant-numeric:tabular-nums}
+
+  /* ritual strip */
+  .ritual{display:flex;align-items:center;gap:0;background:var(--panel);border:1px solid var(--line);
+          border-radius:9px;margin-bottom:12px;overflow-x:auto}
+  .ritual .rr{padding:8px 14px;border-right:1px solid var(--line);white-space:nowrap;display:flex;
+              gap:7px;align-items:baseline;flex:none}
+  .ritual .rr i{font-style:normal;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+                color:var(--fg-3);font-family:var(--m);font-weight:600}
+  .ritual .rr b{font-family:var(--m);font-size:13px;font-weight:600}
+  .ritual .edit{margin-left:auto;padding:6px 12px;flex:none}
+  .lnk{background:none;border:none;color:var(--info);font-family:var(--f);font-size:12px;
+       cursor:pointer;font-weight:600;padding:4px 6px;border-radius:5px}
+  .lnk:hover{background:var(--info-bg)}
+
+  .cols{display:grid;grid-template-columns:290px minmax(0,1fr);gap:12px;align-items:start}
+  @media(max-width:1080px){.cols{grid-template-columns:1fr}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:9px;margin-bottom:12px}
+  .card>h3{margin:0;padding:10px 14px;font-size:12px;font-weight:600;border-bottom:1px solid var(--line);
+           color:var(--fg-2);display:flex;align-items:center;gap:8px}
+  .card>h3 .r{margin-left:auto;font-family:var(--m);font-size:10.5px;color:var(--fg-3);font-weight:500}
+  .cb{padding:12px 14px}
+
+  /* NIFTY sidebar */
+  .side .hero{padding:16px 14px 13px;border-bottom:1px solid var(--line)}
+  .side .px{font-family:var(--m);font-size:34px;font-weight:700;letter-spacing:-.03em;
+            font-variant-numeric:tabular-nums;line-height:1}
+  .side .sub{font-family:var(--m);font-size:12px;margin-top:6px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .kv{display:flex;justify-content:space-between;gap:10px;padding:7px 14px;border-bottom:1px solid var(--line);
+      font-size:12.5px}
+  .kv:last-child{border-bottom:none}
+  .kv span{color:var(--fg-2)}
+  .kv b{font-family:var(--m);font-weight:600;font-variant-numeric:tabular-nums}
+  .rangebar{padding:11px 14px;border-bottom:1px solid var(--line)}
+  .rangebar .lbl{display:flex;justify-content:space-between;font-family:var(--m);font-size:10px;
+                 color:var(--fg-3);margin-bottom:5px}
+  .track{height:5px;border-radius:3px;background:var(--sunk);position:relative}
+  .track .fill{position:absolute;top:0;bottom:0;background:var(--line-2);border-radius:3px}
+  .track .dot{position:absolute;top:-3px;width:11px;height:11px;border-radius:50%;
+              background:var(--fg);border:2px solid var(--panel)}
+  .sect{display:flex;justify-content:space-between;align-items:center;padding:6px 14px;
+        border-bottom:1px solid var(--line);font-size:12.5px}
+  .sect:last-child{border-bottom:none}
+  .bar{height:5px;border-radius:3px;flex:1;margin:0 10px;background:var(--sunk);position:relative;max-width:90px}
+  .bar i{position:absolute;top:0;bottom:0;border-radius:3px;left:50%}
+
+  .grid{display:grid;gap:12px}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  .g4{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+
+  .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:1px;background:var(--line)}
+  .rl{background:var(--panel);padding:13px 15px;border-top:2px solid var(--line-2)}
+  .rl.a{border-top-color:var(--down)} .rl.b{border-top-color:var(--warn)}
+  .rl.c{border-top-color:var(--fg-2)} .rl.d{border-top-color:var(--info)}
+  .rl .k{font-family:var(--m);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
+         color:var(--fg-3);font-weight:600}
+  .rl .v{font-family:var(--m);font-size:25px;font-weight:700;margin-top:4px;
+         font-variant-numeric:tabular-nums;letter-spacing:-.025em}
+  .rl .s{font-size:11px;color:var(--fg-2);margin-top:3px}
+
+  .money{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line)}
+  .mn{background:var(--panel);padding:13px 15px}
+  .mn .k{font-family:var(--m);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+  .mn .v{font-family:var(--m);font-size:22px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .mn .s{font-size:11px;color:var(--fg-2);margin-top:2px;font-family:var(--m)}
+
+  table.g{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.g th,table.g td{padding:8px 14px;border-bottom:1px solid var(--line);text-align:left}
+  table.g th{font-family:var(--m);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+  table.g td.n{font-family:var(--m);text-align:right;font-variant-numeric:tabular-nums}
+  table.g tbody tr:last-child td{border-bottom:none}
+  .tw{overflow-x:auto}
+  .empty{padding:26px 14px;text-align:center;color:var(--fg-2);font-size:13px}
+  .na{color:var(--fg-3);font-style:italic}
+  .tag{font-family:var(--m);font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+       padding:2px 6px;border-radius:3px}
+  .t-live{background:var(--up-bg);color:var(--up)}
+  .t-na{background:var(--warn-bg);color:var(--warn)}
+  .t-hi{background:var(--down-bg);color:var(--down)}
+  .why{font-family:var(--m);font-size:10.5px;color:var(--fg-3);padding:8px 14px;
+       border-top:1px dashed var(--line-2);line-height:1.6}
+
+  dialog{border:1px solid var(--line-2);border-radius:11px;background:var(--panel);color:var(--fg);
+         padding:0;max-width:460px;width:92vw}
+  dialog::backdrop{background:rgba(0,0,0,.45)}
+  .dh{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:600;font-size:14px}
+  .db{padding:16px 18px;display:grid;gap:12px}
+  .fld{display:grid;gap:5px}
+  .fld label{font-family:var(--m);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+  .fld input,.fld select,.fld textarea{font-family:var(--m);font-size:13px;background:var(--panel-2);color:var(--fg);
+      border:1px solid var(--line);border-radius:6px;padding:8px 9px;width:100%}
+  .df{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:9px;justify-content:flex-end}
+  .btn{font-family:var(--f);font-size:12.5px;font-weight:600;border-radius:6px;padding:8px 14px;
+       cursor:pointer;border:1px solid var(--line-2);background:var(--panel-2);color:var(--fg)}
+  .btn.pri{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+</style>
+
+<div class="app">
+  <div class="top">
+    <div class="brand"><span class="mark">स्व</span>Swayam <span>· Capital</span></div>
+    <nav class="nav">
+      <a href="#" class="on">Home</a><a href="#">Strategy</a><a href="#">Positions</a>
+      <a href="#">Journal</a><a href="#">Analytics</a>
+    </nav>
+    <button class="tog" id="themeBtn" type="button">Dark</button>
+  </div>
+
+  <div class="ticker"><div class="run" id="tick"></div></div>
+
+  <!-- ritual: one thin strip, never a wall of cards -->
+  <div class="ritual" id="ritual"></div>
+
+  <div class="cols">
+
+    <!-- ================= NIFTY sidebar ================= -->
+    <div class="side">
+      <div class="card">
+        <h3>NIFTY 50 <span class="tag t-live">Live</span><span class="r">FYERS</span></h3>
+        <div class="hero">
+          <div class="px">23,779<span style="font-size:.55em;color:var(--fg-2)">.15</span></div>
+          <div class="sub">
+            <span style="color:var(--down);font-weight:600">▼ 119.45 · 0.50%</span>
+            <span style="color:var(--fg-3)">today</span>
+          </div>
+        </div>
+
+        <div class="rangebar">
+          <div class="lbl"><span>day 23,738</span><span>DAY RANGE</span><span>23,905</span></div>
+          <div class="track"><i class="fill" style="left:0;right:0;opacity:.5"></i>
+            <span class="dot" style="left:24%"></span></div>
+        </div>
+        <div class="rangebar">
+          <div class="lbl"><span>20d 23,738</span><span>20-DAY RANGE</span><span>24,577</span></div>
+          <div class="track"><i class="fill" style="left:0;right:0;opacity:.5"></i>
+            <span class="dot" style="left:5%"></span></div>
+        </div>
+        <div class="rangebar" style="border-bottom:1px solid var(--line)">
+          <div class="lbl"><span>50d 23,606</span><span>50-DAY RANGE</span><span>24,774</span></div>
+          <div class="track"><i class="fill" style="left:0;right:0;opacity:.5"></i>
+            <span class="dot" style="left:15%"></span></div>
+        </div>
+
+        <div class="kv"><span>Average daily move, 20 sessions</span><b>80 pts</b></div>
+        <div class="kv"><span>ATR 20</span><b>162</b></div>
+        <div class="kv"><span>Realised vol, 20d</span><b>5.5%</b></div>
+        <div class="kv"><span>20-day moving average</span><b style="color:var(--down)">24,165</b></div>
+        <div class="kv"><span>Spot against 20 DMA</span><b style="color:var(--down)">−386</b></div>
+        <div class="kv"><span>Volume today</span><b class="na">unavailable</b></div>
+        <div class="kv"><span>Advances / declines</span><b class="na">unavailable</b></div>
+        <div class="kv"><span>Sentiment</span><b style="color:var(--down)">Bearish</b></div>
+        <div class="why">Sentiment is computed from spot against the 20-day average and the position inside the 20-day range. Volume and breadth have no wired source and say so.</div>
+      </div>
+
+      <div class="card">
+        <h3>Sectors today <span class="r">FYERS indices</span></h3>
+        <div id="sectors"></div>
+      </div>
+
+      <div class="card">
+        <h3>Options, weekly <span class="r">chain</span></h3>
+        <div class="kv"><span>India VIX</span><b>11.16</b></div>
+        <div class="kv"><span>Put-call ratio</span><b>1.00</b></div>
+        <div class="kv"><span>Max pain</span><b>21,300</b></div>
+        <div class="kv"><span>Days to weekly expiry</span><b>0d · 1 session</b></div>
+        <div class="kv"><span>Days to monthly expiry</span><b>21d</b></div>
+      </div>
+    </div>
+
+    <!-- ================= main ================= -->
+    <div>
+      <div class="card">
+        <h3>Your money <span class="r">FYERS funds(), read this session</span></h3>
+        <div class="money">
+          <div class="mn"><div class="k">Balance</div><div class="v">₹9,71,002</div><div class="s">total</div></div>
+          <div class="mn"><div class="k">Free cash</div><div class="v">₹1,00,000</div><div class="s">unpledged</div></div>
+          <div class="mn"><div class="k">Collateral</div><div class="v">₹8,71,002</div><div class="s">pledged holdings</div></div>
+          <div class="mn"><div class="k">Margin used</div><div class="v" style="color:var(--fg-2)">₹0</div><div class="s">nothing open</div></div>
+          <div class="mn"><div class="k">Margin free</div><div class="v" style="color:var(--up)">₹5,54,961</div><div class="s">of the ceiling</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Today's limits <span class="r">a percentage of the balance above, never a stored number</span></h3>
+        <div class="rules">
+          <div class="rl a"><div class="k">1 · Running loss</div><div class="v">₹9,710</div><div class="s">1% · exit, no debate</div></div>
+          <div class="rl b"><div class="k">2 · Overnight gap</div><div class="v">₹19,420</div><div class="s">2% · gapped ±160 pts</div></div>
+          <div class="rl c"><div class="k">3 · Black swan</div><div class="v">₹48,550</div><div class="s">5% · worst case at expiry</div></div>
+          <div class="rl d"><div class="k">4 · Margin ceiling</div><div class="v">₹5,54,961</div><div class="s">2x cash equivalent</div></div>
+        </div>
+        <div class="why">Nothing blocks an intraday entry, including a naked or half-built structure. Only carrying overnight is gated: hedged, and inside the 2% gap test.</div>
+      </div>
+
+      <div class="grid g2">
+        <div class="card">
+          <h3>Open positions <span class="r">paper</span></h3>
+          <div class="empty">Nothing open.<br><span style="color:var(--fg-3);font-size:12px">Your paper record starts clean from 8 September.</span></div>
+        </div>
+
+        <div class="card">
+          <h3>Events ahead <span class="r">factor these into every trade</span></h3>
+          <div class="tw"><table class="g">
+            <tbody>
+              <tr><td>India CPI inflation, Aug</td><td class="n">14 Sep</td><td class="n"><span class="tag t-hi">High</span></td></tr>
+              <tr><td>Industrial production</td><td class="n">11 Sep</td><td class="n"><span class="tag" style="background:var(--warn-bg);color:var(--warn)">Med</span></td></tr>
+              <tr><td>Weekly expiry</td><td class="n">today</td><td class="n"><span class="tag t-hi">High</span></td></tr>
+              <tr><td>Monthly expiry</td><td class="n">24 Sep</td><td class="n"><span class="tag t-hi">High</span></td></tr>
+            </tbody>
+          </table></div>
+          <div class="why">From your own macro events table, which holds 13 dated events. Nothing here is scraped live yet.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Your record
+          <div class="seg" role="group" aria-label="Which record">
+            <button id="tabPaper" aria-pressed="true" type="button">Paper</button>
+            <button id="tabReal" aria-pressed="false" type="button">Real money</button>
+          </div>
+        </h3>
+        <div id="record"></div>
+        <div class="why" id="recordWhy"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ritual modal -->
+<dialog id="dlg">
+  <form method="dialog">
+    <div class="dh">This morning</div>
+    <div class="db">
+      <div class="two">
+        <div class="fld"><label>Sleep, hours</label><input id="f_sleep" type="number" step="0.5" min="0" max="14" value="6.5"></div>
+        <div class="fld"><label>Workout</label>
+          <select id="f_work"><option>Yes</option><option selected>No</option></select></div>
+      </div>
+      <div class="two">
+        <div class="fld"><label>Alcohol last night</label>
+          <select id="f_alc"><option selected>No</option><option>Yes</option></select></div>
+        <div class="fld"><label>Meditation, minutes</label><input id="f_med" type="number" min="0" max="60" value="5"></div>
+      </div>
+      <div class="fld"><label>Mood</label>
+        <select id="f_mood"><option>Sharp</option><option selected>Steady</option><option>Foggy</option><option>Rattled</option></select></div>
+      <div class="fld"><label>One line for the day</label>
+        <input id="f_note" value="Weekly expiry. Stay small."></div>
+    </div>
+    <div class="df">
+      <button class="btn" value="cancel" formnovalidate>Cancel</button>
+      <button class="btn pri" id="saveRitual" value="save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* Figures below were read from the live system on 8 September 2026.
+   Anything without a source says unavailable, never a placeholder. */
+
+/* ---------- running ticker ---------- */
+const TICK=[
+  ['NIFTY 50','23,779.15','−0.50%','down'],['Day low','23,737.90','','flat'],
+  ['Day high','23,905.30','','flat'],['India VIX','11.16','low vol','flat'],
+  ['20d avg move','80 pts','your sessions','flat'],['ATR 20','162','','flat'],
+  ['20 DMA','24,165','spot below','down'],['Realised vol','5.5%','20d','flat'],
+  ['PCR','1.00','weekly','flat'],['Max pain','21,300','','flat'],
+  ['BANK','−0.49%','','down'],['IT','−2.28%','','down'],
+  ['AUTO','−0.04%','','down'],['FMCG','−0.66%','','down'],
+  ['Balance','₹9,71,002','funds()','flat'],['Margin free','₹5,54,961','','up'],
+  ['Breadth','unavailable','no free source','na'],
+];
+const col=d=>d==='down'?'var(--down)':d==='up'?'var(--up)':d==='na'?'var(--fg-3)':'var(--fg)';
+const one=TICK.map(([k,v,s,d])=>`<span class="tk"><i>${k}</i><b style="color:${col(d)}">${v}</b>${s?`<i>${s}</i>`:''}</span>`).join('');
+document.getElementById('tick').innerHTML=one+one;
+
+/* ---------- sectors ---------- */
+const SECT=[['Bank',-0.49],['IT',-2.28],['Auto',-0.04],['FMCG',-0.66],['Pharma',null]];
+document.getElementById('sectors').innerHTML=SECT.map(([n,v])=>{
+  if(v===null) return `<div class="sect"><span>${n}</span><span class="bar"></span><b class="na" style="font-family:var(--m);font-size:11.5px">unavailable</b></div>`;
+  const w=Math.min(50,Math.abs(v)/2.5*50);
+  return `<div class="sect"><span>${n}</span>
+    <span class="bar"><i style="background:${v<0?'var(--down)':'var(--up)'};${v<0?`right:50%;left:${50-w}%`:`left:50%;width:${w}%`}"></i></span>
+    <b style="font-family:var(--m);color:${v<0?'var(--down)':'var(--up)'};font-size:12px">${v>0?'+':''}${v.toFixed(2)}%</b></div>`;
+}).join('');
+
+/* ---------- ritual strip: a modal in, a thin strip out ---------- */
+let ritual=null;
+function drawRitual(){
+  const host=document.getElementById('ritual');
+  if(!ritual){
+    host.innerHTML=`<div class="rr" style="border-right:none;color:var(--fg-2)">
+        <i>This morning</i><span style="font-size:12.5px">not filled in yet</span></div>
+      <div class="edit"><button class="lnk" id="openDlg" type="button">Add today's check-in</button></div>`;
+  }else{
+    const cell=(k,v,c)=>`<div class="rr"><i>${k}</i><b${c?` style="color:${c}"`:''}>${v}</b></div>`;
+    host.innerHTML =
+      cell('Sleep', ritual.sleep+' h', ritual.sleep>=6?'var(--up)':'var(--warn)') +
+      cell('Workout', ritual.work, ritual.work==='Yes'?'var(--up)':'var(--fg-2)') +
+      cell('Alcohol', ritual.alc, ritual.alc==='No'?'var(--up)':'var(--warn)') +
+      cell('Meditation', ritual.med+' min') +
+      cell('Mood', ritual.mood) +
+      `<div class="rr" style="max-width:340px;overflow:hidden;text-overflow:ellipsis">
+         <i>Note</i><b style="font-weight:500;color:var(--fg-2)">${ritual.note||'—'}</b></div>` +
+      `<div class="edit"><button class="lnk" id="openDlg" type="button">Edit</button></div>`;
+  }
+  document.getElementById('openDlg').addEventListener('click',()=>document.getElementById('dlg').showModal());
+}
+/* Bound to the button, not to the dialog's close event: some browsers do not
+   dispatch `close` on a programmatic .close(), and a check-in that silently
+   fails to save is worse than no check-in. */
+function saveRitual(){
+  ritual={sleep:+document.getElementById('f_sleep').value,
+          work:document.getElementById('f_work').value,
+          alc:document.getElementById('f_alc').value,
+          med:+document.getElementById('f_med').value,
+          mood:document.getElementById('f_mood').value,
+          note:document.getElementById('f_note').value.trim()};
+  drawRitual();
+  document.getElementById('dlg').close('save');
+}
+document.getElementById('saveRitual').addEventListener('click',e=>{e.preventDefault();saveRitual();});
+drawRitual();
+
+/* ---------- record: paper and real money are separate books ---------- */
+const RECORD = {
+  paper: {trades:0, note:'Your paper record starts clean from 8 September 2026. '+
+    '81 build-and-test rows are quarantined and excluded from every figure here.'},
+  real:  {trades:0, note:'No real-money trades. Real execution is code-blocked: '+
+    'there is no order-placement code in the app at all. This book stays empty until you decide otherwise.'}
+};
+let book='paper';
+function drawRecord(){
+  const r=RECORD[book], host=document.getElementById('record');
+  if(!r.trades){
+    host.innerHTML=`<div class="empty">No ${book==='paper'?'paper':'real-money'} trades yet.<br>
+      <span style="color:var(--fg-3);font-size:12px">Win rate, cumulative profit and expectancy appear here once there are trades to compute them from.</span></div>`;
+  }
+  document.getElementById('recordWhy').textContent=r.note;
+  document.getElementById('tabPaper').setAttribute('aria-pressed', book==='paper');
+  document.getElementById('tabReal').setAttribute('aria-pressed', book==='real');
+}
+document.getElementById('tabPaper').addEventListener('click',()=>{book='paper';drawRecord();});
+document.getElementById('tabReal').addEventListener('click',()=>{book='real';drawRecord();});
+drawRecord();
+
+/* ---------- theme ---------- */
+document.getElementById('themeBtn').addEventListener('click',()=>{
+  const r=document.documentElement, dark=r.getAttribute('data-theme')==='dark';
+  r.setAttribute('data-theme',dark?'light':'dark');
+  document.getElementById('themeBtn').textContent=dark?'Dark':'Light';
+});
+</script>
