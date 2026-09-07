@@ -157,10 +157,29 @@ if ($inside -ne 'YES') {
 }
 
 # Only now, once he is provably inside, do we close the door behind him.
+#
+# This step used to be piped to 2>$null | Out-Null, which swallowed both the
+# error and the exit code. On 2026-09-08 it failed silently and allUsers stayed
+# on the service. IAP still blocked everything, so nothing leaked, but had
+# sign-in ever been switched off the site would have been public again with no
+# warning. It is now checked and reported.
 Write-Host ''
 Write-Host '  Good. Closing the door to everyone else...' -ForegroundColor Cyan
 gcloud run services remove-iam-policy-binding $Service --region=$Region --project=$Project `
-    --member=allUsers --role=roles/run.invoker --quiet 2>$null | Out-Null
+    --member=allUsers --role=roles/run.invoker --quiet | Out-Null
+
+$members = gcloud run services get-iam-policy $Service --region=$Region --project=$Project `
+    --format='value(bindings.members)' 2>$null
+if ($members -match 'allUsers') {
+    Write-Host ''
+    Write-Host '  WARNING: public access could NOT be removed.' -ForegroundColor Red
+    Write-Host '  Sign-in is on and nothing is exposed right now, but run this by hand:' -ForegroundColor Yellow
+    Write-Host ''
+    Write-Host "    gcloud run services remove-iam-policy-binding $Service --region=$Region --project=$Project --member=allUsers --role=roles/run.invoker" -ForegroundColor White
+    Write-Host ''
+} else {
+    Write-Host '  Confirmed: nobody but you and the sign-in service can reach it.' -ForegroundColor Green
+}
 
 Write-Host ''
 Write-Host '  Sign-in is on. Your terminal is now private to your Google account.' -ForegroundColor Green
