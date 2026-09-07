@@ -147,7 +147,24 @@ His decisions, do not relitigate:
    Home currently mounts these components, and he wants the AI chat kept
    exactly as it is: PWA prompt, readiness ritual, verdict card, KPI history,
    So Far Today, NIFTY snapshot, chat surface, macro events.
-2. **Cloud writes to the vault.** The Drive API is enabled and the folder is
+2. **Cloud writes to the vault. BLOCKED ON A GOOGLE POLICY, NOT ON CODE.**
+   `scripts/link_google_drive.py` is written and works. A service account can
+   never do this (zero Drive quota since June 2023; Shared Drives and
+   domain-wide delegation both need Workspace, which he does not have), so the
+   app must act as him via OAuth. Scope is `drive.file`, which is
+   NON-SENSITIVE and needs no Google verification.
+   **The blocker:** the consent screen is in Testing, so sign-in returns 403
+   access_denied. Adding himself as a test user works immediately but the
+   refresh token then **expires every 7 days**, for every scope except name,
+   email and profile. Publishing gives an indefinite token and still needs no
+   verification, but Google asks for a **privacy policy and terms of service
+   URL on a domain he owns**, and his domain now sits behind sign-in. That is
+   the open question: where those two pages live. **Do NOT upload a logo on
+   the branding page; the console states that forces verification.**
+   Nothing is lost meanwhile: the outbox holds the note and the local drainer
+   completes it.
+
+2b. **Old wording, superseded:** The Drive API is enabled and the folder is
    shared, but **a service account can never do this**: zero storage quota
    since June 2023, and Shared Drives and domain-wide delegation both require
    Workspace, which he does not have on a personal Gmail account. The only
