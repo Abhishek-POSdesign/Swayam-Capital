@@ -23,13 +23,41 @@ than starting a new document. That is the whole system.
 
 ## 1. IN FLIGHT RIGHT NOW
 
-### The two page rebuilds
-An unattended cloud session was started overnight on 2026-09-08 with
-`docs/UI_BUILD_BRIEF.md`. It rebuilds `web/src/pages/home.js` and
-`web/src/pages/strategy-builder.js` to the two prototypes in `docs/reference/`.
+### State at the end of the 2026-09-08 session
 
-**First job the next morning: review its pull request before he merges.**
-The checklist is in section 5.
+- **PR #28 was NOT yet merged** when the session ended. It carries the UI build
+  brief, both prototypes, this plan, the rewritten `CLAUDE.md` and the
+  documentation clean-up. **It must be merged before the cloud session starts**,
+  or that session cannot read its own instructions.
+- PRs #23, #24, #25, #26 and #27 are all merged. `main` is current.
+- Nothing is left uncommitted.
+
+### The cloud session, and its prompt
+
+Abhishek starts an unattended cloud session on the `Swayam-Capital` repository
+to rebuild the two pages overnight. **This is the exact prompt**, kept here so
+it is not lost with a chat:
+
+```
+Read docs/UI_BUILD_BRIEF.md in this repository and do exactly what it says.
+
+It is written for you specifically: an unattended session with no human to
+ask. Follow it literally. The two reference prototypes in docs/reference/ are
+your specification.
+
+Do not merge anything. Open one pull request and stop.
+```
+
+It rebuilds `web/src/pages/home.js` and `web/src/pages/strategy-builder.js` to
+the prototypes in `docs/reference/`, on branch
+`feature/swayam-ui-rebuild-012`.
+
+**Deliberately NOT given Google Drive access.** It has no reason to touch the
+vault, and an unattended session with write access to four years of trading
+history is risk with no benefit.
+
+**First job next session: review its pull request before he merges.** The
+checklist is in section 5. He has been told not to merge it unverified.
 
 ---
 
