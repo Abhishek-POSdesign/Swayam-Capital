@@ -2,28 +2,24 @@ r"""
 Proves that a Swayam backup can actually be restored.
 
 The old restore_from_backup.py counted INSERT lines, checked connectivity and
-returned success. It never restored anything. This one rebuilds the schema and
-reloads every row, then compares what landed against the backup manifest.
+returned success. It never restored anything, so recovery had never once been
+demonstrated. This script rebuilds the schema from the backup, reloads every
+row, and compares what landed against the manifest, row count and content.
 
-The drill rebuilds into prefixed tables (drill_swayam_*) inside the same
-database. That is isolated from the live tables and from the Biz Research Hub
-and Learning Hub tables that share this project, and it is dropped when the
-drill finishes. It proves the backup artifact is complete and loadable. It does
-NOT prove recovery if the whole Supabase project were lost; that needs a second
-project, which this account's free tier does not allow.
+The drill rebuilds into an isolated schema (swayam_restore_drill) inside the
+same database, then drops it. That keeps it away from the live tables and from
+the Biz Research Hub and Learning Hub tables that share this project.
+
+What this proves: the backup artifact is complete, the schema in it is valid
+DDL, and every row reloads with identical content.
+
+What it does NOT prove: recovery if the entire Supabase project were lost.
+That needs a second project, which this account's two-project free tier does
+not allow. Stated here rather than glossed over.
 
 Usage:
-    # 1. generate the schema SQL, then apply 01_schema.sql to the database
-    .\.venv\Scripts\python.exe scripts/restore_drill.py generate
-
-    # 2. reload every row from the backup into the drill tables
-    .\.venv\Scripts\python.exe scripts/restore_drill.py load
-
-    # 3. compare row counts and per-table checksums against the manifest
-    .\.venv\Scripts\python.exe scripts/restore_drill.py verify
-
-    # 4. print the DROP statements to clean up
-    .\.venv\Scripts\python.exe scripts/restore_drill.py teardown
+    .\.venv\Scripts\python.exe scripts/restore_drill.py run
+    .\.venv\Scripts\python.exe scripts/restore_drill.py run --keep
 """
 
 from __future__ import annotations
@@ -32,13 +28,21 @@ import argparse
 import hashlib
 import json
 import sys
+from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR / "src"))
 
+from dotenv import load_dotenv  # noqa: E402
+
+load_dotenv(ROOT_DIR / ".env")
+
+from swayam.db_direct import connect, describe_target  # noqa: E402
+
 BACKUP_ROOT = ROOT_DIR / "data" / "backups"
-PREFIX = "drill_"
+DRILL_SCHEMA = "swayam_restore_drill"
 
 # Parents before children so the foreign keys hold on reload.
 LOAD_ORDER = (
@@ -64,6 +68,7 @@ LOAD_ORDER = (
 )
 
 
+
 def _latest_backup() -> Path:
     candidates = sorted(
         p for p in BACKUP_ROOT.iterdir() if p.is_dir() and (p / "MANIFEST.json").exists()
@@ -77,131 +82,133 @@ def _rows(backup: Path, table: str) -> list[dict]:
     return json.loads((backup / f"{table}.json").read_text(encoding="utf-8"))
 
 
+def _normalise(value: object) -> object:
+    """Flattens types so a reloaded row compares equal to the backed-up one."""
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, (list, tuple)):
+        return [_normalise(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _normalise(v) for k, v in value.items()}
+    return value
+
+
 def _content_hash(rows: list[dict]) -> str:
     """Order-independent, key-order-independent digest of a table's contents."""
     digests = sorted(
         hashlib.sha256(
-            json.dumps(r, sort_keys=True, ensure_ascii=False, default=str).encode("utf-8")
+            json.dumps(_normalise(r), sort_keys=True, ensure_ascii=False, default=str).encode()
         ).hexdigest()
         for r in rows
     )
-    return hashlib.sha256("".join(digests).encode("utf-8")).hexdigest()
+    return hashlib.sha256("".join(digests).encode()).hexdigest()
 
 
-def cmd_generate(backup: Path) -> int:
-    """Writes the DDL that recreates every table under the drill prefix."""
+def _drill_ddl(backup: Path) -> str:
     ddl = (backup / "schema.sql").read_text(encoding="utf-8")
-    ddl = ddl.replace("public.swayam_", f"public.{PREFIX}swayam_")
-    ddl = ddl.replace("nextval('swayam_", f"nextval('{PREFIX}swayam_")
-    ddl = ddl.replace("CONSTRAINT swayam_", f"CONSTRAINT {PREFIX}swayam_")
-    ddl = ddl.replace("INDEX idx_", f"INDEX {PREFIX}idx_")
-    ddl = ddl.replace("INDEX IF NOT EXISTS idx_", f"INDEX IF NOT EXISTS {PREFIX}idx_")
-
-    out_dir = backup / "restore"
-    out_dir.mkdir(exist_ok=True)
-    header = (
-        f"-- Restore drill schema, generated from backup {backup.name}\n"
-        f"-- Tables are created as public.{PREFIX}swayam_* so they cannot collide\n"
-        f"-- with the live tables or with the other apps in this project.\n\n"
-    )
-    (out_dir / "01_schema.sql").write_text(header + ddl, encoding="utf-8")
-    print(f"[ok] wrote {out_dir / '01_schema.sql'}")
-    print("     apply that file to the database, then run: restore_drill.py load")
-    return 0
-
-
-def cmd_load(backup: Path) -> int:
-    """Reloads every backed-up row into the drill tables."""
-    from swayam.db import SupabaseDB
-
-    client = SupabaseDB().client
-    total = 0
-    for table in LOAD_ORDER:
-        rows = _rows(backup, table)
-        if not rows:
-            print(f"[--] {PREFIX}{table:<32} empty")
-            continue
-        for start in range(0, len(rows), 200):
-            client.table(f"{PREFIX}{table}").insert(rows[start : start + 200]).execute()
-        total += len(rows)
-        print(f"[ok] {PREFIX}{table:<32} {len(rows):>6} rows loaded")
-    print(f"\n[ok] {total} rows reloaded from {backup.name}")
-    return 0
-
-
-def cmd_verify(backup: Path) -> int:
-    """Compares the restored tables against the backup, row count and content."""
-    from swayam.db import SupabaseDB
-
-    client = SupabaseDB().client
-    manifest = json.loads((backup / "MANIFEST.json").read_text(encoding="utf-8"))
-
-    print(f"{'table':<34}{'expected':>9}{'restored':>10}  rows  content")
-    print("-" * 72)
-    all_ok = True
-    for table in LOAD_ORDER:
-        expected_rows = _rows(backup, table)
-        restored: list[dict] = []
-        offset = 0
-        while True:
-            res = (
-                client.table(f"{PREFIX}{table}")
-                .select("*")
-                .range(offset, offset + 999)
-                .execute()
-            )
-            batch = res.data or []
-            restored.extend(batch)
-            if len(batch) < 1000:
-                break
-            offset += 1000
-
-        rows_ok = len(restored) == manifest["tables"][table]["rows"] == len(expected_rows)
-        content_ok = _content_hash(restored) == _content_hash(expected_rows)
-        all_ok = all_ok and rows_ok and content_ok
-        print(
-            f"{table:<34}{len(expected_rows):>9}{len(restored):>10}"
-            f"  {'PASS' if rows_ok else 'FAIL'}  {'PASS' if content_ok else 'FAIL'}"
-        )
-
-    print("-" * 72)
-    print("RESTORE DRILL:", "PASSED" if all_ok else "FAILED")
-    return 0 if all_ok else 1
-
-
-def cmd_teardown(backup: Path) -> int:
-    stmts = "\n".join(f"DROP TABLE IF EXISTS public.{PREFIX}{t} CASCADE;" for t in LOAD_ORDER)
-    seqs = "\n".join(
-        f"DROP SEQUENCE IF EXISTS public.{PREFIX}{s} CASCADE;"
-        for s in (
-            "swayam_ai_notebook_id_seq",
-            "swayam_ai_pinned_decisions_id_seq",
-            "swayam_ai_session_summaries_id_seq",
-        )
-    )
-    path = backup / "restore" / "99_teardown.sql"
-    path.write_text(stmts + "\n" + seqs + "\n", encoding="utf-8")
-    print(f"[ok] wrote {path}")
-    print(stmts)
-    print(seqs)
-    return 0
+    ddl = ddl.replace("public.", f"{DRILL_SCHEMA}.")
+    ddl = ddl.replace("nextval('swayam_", f"nextval('{DRILL_SCHEMA}.swayam_")
+    return ddl
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("generate", "load", "verify", "teardown"))
+    parser.add_argument("command", choices=("run",))
     parser.add_argument("--backup", default=None, help="backup folder (default: newest)")
+    parser.add_argument("--keep", action="store_true", help="leave the drill schema behind")
     args = parser.parse_args()
 
     backup = Path(args.backup) if args.backup else _latest_backup()
-    print(f"backup: {backup.name}\n")
+    manifest = json.loads((backup / "MANIFEST.json").read_text(encoding="utf-8"))
 
-    return {
-        "generate": cmd_generate,
-        "load": cmd_load,
-        "verify": cmd_verify,
-        "teardown": cmd_teardown,
-    }[args.command](backup)
+    print(f"backup   : {backup.name}")
+    print(f"database : {describe_target()}")
+    print(f"schema   : {DRILL_SCHEMA}\n")
+
+    with connect() as conn:
+        with conn.cursor() as cur:
+            # 1. rebuild the schema from the backup's own DDL
+            cur.execute(f"DROP SCHEMA IF EXISTS {DRILL_SCHEMA} CASCADE")
+            cur.execute(f"CREATE SCHEMA {DRILL_SCHEMA}")
+            cur.execute(_drill_ddl(backup))
+            cur.execute(
+                "SELECT count(*) FROM information_schema.tables WHERE table_schema = %s",
+                (DRILL_SCHEMA,),
+            )
+            print(f"[ok] schema rebuilt from backup: {cur.fetchone()[0]} tables\n")
+
+            # Read the real column types rather than guessing which are JSON.
+            # A jsonb column that is NOT NULL can legitimately hold the JSON
+            # value null, which is not the same thing as a SQL NULL. Guessing
+            # that distinction is how the first attempt at this failed, on
+            # swayam_config.current_reentry_ramp_tier.
+            cur.execute(
+                "SELECT table_name, column_name, data_type, is_nullable "
+                "FROM information_schema.columns WHERE table_schema = %s",
+                (DRILL_SCHEMA,),
+            )
+            coltype = {
+                (t, c): (dt, nullable == "YES") for t, c, dt, nullable in cur.fetchall()
+            }
+
+            # 2. reload every row
+            loaded = 0
+            for table in LOAD_ORDER:
+                rows = _rows(backup, table)
+                if not rows:
+                    continue
+                cols = list(rows[0].keys())
+                is_json = {c: coltype[(table, c)][0] in ("jsonb", "json") for c in cols}
+                nullable = {c: coltype[(table, c)][1] for c in cols}
+
+                placeholders = ", ".join("%s::jsonb" if is_json[c] else "%s" for c in cols)
+                stmt = (
+                    f'INSERT INTO {DRILL_SCHEMA}."{table}" '
+                    f'({", ".join(chr(34) + c + chr(34) for c in cols)}) VALUES ({placeholders})'
+                )
+
+                def render(col: str, value: object, _j=is_json, _n=nullable) -> object:
+                    if not _j[col]:
+                        return value
+                    if value is None and _n[col]:
+                        return None
+                    return json.dumps(value)
+
+                payload = [tuple(render(c, r[c]) for c in cols) for r in rows]
+                cur.executemany(stmt, payload)
+                loaded += len(rows)
+            print(f"[ok] {loaded} rows reloaded\n")
+
+            # 3. verify, row count and content
+            print(f"{'table':<34}{'expected':>9}{'restored':>10}   rows  content")
+            print("-" * 72)
+            all_ok = True
+            for table in LOAD_ORDER:
+                expected = _rows(backup, table)
+                cur.execute(
+                    f'SELECT row_to_json(t) FROM {DRILL_SCHEMA}."{table}" t'
+                )
+                restored = [r[0] for r in cur.fetchall()]
+
+                rows_ok = len(restored) == manifest["tables"][table]["rows"] == len(expected)
+                content_ok = _content_hash(restored) == _content_hash(expected)
+                all_ok = all_ok and rows_ok and content_ok
+                print(
+                    f"{table:<34}{len(expected):>9}{len(restored):>10}"
+                    f"   {'PASS' if rows_ok else 'FAIL'}  {'PASS' if content_ok else 'FAIL'}"
+                )
+
+            print("-" * 72)
+            print(f"total rows: {manifest['total_rows']}")
+            print("RESTORE DRILL:", "PASSED" if all_ok else "FAILED")
+
+            if not args.keep:
+                cur.execute(f"DROP SCHEMA IF EXISTS {DRILL_SCHEMA} CASCADE")
+                print(f"[ok] drill schema dropped")
+
+    return 0 if all_ok else 1
 
 
 if __name__ == "__main__":
