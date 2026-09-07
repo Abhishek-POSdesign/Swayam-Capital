@@ -173,6 +173,10 @@ export class ChatSurfaceComponent {
           </div>
         </div>
 
+        <!-- Slot above the conversation. So Far Today is mounted here by the page:
+             the component is unchanged, this is only where it lands. -->
+        <div id="chat-top-slot"></div>
+
         <!-- Conversation Message History Container (Spacious Full-Width) -->
         <div id="chat-messages-container" style="min-height: 280px; max-height: 520px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 4px 2px;">
           <!-- Empty State with 2x2 Quick-Prompt Cards (Bug 5) -->

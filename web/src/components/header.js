@@ -49,9 +49,9 @@ export function initHeader(container, options = {}) {
       <div class="header-spot-pill" id="header-spot-display">
         <span style="color: var(--dl-fg-3);">NIFTY 50</span>
         <span style="color: var(--dl-line);">·</span>
-        <span id="header-spot-val" style="color: var(--dl-fg); font-weight: 600;">24,842.65</span>
+        <span id="header-spot-val" style="color: var(--dl-fg); font-weight: 600;">—</span>
         <span style="color: var(--dl-line);">·</span>
-        <span id="header-spot-delta" style="color: var(--accent-sage); font-weight: 600;">+12.35 (+0.05%)</span>
+        <span id="header-spot-delta" style="color: var(--dl-fg-3); font-weight: 600;">—</span>
       </div>
 
       <nav class="nav-pill-row">
@@ -133,16 +133,30 @@ export function initHeader(container, options = {}) {
   }
 }
 
-export function updateHeaderSpot(spot, changeVal = 12.35, changePct = 0.05) {
+/**
+ * Writes the real spot into the header.
+ *
+ * The change figure used to default to +12.35 (+0.05%), so the header showed an
+ * invented move beside a genuine price on every page, every ten seconds. There
+ * is no default now: without a measured change the header shows a dash.
+ */
+export function updateHeaderSpot(spot, changeVal = null, changePct = null) {
   const elVal = document.getElementById('header-spot-val');
   const elDelta = document.getElementById('header-spot-delta');
   if (elVal && spot) {
     elVal.textContent = Number(spot).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
-  if (elDelta && changePct !== undefined) {
-    const isUp = changePct >= 0;
-    const sign = isUp ? '+' : '';
-    elDelta.textContent = `${sign}${changeVal.toFixed(2)} (${sign}${changePct.toFixed(2)}%)`;
-    elDelta.style.color = isUp ? 'var(--accent-sage)' : 'var(--accent-coral)';
-  }
+  if (!elDelta) return;
+  const havePct = typeof changePct === 'number' && Number.isFinite(changePct);
+  // No change figure supplied: leave whatever is there alone. The spot poller
+  // calls this every ten seconds with the price only, and it must not wipe a
+  // real change figure the page already wrote — nor invent one.
+  if (!havePct) return;
+  const isUp = changePct >= 0;
+  const sign = isUp ? '+' : '';
+  const haveVal = typeof changeVal === 'number' && Number.isFinite(changeVal);
+  elDelta.textContent = haveVal
+    ? `${sign}${changeVal.toFixed(2)} (${sign}${changePct.toFixed(2)}%)`
+    : `${sign}${changePct.toFixed(2)}%`;
+  elDelta.style.color = isUp ? 'var(--accent-sage)' : 'var(--accent-coral)';
 }
