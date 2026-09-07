@@ -86,6 +86,17 @@ class ExecuteRequest(StrategyComputeRequest):
     mode: str = Field(default="paper", description="Execution mode: 'paper' or 'real'")
     order_type: str = Field(default="LIMIT", description="Order type: 'LIMIT' or 'MARKET'")
     session_id: Optional[str] = Field(default=None, description="Active AI session ID to link to trade")
+    idempotency_key: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description=(
+            "A key the browser generates once per execution ticket, keeps in local "
+            "storage, and reuses on every retry until it gets a final answer. The "
+            "same key with the same trade replays the first response instead of "
+            "opening a second position. The same key with a DIFFERENT trade is "
+            "rejected with 409. Omit it and there is no double-click protection."
+        ),
+    )
 
 
 class PreviewLegItem(BaseModel):

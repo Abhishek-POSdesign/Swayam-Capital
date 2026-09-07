@@ -1,3 +1,4 @@
+import { executionKeyFor } from './utils/idempotency.js';
 /**
  * API client wrapper for Swayam Capital backend.
  */
@@ -50,10 +51,16 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  executeTrade: (payload) =>
+  // A trade carries an execution key so a double click, or a retry after a
+  // lost response, cannot open a second position. The caller passes a stable
+  // ticketId; the key is generated once for it and reused on every retry.
+  executeTrade: (payload, ticketId = 'default') =>
     request('/api/execute', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        idempotency_key: payload.idempotency_key || executionKeyFor(ticketId),
+      }),
     }),
   getPositions: (status = 'open') => request(`/api/positions?status=${status}`),
   getPositionsLive: () => request('/api/positions/live'),
@@ -80,10 +87,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  executeMultiLeg: (payload) =>
+  executeMultiLeg: (payload, ticketId = 'default-multi') =>
     request('/api/execute/multi-leg', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        idempotency_key: payload.idempotency_key || executionKeyFor(ticketId),
+      }),
     }),
   detectNakedShorts: (atTime = '15:20') =>
     request(`/api/positions/naked-shorts?at_time=${encodeURIComponent(atTime)}`),
