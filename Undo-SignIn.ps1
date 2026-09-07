@@ -41,24 +41,48 @@ if ($answer -ne 'YES') {
 Write-Host ''
 Write-Host '  Turning sign-in off...' -ForegroundColor Cyan
 
+# TWO separate commands, deliberately. Run together in one call on
+# 2026-09-08, gcloud restored public access but left sign-in switched ON, so
+# Abhishek was still locked out by a script whose whole job was to let him in.
+# Turning sign-in off is the step that matters, so it goes first and alone.
 gcloud run services update $Service `
     --region=$Region `
     --project=$Project `
     --no-iap `
-    --allow-unauthenticated `
     --quiet
 
-if ($LASTEXITCODE -ne 0) {
+$iapOff = $LASTEXITCODE
+
+gcloud run services add-iam-policy-binding $Service `
+    --region=$Region `
+    --project=$Project `
+    --member=allUsers `
+    --role=roles/run.invoker `
+    --quiet | Out-Null
+
+if ($iapOff -ne 0) {
     Write-Host ''
     Write-Host '  That did not work. Run this by hand in a terminal:' -ForegroundColor Red
     Write-Host ''
-    Write-Host "    gcloud run services update $Service --region=$Region --project=$Project --no-iap --allow-unauthenticated" -ForegroundColor White
+    Write-Host "    gcloud run services update $Service --region=$Region --project=$Project --no-iap" -ForegroundColor White
     Write-Host ''
     exit 1
 }
 
 Write-Host ''
-Write-Host '  Done. Checking the site answers...' -ForegroundColor Cyan
+Write-Host '  Checking sign-in is really off...' -ForegroundColor Cyan
+
+$ann = gcloud run services describe $Service --region=$Region --project=$Project --format='value(metadata.annotations)' 2>$null
+if ($ann -match 'iap-enabled=true') {
+    Write-Host ''
+    Write-Host '  WARNING: sign-in is STILL on. Run this by hand:' -ForegroundColor Red
+    Write-Host ''
+    Write-Host "    gcloud run services update $Service --region=$Region --project=$Project --no-iap" -ForegroundColor White
+    Write-Host ''
+    exit 1
+}
+
+Write-Host '  Confirmed off. Checking the site answers...' -ForegroundColor Cyan
 
 try {
     $r = Invoke-WebRequest -Uri 'https://swayam.abhisheksikka.com/api/positions?status=open' `
