@@ -163,9 +163,10 @@ export class PresetBarComponent {
           this.activePreset = p.id;
           this.render(p.id);
           if (this.options.onSelectPreset) {
-            const legs = generatePresetLegs(p.id, this.options.currentSpot || 24850);
             const name = STRATEGY_PRESETS.find((item) => item.id === p.id)?.name || 'Custom';
-            this.options.onSelectPreset(name, legs);
+            // Pass the preset ID only. The page builds strikes from the LIVE spot (never a
+            // stale snapshot / fallback), and refuses to build them when there is no real price.
+            this.options.onSelectPreset(name, p.id);
           }
         });
       }
