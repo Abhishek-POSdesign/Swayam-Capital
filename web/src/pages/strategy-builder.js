@@ -1,804 +1,1140 @@
 /**
- * Strategy Builder & Trading Terminal Page Controller for Swayam Capital (BUILD-10).
+ * Strategy Desk — rebuilt to the prototype Abhishek approved on 2026-09-08
+ * (docs/reference/strategy-desk-prototype.html), per docs/UI_BUILD_BRIEF.md.
  *
- * Full-featured workspace uniting:
- * - Left rail: Mini Readiness, Active Trades, Today's Session Recap, Session ID
- * - Row 1: Strategy Presets Bar (with Import from AI conversation)
- * - Row 2: Multi-leg Builder (Buys first) & Live Plotly Payoff Chart
- * - Row 3: Two-tier Rule Validation Panel (Realistic 2σ & Blast Radius)
- * - Row 4: Order Type & Margin-Safe Execution Row
- * - Row 5: Full-width AI Trading Partner Conversation Surface (session continuity)
- * - Sticky Ticker: Live Spot, Total P&L, Market Timer
- * - 15:20 IST Overnight-Naked Hard-Block Modal
+ * Left column, in his order: legs first with one expiry and one lot multiplier
+ * above them, then the ready-made grid, then the strikewise volatility.
+ * Right column: the metric row, the payoff graph, the greeks, and his four
+ * rules with the execute button last, in one block.
+ *
+ * Three things this file will not do:
+ *   1. Invent a number. No fallback contract size, no seeded premium, no
+ *      modelled margin. The contract size comes from the server, prices come
+ *      from the option chain or from him, margin comes from the broker. What is
+ *      missing says "unavailable" and names the reason.
+ *   2. Block an entry. Nothing here gates a trade, including a naked or
+ *      half-built structure. Only carrying overnight is gated.
+ *   3. Multiply pct_of_margin by 100. The server sends 1.74 meaning 1.74%.
  */
 
 import { api } from '../api.js';
-import { PresetBarComponent, generatePresetLegs } from '../components/preset-bar.js';
-import { LegBuilderComponent } from '../components/leg-builder.js';
-import { PayoffChartComponent } from '../components/payoff-chart.js';
-import { RuleValidationPanelComponent } from '../components/rule-validation-panel.js';
-import { ExecuteRowComponent } from '../components/execute-row.js';
-import { ChatSurfaceComponent } from '../components/chat-surface.js';
-import { MiniReadinessCardComponent } from '../components/mini-readiness-card.js';
-import { MiniPositionsListComponent } from '../components/mini-positions-list.js';
-import { SessionRecapComponent } from '../components/session-recap.js';
-import { OvernightBlockModalComponent } from '../components/overnight-block-modal.js';
-import { ExecutionTicketComponent } from '../components/execution-ticket.js';
+import { MarketTickerComponent } from '../components/market-ticker.js';
+import { PayoffSvgComponent } from '../components/payoff-svg.js';
+import {
+  maxLossProfit,
+  breakevens,
+  entryCost,
+  pnlAt,
+  netGreeks,
+  unlimitedFlags,
+} from '../modules/options-math.js';
+import { inr, num, signedPct, escapeHtml } from '../utils/display.js';
+
+const STRIKE_STEP = 50;
+
+/** Offsets from the at-the-money strike. Nothing here is a price. */
+const PRESETS = {
+  'Bull Call Spread': [['B', 0, 'CE'], ['S', 200, 'CE']],
+  'Bear Put Spread': [['B', 0, 'PE'], ['S', -200, 'PE']],
+  'Short Straddle': [['S', 0, 'CE'], ['S', 0, 'PE']],
+  'Iron Butterfly': [['S', 0, 'CE'], ['S', 0, 'PE'], ['B', 300, 'CE'], ['B', -300, 'PE']],
+  'Iron Condor': [['S', 200, 'CE'], ['S', -200, 'PE'], ['B', 500, 'CE'], ['B', -500, 'PE']],
+  'Naked Short Call': [['S', 100, 'CE']],
+};
+
+const SPARKS = {
+  'Bull Call Spread': 'M4,26 L20,26 L44,8 L60,8',
+  'Bear Put Spread': 'M4,8 L20,8 L44,26 L60,26',
+  'Short Straddle': 'M4,4 L32,26 L60,4',
+  'Iron Butterfly': 'M4,24 L18,24 L32,6 L46,24 L60,24',
+  'Iron Condor': 'M4,24 L16,24 L26,8 L38,8 L48,24 L60,24',
+  'Naked Short Call': 'M4,8 L30,8 L60,28',
+};
+
+/** The server names its presets differently; only these four exist server-side. */
+const SERVER_PRESET_ID = {
+  'Bull Call Spread': 'bull_call_spread',
+  'Bear Put Spread': 'bear_put_spread',
+  'Iron Condor': 'iron_condor',
+};
 
 export class StrategyBuilderPage {
   constructor(container, options = {}) {
     this.container = container;
     this.options = options; // { onNavigateHome, onOpenSettings }
-    this.currentSpot = 24842.65; // math fallback only — NEVER displayed as the live spot
-    this.spotIsLive = false;
-    this.sessionId = this._resolveSessionId();
-    this.strategyName = 'Bear Put Spread';
-    this.targetDate = null;
-    this.ivShiftPct = 0;
+
+    this.legs = [];
+    this.baseLots = [];
+    this.strategyName = null;
+
+    this.spot = null;
+    this.spotFreshness = null;
+    this.spotError = null;
+
+    /** Contract size. Server-resolved only; 65 is never assumed and 75 never sent. */
+    this.lotSize = null;
+    this.lotSizeSource = null;
+
+    this.expiries = [];
+    this.expiry = null;
+    this.expiryError = null;
+
+    this.ivPctByStrike = {}; // strike -> implied volatility in percent
+    this.ivSource = {}; // strike -> where that volatility came from
+
+    this.dteDays = 0;
+    this.dteMax = 0;
     this.targetSpot = null;
-    this.isRailCollapsed = false;
 
-    // Sub-components
-    this.presetBar = null;
-    this.legBuilder = null;
+    this.capital = null;
+    this.capitalError = null;
+    this.positions = null;
+    this.marginUsed = null;
+
+    this.preview = null;
+    this.previewError = null;
+    this.validation = null;
+    this.validationError = null;
+    this.executeNote = null;
+
+    this.sessionId = this._resolveSessionId();
+    this._serverTimer = null;
+
     this.payoffChart = null;
-    this.validationPanel = null;
-    this.executeRow = null;
-    this.chatSurface = null;
-    this.miniReadiness = null;
-    this.miniPositions = null;
-    this.sessionRecap = null;
-    this.overnightModal = null;
-    this.executionTicket = null;
-
-    this.cronTimer = null;
-    this.lastValidationData = null;
-    this.lastPreviewData = null;
+    this.ticker = null;
   }
 
   _resolveSessionId() {
     try {
       const params = new URLSearchParams(window.location.search);
-      const urlSession = params.get('session');
-      if (urlSession) {
-        localStorage.setItem('swayam_active_session_id', urlSession);
-        return urlSession;
+      const fromUrl = params.get('session');
+      if (fromUrl) {
+        localStorage.setItem('swayam_active_session_id', fromUrl);
+        return fromUrl;
       }
-      const stored = localStorage.getItem('swayam_active_session_id');
-      if (stored) return stored;
-    } catch (_) {}
-    return null;
+      return localStorage.getItem('swayam_active_session_id');
+    } catch (_) {
+      return null;
+    }
   }
 
   async init() {
     this.renderLayout();
     this.initSubComponents();
     await this.loadInitialData();
-    this.startOvernightCronCheck();
-
-    // Restore rail collapsed state if previously set
-    const storedRail = localStorage.getItem('swayam_strategy_rail_collapsed') === 'true';
-    if (storedRail) {
-      this.toggleRail(true);
-    }
   }
 
-  toggleRail(forceState) {
-    const rail = this.container.querySelector('#strategy-left-rail');
-    const toggleBtn = this.container.querySelector('#btn-toggle-rail');
-    if (!rail) return;
-
-    this.isRailCollapsed = forceState !== undefined ? forceState : !this.isRailCollapsed;
-    rail.classList.toggle('rail-collapsed', this.isRailCollapsed);
-
-    if (this.isRailCollapsed) {
-      if (toggleBtn) toggleBtn.textContent = '›';
-      localStorage.setItem('swayam_strategy_rail_collapsed', 'true');
-    } else {
-      if (toggleBtn) toggleBtn.textContent = '‹';
-      localStorage.setItem('swayam_strategy_rail_collapsed', 'false');
-    }
-  }
+  // ------------------------------------------------------------------ layout
 
   renderLayout() {
-    const shortSid = this.sessionId ? this.sessionId.slice(0, 8) : 'new';
-
     this.container.innerHTML = `
-      <div id="strategy-builder-layout" class="swayam-layout" style="display: flex; min-height: calc(100vh - var(--header-h, 56px)); transition: margin-right 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
-        <!-- LEFT SIDEBAR RAIL (Atlas design system, collapsible) -->
-        <aside id="strategy-left-rail" style="
-          flex: 0 0 320px;
-          width: 320px;
-          background: var(--dl-rail);
-          border-right: 1px solid var(--dl-line);
-          display: flex;
-          flex-direction: column;
-          padding: 20px 16px;
-          gap: 16px;
-          min-height: 100%;
-          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-        ">
-          <!-- Rail Top Header: Back to Home + Collapse Chevron -->
-          <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <button
-              type="button"
-              id="btn-back-to-home"
-              style="
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                background: transparent;
-                border: none;
-                color: var(--dl-fg-2);
-                font-size: 0.82rem;
-                font-weight: 600;
-                cursor: pointer;
-                padding: 4px 6px;
-                border-radius: 6px;
-                width: fit-content;
-                transition: color var(--dur-fast) ease;
-              "
-              onmouseover="this.style.color='var(--dl-fg)'"
-              onmouseout="this.style.color='var(--dl-fg-2)'"
-            >
-              <span id="btn-back-to-home-icon">←</span>
-              <span class="rail-text-label">Back to Home</span>
-            </button>
-
-            <button
-              type="button"
-              id="btn-toggle-rail"
-              title="Collapse/Expand left rail"
-              style="
-                background: transparent;
-                border: 1px solid var(--dl-line);
-                color: var(--dl-fg-2);
-                border-radius: 4px;
-                width: 24px;
-                height: 24px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 0.82rem;
-                cursor: pointer;
-                transition: all var(--dur-fast) ease;
-              "
-              onmouseover="this.style.color='var(--dl-fg)'; this.style.borderColor='var(--dl-fg-3)';"
-              onmouseout="this.style.color='var(--dl-fg-2)'; this.style.borderColor='var(--dl-line)';"
-            >
-              ‹
-            </button>
+      <div class="sw-desk">
+        <div class="app" id="strategy-builder-layout">
+          <div class="top">
+            <div class="brandmark"><span class="mark">स्व</span>Strategy Desk</div>
+            <div class="spot" id="desk-spot"></div>
+            <button class="btn" id="btn-back-to-home" type="button" style="margin-left:10px">← Home</button>
           </div>
 
-          <!-- Rail Full Content (Hidden when collapsed) -->
-          <div class="rail-full-content" style="display: flex; flex-direction: column; gap: 16px; flex: 1;">
-            <!-- Mini Readiness Status -->
-            <div id="rail-mini-readiness"></div>
+          <div id="strategy-sticky-ticker"></div>
 
-            <!-- Mini Active Positions -->
-            <div id="rail-mini-positions"></div>
+          <div class="cols cols-desk">
+            <div id="strategy-left-rail">
+              <div class="card">
+                <h3>Legs <span class="r" id="leg-count"></span></h3>
+                <div class="toolbar">
+                  <label class="tf"><span>Expiry, all legs</span>
+                    <select id="global-expiry"></select></label>
+                  <label class="tf"><span>Lot multiplier</span>
+                    <select id="global-mult">
+                      <option value="1">1x</option><option value="2">2x</option>
+                      <option value="3">3x</option><option value="5">5x</option>
+                      <option value="10">10x</option>
+                    </select></label>
+                </div>
+                <div class="cb">
+                  <div class="lh">
+                    <span></span><span>B/S</span><span>Expiry</span><span>Strike</span>
+                    <span>Type</span><span>Lots</span><span>Price</span><span></span>
+                  </div>
+                  <div id="leg-builder-mount"></div>
+                  <div class="row" style="margin-top:11px">
+                    <button class="btn" id="btn-add-leg" type="button">+ Add leg</button>
+                    <button class="btn" id="btn-clear-legs" type="button">Clear</button>
+                    <span style="margin-left:auto;font-family:var(--m);font-size:12px" id="net-cost"></span>
+                  </div>
+                </div>
+                <div class="why" id="leg-why"></div>
+              </div>
 
-            <!-- Today's Session Recap -->
-            <div id="rail-session-recap"></div>
+              <div class="card">
+                <h3>Ready-made <span class="r">loads at the expiry below</span></h3>
+                <div class="toolbar one">
+                  <label class="tf"><span>Expiry for ready-made strategies</span>
+                    <select id="preset-expiry"></select></label>
+                </div>
+                <div class="cb"><div class="presets" id="strategy-presets-container"></div></div>
+              </div>
 
-            <!-- Sticky Rail Footer -->
-            <div style="margin-top: auto; padding-top: 18px; border-top: 1px solid var(--dl-line); display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--dl-fg-3);">
-              <span style="font-family: var(--font-mono);">Sess: #${shortSid}</span>
-              <span style="color: var(--accent-sage);">Paper Mode</span>
-            </div>
-          </div>
-        </aside>
-
-        <!-- MAIN CONTENT AREA (Flex 1) -->
-        <main class="strategy-main" style="
-          flex: 1;
-          min-width: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          padding: 18px 24px 70px 20px;
-        ">
-          <!-- Page Header -->
-          <div style="display: flex; justify-content: space-between; align-items: baseline;">
-            <div>
-              <h1 style="font-family: var(--font-serif); font-size: 1.5rem; font-weight: 500; color: var(--dl-fg); margin: 0;">
-                Strategy Builder &amp; Terminal
-              </h1>
-              <div style="font-size: 0.8rem; color: var(--dl-fg-3); margin-top: 2px;">
-                Construct, model Greeks &amp; execute margin-safe multi-leg options structures
+              <div class="card">
+                <h3>Strikewise IV <span class="r">edit to test a volatility change</span></h3>
+                <div class="cb"><div id="iv-mount"></div></div>
               </div>
             </div>
-            <div id="strategy-spot-display" class="mono-nums" style="font-size: 0.95rem; font-weight: 700; color: var(--accent-sage);">
-              NIFTY 50: <span style="color: var(--dl-fg-3);">—</span>
+
+            <div>
+              <div class="card"><div class="mets" id="metric-row"></div></div>
+
+              <div class="card">
+                <h3>Payoff <span class="r">drag the graph, or use the sliders</span></h3>
+                <div id="payoff-chart-mount"></div>
+                <div class="sliders">
+                  <div class="sl">
+                    <label>NIFTY target <b id="target-text">—</b></label>
+                    <input type="range" id="target-range" min="0" max="1" step="5" value="0" disabled>
+                    <div class="ends"><span id="target-min">—</span><span id="target-pct">—</span><span id="target-max">—</span></div>
+                  </div>
+                  <div class="sl">
+                    <label>Days to expiry <b id="dte-text">—</b></label>
+                    <input type="range" id="dte-range" min="0" max="1" step="1" value="0" disabled>
+                    <div class="ends"><span>expiry day</span><span id="dte-date">—</span><span>today</span></div>
+                  </div>
+                </div>
+                <div class="why" id="payoff-why"></div>
+              </div>
+
+              <div class="card">
+                <h3>Greeks <span class="r">per position, at the target above</span></h3>
+                <div class="tw"><table class="g" id="greeks-table"></table></div>
+              </div>
+
+              <div class="card">
+                <h3>Rules and execution <span class="r" id="rules-source"></span></h3>
+                <div class="rules" id="rule-validation-mount"></div>
+                <div class="why" id="rule-why"></div>
+                <div class="exec">
+                  <div class="banner" id="entry-banner"></div>
+                  <div class="execbar" id="execute-row-mount"></div>
+                </div>
+              </div>
             </div>
           </div>
-
-          <!-- Safety Critical Warning Banner (Shown if database is unreachable) -->
-          <div id="safety-warning-banner-mount" style="display: none; width: 100%;"></div>
-
-          <!-- Row 1: Strategy Presets Bar -->
-          <div id="strategy-presets-container" class="span-12"></div>
-
-          <!-- Row 2: Multi-leg Builder + Payoff Chart (Stacked full-width bands) -->
-          <div class="builder-chart-grid" style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
-            <div id="leg-builder-mount" style="width: 100%;"></div>
-            <div id="payoff-chart-mount" style="width: 100%;"></div>
-          </div>
-
-          <!-- Row 3: Rule Validation Panel (span-12) -->
-          <div id="rule-validation-mount" class="span-12"></div>
-
-          <!-- Row 4: Execute Row (span-12) -->
-          <div id="execute-row-mount" class="span-12"></div>
-        </main>
+        </div>
       </div>
-
-      <!-- Sticky Bottom Status Ticker (40px) -->
-      <footer id="strategy-sticky-ticker" style="
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 40px;
-        background: var(--dl-card);
-        border-top: 1px solid var(--dl-line);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 24px;
-        font-size: 0.78rem;
-        z-index: 900;
-        font-family: var(--font-mono);
-      ">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <span style="color: var(--dl-fg-3);">NIFTY SPOT:</span>
-          <span id="ticker-spot-val" style="color: var(--dl-fg-3); font-weight: 700;">—</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <span style="color: var(--dl-fg-3);">TODAY'S P&amp;L:</span>
-          <span id="ticker-pnl-val" style="color: var(--accent-sage); font-weight: 700;">+₹0.00</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="color: var(--accent-amber);">MARKET STATUS:</span>
-          <span id="ticker-market-status" style="color: var(--dl-fg-3);">—</span>
-        </div>
-      </footer>
-
-      <!-- Overnight Naked Auto-Block Modal Mount -->
-      <div id="overnight-modal-container"></div>
-
-      <!-- Execution Ticket Modal Mount -->
-      <div id="execution-ticket-container"></div>
     `;
 
-    // Hook Back to Home button
-    const btnHome = this.container.querySelector('#btn-back-to-home');
-    if (btnHome) {
-      btnHome.addEventListener('click', () => {
-        if (this.options.onNavigateHome) {
-          this.options.onNavigateHome();
-        }
-      });
-    }
-
-    // Hook Collapsible Rail Toggle Button
-    const btnToggle = this.container.querySelector('#btn-toggle-rail');
-    if (btnToggle) {
-      btnToggle.addEventListener('click', () => this.toggleRail());
-    }
-  }
-
-  async handleSliderChange({ targetDays, targetDate, ivShiftPct, targetSpot }) {
-    // Sliders now recompute for real (this used to call a method that didn't exist, so
-    // dragging did nothing). Route through the same live compute+validate path as leg edits.
-    this.targetDate = targetDate;
-    this.ivShiftPct = ivShiftPct;
-    if (targetSpot !== undefined) this.targetSpot = targetSpot;
-    const legs = this.legBuilder?.getLegs() || [];
-    if (legs.length) await this.handleLegsChanged(legs);
+    const back = this.container.querySelector('#btn-back-to-home');
+    if (back) back.addEventListener('click', () => this.options.onNavigateHome && this.options.onNavigateHome());
   }
 
   initSubComponents() {
-    // 1. Preset Bar
-    const presetMount = this.container.querySelector('#strategy-presets-container');
-    if (presetMount) {
-      this.presetBar = new PresetBarComponent(presetMount, {
-        currentSpot: this.currentSpot,
-        onSelectPreset: (name, presetId) => this.handlePresetSelected(name, presetId),
-        onImportAI: () => this.handleImportFromAI(),
-      });
-      this.presetBar.render();
+    const tickerHost = this.container.querySelector('#strategy-sticky-ticker');
+    if (tickerHost) {
+      this.ticker = new MarketTickerComponent(tickerHost);
+      this.ticker.render(this.tickerItems());
     }
 
-    // 2. Leg Builder
-    const builderMount = this.container.querySelector('#leg-builder-mount');
-    if (builderMount) {
-      this.legBuilder = new LegBuilderComponent(builderMount, {
-        currentSpot: this.currentSpot,
-        onLegsUpdated: (legs) => this.handleLegsChanged(legs),
-      });
-    }
-
-    // 3. Payoff Chart
-    const chartMount = this.container.querySelector('#payoff-chart-mount');
-    if (chartMount) {
-      this.payoffChart = new PayoffChartComponent(chartMount, {
-        onSliderChange: (params) => this.handleSliderChange(params),
+    const chartHost = this.container.querySelector('#payoff-chart-mount');
+    if (chartHost) {
+      this.payoffChart = new PayoffSvgComponent(chartHost, {
+        onTargetChange: (S) => this.setTarget(S),
       });
       this.payoffChart.init();
     }
 
-    // 4. Rule Validation Panel
-    const valMount = this.container.querySelector('#rule-validation-mount');
-    if (valMount) {
-      this.validationPanel = new RuleValidationPanelComponent(valMount);
-      this.validationPanel.render();
+    this.renderPresets();
+    this.bindControls();
+    this.renderAll();
+  }
+
+  bindControls() {
+    const on = (id, evt, fn) => {
+      const el = this.container.querySelector(`#${id}`);
+      if (el && typeof el.addEventListener === 'function') el.addEventListener(evt, fn);
+    };
+
+    on('btn-add-leg', 'click', () => this.addLeg());
+    on('btn-clear-legs', 'click', () => {
+      this.legs = [];
+      this.baseLots = [];
+      this.strategyName = null;
+      this.preview = null;
+      this.validation = null;
+      this.renderAll();
+    });
+
+    on('global-expiry', 'change', (e) => this.setExpiry(e.target.value, true));
+    on('preset-expiry', 'change', (e) => this.setExpiry(e.target.value, true));
+    on('global-mult', 'change', (e) => this.applyMultiplier(Number(e.target.value) || 1));
+
+    on('target-range', 'input', (e) => this.setTarget(Number(e.target.value)));
+    on('dte-range', 'input', (e) => {
+      this.dteDays = Number(e.target.value);
+      this.renderRight();
+    });
+
+    const legs = this.container.querySelector('#leg-builder-mount');
+    if (legs && typeof legs.addEventListener === 'function') {
+      legs.addEventListener('input', (e) => this.onLegInput(e));
+      legs.addEventListener('change', (e) => this.onLegInput(e));
+      legs.addEventListener('click', (e) => this.onLegClick(e));
     }
 
-    // 5. Execute Row → opens the Execution Ticket (per-leg Market/Limit + price + margin)
-    const execMount = this.container.querySelector('#execute-row-mount');
-    if (execMount) {
-      this.executeRow = new ExecuteRowComponent(execMount, {
-        onExecute: () => this.openExecutionTicket(),
-        onPreviewSequence: () => this.openExecutionTicket(),
-      });
-      this.executeRow.render(false);
+    const ivs = this.container.querySelector('#iv-mount');
+    if (ivs && typeof ivs.addEventListener === 'function') {
+      ivs.addEventListener('click', (e) => this.onIvClick(e));
+      ivs.addEventListener('input', (e) => this.onIvInput(e));
     }
 
-    // 5b. Execution Ticket modal
-    const ticketMount = this.container.querySelector('#execution-ticket-container');
-    if (ticketMount) {
-      this.executionTicket = new ExecutionTicketComponent(ticketMount, {
-        onConfirm: (legs) => this.confirmExecute(legs),
-      });
-    }
-
-    // 6. Left Rail Mini Components
-    const miniReadinessMount = this.container.querySelector('#rail-mini-readiness');
-    if (miniReadinessMount) {
-      this.miniReadiness = new MiniReadinessCardComponent(miniReadinessMount);
-      this.miniReadiness.render();
-    }
-
-    const miniPosMount = this.container.querySelector('#rail-mini-positions');
-    if (miniPosMount) {
-      this.miniPositions = new MiniPositionsListComponent(miniPosMount, {
-        onSelectPosition: (pos) => console.log('Selected position:', pos),
-      });
-      this.miniPositions.render([]);
-    }
-
-    const recapMount = this.container.querySelector('#rail-session-recap');
-    if (recapMount) {
-      this.sessionRecap = new SessionRecapComponent(recapMount);
-      this.sessionRecap.render();
-    }
-
-    // 8. Overnight Modal
-    const modalMount = this.container.querySelector('#overnight-modal-container');
-    if (modalMount) {
-      this.overnightModal = new OvernightBlockModalComponent(modalMount, {
-        onAddHedge: (violation) => this.resolveAddHedge(violation),
-        onExitPosition: (violation) => this.resolveExitPosition(violation),
+    const presets = this.container.querySelector('#strategy-presets-container');
+    if (presets && typeof presets.addEventListener === 'function') {
+      presets.addEventListener('click', (e) => {
+        const el = e.target && typeof e.target.closest === 'function' ? e.target.closest('.preset') : null;
+        const name = el ? el.getAttribute('data-name') : e.target && e.target.getAttribute && e.target.getAttribute('data-name');
+        if (name) this.loadPreset(name);
       });
     }
   }
+
+  // -------------------------------------------------------------- data loads
 
   async loadInitialData() {
-    // 1. Spot fetch — show the REAL spot or an honest '—' (never the hardcoded default).
+    await Promise.all([
+      this.loadSpot(),
+      this.loadExpiries(),
+      this.loadCapital(),
+      this.refreshPositions(),
+    ]);
+    this.renderAll();
+  }
+
+  async loadSpot() {
     try {
-      const spotRes = await api.getNiftySpot();
-      if (spotRes && spotRes.spot) {
-        this.currentSpot = spotRes.spot;
-        this.spotIsLive = true;
-        if (this.legBuilder) this.legBuilder.options.currentSpot = this.currentSpot;
-      }
-    } catch (_) {
-      this.spotIsLive = false;
+      const res = await api.getNiftySpot();
+      this.spot = res && typeof res.spot === 'number' ? res.spot : null;
+      this.spotFreshness = this.spot === null ? null : 'live';
+      this.spotError = null;
+      if (this.spot !== null && this.targetSpot === null) this.targetSpot = Math.round(this.spot / 5) * 5;
+    } catch (err) {
+      this.spot = null;
+      this.spotError = (err && err.message) || String(err);
     }
-    this._updateSpotDisplay();
-    this._updateMarketStatus();
+    this.renderSpot();
+  }
 
-    // 2. Load default Bear Put Spread legs — ONLY with a real spot, so strikes are at-the-money.
-    if (this.spotIsLive) {
-      const initialLegs = generatePresetLegs('bear-put', this.currentSpot);
-      if (this.legBuilder) {
-        this.legBuilder.setLegs(initialLegs);
-      }
-    } else if (this.legBuilder) {
-      this.legBuilder.setLegs([]); // never seed far-OTM strikes off the fallback spot
-      this._toast('Live NIFTY price unavailable — pick a strategy once the spot is live so strikes land at-the-money. Refresh your FYERS session if this persists.');
-    }
-
-    // 3. Load active positions
-    await this.refreshPositions();
-
-    // 4. Load session recap from AI endpoint
-    if (this.sessionId) {
-      try {
-        const summary = await api.getSessionContextSummary(this.sessionId);
-        if (summary && this.sessionRecap) {
-          this.sessionRecap.render(summary);
-        }
-      } catch (_) {}
-    }
-
-    // 5. Load readiness mini status
+  async loadExpiries() {
     try {
-      const readRes = await api.getTodayReadiness();
-      if (readRes && this.miniReadiness) {
-        this.miniReadiness.render(readRes);
+      const res = await api.getExpiries();
+      this.expiries = (res && res.expiries) || [];
+      this.expiryError = null;
+      if (this.expiries.length && !this.expiry) {
+        const monthly = this.expiries.find((e) => e.is_monthly) || this.expiries[0];
+        this.expiry = monthly.date;
+        this.dteMax = monthly.calendar_days;
+        this.dteDays = monthly.calendar_days;
       }
-    } catch (_) {}
+    } catch (err) {
+      this.expiries = [];
+      this.expiryError = (err && err.message) || String(err);
+    }
+    this.renderExpiryPickers();
   }
 
-  _marketOpen() {
-    // NIFTY F&O trades 09:15–15:30 IST, Mon–Fri. (Public-holiday calendar not applied here.)
-    const now = new Date();
-    const istMs = now.getTime() + now.getTimezoneOffset() * 60000 + 5.5 * 3600000;
-    const ist = new Date(istMs);
-    const day = ist.getDay();
-    if (day === 0 || day === 6) return false;
-    const mins = ist.getHours() * 60 + ist.getMinutes();
-    return mins >= 9 * 60 + 15 && mins <= 15 * 60 + 30;
-  }
-
-  _updateMarketStatus() {
-    const el = this.container.querySelector('#ticker-market-status');
-    if (!el) return;
-    const open = this._marketOpen();
-    el.textContent = open ? 'OPEN · 09:15–15:30 IST' : 'CLOSED';
-    el.style.color = open ? 'var(--accent-sage)' : 'var(--dl-fg-3)';
-  }
-
-  _updateSpotDisplay() {
-    const spotEl = this.container.querySelector('#strategy-spot-display');
-    const tickerSpot = this.container.querySelector('#ticker-spot-val');
-    if (this.spotIsLive) {
-      const val = this.currentSpot.toLocaleString('en-IN', { minimumFractionDigits: 2 });
-      if (spotEl) spotEl.innerHTML = `NIFTY 50: ${val} <span style="font-size:0.6rem; color:var(--accent-sage); font-weight:700; letter-spacing:0.05em;">LIVE</span>`;
-      if (tickerSpot) {
-        tickerSpot.textContent = this.currentSpot.toFixed(2);
-        tickerSpot.style.color = 'var(--accent-sage)';
-      }
-    } else {
-      if (spotEl) spotEl.innerHTML = `NIFTY 50: <span style="color:var(--dl-fg-3);">— no live price</span>`;
-      if (tickerSpot) {
-        tickerSpot.textContent = '—';
-        tickerSpot.style.color = 'var(--dl-fg-3)';
-      }
+  async loadCapital() {
+    try {
+      this.capital = await api.getRiskCapital();
+      this.capitalError = null;
+    } catch (err) {
+      this.capital = null;
+      this.capitalError = (err && err.message) || String(err);
     }
   }
 
   async refreshPositions() {
     try {
-      const positions = await api.getPositions('open');
-      if (Array.isArray(positions)) {
-        if (this.miniPositions) this.miniPositions.render(positions);
-
-        // Update ticker P&L
-        let totalPnl = 0;
-        positions.forEach((p) => { totalPnl += (p.unrealized_pnl_inr || 0); });
-        const tickerPnl = this.container.querySelector('#ticker-pnl-val');
-        if (tickerPnl) {
-          const isPos = totalPnl >= 0;
-          tickerPnl.textContent = `${isPos ? '+' : ''}₹${Math.round(totalPnl).toLocaleString('en-IN')}`;
-          tickerPnl.style.color = isPos ? 'var(--accent-sage)' : 'var(--accent-coral)';
-        }
+      const res = await api.getPositions('open');
+      this.positions = Array.isArray(res) ? res : (res && res.positions) || [];
+      let total = 0;
+      let sawOne = false;
+      for (const p of this.positions) {
+        if (typeof p.margin_used_inr === 'number') { total += p.margin_used_inr; sawOne = true; }
+        else if (typeof p.margin_blocked_inr === 'number') { total += p.margin_blocked_inr; sawOne = true; }
       }
-    } catch (err) {
-      if (this.miniPositions) {
-        this.miniPositions.renderError('Positions unavailable — Supabase unreachable. Check broker terminal.');
-      }
-    }
-  }
-
-  async handlePresetSelected(name, presetId) {
-    this.strategyName = name;
-    await this._ensureLiveSpot();
-    if (!this.spotIsLive) {
-      this._toast("Live NIFTY price unavailable — refresh your FYERS session. Strikes need the real spot; I won't place far-OTM guesses.");
-      return; // never build strikes off the fallback spot
-    }
-    const legs = generatePresetLegs(presetId, this.currentSpot);
-    if (this.legBuilder) {
-      this.legBuilder.setLegs(legs);
-    }
-  }
-
-  /** Re-fetch the real spot on demand (e.g. right before building strikes). Never invents one. */
-  async _ensureLiveSpot() {
-    if (this.spotIsLive) return;
-    try {
-      const spotRes = await api.getNiftySpot();
-      if (spotRes && spotRes.spot) {
-        this.currentSpot = spotRes.spot;
-        this.spotIsLive = true;
-        if (this.legBuilder) this.legBuilder.options.currentSpot = this.currentSpot;
-        this._updateSpotDisplay();
-        this._updateMarketStatus();
-      }
+      this.marginUsed = this.positions.length === 0 ? 0 : sawOne ? total : null;
     } catch (_) {
-      /* stays not-live; caller shows an honest message */
+      this.positions = null;
+      this.marginUsed = null;
     }
+    this.renderMetrics();
   }
 
-  /** Transient bottom-center notice (used when strikes can't be placed without a real spot). */
-  _toast(msg) {
-    let t = this.container.querySelector('#sb-toast');
-    if (!t) {
-      t = document.createElement('div');
-      t.id = 'sb-toast';
-      t.style.cssText = 'position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--dl-card); color:var(--accent-coral); border:1px solid var(--accent-coral); padding:10px 18px; border-radius:8px; font-size:0.85rem; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,0.4); z-index:2000; max-width:90vw; text-align:center;';
-      this.container.appendChild(t);
+  // ---------------------------------------------------------------- the legs
+
+  atmStrike() {
+    if (!this.spot) return null;
+    return Math.round(this.spot / STRIKE_STEP) * STRIKE_STEP;
+  }
+
+  async loadPreset(name) {
+    const shape = PRESETS[name];
+    if (!shape) return;
+    if (!this.spot) {
+      this.executeNote = 'No live NIFTY price, so strikes cannot be placed at the money. Nothing was loaded.';
+      this.renderExecute();
+      return;
     }
-    t.textContent = msg;
-    t.style.display = 'block';
-    clearTimeout(this._toastTimer);
-    this._toastTimer = setTimeout(() => { if (t) t.style.display = 'none'; }, 6000);
+    const atm = this.atmStrike();
+    this.strategyName = name;
+    this.legs = shape.map(([bs, offset, type]) => ({
+      on: true,
+      bs,
+      strike: atm + offset,
+      type,
+      lots: 1,
+      price: null,
+      priceSource: null,
+    }));
+    this.baseLots = this.legs.map((l) => l.lots);
+    const mult = this.container.querySelector('#global-mult');
+    if (mult) mult.value = '1';
+    this.renderAll();
+    await this.repriceLegs();
   }
 
-  async handleImportFromAI() {
-    if (!this.sessionId) return;
-    try {
-      const summary = await api.getSessionContextSummary(this.sessionId);
-      if (summary && summary.bullets) {
-        // Build from the LIVE spot via the gated path (no far-OTM guesses off a fallback spot).
-        await this.handlePresetSelected('Bear Put Spread (AI Suggested)', 'bear-put');
-        if (this.chatSurface) {
-          this.chatSurface.appendSystemNotice('Imported strategy structure recommended in Home AI dialogue.');
-        }
-      }
-    } catch (e) {
-      console.warn('Could not import from AI:', e);
+  addLeg() {
+    const atm = this.atmStrike();
+    if (atm === null) {
+      this.executeNote = 'No live NIFTY price, so a new leg has no strike to sit on.';
+      this.renderExecute();
+      return;
     }
+    this.legs.push({ on: true, bs: 'B', strike: atm, type: 'CE', lots: 1, price: null, priceSource: null });
+    this.baseLots = this.legs.map((l) => l.lots);
+    this.renderAll();
+    this.repriceLeg(this.legs.length - 1);
   }
 
-  async handleLegsChanged(legs) {
-    if (!legs || legs.length === 0) return;
-
-    // Check if any short leg is unhedged
-    const soldCalls = legs.filter((l) => l.direction?.toLowerCase() === 'sell' && l.option_type === 'CE');
-    const boughtCalls = legs.filter((l) => l.direction?.toLowerCase() === 'buy' && l.option_type === 'CE');
-    const soldPuts = legs.filter((l) => l.direction?.toLowerCase() === 'sell' && l.option_type === 'PE');
-    const boughtPuts = legs.filter((l) => l.direction?.toLowerCase() === 'buy' && l.option_type === 'PE');
-
-    const totalSoldCalls = soldCalls.reduce((s, l) => s + (l.quantity_lots || 1), 0);
-    const totalBoughtCalls = boughtCalls.reduce((s, l) => s + (l.quantity_lots || 1), 0);
-    const totalSoldPuts = soldPuts.reduce((s, l) => s + (l.quantity_lots || 1), 0);
-    const totalBoughtPuts = boughtPuts.reduce((s, l) => s + (l.quantity_lots || 1), 0);
-
-    const hasNaked = totalSoldCalls > totalBoughtCalls || totalSoldPuts > totalBoughtPuts;
-
-    // 1. Preview order sequence and margin
-    try {
-      const previewRes = await api.previewOrder({
-        underlying: 'NIFTY',
-        current_spot: this.currentSpot,
-        legs: legs.map((l) => ({
-          strike: l.strike,
-          option_type: l.option_type,
-          direction: l.direction,
-          quantity_lots: l.quantity_lots || 1,
-          lot_size: l.lot_size || 75,
-          entry_premium: l.entry_premium || 0,
-          expiry_date: l.expiry_date,
-        })),
-      });
-      this.lastPreviewData = previewRes;
-    } catch (_) {}
-
-    // 2. Compute payoff curve
-    try {
-      const computePayload = {
-        strategy_name: this.strategyName,
-        underlying: 'NIFTY',
-        current_spot: this.currentSpot,
-        iv_per_leg: {},
-        legs: legs.map((l) => ({
-          strike: l.strike,
-          option_type: l.option_type,
-          direction: l.direction,
-          quantity_lots: l.quantity_lots || 1,
-          lot_size: l.lot_size || 75,
-          entry_premium: l.entry_premium || 0,
-          expiry_date: l.expiry_date,
-        })),
-      };
-
-      if (this.targetDate) {
-        computePayload.target_date = this.targetDate;
-      }
-      if (this.ivShiftPct !== 0) {
-        computePayload.iv_shift_pct = this.ivShiftPct;
-      }
-      if (this.targetSpot) {
-        computePayload.target_spot = this.targetSpot;
-      }
-
-      const computeRes = await api.computeStrategy(computePayload);
-
-      if (computeRes && (computeRes.payoff_curve_expiry || computeRes.payoff_curve)) {
-        const curveExpiry = computeRes.payoff_curve_expiry || computeRes.payoff_curve;
-        const curveTarget = computeRes.payoff_curve_target || computeRes.payoff_curve;
-        const expiryDate = legs[0]?.expiry_date;
-        if (this.payoffChart) {
-          this.payoffChart.updateData({
-            curveData: curveTarget,
-            curveExpiry,
-            curveTarget,
-            currentSpot: this.currentSpot,
-            maxLoss: curveExpiry.max_loss_inr,
-            maxProfit: curveExpiry.max_profit_inr,
-            breakevens: curveExpiry.breakevens,
-            // Single source of truth: the 2-sigma "realistic risk" line uses the REAL number
-            // from validation (set via setRealisticRisk below), not a max_loss*0.8 fudge.
-            realisticRisk: this.lastValidationData?.realistic_risk?.loss_inr ?? null,
-            projectedPnl: computeRes.projected_pnl_target_inr ?? null,
-            projectedPnlPct: computeRes.projected_pnl_target_pct ?? null,
-            greeks: computeRes.greeks,
-            pop: computeRes.pop ?? computeRes.greeks?.pop,
-            expiryDate,
-          });
-        }
-        if (this.legBuilder && (computeRes.per_leg || computeRes.greeks?.per_leg)) {
-          this.legBuilder.updateGreeks(computeRes.per_leg || computeRes.greeks?.per_leg);
-        }
-      }
-    } catch (_) {}
-
-    // 3. Validate rules
-    try {
-      const valRes = await api.validateStrategy({
-        strategy_name: this.strategyName,
-        underlying: 'NIFTY',
-        current_spot: this.currentSpot,
-        iv_per_leg: {},
-        legs: legs.map((l) => ({
-          strike: l.strike,
-          option_type: l.option_type,
-          direction: l.direction,
-          quantity_lots: l.quantity_lots || 1,
-          lot_size: l.lot_size || 75,
-          entry_premium: l.entry_premium || 0,
-          expiry_date: l.expiry_date,
-        })),
-      });
-
-      this.lastValidationData = valRes;
-      if (this.validationPanel) {
-        this.validationPanel.render(valRes, hasNaked);
-      }
-      // Feed the REAL 2-sigma realistic-risk number to the chart's risk line (single source).
-      if (this.payoffChart && valRes.realistic_risk) {
-        this.payoffChart.setRealisticRisk(valRes.realistic_risk.loss_inr);
-      }
-
-      const canExecute = (valRes.passed || valRes.overall_passed) && !hasNaked;
-      if (this.executeRow) {
-        this.executeRow.render(canExecute, this.lastPreviewData);
-      }
-    } catch (_) {}
+  /** Real quotes only. A strike with no traded price keeps a blank price box. */
+  async repriceLegs() {
+    await Promise.all(this.legs.map((_, i) => this.repriceLeg(i)));
+    this.renderAll();
+    this.scheduleServerRefresh();
   }
 
-  openExecutionTicket() {
-    const legs = this.legBuilder?.getLegs() || [];
-    if (!legs.length) return;
-    this.executionTicket?.open({
-      legs,
-      preview: this.lastPreviewData,
-      verdict: this.lastValidationData,
+  async repriceLeg(index) {
+    const leg = this.legs[index];
+    if (!leg || !this.expiry) return;
+    try {
+      const q = await api.getOptionQuote({ strike: leg.strike, expiry: this.expiry, type: leg.type });
+      if (q && q.available && typeof q.ltp === 'number') {
+        leg.price = q.ltp;
+        leg.priceSource = q.source || 'chain';
+      } else {
+        leg.price = null;
+        leg.priceSource = (q && q.note) || 'no traded price for this strike and expiry';
+      }
+      if (q && typeof q.iv === 'number' && q.iv > 0) {
+        this.ivPctByStrike[leg.strike] = q.iv * 100;
+        this.ivSource[leg.strike] = 'implied from the traded price';
+      }
+    } catch (err) {
+      leg.price = null;
+      leg.priceSource = (err && err.message) || 'quote unavailable';
+    }
+    this.renderLegs();
+    this.renderIvs();
+    this.renderRight();
+  }
+
+  setExpiry(value, reprice) {
+    if (!value) return;
+    this.expiry = value;
+    const meta = this.expiries.find((e) => e.date === value);
+    if (meta) {
+      this.dteMax = meta.calendar_days;
+      this.dteDays = meta.calendar_days;
+    }
+    const ge = this.container.querySelector('#global-expiry');
+    const pe = this.container.querySelector('#preset-expiry');
+    if (ge) ge.value = value;
+    if (pe) pe.value = value;
+    this.renderAll();
+    if (reprice && this.legs.length) this.repriceLegs();
+  }
+
+  /** Scales every leg from its ORIGINAL lot count, so 3x back to 1x returns home. */
+  applyMultiplier(mult) {
+    if (!this.baseLots.length || this.baseLots.length !== this.legs.length) {
+      this.baseLots = this.legs.map((l) => l.lots);
+    }
+    this.legs.forEach((l, i) => {
+      l.lots = Math.max(1, Math.round((this.baseLots[i] || 1) * mult));
     });
+    this.renderAll();
+    this.scheduleServerRefresh();
   }
 
-  async confirmExecute(legs) {
-    const payload = {
-      strategy_name: this.strategyName,
-      underlying: 'NIFTY',
-      current_spot: this.currentSpot,
-      order_type: 'LIMIT',
-      session_id: this.sessionId,
-      mode: 'paper',
-      legs: legs.map((l) => ({
-        strike: l.strike,
-        option_type: l.option_type,
-        direction: l.direction,
-        quantity_lots: l.quantity_lots || 1,
-        lot_size: l.lot_size || 75,
-        entry_premium: l.entry_premium || 0,
-        expiry_date: l.expiry_date,
-        order_type: l.order_type || 'LIMIT',
-      })),
+  onLegInput(e) {
+    const t = e.target;
+    if (!t || !t.dataset) return;
+    const i = Number(t.dataset.i);
+    const f = t.dataset.f;
+    if (Number.isNaN(i) || !f || !this.legs[i]) return;
+    if (f === 'on') this.legs[i].on = t.checked !== undefined ? t.checked : !this.legs[i].on;
+    else if (f === 'strike') this.legs[i].strike = Math.max(1, Number(t.value) || this.legs[i].strike);
+    else if (f === 'lots') {
+      this.legs[i].lots = Math.max(1, Number(t.value) || 1);
+      this.baseLots = this.legs.map((l) => l.lots);
+    } else if (f === 'price') {
+      const v = parseFloat(t.value);
+      this.legs[i].price = Number.isFinite(v) && v >= 0 ? v : null;
+      this.legs[i].priceSource = 'your own limit price';
+    } else if (f === 'type') this.legs[i].type = t.value;
+    this.renderRight();
+    this.renderIvs();
+    this.scheduleServerRefresh();
+  }
+
+  onLegClick(e) {
+    const t = e.target;
+    if (!t || !t.dataset) return;
+    const i = Number(t.dataset.i);
+    const f = t.dataset.f;
+    if (Number.isNaN(i) || !f || !this.legs[i]) return;
+    if (f === 'bs') {
+      this.legs[i].bs = this.legs[i].bs === 'B' ? 'S' : 'B';
+      this.renderAll();
+      this.scheduleServerRefresh();
+    } else if (f === 'del') {
+      this.legs.splice(i, 1);
+      this.baseLots = this.legs.map((l) => l.lots);
+      this.renderAll();
+      this.scheduleServerRefresh();
+    } else if (f === 'strike-' || f === 'strike+') {
+      this.legs[i].strike += f === 'strike+' ? STRIKE_STEP : -STRIKE_STEP;
+      this.renderAll();
+      this.repriceLeg(i);
+      this.scheduleServerRefresh();
+    }
+  }
+
+  onIvClick(e) {
+    const t = e.target;
+    if (!t || !t.dataset || !t.dataset.iv) return;
+    const strike = Number(t.dataset.iv);
+    const delta = Number(t.dataset.d);
+    const current = this.ivPctByStrike[strike];
+    if (!(current > 0)) return; // never step away from a volatility we never measured
+    this.ivPctByStrike[strike] = Math.max(0.5, current + delta);
+    this.ivSource[strike] = 'your own volatility';
+    this.renderIvs();
+    this.renderRight();
+  }
+
+  onIvInput(e) {
+    const t = e.target;
+    if (!t || !t.dataset || !t.dataset.ivin) return;
+    const strike = Number(t.dataset.ivin);
+    const v = parseFloat(t.value);
+    if (Number.isFinite(v) && v > 0) {
+      this.ivPctByStrike[strike] = v;
+      this.ivSource[strike] = 'your own volatility';
+      this.renderRight();
+    }
+  }
+
+  ivFor(leg) {
+    const p = this.ivPctByStrike[leg.strike];
+    return p > 0 ? p / 100 : null;
+  }
+
+  mathOpts() {
+    return {
+      lotSize: this.lotSize,
+      spot: this.spot,
+      ivFor: (leg) => this.ivFor(leg),
     };
-    // api.executeMultiLeg throws on failure -> the ticket surfaces the error inline (no alert()).
-    const res = await api.executeMultiLeg(payload);
-    if (res && res.status === 'opened') {
-      await this.refreshPositions();
-      this.executionTicket?.showSuccess(`Position #${res.position_id.slice(0, 8)} opened · journal recorded.`);
-    } else {
-      throw new Error(res?.detail || 'Unexpected response from execution.');
-    }
   }
 
-  _showSafetyWarningBanner(message) {
-    const banner = this.container.querySelector('#safety-warning-banner-mount');
-    if (banner) {
-      banner.innerHTML = `
-        <div style="background: rgba(221, 129, 112, 0.15); border: 1px solid var(--accent-coral); border-radius: var(--radius-card); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 0.82rem; color: var(--accent-coral);">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 1rem;">⚠️</span>
-            <span style="font-weight: 500;">${message}</span>
-          </div>
-        </div>
-      `;
-      banner.style.display = 'block';
-    }
+  setTarget(S) {
+    this.targetSpot = S;
+    const range = this.container.querySelector('#target-range');
+    if (range) range.value = String(S);
+    this.renderRight();
   }
 
-  _clearSafetyWarningBanner() {
-    const banner = this.container.querySelector('#safety-warning-banner-mount');
-    if (banner) {
-      banner.innerHTML = '';
-      banner.style.display = 'none';
-    }
+  // ------------------------------------------------------------ server calls
+
+  legsPayload() {
+    return this.legs
+      .filter((l) => l.on)
+      .map((l) => ({
+        strike: l.strike,
+        option_type: l.type,
+        direction: l.bs === 'B' ? 'buy' : 'sell',
+        quantity_lots: l.lots,
+        entry_premium: l.price === null ? 0 : l.price,
+        expiry_date: this.expiry,
+      }));
   }
 
-  startOvernightCronCheck() {
-    // Check every 30 seconds if open positions have naked shorts
-    this.cronTimer = setInterval(async () => {
-      try {
-        const res = await api.detectNakedShorts('15:20');
-        this._clearSafetyWarningBanner();
-        if (res && res.has_naked_shorts && res.violations && res.violations.length > 0) {
-          if (this.overnightModal && !this.overnightModal.isOpen) {
-            this.overnightModal.show(res.violations[0]);
+  scheduleServerRefresh() {
+    if (typeof setTimeout !== 'function') return;
+    if (this._serverTimer) clearTimeout(this._serverTimer);
+    this._serverTimer = setTimeout(() => this.refreshFromServer(), 350);
+  }
+
+  /**
+   * The server resolves the real contract size, the real broker margin and all
+   * four rules. Where it answers, it wins over anything computed in the browser.
+   */
+  async refreshFromServer() {
+    const legs = this.legsPayload();
+    if (!legs.length || !this.expiry || !this.spot) return;
+    const payload = {
+      strategy_name: this.strategyName || 'Custom',
+      underlying: 'NIFTY',
+      current_spot: this.spot,
+      iv_per_leg: {},
+      legs,
+    };
+
+    await Promise.all([
+      (async () => {
+        try {
+          this.preview = await api.previewOrder({ underlying: 'NIFTY', current_spot: this.spot, legs });
+          this.previewError = null;
+          const first = this.preview && this.preview.ordered_legs && this.preview.ordered_legs[0];
+          if (first && typeof first.lot_size === 'number' && first.lot_size > 0) {
+            this.lotSize = first.lot_size;
+            this.lotSizeSource = 'FYERS contract master, resolved server-side';
           }
+        } catch (err) {
+          this.preview = null;
+          this.previewError = (err && err.message) || String(err);
         }
-      } catch (err) {
-        this._showSafetyWarningBanner(
-          'Overnight-naked safety check unavailable — Supabase unreachable. Inspect open positions manually before market close.'
-        );
+      })(),
+      (async () => {
+        try {
+          this.validation = await api.validateStrategy(payload);
+          this.validationError = null;
+        } catch (err) {
+          this.validation = null;
+          this.validationError = (err && err.message) || String(err);
+        }
+      })(),
+    ]);
+
+    this.renderAll();
+  }
+
+  // ------------------------------------------------------------- render bits
+
+  renderAll() {
+    this.renderSpot();
+    this.renderExpiryPickers();
+    this.renderLegs();
+    this.renderIvs();
+    this.renderRight();
+    if (this.ticker) this.ticker.render(this.tickerItems());
+  }
+
+  renderRight() {
+    this.renderMetrics();
+    this.renderSliders();
+    this.renderChart();
+    this.renderGreeks();
+    this.renderRules();
+    this.renderExecute();
+  }
+
+  tickerItems() {
+    const cap = this.capital || {};
+    return [
+      { label: 'NIFTY 50', value: num(this.spot, 2), note: this.spotFreshness || '' },
+      { label: 'Lot', value: this.lotSize === null ? null : String(this.lotSize), note: this.lotSize === null ? 'server has not confirmed it' : 'contract master' },
+      { label: 'Expiry', value: this.expiry || null },
+      { label: 'Balance', value: inr(cap.risk_capital_inr), note: cap.source ? 'FYERS funds()' : '' },
+      { label: 'Running loss cap', value: inr(cap.primary_risk_cap_inr), note: '1%' },
+      { label: 'Overnight gap cap', value: typeof cap.risk_capital_inr === 'number' ? inr(cap.risk_capital_inr * 0.02) : null, note: '2%' },
+      { label: 'Black swan cap', value: inr(cap.black_swan_fuse_inr), note: '5%' },
+      { label: 'Margin ceiling', value: inr(cap.deployable_margin_ceiling_inr), note: cap.ceiling_unavailable_reason || '2x cash equivalent' },
+      { label: 'Margin used', value: inr(this.marginUsed), note: this.marginUsed === null ? 'positions unread' : '' },
+    ];
+  }
+
+  renderSpot() {
+    const host = this.container.querySelector('#desk-spot');
+    if (!host) return;
+    host.innerHTML =
+      `<span style="font-family:var(--m);font-size:11px;color:var(--fg-3)">NIFTY</span>` +
+      `<b>${this.spot === null ? '—' : escapeHtml(num(this.spot, 2))}</b>` +
+      (this.spot === null
+        ? `<span class="chip c-na">${escapeHtml(this.spotError || 'no live price')}</span>`
+        : `<span class="chip c-live">live</span>`) +
+      (this.lotSize === null
+        ? `<span class="chip c-na">lot unconfirmed</span>`
+        : `<span class="chip c-info">lot ${this.lotSize}</span>`);
+  }
+
+  renderExpiryPickers() {
+    const opts = this.expiries.length
+      ? this.expiries
+          .map((e) => `<option value="${escapeHtml(e.date)}"${e.date === this.expiry ? ' selected' : ''}>${escapeHtml(e.label)}${e.is_monthly ? ' · monthly' : ''}</option>`)
+          .join('')
+      : `<option value="">${escapeHtml(this.expiryError ? 'expiries unavailable' : 'loading…')}</option>`;
+    ['global-expiry', 'preset-expiry'].forEach((id) => {
+      const el = this.container.querySelector(`#${id}`);
+      if (el) {
+        el.innerHTML = opts;
+        if (this.expiry) el.value = this.expiry;
       }
-    }, 30000);
-    if (this.cronTimer && typeof this.cronTimer.unref === 'function') {
-      this.cronTimer.unref();
+    });
+  }
+
+  renderPresets() {
+    const host = this.container.querySelector('#strategy-presets-container');
+    if (!host) return;
+    host.innerHTML = Object.keys(PRESETS)
+      .map((name) => `<div class="preset${this.strategyName === name ? ' on' : ''}" data-name="${escapeHtml(name)}">
+        <svg width="64" height="32" viewBox="0 0 64 32">
+          <line x1="0" y1="17" x2="64" y2="17" stroke="var(--line-2)" stroke-width="1"/>
+          <path d="${SPARKS[name]}" fill="none" stroke="var(--fg)" stroke-width="1.8" stroke-linejoin="round"/>
+        </svg><span>${escapeHtml(name)}</span></div>`)
+      .join('');
+  }
+
+  renderLegs() {
+    const host = this.container.querySelector('#leg-builder-mount');
+    const expiryLabel = (this.expiries.find((e) => e.date === this.expiry) || {}).label || (this.expiry || '—');
+    if (host) {
+      host.innerHTML = this.legs
+        .map((l, i) => `
+        <div class="lr${l.on ? '' : ' off'}">
+          <input type="checkbox" ${l.on ? 'checked' : ''} data-i="${i}" data-f="on" aria-label="Include this leg"
+                 style="width:15px;height:15px;padding:0;accent-color:var(--info)">
+          <button class="bs ${l.bs}" data-i="${i}" data-f="bs" type="button" title="Buy or sell">${l.bs}</button>
+          <input value="${escapeHtml(expiryLabel)}" readonly title="Change the expiry for all legs in the toolbar above"
+                 style="text-align:center;color:var(--fg-2);cursor:default">
+          <div class="stepper">
+            <button data-i="${i}" data-f="strike-" type="button" aria-label="Strike down 50">−</button>
+            <input value="${l.strike}" data-i="${i}" data-f="strike" inputmode="numeric" aria-label="Strike">
+            <button data-i="${i}" data-f="strike+" type="button" aria-label="Strike up 50">+</button>
+          </div>
+          <select data-i="${i}" data-f="type" aria-label="Call or put">
+            <option${l.type === 'CE' ? ' selected' : ''}>CE</option>
+            <option${l.type === 'PE' ? ' selected' : ''}>PE</option>
+          </select>
+          <input value="${l.lots}" data-i="${i}" data-f="lots" inputmode="numeric" aria-label="Lots">
+          <input value="${l.price === null ? '' : l.price.toFixed(2)}" data-i="${i}" data-f="price"
+                 inputmode="decimal" placeholder="—" title="${escapeHtml(l.priceSource || '')}" aria-label="Price">
+          <button class="trash" data-i="${i}" data-f="del" type="button" aria-label="Delete leg" title="Delete leg">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">
+              <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6"/>
+              <path d="M10 11v6M14 11v6"/></svg></button>
+        </div>`)
+        .join('');
+    }
+
+    const count = this.container.querySelector('#leg-count');
+    if (count) count.textContent = this.legs.length ? `${this.legs.filter((l) => l.on).length} active` : '';
+
+    const cost = entryCost(this.legs, this.lotSize);
+    const net = this.container.querySelector('#net-cost');
+    if (net) {
+      if (!this.legs.length) net.innerHTML = '';
+      else if (cost === null) net.innerHTML = `<span class="na">net cost unavailable</span>`;
+      else net.innerHTML = cost >= 0
+        ? `Net debit <b>${escapeHtml(inr(cost))}</b>`
+        : `Net credit <b style="color:var(--up)">${escapeHtml(inr(-cost))}</b>`;
+    }
+
+    const why = this.container.querySelector('#leg-why');
+    if (why) {
+      if (!this.legs.length) {
+        why.textContent = 'No legs. Load a ready-made strategy or add one.';
+      } else {
+        const on = this.legs.filter((l) => l.on);
+        const missing = on.filter((l) => l.price === null).length;
+        const contracts = this.lotSize === null ? null : on.reduce((a, l) => a + l.lots, 0) * this.lotSize;
+        why.textContent =
+          (this.lotSize === null
+            ? 'Contract size not confirmed by the server yet, so nothing is scaled into rupees. '
+            : `Contract size ${this.lotSize} per lot, ${this.lotSizeSource}. ${on.length} active leg(s), ${contracts} contracts. `) +
+          (missing
+            ? `${missing} leg(s) have no traded price — type your own; nothing is seeded for you.`
+            : 'Prices are the traded prices from the chain, or the ones you typed.');
+      }
     }
   }
 
-  resolveAddHedge(violation) {
-    if (!violation || !violation.suggested_hedges || violation.suggested_hedges.length === 0) return;
-    const h = violation.suggested_hedges[0];
-    const currentLegs = this.legBuilder.getLegs();
-    currentLegs.push({
-      strike: h.strike,
-      option_type: h.option_type,
-      direction: 'buy',
-      quantity_lots: h.quantity_lots || 1,
-      lot_size: 75,
-      expiry_date: h.expiry_date,
-      entry_premium: 35.0,
-    });
-    this.legBuilder.setLegs(currentLegs);
+  renderIvs() {
+    const host = this.container.querySelector('#iv-mount');
+    if (!host) return;
+    const strikes = [...new Set(this.legs.filter((l) => l.on).map((l) => l.strike))].sort((a, b) => a - b);
+    if (!strikes.length) {
+      host.innerHTML = '<div class="na" style="font-size:12.5px">Add a leg to edit its volatility.</div>';
+      return;
+    }
+    host.innerHTML =
+      `<table class="g"><thead><tr><th>Strike</th><th style="text-align:right">IV %</th><th>Source</th></tr></thead><tbody>` +
+      strikes
+        .map((k) => {
+          const v = this.ivPctByStrike[k];
+          const cell = v > 0
+            ? `<div class="stepper">
+                 <button data-iv="${k}" data-d="-0.5" type="button" aria-label="Lower IV">−</button>
+                 <input value="${v.toFixed(1)}" data-ivin="${k}" inputmode="decimal" aria-label="Implied volatility">
+                 <button data-iv="${k}" data-d="0.5" type="button" aria-label="Raise IV">+</button></div>`
+            : `<div class="stepper"><input value="" placeholder="—" data-ivin="${k}" inputmode="decimal" aria-label="Implied volatility"></div>`;
+          const src = v > 0 ? this.ivSource[k] || 'entered' : 'unavailable — no traded price to imply from';
+          return `<tr><td class="n" style="text-align:left">${k}</td>
+            <td class="n" style="width:120px">${cell}</td>
+            <td style="color:var(--fg-3);font-size:11px">${escapeHtml(src)}</td></tr>`;
+        })
+        .join('') +
+      `</tbody></table>`;
   }
 
-  async resolveExitPosition(violation) {
-    if (!violation || !violation.position_id) return;
+  _met(k, value, sub, colour) {
+    return `<div class="met"><div class="k">${escapeHtml(k)}</div>
+      <div class="v${value !== null && String(value).length > 7 ? ' sm' : ''}"${colour ? ` style="color:${colour}"` : ''}>${value === null ? '<span class="na" style="font-size:14px">unavailable</span>' : escapeHtml(value)}</div>
+      <div class="s">${escapeHtml(sub || '')}</div></div>`;
+  }
+
+  marginFree() {
+    const ceiling = this.capital && typeof this.capital.deployable_margin_ceiling_inr === 'number'
+      ? this.capital.deployable_margin_ceiling_inr
+      : null;
+    if (ceiling === null || this.marginUsed === null) return null;
+    return ceiling - this.marginUsed;
+  }
+
+  renderMetrics() {
+    const host = this.container.querySelector('#metric-row');
+    if (!host) return;
+
+    const opts = this.mathOpts();
+    const { maxLoss, maxProfit, unlimited, unlimitedUp } = maxLossProfit(this.legs, opts);
+    const bes = breakevens(this.legs, opts);
+    const bal = this.capital && typeof this.capital.risk_capital_inr === 'number' ? this.capital.risk_capital_inr : null;
+
+    // Margin needed is the broker's number or nothing. It is never modelled here.
+    const need = this.preview && typeof this.preview.margin_required_inr === 'number'
+      ? this.preview.margin_required_inr
+      : null;
+    const free = this.marginFree();
+    const fits = need !== null && free !== null ? need <= free : null;
+
+    const T = (this.dteDays || 0) / 365;
+    const proj = this.targetSpot ? pnlAt(this.legs, this.targetSpot, T, opts) : null;
+
+    // A ratio is only meaningful with a capped loss AND a profit worth having.
+    const mathRan = maxLoss !== null && maxProfit !== null;
+    const rr = !unlimited && mathRan && maxLoss > 0 && maxProfit > 0 ? maxProfit / maxLoss : null;
+    const rrNote = unlimited
+      ? 'the loss has no ceiling'
+      : mathRan && maxProfit !== null && maxProfit <= 0
+        ? 'the best case here is still a loss'
+        : '';
+
+    const marginSub = need === null
+      ? (this.previewError || (this.preview && this.preview.margin_unavailable_reason) || 'the broker has not priced this basket')
+      : free === null
+        ? 'free margin unknown until positions and the ceiling are read'
+        : fits
+          ? `fits · ${inr(free)} free`
+          : `SHORT BY ${inr(need - free)} · ${inr(free)} free`;
+
+    host.innerHTML =
+      this._met('Margin needed', need === null ? null : inr(need), marginSub,
+        need === null ? 'var(--fg-3)' : fits === null ? 'var(--fg-2)' : fits ? 'var(--up)' : 'var(--down)') +
+      this._met('Margin used', this.marginUsed === null ? null : inr(this.marginUsed),
+        this.capital && typeof this.capital.deployable_margin_ceiling_inr === 'number'
+          ? `of ${inr(this.capital.deployable_margin_ceiling_inr)} ceiling`
+          : 'ceiling unavailable', 'var(--fg-2)') +
+      this._met('Max profit', maxProfit === null ? null : inr(maxProfit),
+        maxProfit !== null && bal ? `${((maxProfit / bal) * 100).toFixed(2)}% of balance` : '',
+        maxProfit === null ? null : maxProfit >= 0 ? 'var(--up)' : 'var(--down)') +
+      this._met('Max loss', unlimited ? 'Unlimited' : maxLoss === null ? null : inr(maxLoss),
+        unlimited ? `no ceiling ${unlimitedUp ? 'above' : 'below'}` : maxLoss !== null && bal ? `${((maxLoss / bal) * 100).toFixed(2)}% of balance` : '', 'var(--down)') +
+      this._met('Breakeven', bes.length ? bes.map((b) => num(b)).join(' / ') : mathRan ? 'none' : null,
+        bes.length === 1 && this.spot
+          ? `${bes[0] - this.spot > 0 ? '+' : ''}${Math.round(bes[0] - this.spot)} pts from spot`
+          : bes.length > 1
+            ? 'two sides'
+            : mathRan
+              ? 'the payoff never crosses zero'
+              : '') +
+      this._met('Reward : risk', unlimited || (mathRan && rr === null) ? 'n/a' : rr === null ? null : `1 : ${rr.toFixed(2)}`, rrNote) +
+      this._met('At your target', proj === null ? null : inr(proj),
+        this.targetSpot ? `${num(this.targetSpot)} in ${Math.max(0, (this.dteMax || 0) - (this.dteDays || 0))}d` : '',
+        proj === null ? null : proj >= 0 ? 'var(--up)' : 'var(--down)');
+  }
+
+  renderSliders() {
+    const text = (id, value) => {
+      const el = this.container.querySelector(`#${id}`);
+      if (el) el.textContent = value;
+    };
+
+    const range = this.container.querySelector('#target-range');
+    if (range && this.spot) {
+      const lo = Math.round((this.spot * 0.94) / 5) * 5;
+      const hi = Math.round((this.spot * 1.06) / 5) * 5;
+      range.min = String(lo);
+      range.max = String(hi);
+      range.disabled = false;
+      if (this.targetSpot === null) this.targetSpot = Math.round(this.spot / 5) * 5;
+      range.value = String(this.targetSpot);
+      text('target-min', num(lo));
+      text('target-max', num(hi));
+      text('target-text', num(this.targetSpot));
+      text('target-pct', signedPct(((this.targetSpot - this.spot) / this.spot) * 100));
+    } else {
+      text('target-text', 'no live spot');
+      text('target-pct', '—');
+      if (range) range.disabled = true;
+    }
+
+    const dte = this.container.querySelector('#dte-range');
+    if (dte && this.dteMax > 0) {
+      dte.min = '0';
+      dte.max = String(this.dteMax);
+      dte.disabled = false;
+      dte.value = String(this.dteDays);
+      text('dte-text', this.dteDays === 0 ? 'expiry day' : `${this.dteDays} day${this.dteDays > 1 ? 's' : ''}`);
+      text('dte-date', (this.expiries.find((e) => e.date === this.expiry) || {}).label || this.expiry || '—');
+    } else {
+      text('dte-text', 'no expiry');
+      if (dte) dte.disabled = true;
+    }
+  }
+
+  renderChart() {
+    if (!this.payoffChart) return;
+    this.payoffChart.update({
+      legs: this.legs,
+      spot: this.spot,
+      lotSize: this.lotSize,
+      ivFor: (leg) => this.ivFor(leg),
+      dteDays: this.dteDays,
+      dteMax: this.dteMax,
+      targetSpot: this.targetSpot,
+      reason: this.spot === null ? this.spotError : null,
+    });
+    const why = this.container.querySelector('#payoff-why');
+    if (why) {
+      why.textContent = this.legs.length
+        ? 'Black line is the value at expiry. Blue line is the value on your chosen date, which still holds time value. Drag anywhere on the graph to move the target.'
+        : '';
+    }
+  }
+
+  renderGreeks() {
+    const host = this.container.querySelector('#greeks-table');
+    if (!host) return;
+    if (!this.legs.filter((l) => l.on).length) {
+      host.innerHTML = '<tbody><tr><td class="na">Add a leg.</td></tr></tbody>';
+      return;
+    }
+    const g = netGreeks(this.legs, this.targetSpot || this.spot, (this.dteDays || 0) / 365, {
+      lotSize: this.lotSize,
+      ivFor: (leg) => this.ivFor(leg),
+    });
+    if (!g) {
+      host.innerHTML =
+        '<tbody><tr><td class="na">Greeks unavailable: they need a measured volatility on every leg and a confirmed contract size.</td></tr></tbody>';
+      return;
+    }
+    const cell = (v, colour) =>
+      `<td class="n" style="text-align:left;font-size:16px;font-weight:600${colour ? `;color:${colour}` : ''}">${escapeHtml(v)}</td>`;
+    host.innerHTML =
+      `<thead><tr><th>Delta</th><th>Gamma</th><th>Theta / day</th><th>Vega / 1% IV</th></tr></thead><tbody><tr>` +
+      cell(g.delta.toFixed(1)) +
+      cell(g.gamma.toFixed(4)) +
+      cell(inr(g.theta), g.theta >= 0 ? 'var(--up)' : 'var(--down)') +
+      cell(inr(g.vega)) +
+      `</tr></tbody>`;
+  }
+
+  _rule(state, k, value, sub) {
+    return `<div class="rl ${state}"><div class="k">${escapeHtml(k)}</div>
+      <div class="v"${state === 'pass' ? ' style="color:var(--up)"' : state === 'fail' ? ' style="color:var(--down)"' : ''}>${value === null ? '<span class="na" style="font-size:13px">unavailable</span>' : escapeHtml(value)}</div>
+      <div class="s">${escapeHtml(sub)}</div></div>`;
+  }
+
+  renderRules() {
+    const host = this.container.querySelector('#rule-validation-mount');
+    const why = this.container.querySelector('#rule-why');
+    const src = this.container.querySelector('#rules-source');
+    if (!host) return;
+
+    if (!this.legs.filter((l) => l.on).length) {
+      host.innerHTML = '<div class="rl idle" style="grid-column:1/-1"><div class="k">Waiting for a position</div></div>';
+      if (why) why.textContent = '';
+      if (src) src.textContent = '';
+      return;
+    }
+
+    const v = this.validation;
+    if (src) {
+      src.textContent = v && v.capital && typeof v.capital.risk_capital_inr === 'number'
+        ? `caps from a live balance of ${inr(v.capital.risk_capital_inr)}`
+        : 'caps unavailable';
+    }
+
+    if (!v) {
+      host.innerHTML = ['1 · Running loss', '2 · Overnight gap', '3 · Black swan', '4 · Margin ceiling']
+        .map((k) => this._rule('idle', k, null, 'the server has not checked this position'))
+        .join('');
+      if (why) {
+        why.textContent = this.validationError
+          ? `The rule check could not run: ${this.validationError}`
+          : 'The rule check has not run yet.';
+      }
+      return;
+    }
+
+    const rr = v.realistic_risk || {};
+    const blast = v.blast_radius || {};
+    const carry = v.carry || null;
+    const unlimited = Boolean(v.max_loss_is_unlimited);
+
+    // pct_of_margin arrives ALREADY as a percentage: 1.74 means 1.74%.
+    const pctNote = (x) => (typeof x.pct_of_margin === 'number' ? ` · ${x.pct_of_margin.toFixed(2)}% of margin` : '');
+
+    const rule1 = this._rule(
+      typeof rr.loss_inr === 'number' ? (rr.passed ? 'pass' : 'fail') : 'idle',
+      '1 · Running loss',
+      typeof rr.loss_inr === 'number' ? inr(rr.loss_inr) : null,
+      typeof rr.cap_inr === 'number' ? `of ${inr(rr.cap_inr)}${pctNote(rr)}` : 'cap unavailable',
+    );
+
+    const rule2 = carry
+      ? this._rule(
+          carry.hedged === false || typeof carry.gap_loss_inr !== 'number' ? 'fail' : carry.may_carry_overnight ? 'pass' : 'fail',
+          '2 · Overnight gap',
+          carry.hedged === false ? 'Unlimited' : typeof carry.gap_loss_inr === 'number' ? inr(carry.gap_loss_inr) : null,
+          carry.hedged === false
+            ? 'not hedged, cannot carry'
+            : typeof carry.cap_inr === 'number'
+              ? `of ${inr(carry.cap_inr)}`
+              : 'cap unavailable',
+        )
+      : this._rule('idle', '2 · Overnight gap', null, 'the gap test needs measured daily moves');
+
+    const rule3 = this._rule(
+      unlimited ? 'fail' : typeof blast.loss_inr === 'number' ? (blast.passed ? 'pass' : 'fail') : 'idle',
+      '3 · Black swan',
+      unlimited ? 'Unlimited' : typeof blast.loss_inr === 'number' ? inr(blast.loss_inr) : null,
+      unlimited
+        ? 'no ceiling at expiry'
+        : typeof blast.cap_inr === 'number'
+          ? `of ${inr(blast.cap_inr)}${pctNote(blast)}`
+          : 'cap unavailable',
+    );
+
+    const ceilingCheck = (v.checks || []).find((c) => c.rule === 'deployable_margin_ceiling');
+    const ceiling = ceilingCheck && typeof ceilingCheck.cap_inr === 'number'
+      ? ceilingCheck.cap_inr
+      : v.capital && typeof v.capital.deployable_margin_ceiling_inr === 'number'
+        ? v.capital.deployable_margin_ceiling_inr
+        : null;
+    const rule4 = this._rule('idle', '4 · Margin ceiling', ceiling === null ? null : inr(ceiling), 'twice your cash equivalent');
+
+    host.innerHTML = rule1 + rule2 + rule3 + rule4;
+
+    if (why) {
+      const parts = [];
+      if (typeof rr.loss_inr === 'number' && typeof rr.cap_inr === 'number') {
+        parts.push(`Rule 1: the worse of a two-sigma day either way is ${inr(rr.loss_inr)}, against 1% of your balance, ${inr(rr.cap_inr)}.`);
+      }
+      if (carry && carry.arithmetic) parts.push(`Rule 2: ${carry.arithmetic}`);
+      else if (carry && carry.move) {
+        parts.push(`Rule 2: NIFTY gaps ${carry.move.gap_tested_points} points either way, twice your ${carry.move.average_daily_move_points}-point average over ${carry.move.sessions_used} sessions, held to the next session.`);
+      }
+      if (carry && carry.reasons && carry.reasons.length) parts.push(carry.reasons.join(' '));
+      (v.warnings || []).forEach((w) => parts.push(w));
+      why.textContent = parts.join(' ');
+    }
+  }
+
+  renderExecute() {
+    const banner = this.container.querySelector('#entry-banner');
+    if (banner) {
+      banner.innerHTML = this.legs.filter((l) => l.on).length
+        ? '<b>Intraday entry is never blocked</b>, including a naked or half-built structure. Only carrying overnight is gated, and only on two conditions: hedged, and inside the 2% gap test.'
+        : 'Load a strategy on the left to see every number recalculate.';
+    }
+
+    const host = this.container.querySelector('#execute-row-mount');
+    if (!host) return;
+
+    const v = this.validation;
+    const carry = v && v.carry;
+    let cls = 'v-warn';
+    let text = 'Intraday ok · overnight not assessed yet';
+    if (carry && carry.may_carry_overnight) {
+      cls = 'v-ok';
+      text = 'Intraday ok · may carry overnight';
+    } else if (carry) {
+      cls = 'v-warn';
+      text = 'Intraday ok · must close before the bell';
+    }
+
+    const blocked = v && v.execution_blocked_reason ? v.execution_blocked_reason : null;
+    const hasLegs = this.legs.filter((l) => l.on).length > 0;
+    const priced = hasLegs && this.legs.filter((l) => l.on).every((l) => l.price !== null);
+
+    host.innerHTML =
+      `<span class="verdict ${cls}">${escapeHtml(text)}</span>` +
+      `<button class="btn pri" id="btn-execute" type="button"${hasLegs && priced ? '' : ' disabled'}>Execute paper trade</button>` +
+      `<span style="margin-left:auto;font-family:var(--m);font-size:11px;color:var(--fg-3)" id="execute-note">${escapeHtml(
+        this.executeNote ||
+          (!hasLegs
+            ? ''
+            : !priced
+              ? 'every leg needs a price before this can be sent'
+              : blocked || 'paper only — there is no real-money order code in this app'),
+      )}</span>`;
+
+    const btn = this.container.querySelector('#btn-execute');
+    if (btn && typeof btn.addEventListener === 'function') {
+      btn.addEventListener('click', () => this.executePaperTrade());
+    }
+  }
+
+  async executePaperTrade() {
+    const legs = this.legsPayload();
+    if (!legs.length) return;
+    this.executeNote = 'Sending…';
+    this.renderExecute();
     try {
-      await api.closePosition(violation.position_id, {
-        close_reason: 'time_exit',
-        notes: 'Exited before 15:20 IST cutoff to comply with § 10a overnight naked rule.',
+      const res = await api.executeMultiLeg({
+        strategy_name: this.strategyName || 'Custom',
+        underlying: 'NIFTY',
+        current_spot: this.spot,
+        order_type: 'LIMIT',
+        session_id: this.sessionId,
+        mode: 'paper',
+        legs: legs.map((l) => ({ ...l, order_type: 'LIMIT' })),
       });
-      alert(`Position #${violation.position_id.slice(0, 8)} exited successfully.`);
+      this.executeNote = res && res.position_id
+        ? `Paper position ${String(res.position_id).slice(0, 8)} opened and journalled.`
+        : 'Sent. The server did not return a position id.';
       await this.refreshPositions();
     } catch (err) {
-      alert(`Could not close position: ${err.message || err}`);
+      this.executeNote = `Not executed: ${(err && err.message) || err}`;
     }
+    this.renderExecute();
   }
 
   destroy() {
-    if (this.cronTimer) {
-      clearInterval(this.cronTimer);
-      this.cronTimer = null;
+    if (this._serverTimer) {
+      clearTimeout(this._serverTimer);
+      this._serverTimer = null;
     }
   }
 }
