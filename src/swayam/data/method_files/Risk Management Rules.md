@@ -1,5 +1,21 @@
 # 🛡️ Risk Management Rules
 
+> **CORRECTED 2026-09-08.** Three things in this document were out of date and
+> the platform was reading them. Recorded here rather than changed quietly.
+>
+> 1. **Black-swan fuse raised from 3% to 5%**, on Abhishek's written instruction
+>    of 2026-09-07. His reasoning: a black swan is a once-in-two-or-three-years
+>    event and as likely to favour him as not.
+> 2. **NIFTY lot size corrected from 75 to 65.** 65 is the real contract size,
+>    read from the FYERS contract master. Every worked example below was
+>    recomputed. This does not change any rule, only the arithmetic in the
+>    examples.
+> 3. **Margin base updated from ₹8.5 lakh to ₹9,71,002.38**, the live account
+>    total on 2026-09-07 after a ₹1,00,000 cash deposit. The platform now reads
+>    this live from the broker each session instead of from a typed-in figure.
+>
+> Derived caps at today's balance: 1% = **₹9,710**, 5% fuse = **₹48,550**.
+
 **Purpose:** The arithmetic that keeps you in the game. Every rule below is either **fixed** (won't change after paper trading) or **tentative** (gets refined once you have real data). Both are labelled explicitly.
 
 *Part of [[Method Overview]]. Grounded in the evidence in [[00 - Reference/Historical Trade Journal/Historical Trade Journal Overview|Historical Trade Journal]] and [[00 - Reference/Historical Swing Trades/_Swing Trades Overview|Historical Swing Trades]].*
@@ -105,15 +121,15 @@ Everything else is enforcement of this one rule.
 
 ## 6. Single-trade blast-radius rule — FIXED
 
-- **Any single trade whose realized loss exceeds 3% of margin base = system failure.**
-- 3% of ₹8.5L = **~₹25,500 max any single trade can lose, even if the standard rules break.**
+- **Any single trade whose realized loss exceeds 5% of margin base = system failure.**
+- 5% of ₹9,71,002 = **~₹48,550 max any single trade can lose, even if the standard rules break.**
 - Above that → **mandatory pause** (no trading for the next 3 trading days) and full process audit before restart. Root-cause the rule-breaking, not the trade.
 
-**Why:** the 1% rule assumes stops are honored. This rule is the hard fuse behind it. If a stop gets missed and the loss balloons past 3%, that's not just a bad trade — it's a signal the system failed and needs fixing before the next trade.
+**Why:** the 1% rule assumes stops are honored. This rule is the hard fuse behind it. If a stop gets missed and the loss balloons past 5%, that's not just a bad trade — it's a signal the system failed and needs fixing before the next trade.
 
 ## 7. Daily loss cap — TENTATIVE
 
-- **Daily loss cap: 2% of margin base (~₹17,000).**
+- **Daily loss cap: 2% of margin base (~₹19,420).**
 - If hit, **stop trading for the day.** No revenge scalps. Log the day-close honestly.
 - Applies whether it's one trade or three that combined to reach the cap.
 
@@ -129,24 +145,24 @@ Everything else is enforcement of this one rule.
 
 ## 9. Position-sizing worked example
 
-Assumptions: margin base ₹8.5L → 1% = ₹8,500 max risk. NIFTY lot size = 75.
+Assumptions: margin base ₹9,71,002 → 1% = ₹9,710 max risk. NIFTY lot size = 65.
 
 **Example 1 — Single-leg long put (directional bearish):**
 - Buy NIFTY 24500 PE at ₹150
 - Setup invalidates above 24700 spot → PE would drop to ~₹110 (worst-case exit)
-- Risk per lot = (150 − 110) × 75 = ₹3,000
-- Max lots = ₹8,500 / ₹3,000 = **2 lots** (round down; never round up)
-- Position: 2 lots × ₹150 × 75 = ₹22,500 premium paid
-- **Risk: ₹6,000** (within cap)
-- Target for 1:3 R:R: PE hits ~₹270 (₹120 gain × 75 × 2 = ₹18,000 gross gain)
+- Risk per lot = (150 − 110) × 65 = ₹2,600
+- Max lots = ₹9,710 / ₹2,600 = **3 lots** (round down; never round up)
+- Position: 3 lots × ₹150 × 65 = ₹29,250 premium paid
+- **Risk: ₹7,800** (within cap)
+- Target for 1:3 R:R: PE hits ~₹270 (₹120 gain × 65 × 3 = ₹23,400 gross gain)
 
 **Example 2 — 4-leg Iron Condor (theta play):**
 - Sell 25000 CE, Buy 25200 CE, Sell 24500 PE, Buy 24300 PE (200-point wings each side)
-- Net credit received (say): ₹40 × 75 = ₹3,000 per lot
-- Max loss = (200-point wing − ₹40 net credit) × 75 = ₹12,000 per lot **at expiry, no adjustment**
-- **1 lot risk = ₹12,000 exceeds ₹8,500 cap.** ❌ **Cannot take this size at ₹8,500 cap.**
+- Net credit received (say): ₹40 × 65 = ₹2,600 per lot
+- Max loss = (200-point wing − ₹40 net credit) × 65 = ₹10,400 per lot **at expiry, no adjustment**
+- **1 lot risk = ₹10,400 exceeds ₹9,710 cap.** ❌ **Cannot take this size at ₹9,710 cap.**
 - **Options:**
-  - Narrow wings to 100 points → max loss = ₹4,500/lot → 1 lot risk within cap (single lot)
+  - Narrow wings to 100 points → max loss = ₹3,900/lot → 1 lot risk within cap (single lot)
   - Or use tighter strike selection to increase net credit
   - Or don't take this trade — its risk profile doesn't fit the cap
 
@@ -201,10 +217,10 @@ The primary decision variable. Compares to how much the spread would lose if NIF
 - If this cap fails → the trade is too big for a normal bad day, don't take it.
 - If this cap passes → the trade is sized correctly for realistic day-to-day risk.
 
-### 2. Blast Radius Fuse — 3.0% of margin base
+### 2. Blast Radius Fuse — 5.0% of margin base
 The last-resort ceiling. Compares to the absolute mathematical worst case — spot going to zero for a bearish spread, or to infinity for a bullish one. This is a black swan event (2008, COVID-March-2020 scale).
 
-- If this cap fails → even the apocalypse would take out more than 3% of the account. Don't take the trade regardless of realistic risk.
+- If this cap fails → even the apocalypse would take out more than 5% of the account. Don't take the trade regardless of realistic risk.
 - If this cap passes → survival is assured even in the worst case.
 
 ### Why two caps
@@ -212,7 +228,7 @@ The mathematical max loss on a Bear Put Spread with tight strikes can be ₹15,0
 
 ### Parameters
 - `realistic_risk_cap_pct: 1.0` — the realistic cap as a percentage of margin base
-- `blast_radius_pct: 3.0` — the absolute cap as a percentage of margin base
+- `blast_radius_pct: 5.0` — the absolute cap as a percentage of margin base (raised from 3.0 on 2026-09-08)
 - `realistic_stress_sigma: 2.0` — how many standard deviations the stress test uses
 - `realized_vol_window_days: 20` — trailing window for volatility computation
 

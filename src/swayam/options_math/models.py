@@ -34,7 +34,12 @@ class Leg:
         quantity_lots: Number of lots traded.
         entry_premium: Premium paid (buy) or received (sell), per share in rupees.
         expiry_date: Contract expiration date.
-        lot_size: Number of underlying shares per lot (default: 75 for NIFTY).
+        lot_size: Number of underlying shares per lot. REQUIRED, with no
+            default. It must come from the FYERS contract master, via
+            services.contract_master.get_lot_size. This used to default to 75.
+            The real NIFTY lot is 65, so every contract-scaled rupee figure
+            produced here was 15.4% too large. The default is what made that
+            silent, so there deliberately is not one any more.
     """
     strike: float
     option_type: OptionType
@@ -42,7 +47,7 @@ class Leg:
     quantity_lots: int
     entry_premium: float
     expiry_date: date
-    lot_size: int = 75
+    lot_size: int
 
 
 @dataclass(frozen=True)

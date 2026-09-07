@@ -18,7 +18,15 @@ class LegRequest(BaseModel):
     quantity_lots: int = Field(default=1, ge=1, description="Quantity in lots")
     entry_premium: float = Field(default=0.0, ge=0.0, description="Option premium per share (limit price for a LIMIT leg; the fill for paper)")
     expiry_date: str = Field(..., description="Expiration date in YYYY-MM-DD format")
-    lot_size: int = Field(default=75, ge=1, description="Underlying lot size")
+    lot_size: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Contract size. IGNORED if supplied. The server reads it from the "
+            "FYERS contract master, because a browser that hardcodes 75 is how "
+            "every contract-scaled figure came to be 15.4% too large."
+        ),
+    )
     order_type: str = Field(default="LIMIT", description="Per-leg order type: LIMIT or MARKET (chosen at the execution ticket; maps to FYERS multi-leg legs in Phase 2)")
 
     @field_validator("option_type")
@@ -52,6 +60,16 @@ class StrategyComputeRequest(BaseModel):
         default=None,
         description="Optional valuation date YYYY-MM-DD for T+N payoff evaluation (must not exceed expiry)",
     )
+    planned_exit_date: Optional[str] = Field(
+        default=None,
+        description=(
+            "When Abhishek intends to be out, YYYY-MM-DD. Today or absent means an "
+            "intraday trade, which nothing blocks. A later date means the position "
+            "will be carried overnight, and the carry rules then apply: it must be "
+            "hedged, and a gap of twice the average daily move must cost no more "
+            "than 2% of live capital."
+        ),
+    )
     target_spot: Optional[float] = Field(
         default=None,
         gt=0.0,
@@ -78,7 +96,11 @@ class PreviewLegItem(BaseModel):
     quantity_lots: int = Field(default=1, ge=1, description="Quantity in lots")
     entry_premium: float = Field(default=0.0, ge=0.0, description="Option premium per share")
     expiry_date: str = Field(..., description="Expiration date YYYY-MM-DD")
-    lot_size: int = Field(default=75, ge=1, description="Lot size")
+    lot_size: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Contract size. IGNORED if supplied; resolved server-side.",
+    )
     order_type: str = Field(default="LIMIT", description="LIMIT or MARKET")
 
 
@@ -99,19 +121,47 @@ class OrderedLegStep(BaseModel):
     lot_size: int
     entry_premium: float
     order_type: str
-    estimated_margin_inr: float
+    estimated_margin_inr: Optional[float] = Field(
+        default=None,
+        description=(
+            "Always null. The broker prices a basket, not a leg, so a per-leg "
+            "margin is not a real number. It used to be a hardcoded constant."
+        ),
+    )
     action_note: str
 
 
 class MultiLegPreviewResponse(BaseModel):
-    """Output with legs sorted BUY first and margin analysis."""
+    """Legs sorted BUY first, with the broker's real margin for the basket.
+
+    Every margin figure is Optional and every one of them may be null. That is
+    deliberate. These used to be hardcoded constants of Rs 32,000 hedged and
+    Rs 1,15,000 naked, which understated the real requirement by roughly half.
+    They now come from the FYERS margin endpoint, and when FYERS cannot be
+    reached the answer is null with a reason, never an estimate.
+    """
     ordered_legs: list[OrderedLegStep]
     buy_count: int
     sell_count: int
     total_debit_credit_inr: float
-    initial_margin_required_inr: float
-    final_hedged_margin_inr: float
-    margin_saved_inr: float
+
+    margin_required_inr: Optional[float] = Field(
+        default=None, description="Broker margin for the basket as ordered. Null means unavailable."
+    )
+    margin_if_unhedged_inr: Optional[float] = Field(
+        default=None, description="Broker margin for the short legs alone, for comparison."
+    )
+    margin_saved_by_hedge_inr: Optional[float] = Field(
+        default=None, description="Difference between the two above. Null if either is unavailable."
+    )
+    margin_available_inr: Optional[float] = Field(
+        default=None, description="Broker's available margin at the time of the quote."
+    )
+    margin_source: Optional[str] = Field(default=None, description="Where the margin figure came from.")
+    margin_fetched_at: Optional[str] = Field(default=None, description="When the margin was quoted.")
+    margin_unavailable_reason: Optional[str] = Field(
+        default=None, description="Why margin could not be established. Show this instead of a number."
+    )
 
 
 class ValidationCheck(BaseModel):
@@ -124,14 +174,48 @@ class ValidationCheck(BaseModel):
     floor: Optional[float] = None
     tolerance_pct: Optional[float] = None
     note: Optional[str] = None
+    blocking: bool = Field(
+        default=True,
+        description="False for checks that inform but never stop a trade.",
+    )
 
 
 class RiskVerdict(BaseModel):
-    """Verdict and metrics for a risk cap evaluation."""
-    loss_inr: float
+    """Verdict and metrics for a risk cap evaluation.
+
+    pct_of_margin is a PERCENTAGE already, e.g. 0.62 means 0.62%. The frontend
+    multiplied it by 100 again and printed 62% where the truth was 0.62%.
+    Do not multiply it. It is named badly for history's sake; the field to
+    trust when displaying is `arithmetic`.
+    """
+    loss_inr: Optional[float]
     cap_inr: float
-    pct_of_margin: float
+    pct_of_margin: Optional[float]
     passed: bool
+    cost_reserve_inr: Optional[float] = Field(
+        default=None,
+        description="Round-trip cost reserved and included in loss_inr. Null when not applicable.",
+    )
+    arithmetic: Optional[str] = Field(
+        default=None,
+        description="The whole sum in words, e.g. 'price loss + costs = total vs cap'. Display this.",
+    )
+
+
+class CapitalContext(BaseModel):
+    """The account figures the caps were computed from, with provenance."""
+    risk_capital_inr: float
+    free_cash_inr: float
+    collateral_inr: float
+    cash_equivalent_pledged_inr: Optional[float] = None
+    cash_equivalent_as_of: Optional[str] = None
+    deployable_margin_ceiling_inr: Optional[float] = None
+    ceiling_unavailable_reason: Optional[str] = None
+    reconciliation_note: Optional[str] = None
+    primary_risk_cap_inr: float
+    black_swan_fuse_inr: float
+    source: str
+    taken_at: str
 
 
 class ValidationResponse(BaseModel):
@@ -142,6 +226,31 @@ class ValidationResponse(BaseModel):
     blast_radius: RiskVerdict
     checks: list[ValidationCheck]
     warnings: list[str] = []
+    capital: Optional[CapitalContext] = None
+    execution_blocked_reason: Optional[str] = Field(
+        default=None,
+        description="Set when the structure may be viewed but must not be executed.",
+    )
+    max_loss_is_unlimited: bool = Field(
+        default=False,
+        description=(
+            "True when the loss at expiry has no ceiling, which happens with a net "
+            "short call position. Display 'Unlimited', never a number. JSON cannot "
+            "carry infinity, so blast_radius.loss_inr is null in that case."
+        ),
+    )
+    intraday: bool = Field(
+        default=True,
+        description="True when this is a same-day trade. Nothing blocks an intraday entry.",
+    )
+    carry: Optional[dict] = Field(
+        default=None,
+        description="The overnight carry assessment: gap loss, cap, move profile and reasons.",
+    )
+    running_loss_threshold_inr: Optional[float] = Field(
+        default=None,
+        description="1% of live capital. Above this on a live position the app goes red.",
+    )
 
 
 class PayoffPointResponse(BaseModel):

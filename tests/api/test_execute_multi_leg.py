@@ -60,7 +60,7 @@ def test_execute_multi_leg_success(mock_journal):
     }
 
     with patch("swayam.api.routes.execution.db") as mock_exec_db, \
-         patch("swayam.api.routes.validation.db") as mock_val_db:
+         patch("swayam.db.db") as mock_val_db:
         mock_val_db.get_margin_base_inr.return_value = 1000000.0
         mock_val_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
 

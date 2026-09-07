@@ -6,6 +6,7 @@ option spreads across a ±10% underlying spot price range. Calculates exact zero
 breakeven points, maximum profit, maximum loss, and implied reward-to-risk ratio.
 """
 
+import math
 from datetime import date
 from typing import Optional
 from swayam.options_math.engine import black_scholes_price
@@ -111,43 +112,87 @@ def compute_breakevens(spread: Spread, spot_range: Optional[tuple[float, float]]
     return tuple(sorted(unique_bes))
 
 
+def net_call_quantity(spread: Spread) -> int:
+    """Net long call exposure in shares. Negative means net short calls."""
+    total = 0
+    for leg in spread.legs:
+        if leg.option_type == OptionType.CALL:
+            sign = 1 if leg.direction == Direction.BUY else -1
+            total += sign * leg.quantity_lots * leg.lot_size
+    return total
+
+
+def net_put_quantity(spread: Spread) -> int:
+    """Net long put exposure in shares. Negative means net short puts."""
+    total = 0
+    for leg in spread.legs:
+        if leg.option_type == OptionType.PUT:
+            sign = 1 if leg.direction == Direction.BUY else -1
+            total += sign * leg.quantity_lots * leg.lot_size
+    return total
+
+
+def loss_is_unbounded(spread: Spread) -> bool:
+    """True when the loss at expiry has no ceiling.
+
+    Only the UPSIDE can be truly unbounded: a net short call position loses
+    more the higher the underlying goes, forever. The downside is bounded,
+    because an index cannot fall below zero, so a net short put position has a
+    real, finite, and usually enormous worst case which this module reports
+    honestly rather than calling infinite.
+    """
+    return net_call_quantity(spread) < 0
+
+
 def compute_max_profit_loss(
     spread: Spread,
     spot_range: Optional[tuple[float, float]] = None,
 ) -> tuple[float, float]:
-    """Calculates analytical/numerical max profit and max loss in rupees at expiry.
+    """Max profit and max loss at expiry, in rupees.
 
-    Args:
-        spread: Options spread.
-        spot_range: Optional evaluation range.
+    Returns max_loss as a POSITIVE magnitude, or `math.inf` when the loss has
+    no ceiling.
 
-    Returns:
-        tuple[float, float]: (max_profit_inr, max_loss_inr).
-                             max_loss_inr is returned as a positive magnitude.
+    Corrected 2026-09-08. This used to scan a window from 0.75x the lowest
+    strike to 1.25x the highest and report the worst point found, which for an
+    uncapped structure was not the worst case at all: it was an artefact of the
+    window. A short straddle came back as a confident Rs 3,69,200 when the
+    honest answer is unlimited, and the black-swan fuse was comparing the
+    account against that invented ceiling.
+
+    Now:
+      * a net short call position returns math.inf, so any cap comparison
+        correctly fails and the interface can render "Unlimited"
+      * the downside is evaluated at a spot of zero, which is the real floor
+        for an index, rather than at an arbitrary fraction of the low strike
     """
     if not spread.legs:
         return (0.0, 0.0)
 
     strikes = [leg.strike for leg in spread.legs]
-    min_strike, max_strike = min(strikes), max(strikes)
+    max_strike = max(strikes)
 
     if spot_range is not None:
         low, high = spot_range
     else:
-        low = max(min_strike * 0.75, 1.0)
+        # Zero is the true floor for an index. The upper bound only matters
+        # for a bounded structure, where the payoff is flat past the highest
+        # strike, so a little beyond it is enough.
+        low = 0.0
         high = max_strike * 1.25
 
-    # Check P&L at all strikes and domain boundaries
-    test_points = sorted(set([low, high] + strikes + [s - 100 for s in strikes] + [s + 100 for s in strikes]))
+    test_points = sorted(
+        set([low, high] + strikes + [s - 100 for s in strikes] + [s + 100 for s in strikes])
+    )
+    test_points = [p for p in test_points if p >= 0.0]
     pnls = [_spread_expiry_pnl(spread, s) for s in test_points]
 
-    max_p = max(pnls)
-    min_p = min(pnls)
+    max_profit = max(max(pnls), 0.0)
 
-    max_profit = max(max_p, 0.0)
-    max_loss = abs(min(min_p, 0.0))
+    if loss_is_unbounded(spread):
+        return (max_profit, math.inf)
 
-    return (max_profit, max_loss)
+    return (max_profit, abs(min(min(pnls), 0.0)))
 
 
 def compute_payoff_curve(
