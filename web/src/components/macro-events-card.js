@@ -51,36 +51,9 @@ export class MacroEventsCardComponent {
       }
     }
 
-    // Default fallback if database is empty
-    const list = this.events.length > 0 ? this.events : [
-      {
-        event_key: 'IN_CPI_FALLBACK',
-        event_name: 'India CPI Inflation (YoY)',
-        event_date: '2026-09-10',
-        country: 'IN',
-        importance: 'high',
-        highlighted: true,
-        impact_brief: 'Key inflation marker for RBI rate path. Expect ATM straddle IV crush post-announcement.',
-      },
-      {
-        event_key: 'US_FOMC_FALLBACK',
-        event_name: 'US Fed Interest Rate Decision (FOMC)',
-        event_date: '2026-09-13',
-        country: 'US',
-        importance: 'high',
-        highlighted: true,
-        impact_brief: 'Global risk sentiment trigger. Watch GIFT Nifty overnight gap potential and Bank NIFTY delta.',
-      },
-      {
-        event_key: 'IN_IIP_FALLBACK',
-        event_name: 'India Industrial Production (IIP)',
-        event_date: '2026-09-11',
-        country: 'IN',
-        importance: 'medium',
-        highlighted: true,
-        impact_brief: 'Manufacturing baseline. Moderate impact unless deviation exceeds 150 bps.',
-      },
-    ];
+    // No fabricated fallback — only REAL curated events from swayam_macro_events.
+    // Empty stays honestly empty (never invented events).
+    const list = this.events;
 
     // Stale warning banner (REINFORCEMENT 3)
     let staleBannerHtml = '';

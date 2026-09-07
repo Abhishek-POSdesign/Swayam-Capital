@@ -18,23 +18,24 @@ describe('ChatSurfaceComponent (Full-Width AI Workspace)', () => {
     const workspace = container.querySelector('.ai-trading-partner-workspace');
     expect(workspace).not.toBeNull();
     expect(workspace.style.width).toBe('100%');
-    expect(container.textContent).toContain('AI TRADING PARTNER · WHAT MATTERS TODAY');
-    expect(container.textContent).toContain('DAILY PRE-MARKET');
+    expect(container.textContent).toContain('AI TRADING PARTNER');
+    // No fake pre-market brief framing anymore.
+    expect(container.textContent).not.toContain('WHAT MATTERS TODAY');
+    expect(container.textContent).not.toContain('DAILY PRE-MARKET');
   });
 
-  it('renders brief block with markdown formatting and action buttons', () => {
+  it('has NO hardcoded brief block and NO suggested questions (no fake data)', () => {
     const chat = new ChatSurfaceComponent(container);
-    chat.briefText = '**Key Level:** NIFTY 24,800.\n- Watch put writing';
     chat.render();
 
-    const briefBlock = container.querySelector('.ai-brief-block');
-    expect(briefBlock).not.toBeNull();
-    expect(briefBlock.innerHTML).toContain('<strong>Key Level:</strong>');
-    expect(briefBlock.innerHTML).toContain('Watch put writing');
-
-    expect(container.querySelector('#btn-brief-notebook')).not.toBeNull();
-    expect(container.querySelector('#btn-brief-pin')).not.toBeNull();
-    expect(container.querySelector('#brief-tts-slot')).not.toBeNull();
+    // The old fake pre-market brief block and its action buttons are gone.
+    expect(container.querySelector('.ai-brief-block')).toBeNull();
+    expect(container.querySelector('#btn-brief-notebook')).toBeNull();
+    expect(container.querySelector('#btn-brief-pin')).toBeNull();
+    expect(container.querySelector('#brief-tts-slot')).toBeNull();
+    // Suggested-question prompt cards are removed.
+    expect(container.querySelector('.chat-quick-prompt-card')).toBeNull();
+    expect(container.textContent).not.toContain('Suggested Questions');
   });
 
   it('appends user message with 70% max-width and lilac theme', () => {

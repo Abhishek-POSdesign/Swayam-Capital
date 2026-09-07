@@ -12,13 +12,6 @@
 
 import { createTTSButton } from './tts-player.js';
 
-const PREMARKET_STARTER_PROMPTS = [
-  "Walk me through today's market open — what's setting up?",
-  "India VIX is in the 8th percentile — what does that regime favor?",
-  "RBI Monday — what should I NOT trade before then?",
-  "Based on my last 5 paper trades, what pattern am I repeating?",
-];
-
 function parseMarkdown(text) {
   if (!text) return '';
   const escaped = text
@@ -129,10 +122,8 @@ export class ChatSurfaceComponent {
     } catch (_) {}
   }
 
-  async init(briefData = null, errorMessage = null) {
-    this.briefText = briefData?.brief_text || "India VIX at 12.85 confirms low-volatility regime. Premium-selling favorable, but reward is compressed — spreads over singles.\n\n**Skip trades if:**\n- Event risk within 48 hours — RBI meet Monday\n- Intraday VIX rises above 15\n\n**Prefer setups where:**\n- Realistic risk (2σ NIFTY move ≈ ₹165) stays under 1% cap\n- Bear Put Spread around 24,800 has clean structure given yesterday's higher-high VWAP bounce";
-
-    this.render(errorMessage);
+  async init() {
+    this.render();
     await this._ensureSession();
   }
 
@@ -173,36 +164,14 @@ export class ChatSurfaceComponent {
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none" style="color: var(--accent-blue);">
               <path d="M8 0L9.8 6.2L16 8L9.8 9.8L8 16L6.2 9.8L0 8L6.2 6.2L8 0Z" fill="currentColor"/>
             </svg>
-            <span class="eyebrow" style="color: var(--accent-blue); font-weight: 700; font-size: 0.84rem; letter-spacing: 0.05em;">AI TRADING PARTNER · WHAT MATTERS TODAY</span>
+            <span class="eyebrow" style="color: var(--accent-blue); font-weight: 700; font-size: 0.84rem; letter-spacing: 0.05em;">AI TRADING PARTNER</span>
           </div>
           <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--dl-fg-3);">DAILY PRE-MARKET</span>
             <button id="btn-chat-settings" type="button" title="AI Voice & Memory Settings" style="background: var(--dl-card-2); border: 1px solid var(--dl-line); color: var(--dl-fg); border-radius: 7px; padding: 5px 10px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 500;">
               ⚙️ Settings
             </button>
           </div>
         </div>
-
-        <!-- Pre-market Brief Block with Action Toolbar -->
-        <div class="ai-brief-block" style="background: var(--dl-card-2); border: 1px solid var(--dl-line); border-radius: 10px; padding: 16px 20px; position: relative;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
-            <div id="ai-brief-text-content" style="font-family: var(--font-sans); font-size: 0.94rem; color: var(--dl-fg); line-height: 1.65; flex: 1;">
-              ${parseMarkdown(this.briefText)}
-            </div>
-            <div class="brief-actions" style="display: flex; gap: 6px; flex-shrink: 0; align-items: center; background: var(--dl-card); padding: 4px 8px; border-radius: 8px; border: 1px solid var(--dl-line);">
-              <span id="brief-tts-slot"></span>
-              <button id="btn-brief-notebook" type="button" title="Save brief to notebook memory" style="background: transparent; border: none; cursor: pointer; color: var(--dl-fg-3); padding: 4px 6px; font-size: 0.85rem;">
-                📓
-              </button>
-              <button id="btn-brief-pin" type="button" title="Pin brief directives" style="background: transparent; border: none; cursor: pointer; color: var(--dl-fg-3); padding: 4px 6px; font-size: 0.85rem;">
-                ⭐
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Full-Width Divider -->
-        <div style="height: 1px; background: var(--dl-line); width: 100%; margin: 2px 0;"></div>
 
         <!-- Conversation Message History Container (Spacious Full-Width) -->
         <div id="chat-messages-container" style="min-height: 280px; max-height: 520px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 4px 2px;">
@@ -281,36 +250,9 @@ export class ChatSurfaceComponent {
     `;
 
     this._attachEventHandlers();
-    this._mountBriefTTS();
-  }
-
-  _mountBriefTTS() {
-    const slot = this.container.querySelector('#brief-tts-slot');
-    if (slot) {
-      slot.innerHTML = '';
-      const ttsBtn = createTTSButton(() => this.briefText);
-      slot.appendChild(ttsBtn);
-    }
   }
 
   _attachEventHandlers() {
-    // Brief notebook action
-    const btnBriefNote = this.container.querySelector('#btn-brief-notebook');
-    if (btnBriefNote) {
-      btnBriefNote.addEventListener('click', () => {
-        this.saveToNotebook(this.briefText);
-      });
-    }
-
-    // Brief pin action
-    const btnBriefPin = this.container.querySelector('#btn-brief-pin');
-    if (btnBriefPin) {
-      btnBriefPin.addEventListener('click', () => {
-        this.pinRule('Daily Pre-market Directives: ' + this.briefText.slice(0, 150));
-        btnBriefPin.style.color = 'var(--accent-blue)';
-      });
-    }
-
     // Settings drawer open
     const btnSettings = this.container.querySelector('#btn-chat-settings');
     if (btnSettings) {
@@ -418,22 +360,10 @@ export class ChatSurfaceComponent {
 
   _renderEmptyStateHTML() {
     return `
-      <div id="chat-empty-state" style="display: flex; flex-direction: column; gap: 12px; padding: 18px 6px; width: 100%;">
-        <div style="font-size: 0.76rem; color: var(--dl-fg-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 6px;">
-          <span>Suggested Questions</span>
-          <span style="font-weight: 400; text-transform: none; color: var(--dl-fg-3);">— Click any prompt to ask your trading partner</span>
-        </div>
-        <div class="chat-prompt-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%;">
-          ${PREMARKET_STARTER_PROMPTS.map((p) => `
-            <div class="chat-quick-prompt-card" data-prompt="${p.replace(/"/g, '&quot;')}" style="background: var(--dl-card-2); border: 1px solid var(--dl-line); border-radius: 10px; padding: 12px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.15s ease; box-sizing: border-box;">
-              <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--accent-sage-tint); color: var(--accent-sage); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.75rem; font-weight: 700;">
-                ✦
-              </div>
-              <span style="font-size: 0.84rem; color: var(--dl-fg); line-height: 1.35; font-weight: 500;">
-                ${p}
-              </span>
-            </div>
-          `).join('')}
+      <div id="chat-empty-state" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 16px; text-align: center; width: 100%;">
+        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--accent-sage-tint); color: var(--accent-sage); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">✦</div>
+        <div style="font-size: 0.9rem; color: var(--dl-fg-2); max-width: 440px; line-height: 1.55;">
+          Ask your Trading Partner anything. It sees your Method rules, open positions, journal, and saved memory — and every reply is grounded in your real data.
         </div>
       </div>
     `;

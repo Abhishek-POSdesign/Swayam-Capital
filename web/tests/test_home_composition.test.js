@@ -26,15 +26,13 @@ describe('Home Page & Subsystem Composition', () => {
     expect(container.textContent).toContain('Market Prep');
   });
 
-  it('renders OvernightStripComponent with 5 global tickers', () => {
+  it('OvernightStrip shows an honest not-connected state with no fabricated index levels', () => {
     const strip = new OvernightStripComponent(container);
-    strip.render();
+    strip.render(); // no real feed → must NOT invent numbers
 
-    expect(container.textContent).toContain('DJI');
-    expect(container.textContent).toContain('S&P 500');
-    expect(container.textContent).toContain('NASDAQ');
-    expect(container.textContent).toContain('USD/INR');
-    expect(container.textContent).toContain('BRENT');
+    expect(container.textContent.toLowerCase()).toContain('not connected');
+    expect(container.textContent).not.toContain('45,203');
+    expect(container.textContent).not.toContain('20,556');
   });
 
   it('renders the compact VixCardComponent with the real value, regime, and sparkline', () => {
@@ -58,13 +56,22 @@ describe('Home Page & Subsystem Composition', () => {
     expect(container.textContent.toLowerCase()).toContain('unavailable');
   });
 
-  it('renders MacroEventsCardComponent with upcoming central bank dates', () => {
+  it('renders MacroEventsCardComponent header with NO fabricated fallback events (real table only)', () => {
     const macro = new MacroEventsCardComponent(container);
-    macro.render();
+    macro.render(); // no events loaded → honest empty; never the old hardcoded fallback
 
-    expect(container.textContent).toContain('MACRO EVENTS · NEXT 7 DAYS');
+    expect(container.textContent).toContain('MACRO EVENTS');
+    // The old hardcoded fallback events must be gone when there is no real data.
+    expect(container.textContent).not.toContain('US Fed Interest Rate Decision');
+    expect(container.querySelector('.macro-event-row')).toBeNull();
+  });
+
+  it('renders real macro events when the real table provides them', () => {
+    const macro = new MacroEventsCardComponent(container);
+    macro.render({ events: [
+      { event_key: 'IN_CPI_2026-09-14', event_name: 'India CPI Inflation (Aug)', event_date: '2026-09-14', country: 'IN', importance: 'high' },
+    ] });
     expect(container.textContent).toContain('India CPI Inflation');
-    expect(container.textContent).toContain('US Fed Interest Rate Decision');
   });
 
   it('renders ReadingQueueCardComponent as honest SOON tile (BUILD-11.6)', () => {

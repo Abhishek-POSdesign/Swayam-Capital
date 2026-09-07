@@ -443,6 +443,11 @@ def _get_nifty_candle_fallback(
             c = [round(float(r["close"]), 2) for r in rows]
             return d, o, h, l, c, True
 
+        # No-fake law: never synthesize intraday candles from daily OHLC. If FYERS has no
+        # real intraday data, report unavailable so the UI shows nothing rather than fiction.
+        return [], [], [], [], [], False
+
+        # (Legacy synthesis below is intentionally unreachable, kept only for reference.)
         # For intraday (1h, 15m), synthesize realistic bars from recent daily bars
         recent_rows = rows[-5:] if len(rows) >= 5 else rows
         synth_dates: list[str] = []

@@ -529,68 +529,11 @@ def get_today_usage() -> dict:
         raise HTTPException(status_code=500, detail=f"Could not fetch usage: {exc}")
 
 
-@router.get("/brief/today")
-def get_today_ai_brief() -> dict:
-    """Generates concise daily pre-market brief (<80 words) using Gemini AI Router.
-
-    Fail loudly with HTTP 503 if AI router is unavailable. Zero silent fallbacks.
-    """
-    now_iso = datetime.now(timezone.utc).isoformat()
-
-    reading_queue = [
-        {"source": "Motilal Oswal", "title": "Options desk report", "read_time_min": 3, "url": "https://www.motilaloswal.com"},
-        {"source": "Zerodha Varsity", "title": "VIX interpretation", "read_time_min": 8, "url": "https://zerodha.com/varsity"},
-        {"source": "Bloomberg", "title": "Global vol regime shift", "read_time_min": 5, "url": "https://www.bloomberg.com"},
-    ]
-
-    macro_events = [
-        {"event": "RBI Policy Meet", "date": "Sep 8", "severity": "high"},
-        {"event": "US CPI Print", "date": "Sep 11", "severity": "medium"},
-        {"event": "FOMC Minutes", "date": "Sep 12", "severity": "medium"},
-    ]
-
-    overnight_global = {
-        "DJI": {"value": 45203.47, "pct": 0.42},
-        "SP500": {"value": 6124.11, "pct": 0.31},
-        "NASDAQ": {"value": 20556.82, "pct": -0.18},
-        "USDINR": {"value": 83.42, "abs_change": 0.05},
-        "BRENT": {"value": 71.23, "pct": -1.2},
-    }
-
-    india_vix = {
-        "value": 12.85,
-        "regime": "Low Vol Regime",
-        "sparkline_20d": [13.4, 13.2, 13.1, 13.5, 13.0, 12.9, 12.8, 13.1, 12.7, 12.6, 12.9, 13.2, 13.0, 12.8, 12.7, 12.9, 13.1, 12.9, 12.8, 12.85],
-    }
-
-    system_prompt = (
-        "You are Abhishek Sikka's AI Trading Partner for Swayam Capital. "
-        "Generate a plain-English 'what matters today' briefing for Abhishek, framed as elimination criteria. "
-        "Reference India VIX (12.85, low vol), upcoming macro events (RBI Policy Meet Sep 8), overnight global indices, and NIFTY ~24,800. "
-        "Under 80 words. Prefer skip-trades-if / prefer-setups-where framing. Be direct, crisp, professional."
-    )
-
-    try:
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": "Provide my morning market prep briefing under 80 words."},
-        ]
-        brief_text, _ = ai_router.chat_main_turn(messages)
-    except Exception as exc:
-        logger.error(f"AI Router unavailable for morning brief: {exc}")
-        raise HTTPException(
-            status_code=503,
-            detail=f"AI Trading Partner unavailable for morning briefing: {exc}",
-        ) from exc
-
-    return {
-        "generated_at": now_iso,
-        "brief_text": brief_text.strip(),
-        "reading_queue": reading_queue,
-        "macro_events_next_5_days": macro_events,
-        "overnight_global": overnight_global,
-        "india_vix": india_vix,
-    }
+# NOTE: The old GET /api/ai/brief/today ("morning brief") endpoint was REMOVED on
+# 2026-09-07. It returned entirely hardcoded/fake data (fake overnight globals, fake
+# macro dates, fake India VIX 12.85 + sparkline) and fed fabricated reference numbers
+# into the AI prompt. No fake data is served to the UI or the AI. The real, grounded
+# session summary lives at POST /api/home/so-far-today (Google Search grounded).
 
 
 @router.get("/session/{session_id}/context-summary")
