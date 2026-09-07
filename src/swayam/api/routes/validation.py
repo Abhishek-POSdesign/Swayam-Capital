@@ -74,6 +74,19 @@ from swayam.vault_reader import vault_reader
 router = APIRouter()
 
 
+# Rule ids are code identifiers. He reads these on screen, so they get English.
+RULE_DISPLAY_NAMES = {
+    "realistic_risk": "the 1% running-loss rule",
+    "blast_radius": "the 5% black-swan rule",
+    "rr_minimum": "the reward-to-risk minimum",
+    "no_single_leg": "the single-leg check",
+    "hedged_structure": "the hedge check",
+    "absolute_max_loss": "the worst case at expiry",
+    "deployable_margin_ceiling": "the deployable margin ceiling",
+    "overnight_carry": "the 2% overnight gap test",
+}
+
+
 def _money(value: float) -> str:
     return f"₹{value:,.0f}"
 
@@ -360,7 +373,11 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
             "Cannot be carried overnight: "
             + "; ".join(c.note or c.rule for c in blocking_checks if c.verdict == "FAIL")
         )
-    advisory_failures = [c.rule for c in checks if not c.blocking and c.verdict == "FAIL"]
+    advisory_failures = [
+        RULE_DISPLAY_NAMES.get(c.rule, c.rule.replace("_", " "))
+        for c in checks
+        if not c.blocking and c.verdict == "FAIL"
+    ]
     if advisory_failures:
         warnings.append(
             "Worth knowing before you enter, though nothing here stops you: "
