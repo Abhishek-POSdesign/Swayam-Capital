@@ -1,3 +1,12 @@
+
+> # ⚠ READ THIS FIRST: `docs/SWAYAM_START_HERE_2026-09-09.md`
+>
+> That file supersedes anything below it that disagrees. It carries the verified
+> state as of 2026-09-08, how Supabase, Google Cloud and Google Drive are
+> actually wired, the document map, and the complete list of what is NOT done.
+>
+> Abhishek's trading rules are `docs/MY_TRADING_RULES_ONE_PAGE.md`. Those rules
+> override every plan document, including plan v9.
 > # ⛔ CORRECTION NOTICE — 2026-09-07, 18:30 IST
 >
 > **Everything written in this file BEFORE 2026-09-07 contained statements that were NOT TRUE.** They were written from intention, from a build report, or from another document — not from checking the running system. Abhishek trusted them, planned around them, and arrived at his desk to find the platform not working. That is the direct cost of the false lines below.

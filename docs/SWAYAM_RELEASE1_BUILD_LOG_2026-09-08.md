@@ -172,3 +172,59 @@ system.
 
 *Real-money trading remains code-blocked. Nothing in this document is a claim of
 readiness. Update this file as each further step lands.*
+
+---
+
+## 7. SESSION CLOSE, 2026-09-08
+
+Sections 4 and 5 above are superseded by
+**`SWAYAM_START_HERE_2026-09-09.md`**, which carries the final state, the
+document map, and the complete list of what is NOT done. Read that.
+
+### What landed after section 2 was written
+
+| Step | State |
+|---|---|
+| Contract size 65 everywhere in the backend | Done, no defaults left |
+| Real broker margin | Done, invented constants deleted |
+| Live capital and derived caps | Done |
+| Versioned charge schedule | Done |
+| Risk gate rebuilt to his rules | Done |
+| Real hedge geometry | Done |
+| Overnight carry test | Done |
+| Unlimited loss reported honestly | Done |
+| Price history topped up to 2026-09-07 | Done |
+| 79 positions quarantined, all archived | Done, migration 017 |
+| One-page rule sheet | Done, vault + repo |
+| Token refresh shortcut | Done, `Refresh-Token.ps1` |
+
+### A mistake made in this session, recorded rather than hidden
+
+**Running the backend test suite wrote real rows into the live database.** The
+position count went from 67 to 79 across the session. Twelve rows were created
+by test runs on 2026-09-07, including three named "Violating Spread".
+
+They are all now marked `provenance = build_test` and archived, so they cannot
+pollute a statistic, and none of Abhishek's own data was touched. But the hole
+is still open: there is no staging project and no guard in the code. **This is
+item 1 on the not-done list and should be fixed before anyone runs the suite
+again.**
+
+The warning was in the bridge document and I ran the suite anyway. Recorded so
+the next agent does not repeat it.
+
+### Corrections this build made to plan v9 itself
+
+The plan is settled and should not be re-litigated, but three of its specifics
+were wrong and were corrected against evidence:
+
+1. **Hedge rule.** v9: "a short put needs a long put BELOW it." That refuses a
+   bear put spread, which is his own preset and 66 of his 67 positions. Worked
+   through to a spot of zero, a long put ABOVE caps the loss just as completely.
+2. **Charge rates.** v9 said the exchange transaction charge is 0.03503% and
+   IPFT is ₹50 per crore. FYERS and Zerodha both publish 0.03553% and ₹0.01
+   per crore.
+3. **The entry gate.** v9 blocked entry on the 1% rule. Abhishek's instruction
+   of 2026-09-08 replaced that: entry never blocks, and only overnight carry is
+   gated. His reason is sound: adjusting a structure requires passing through
+   states that no gate would allow.
