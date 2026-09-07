@@ -42,6 +42,7 @@ Two rules I will not repeat:
 | Recorder | Cloud Run function `swayam-recorder`, asia-south1 |
 | Schedulers | asia-south1: `swayam-recorder-schedule`, `swayam-ai-compaction` |
 | Buckets | `gs://swayam-backups`, `gs://swayam-capital-options-data` |
+| **Sign-in** | **Identity-Aware Proxy, direct on Cloud Run. FREE.** Custom OAuth client `535273918813-es1obmlci30t1eulne8l584o33rh8hf9.apps.googleusercontent.com` (his personal Gmail project has no Workspace org, so Google's managed client does not apply). `Enable-SignIn.ps1` turns it on, `Undo-SignIn.ps1` turns it off. |
 | Secrets | Secret Manager: fyers-access-token, fyers-client-id, fyers-app-id, fyers-secret-key, supabase url/anon/service-role |
 | **Logo** | **`स्व` in sage green (#7d9d84 light, #9dbba3 dark), wordmark "Swayam Capital".** Source art: `G:\My Drive\Second Brain\Minimalist_logo_for_Swayam_Capital_2K_202609052357.jpeg`. **Not the swastika.** |
 
@@ -88,8 +89,9 @@ A browser that sends 75 is ignored.
 | AI reads readiness | **FIXED.** The query had never once run (Postgres 42703). |
 | FYERS WebSocket library | **UNBLOCKED.** Needed `setuptools<81`. `FyersDataSocket` imports. |
 | Drive API | **ENABLED** on the project. |
-| Google sign-in | **OFF.** Attempted; failed with IAP error 11. See section 5. |
-| Site is public | **YES.** Anyone with the address can use it. |
+| Google sign-in | **ON and verified 2026-09-08.** He signed in successfully. |
+| Site is public | **NO.** `allUsers` removed. Every path, on the custom domain AND the raw run.app URL, returns 302 to Google. The API answers "Invalid IAP credentials: empty token". |
+| `swayam-ai-compaction` | **RUNNING again** through IAP, audience set to the IAP client id. |
 | Real-money trading | **Code-blocked by absence.** No order-placement code exists anywhere. |
 
 Migrations: 20 applied, 0 pending. Tests: 327 pass, 2 fail (both pre-date this
@@ -145,19 +147,7 @@ His decisions, do not relitigate:
    Home currently mounts these components, and he wants the AI chat kept
    exactly as it is: PWA prompt, readiness ritual, verdict card, KPI history,
    So Far Today, NIFTY snapshot, chat surface, macro events.
-2. **Google sign-in.** Fails with **IAP error 11, an incorrectly configured
-   OAuth client.** The project has no Workspace organisation, so Google's
-   managed client does not apply and a **custom OAuth client must be created by
-   hand in the console** (the IAP OAuth Admin API was shut down in March 2026,
-   so it cannot be scripted). Already in place: he holds
-   `roles/iap.httpsResourceAccessor`, and the IAP service agent holds
-   `run.invoker` on the service. `Undo-SignIn.ps1` is the tested panic button;
-   it turns sign-in off first, in its own command, then reopens access, then
-   reads the service back and refuses to claim success while it is still on.
-3. **`swayam-ai-compaction` is PAUSED.** Under IAP its OIDC audience must be
-   the IAP client id, not the URL. Resume with
-   `gcloud scheduler jobs resume swayam-ai-compaction --location=asia-south1`.
-4. **Cloud writes to the vault.** The Drive API is enabled and the folder is
+2. **Cloud writes to the vault.** The Drive API is enabled and the folder is
    shared, but **a service account can never do this**: zero storage quota
    since June 2023, and Shared Drives and domain-wide delegation both require
    Workspace, which he does not have on a personal Gmail account. The only
@@ -166,21 +156,21 @@ His decisions, do not relitigate:
    expire. `drive.file` can only touch what the app created, so the app creates
    its own folder once and he drags it into the vault; access follows the
    folder, not the path. The outbox already means no note is lost meanwhile.
-5. **Charges at execution.** `ESTIMATED_CHARGE_PER_LEG_INR` (₹150) is still
+3. **Charges at execution.** `ESTIMATED_CHARGE_PER_LEG_INR` (₹150) is still
    used on close. The real versioned charge engine exists and the risk gate
    uses it.
-6. **Kill switch.** None exists.
-7. **Multi-expiry valuation**, so calendars are visible but blocked from
+4. **Kill switch.** None exists.
+5. **Multi-expiry valuation**, so calendars are visible but blocked from
    execution. Ten of his 21 historical trades are calendars. Biggest single gap.
-8. **Backups have run once, by hand.** `scripts/backup_supabase.py --gcs` works
+6. **Backups have run once, by hand.** `scripts/backup_supabase.py --gcs` works
    and the restore drill passed on 19 tables and 600 rows. Nothing is scheduled.
-9. **Journal analytics does not filter `provenance`**, so any win rate would be
+7. **Journal analytics does not filter `provenance`**, so any win rate would be
    computed from the 81 quarantined test rows. Fix before showing performance.
-10. **Volume and market breadth.** Volume is available from FYERS and unread.
+8. **Volume and market breadth.** Volume is available from FYERS and unread.
     Breadth has no free source; both pages say `unavailable`.
-11. **Live ticks.** `/ws/spot` accepts a connection and answers ping with pong.
+9. **Live ticks.** `/ws/spot` accepts a connection and answers ping with pong.
     Nothing is ever pushed. The library now imports, so this is buildable.
-12. **The two long-standing test failures.**
+10. **The two long-standing test failures.**
 
 ---
 
