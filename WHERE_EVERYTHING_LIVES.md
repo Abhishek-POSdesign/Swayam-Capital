@@ -1,10 +1,37 @@
+> # ⛔ CORRECTION NOTICE — 2026-09-07, 18:30 IST
+>
+> **Everything written in this file BEFORE 2026-09-07 contained statements that were NOT TRUE.** They were written from intention, from a build report, or from another document — not from checking the running system. Abhishek trusted them, planned around them, and arrived at his desk to find the platform not working. That is the direct cost of the false lines below.
+>
+> On 2026-09-07 Claude Code (Opus 5) checked every infrastructure and status claim in this file against the live Google Cloud project, the live Supabase database, the live FYERS account, the deployed Cloud Run service and a real run of both test suites. The corrections are applied inline below, and the specific false statements are listed here so nobody repeats them.
+>
+> **What was wrong before this date:**
+>
+> | Claim that was written | The verified truth on 2026-09-07 |
+> |---|---|
+> | "Behind IAP", "private login", "IAM invoker restricted to abhisheksikka99.99@gmail.com" | **FALSE. The site is PUBLIC.** Live Cloud Run IAM on `swayam-dashboard` is `allUsers -> roles/run.invoker`. Proved by anonymous request: `/api/nifty/spot`, `/api/positions` and `/api/readiness/today` all return 200 with no credentials, and `/api/readiness/today` serves Abhishek's sleep, mood and stress notes to the open internet. `cloudbuild.yaml` deploys with `--allow-unauthenticated` and the API sets CORS `allow_origins=["*"]`. |
+> | "Options recorder runs every minute during market hours / recorder is LIVE" | **FALSE. It has never succeeded once.** Since deployment on 2026-09-03 every scheduled invocation returns PERMISSION_DENIED because the Cloud Scheduler identity has no `run.invoker` on the function. Zero HTTP 200 in its entire log history. The destination bucket `gs://swayam-capital-options-data` is EMPTY. Second fault behind the first: the `swayam-recorder` service account holds only `logging.logWriter`, so it could not write to storage even if it were reached. |
+> | "Backups LIVE / durable automated multi-destination backup pipeline" | **FALSE.** No backup schedule exists in any region. `gs://swayam-backups` holds one manual run from 2026-09-05 and nothing since. The backup code also cannot succeed if deployed: `swayam-dashboard-sa` has `storage.objectViewer` only, with no write permission, and `upload_to_gcs` returns `False` on failure while the calling job ignores that and still returns success. |
+> | "Restore from backup: automated one-command script" | **FALSE.** `scripts/restore_from_backup.py` counts INSERT lines, pings the database and returns success. It executes no restore. The SQL dump is also data-only with no schema, so it could not rebuild an empty project. |
+> | "The rule engine reads Method files from the vault at runtime — vault edits become new runtime behaviour without code changes" | **FALSE in production.** Cloud Run runs with `TRADING_METHOD_PATH=/app/src/swayam/data/method_files`, a build-time copy baked into the container, holding only 3 of the 7 Method files in the vault. Editing rules in Obsidian changes nothing on the live site until a rebuild and redeploy. It is true only on Abhishek's local machine. |
+> | "Cloud Run service `swayam-web`" | **WRONG NAME.** The deployed service is `swayam-dashboard` in `asia-southeast1`. There is no `swayam-web`. |
+> | "Cloud Functions `cron_notifications`, `cron_macro_refresh`, `cron_email_digest`, `cron_backup_db`, `cron_backup_weekly_zip`, `cron_backup_ai_chat`" | **NOT DEPLOYED.** The only Cloud Function that exists in the project is `swayam-recorder` (asia-south1). The only two Cloud Scheduler jobs that exist are `swayam-ai-compaction` (working) and `swayam-recorder-schedule` (failing, above). |
+> | Secrets list naming `fcm-server-key`, `vapid-public-key`, `vapid-private-key`, `trading-economics-api-key`, `cron-shared-secret`, `gemini-api-key` | **DO NOT EXIST.** Secret Manager holds exactly 11 secrets: the four FYERS ones, the three Supabase ones, `telegram-bot-token`, `telegram-chat-id`, `gmail-app-password`, `gmail-sender-address`. |
+> | "153 automated tests passing (51 pytest + 102 vitest, 0 failures)" / "327 backend" / "~400 tests" | **ALL WRONG.** Verified by running them on 2026-09-07: backend collects **322**, of which **2 FAIL** (`tests/api/test_market.py::test_get_option_chain_returns_strikes` returns 503 not 200, and `tests/test_notifications.py::test_execute_endpoint_best_effort_dispatch_on_success`). Frontend is **109 passing**, but a real browser error, `rule-panel.js:35 Cannot read properties of undefined (reading 'toFixed')`, is printed and swallowed inside a test that still reports green. |
+> | "Ready for live paper trading on Monday Sep 8, 2026" | **NOT TRUE and must not be repeated.** The safety gate fails open three separate ways, fabricated numbers still sit in trade paths, the site is public, there is no working backup, and no kill switch exists. |
+> | "GCS bucket `swayam-capital-options-data` populated nightly / DuckDB populated nightly from GCS Parquet" | **FALSE.** The bucket is empty. The local DuckDB rows (36,998 option rows, 22 daily bars) came from a one-off historical backfill and stop at **2026-09-03**. The realized-volatility risk gate needs 20 daily bars and has 22, all stale. |
+>
+> **Standing rule from this date forward.** Nothing in this file may be written as LIVE, done, working, deployed or passing unless the writer checked it on the running system that same day and can name the command or query that proved it. Write the date of the check next to the claim. If it was not checked, write "not verified". A build report is not evidence. Another document is not evidence.
+
+
+---
+
 # WHERE_EVERYTHING_LIVES — Swayam Capital Master Reference (Repo Mirror)
 
 > **This is the repo-side mirror of the master reference doc.** The canonical version lives in the Obsidian vault at `G:\My Drive\Second Brain\02 - Projects\Trading\WHERE EVERYTHING LIVES.md`. Both copies must stay in sync.
 >
 > **If you are a coding agent (Antigravity, Claude Code, etc.) picking up this repo — read this file first.** It tells you where everything is, what depends on what, and what NOT to change without checking.
 >
-> **Last updated:** 2026-09-06 by Antigravity (post PR #10, #11, #12, #13 — 102 vitest + 51 pytest passing, UI debts documented in docs/HANDOVER_2026_09_06.md).
+> **Last updated:** 2026-09-07 by Claude Code (Opus 5). Every cloud claim in this file was re-checked against the live GCP project on that date and several were false — see the CORRECTION NOTICE at the top. Test counts previously stated here (102 vitest + 51 pytest) were wrong; the real figures are 322 backend collected with 2 failing and 109 frontend passing with one swallowed browser error.
 
 ---
 
@@ -29,7 +56,7 @@
 |---|---|
 | `D:\Claude\POS\Trading-Platform\Swayam Capital\` (this repo) | Python 3.11 backend + Vite frontend + tests + migrations |
 | https://github.com/Abhishek-POSdesign/Swayam-Capital | Git remote. Feature branches → PR → merge to `main`. |
-| https://swayam.abhisheksikka.com | Live app. Cloud Run in `asia-southeast1`, behind IAP. |
+| https://swayam.abhisheksikka.com | Live app. Cloud Run service `swayam-dashboard` in `asia-southeast1`. **PUBLIC, no login — verified 2026-09-07.** |
 
 ### Deployment flow
 
@@ -57,7 +84,7 @@
 
 **Location:** `G:\My Drive\Second Brain\02 - Projects\Trading\`
 
-The vault is where all design decisions, method rules, journals, and session state live. **The rule engine in the backend reads Method files from the vault at runtime** — vault edits become new runtime behavior without code changes.
+The vault is where all design decisions, method rules, journals, and session state live. **This is only true on Abhishek's local machine.** Verified 2026-09-07: the deployed Cloud Run service sets `TRADING_METHOD_PATH=/app/src/swayam/data/method_files`, a build-time copy baked into the container holding only 3 of the 7 vault Method files. **A rule edited in Obsidian does NOT change the live app until someone rebuilds and redeploys.**
 
 | Vault folder | What's there |
 |---|---|
@@ -100,7 +127,7 @@ Major tables: `swayam_positions`, `swayam_lessons`, `swayam_ai_sessions`, `swaya
 
 - Client `YA38914`, API app `IWB0OQ1J1Y-200`
 - API v3, rate limits 10/s · 200/min · 100k/day
-- Access token in GCP Secret Manager as `fyers-access-token`, refreshed nightly
+- Access token in GCP Secret Manager as `fyers-access-token`. **NOT refreshed nightly — there is no refresh job.** Abhishek runs `scripts/refresh_fyers_token.py` by hand each trading day, and the live Cloud Run service keeps the old token until a new revision is deployed.
 
 ---
 
@@ -111,24 +138,25 @@ Major tables: `swayam_positions`, `swayam_lessons`, `swayam_ai_sessions`, `swaya
 - **Auth:** ADC locally + service account identities in cloud. Zero JSON key files.
 
 Services:
-- **Cloud Run** service `swayam-web` — the live app (PWA enabled with `manifest.webmanifest` and `service-worker.js`)
+- **Cloud Run** service **`swayam-dashboard`** — the live app. (There is no service named `swayam-web`; that name was never correct.) Deployed `--allow-unauthenticated`, max 3 instances, 2 gunicorn workers.
 - **Cloud Build** trigger `swayam-main-deploy` — auto-deploy on push to main
-- **Cloud Functions:**
-  - `swayam-options-recorder` — 60-second options snapshots during market hours
+- **Cloud Functions — verified 2026-09-07, only ONE exists:**
+  - `swayam-recorder` (asia-south1) — intended to take 60-second option-chain snapshots. **IT HAS NEVER RUN SUCCESSFULLY.** Every scheduled call fails PERMISSION_DENIED and its output bucket is empty.
+  - The functions listed below were written in code but **never deployed**:
   - `cron_notifications` — (BUILD-11.8) Telegram + FCM push dispatcher
   - `cron_macro_refresh` — (BUILD-11.10) Trading Economics nightly ingest + Sunday Gemini curation
   - `cron_email_digest` — (BUILD-11.11) Sunday 11:00 IST weekly performance & planning digest via Gmail SMTP
-- **Cloud Scheduler** — `Asia/Kolkata` time zone, `asia-southeast1` region (triggers recorder, notifications, macro refresh, email digest)
-- **GCS bucket** `swayam-options-recordings` — nightly Parquet
-- **GCS bucket** `swayam-backups` — (BUILD-11.12)
+- **Cloud Scheduler** — verified 2026-09-07: exactly TWO jobs exist, both in **asia-south1**, not asia-southeast1. `swayam-ai-compaction` (working) and `swayam-recorder-schedule` (failing every minute with PERMISSION_DENIED). No notification, macro or digest job exists.
+- **GCS bucket** `swayam-capital-options-data` (asia-south1) — intended nightly Parquet. **Verified EMPTY on 2026-09-07.** (There is no bucket named `swayam-options-recordings`.)
+- **GCS bucket** `swayam-backups` (asia-southeast1) — holds one manual run from 2026-09-05 and nothing else.
 
 Secrets in **GCP Secret Manager**: `fyers-access-token`, `fyers-client-id`, `supabase-service-role-key`, `telegram-bot-token` (BUILD-11.8), `telegram-chat-id`, `fcm-server-key`, `vapid-public-key`, `vapid-private-key`, `trading-economics-api-key` (BUILD-11.10), `cron-shared-secret`, `gmail-app-password` (BUILD-11.11), `gmail-sender-address`, `gemini-api-key` (unused, ADC preferred).
 
 ---
 
-## Section 5 — Backups (BUILD-11.12, LIVE)
+## Section 5 — Backups (BUILD-11.12) — ⛔ NOT LIVE, NOT RUNNING, CANNOT SUCCEED AS BUILT
 
-Durable, automated multi-destination backup pipeline:
+**Verified 2026-09-07.** None of the schedules below exist in Cloud Scheduler. The application's service account `swayam-dashboard-sa` has `storage.objectViewer` only and therefore cannot write a backup object at all. `upload_to_gcs` returns `False` on failure and the calling job ignores that and reports success anyway, so a deployed job would have reported healthy while saving nothing. The restore script executes no restore. **The only real protection today is Supabase's own 7-day automated backup.** The design below is the INTENT, not the state:
 
 1. **Nightly Database Dumps (02:00 IST Daily):**
    - Cloud Function: `cron_backup_db`
