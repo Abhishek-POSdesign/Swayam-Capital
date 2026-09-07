@@ -43,7 +43,11 @@ dev = [
 where = ["src"]
 
 [tool.pytest.ini_options]
-markers = ["real_capital: uses the live broker account instead of the pinned snapshot"]
+markers = [
+    "real_capital: uses the live broker account instead of the pinned snapshot",
+    "fake_db: run this test against an in-memory database so it may exercise a write path",
+    "live_db: UNGUARDED live database access. Writes land in Abhishek's real record. Do not use.",
+]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
