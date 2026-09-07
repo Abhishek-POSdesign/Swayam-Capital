@@ -36,7 +36,8 @@ are all hard dependencies. If any is unavailable this returns 503 and no trade
 happens. There is no `except: pass` anywhere in this file.
 """
 
-from datetime import date
+import math
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Optional
 
@@ -52,11 +53,13 @@ from swayam.api.models_api import (
 from swayam.api.routes.strategy import build_spread_from_request
 from swayam.config import settings
 from swayam.options_math import compute_max_profit_loss
+from swayam.options_math.payoff import loss_is_unbounded
 from swayam.options_math.realized_vol import (
     HistoricalDataUnavailableError,
     InsufficientHistoryError,
     compute_realized_vol,
 )
+from swayam.rule_engine.carry_risk import assess_overnight_carry
 from swayam.rule_engine.hedge_geometry import GeometryLeg, check_hedge_geometry
 from swayam.rule_engine.statistical_risk import compute_expected_worst_case_loss
 from swayam.rules_engine import TolerantComparator
@@ -79,7 +82,8 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
     """Audits a candidate strategy. Blocks on any missing dependency."""
     spread, iv_map, _iv_available = build_spread_from_request(req)
     max_profit, max_loss = compute_max_profit_loss(spread)
-    rr_implied = (max_profit / max_loss) if max_loss > 0.0 else 0.0
+    unlimited = math.isinf(max_loss)
+    rr_implied = (max_profit / max_loss) if (max_loss > 0.0 and not unlimited) else 0.0
 
     # --- dependencies, every one of which blocks -------------------------
     try:
@@ -176,6 +180,7 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
         ValidationCheck(
             rule="realistic_risk",
             verdict="PASS" if passed_primary else "FAIL",
+            blocking=False,
             actual_inr=round(total_risk, 2),
             cap_inr=round(primary_cap, 2),
             tolerance_pct=settings.default_tolerance_pct,
@@ -185,15 +190,20 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
 
     # --- Check 2: the black-swan fuse ------------------------------------
     fuse_cap = capital.black_swan_fuse_inr
-    passed_fuse = comparator.within_cap(max_loss, fuse_cap)
+    passed_fuse = False if unlimited else comparator.within_cap(max_loss, fuse_cap)
     fuse_arithmetic = (
-        f"absolute worst case {_money(max_loss)} against the black-swan fuse of "
-        f"{_money(fuse_cap)} (5% of {_money(capital.risk_capital_inr)})"
+        "the worst case at expiry is UNLIMITED, because this position is net short "
+        "calls. There is no number to compare against the fuse."
+        if unlimited
+        else (
+            f"absolute worst case {_money(max_loss)} against the black-swan fuse of "
+            f"{_money(fuse_cap)} (5% of {_money(capital.risk_capital_inr)})"
+        )
     )
     blast_verdict = RiskVerdict(
-        loss_inr=round(max_loss, 2),
+        loss_inr=None if unlimited else round(max_loss, 2),
         cap_inr=round(fuse_cap, 2),
-        pct_of_margin=round(max_loss / capital.risk_capital_inr * 100.0, 2),
+        pct_of_margin=None if unlimited else round(max_loss / capital.risk_capital_inr * 100.0, 2),
         passed=passed_fuse,
         arithmetic=fuse_arithmetic,
     )
@@ -201,7 +211,8 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
         ValidationCheck(
             rule="blast_radius",
             verdict="PASS" if passed_fuse else "FAIL",
-            actual_inr=round(max_loss, 2),
+            blocking=False,
+            actual_inr=None if unlimited else round(max_loss, 2),
             cap_inr=round(fuse_cap, 2),
             tolerance_pct=settings.default_tolerance_pct,
             note=fuse_arithmetic,
@@ -214,6 +225,7 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
         ValidationCheck(
             rule="rr_minimum",
             verdict="PASS" if passed_rr else "FAIL",
+            blocking=False,
             actual=round(rr_implied, 2),
             floor=rules.rr_minimum,
             tolerance_pct=settings.default_tolerance_pct,
@@ -227,6 +239,7 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
         ValidationCheck(
             rule="no_single_leg",
             verdict="PASS" if passed_multileg else "FAIL",
+            blocking=False,
             actual=float(len(req.legs)),
             floor=2.0,
             note=f"{len(req.legs)} leg(s); a hedged structure needs at least two",
@@ -248,6 +261,7 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
         ValidationCheck(
             rule="hedged_structure",
             verdict="PASS" if geometry.hedged else "FAIL",
+            blocking=False,
             note=geometry.reason,
         )
     )
@@ -258,12 +272,16 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
             rule="absolute_max_loss",
             verdict="PASS",
             blocking=False,
-            actual_inr=round(max_loss, 2),
+            actual_inr=None if unlimited else round(max_loss, 2),
             note=(
-                f"absolute worst case is {_money(max_loss)}, "
-                f"{max_loss / capital.risk_capital_inr * 100.0:.2f}% of capital. "
-                f"Informational: sizing is governed by the 2 sigma move, and the "
-                f"black-swan fuse is the only cap on this figure."
+                "absolute worst case at expiry is UNLIMITED while this position is "
+                "net short calls. Fine to trade intraday; it cannot be carried."
+                if unlimited
+                else (
+                    f"absolute worst case at expiry is {_money(max_loss)}, "
+                    f"{max_loss / capital.risk_capital_inr * 100.0:.2f}% of capital. "
+                    f"Informational: reaching it needs a large move or expiry day."
+                )
             ),
         )
     )
@@ -284,6 +302,46 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
         )
     )
 
+    # --- intraday or overnight -------------------------------------------
+    # Abhishek's rule of 2026-09-08: nothing blocks an entry. He needs to sell
+    # a bare call at 2pm, watch it, and hedge it before the close, and a system
+    # that refused him mid-adjustment would be useless. The ONLY thing that
+    # blocks is carrying a position overnight.
+    today = date.today()
+    planned_exit: Optional[date] = None
+    if req.planned_exit_date:
+        try:
+            planned_exit = datetime.strptime(req.planned_exit_date, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400, detail=f"Invalid planned_exit_date: {exc}"
+            ) from exc
+    intraday = planned_exit is None or planned_exit <= today
+
+    carry_dict: Optional[dict] = None
+    if not intraday:
+        carry = assess_overnight_carry(
+            list(spread.legs),
+            current_spot=req.current_spot,
+            risk_capital_inr=capital.risk_capital_inr,
+            hedged=geometry.hedged and not geometry.is_multi_expiry,
+            iv_per_leg=iv_map,
+        )
+        carry_dict = carry.as_dict()
+        checks.append(
+            ValidationCheck(
+                rule="overnight_carry",
+                verdict="PASS" if carry.may_carry else "FAIL",
+                blocking=True,
+                actual_inr=round(carry.gap_loss_inr, 2) if carry.gap_loss_inr is not None else None,
+                cap_inr=round(carry.cap_inr, 2),
+                note=" ".join(
+                    part for part in ([carry.arithmetic] if carry.arithmetic else [])
+                    + list(carry.reasons)
+                ),
+            )
+        )
+
     # --- Execution blocks that are not rule failures ---------------------
     execution_blocked_reason: Optional[str] = None
     if geometry.is_multi_expiry:
@@ -299,8 +357,19 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
     warnings: list[str] = []
     if not overall_passed:
         warnings.append(
-            "Trade blocked by: "
-            + ", ".join(c.rule for c in blocking_checks if c.verdict == "FAIL")
+            "Cannot be carried overnight: "
+            + "; ".join(c.note or c.rule for c in blocking_checks if c.verdict == "FAIL")
+        )
+    advisory_failures = [c.rule for c in checks if not c.blocking and c.verdict == "FAIL"]
+    if advisory_failures:
+        warnings.append(
+            "Worth knowing before you enter, though nothing here stops you: "
+            + ", ".join(advisory_failures)
+        )
+    if intraday and unlimited:
+        warnings.append(
+            "This position has no ceiling on its loss. Fine intraday. It cannot be "
+            "carried overnight until you hedge it."
         )
     if execution_blocked_reason:
         warnings.append(execution_blocked_reason)
@@ -318,6 +387,10 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
         warnings=warnings,
         capital=CapitalContext(**capital.as_dict()),
         execution_blocked_reason=execution_blocked_reason,
+        max_loss_is_unlimited=unlimited,
+        intraday=intraday,
+        carry=carry_dict,
+        running_loss_threshold_inr=round(capital.risk_capital_inr * 0.01, 2),
     )
 
 

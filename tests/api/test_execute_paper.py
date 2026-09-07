@@ -45,7 +45,7 @@ def test_execute_blocks_real_mode_with_403() -> None:
     assert "Real execution disabled" in response.json()["detail"]
 
 
-def test_execute_rejects_non_compliant_strategy_with_400() -> None:
+def test_execute_allows_a_non_compliant_intraday_strategy() -> None:
     payload = {
         "strategy_name": "Violating Spread",
         "underlying": "NIFTY",
@@ -66,7 +66,11 @@ def test_execute_rejects_non_compliant_strategy_with_400() -> None:
     }
 
     response = client.post("/api/execute", json=payload)
-    assert response.status_code == 400
+    # Abhishek's rule of 2026-09-08: nothing blocks an entry. He builds and
+    # adjusts freely, including structures that breach the advisory caps,
+    # because mid-adjustment a position always looks terrible for a minute.
+    # Only carrying a position overnight is gated.
+    assert response.status_code == 200
 
 
 def test_execute_paper_mode_creates_journal_and_position(tmp_path: Path) -> None:

@@ -89,7 +89,7 @@ def test_validate_single_leg_fails_no_single_leg_rule() -> None:
     response = client.post("/api/strategy/validate", json=payload)
     assert response.status_code == 200
     data = response.json()
-    assert data["passed"] is False
+    assert data["passed"] is True  # entry is never blocked; the check is advisory
 
     rule_checks = {c["rule"]: c["verdict"] for c in data["checks"]}
     assert rule_checks["no_single_leg"] == "FAIL"
@@ -127,7 +127,7 @@ def test_validate_excessive_loss_fails_blast_radius() -> None:
     response = client.post("/api/strategy/validate", json=payload)
     assert response.status_code == 200
     data = response.json()
-    assert data["passed"] is False
+    assert data["passed"] is True  # entry is never blocked; the check is advisory
 
     rule_checks = {c["rule"]: c["verdict"] for c in data["checks"]}
     assert rule_checks["blast_radius"] == "FAIL"
@@ -256,7 +256,10 @@ def test_validate_spread_passes_realistic_fails_blast() -> None:
     response = client.post("/api/strategy/validate", json=payload)
     assert response.status_code == 200
     data = response.json()
-    assert data["overall_passed"] is False
+    # Nothing blocks an intraday entry, so overall_passed is True. The
+    # advisory checks are where the warning lives.
+    assert data["overall_passed"] is True
+    assert data["intraday"] is True
     assert data["realistic_risk"]["passed"] is True
     assert data["blast_radius"]["passed"] is False
     # 5% of the live 9,71,002.38.
@@ -292,7 +295,8 @@ def test_validate_spread_passes_blast_fails_realistic() -> None:
     response = client.post("/api/strategy/validate", json=payload)
     assert response.status_code == 200
     data = response.json()
-    assert data["overall_passed"] is False
+    assert data["overall_passed"] is True
+    assert data["intraday"] is True
     assert data["realistic_risk"]["passed"] is False
     assert data["blast_radius"]["passed"] is True
     # 7 lots x 65 x Rs 100 net debit = 45,500, inside the 48,550 fuse.

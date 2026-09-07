@@ -60,6 +60,16 @@ class StrategyComputeRequest(BaseModel):
         default=None,
         description="Optional valuation date YYYY-MM-DD for T+N payoff evaluation (must not exceed expiry)",
     )
+    planned_exit_date: Optional[str] = Field(
+        default=None,
+        description=(
+            "When Abhishek intends to be out, YYYY-MM-DD. Today or absent means an "
+            "intraday trade, which nothing blocks. A later date means the position "
+            "will be carried overnight, and the carry rules then apply: it must be "
+            "hedged, and a gap of twice the average daily move must cost no more "
+            "than 2% of live capital."
+        ),
+    )
     target_spot: Optional[float] = Field(
         default=None,
         gt=0.0,
@@ -178,9 +188,9 @@ class RiskVerdict(BaseModel):
     Do not multiply it. It is named badly for history's sake; the field to
     trust when displaying is `arithmetic`.
     """
-    loss_inr: float
+    loss_inr: Optional[float]
     cap_inr: float
-    pct_of_margin: float
+    pct_of_margin: Optional[float]
     passed: bool
     cost_reserve_inr: Optional[float] = Field(
         default=None,
@@ -220,6 +230,26 @@ class ValidationResponse(BaseModel):
     execution_blocked_reason: Optional[str] = Field(
         default=None,
         description="Set when the structure may be viewed but must not be executed.",
+    )
+    max_loss_is_unlimited: bool = Field(
+        default=False,
+        description=(
+            "True when the loss at expiry has no ceiling, which happens with a net "
+            "short call position. Display 'Unlimited', never a number. JSON cannot "
+            "carry infinity, so blast_radius.loss_inr is null in that case."
+        ),
+    )
+    intraday: bool = Field(
+        default=True,
+        description="True when this is a same-day trade. Nothing blocks an intraday entry.",
+    )
+    carry: Optional[dict] = Field(
+        default=None,
+        description="The overnight carry assessment: gap loss, cap, move profile and reasons.",
+    )
+    running_loss_threshold_inr: Optional[float] = Field(
+        default=None,
+        description="1% of live capital. Above this on a live position the app goes red.",
     )
 
 
