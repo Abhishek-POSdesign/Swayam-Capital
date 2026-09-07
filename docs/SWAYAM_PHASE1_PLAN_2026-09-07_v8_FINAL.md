@@ -191,3 +191,59 @@ From Release 1A onward these are automated and fail the build. They exist so tha
 ---
 
 *Nothing here is a claim of readiness. Real-money trading remains code-blocked. Written 2026-09-07 by Claude Code (Opus 5).*
+
+---
+
+## 7. THE OBSIDIAN SECOND BRAIN CONNECTION (added 2026-09-07, 23:55 IST)
+
+Abhishek's stated reason for building this platform rather than using FYERS: everything must connect to his Second Brain. This section records what is true today, what is broken, what is planned, and what is deferred.
+
+### 7.1 VERIFIED BROKEN — the live website cannot write to the vault at all
+
+The deployed Cloud Run service sets `TRADING_METHOD_PATH` but **does not set `VAULT_PATH`**, verified in `cloudbuild.yaml`. The default in `src/swayam/config.py:37` is the literal Windows path `G:\My Drive\Second Brain`, which does not exist inside a Linux container.
+
+Consequence, traced through `src/swayam/api/routes/execution.py`: a paper trade executed on the live site inserts the position into Supabase, then calls `write_new_trade_journal`, which fails, and the endpoint returns **HTTP 500** saying the trade was recorded but the journal write failed. **On the live site, the Second Brain connection has never worked.** It works only when Abhishek runs the app on his own machine. The existing 67 journal entries were all written locally.
+
+The same applies to the Atlas daily-log prefill for the readiness ritual, which reads `DAILY_LOG_DIR`, also unset in the cloud.
+
+### 7.2 The architecture decision this forces
+
+A cloud service can never write to a drive on his desk. Three options were considered. **Chosen: option 1.**
+
+1. **Database is the record; a local sync writes the vault.** Supabase holds the authoritative trade record. A small scheduled task on his PC pulls new trades and writes the markdown notes into `G:\My Drive\Second Brain`. This is **exactly the pattern his Atlas sync already uses** at 16:00 and 22:00 daily, which he understands and already trusts.
+2. App runs locally only. Rejected: he uses the live site.
+3. Cloud service commits to the vault's GitHub backup repository. Rejected for Phase 1: more moving parts, merge conflicts, and it bypasses the vault he actually opens.
+
+### 7.3 What lands when
+
+| Item | Release | Note |
+|---|---|---|
+| Stop returning HTTP 500 when the vault is unreachable. The trade commits, the journal becomes a queued outbox task, and the position shows `pending_journal`. | **1A** | Part of the transactional trade lifecycle in Section 1, L2. |
+| Vault-sync task on his PC that drains the journal outbox into `G:\My Drive\Second Brain`, on the Atlas schedule | **1B** | Reuses the Atlas sync pattern. |
+| Method files read from the vault rather than a build-time snapshot | **DEFERRED, with a manual step in the meantime** | See 7.4. |
+| Trade lessons and the AI memory writing back into the vault | **DEFERRED to the AI chapter** | Loop 1 is wired to the database only. |
+| Daily market notes into `08 - Daily Market Notes/` | **DEFERRED to the AI chapter** | Learning loop 2. |
+| Book ingestion from vault PDFs | **DEFERRED to the AI chapter** | Learning loop 4. |
+
+### 7.4 MANUAL STEP REQUIRED, recorded so it is never forgotten
+
+Until Method files are read from the vault at runtime, **editing a rule in Obsidian does not change the live application.** The deployed container carries a build-time copy of three of the seven Method files. Any Method change, including the 3% to 5% black-swan change in Release 2, requires the vault file and the repository copy to be edited together and the service redeployed. This is written into the Release 2 exit gate. A drift check that compares the two copies and warns when they differ is deferred, and until it exists this is a manual discipline.
+
+### 7.5 Paper and real coexist permanently — Abhishek's requirement, 2026-09-07
+
+His words: paper trading never dies. After moving to real money he may return to paper for a period, then go back to real, and the paper record must still be there and still accumulate.
+
+**Design consequence, binding on every release:**
+
+- `mode` is a permanent first-class attribute on every position, trade-history row, journal entry and lesson. It already exists on positions and currently reads `paper` on all 67 rows.
+- Statistics, analytics, the AI context and the lesson ledger are always filtered by mode. A paper result may never be mixed into a real-money statistic, in either direction.
+- The journal marks each note as paper or real on its face.
+- Switching mode is an explicit, audited action, never automatic, and never changes the mode of an existing record.
+- A closed paper season remains queryable forever as a historical record: how many trades, which strategies, what result.
+
+### 7.6 The 67 existing positions
+
+All 67 are `mode = paper`. Sixty-six are `Paper Bear Put` rows created by build and test runs between 3 and 7 September, and one is an `Iron Fly`. Sixty-four are archived and **three are still marked open**, so they appear on his screen as live positions. None is a real trading decision he made. All were sized at the wrong lot of 75.
+
+**Action, Release 1A:** quarantine all 67 as `provenance = build_test`, exclude them from every statistic and from the AI, close the three that are still open with a system note, and never silently rewrite their numbers. His real paper record begins when paper execution unlocks at the end of Release 3.
+
