@@ -23,132 +23,81 @@ than starting a new document. That is the whole system.
 
 ## 1. IN FLIGHT RIGHT NOW
 
-### Round 2: his feedback on the new pages. Briefed, awaiting the build.
+### Where this stands, end of the 2026-09-08 session
 
-He used the rebuilt Home and Strategy Desk with the market open on 2026-09-08
-and gave twenty-two pieces of feedback. His verdict on round 1: "the data is
-live, and the new website is live. I need some improvements."
+Round 2 is **built and reviewed**. PRs #32 to #36 are all merged. Cloud Run is on
+`swayam-dashboard-00042-b7t`, which started clean on both workers with no errors.
 
-**The brief is `docs/UI_BUILD_BRIEF_ROUND_2.md`.** Twenty-one steps, to be shipped
-as TWO pull requests by an unattended cloud session. He approved the plain-English
-plan at https://claude.ai/code/artifact/b99c1be3-8a29-4f54-af7c-a9917a449321 .
+**His deadline: Home and the Strategy Desk right by Friday 2026-09-11, so paper
+trading starts Monday 2026-09-14.** Wednesday, Thursday and Friday are the
+working days. There is room; do not rush and do not skip verification.
 
-Five live faults were found while planning it, all proven against the running
-system on 2026-09-08. They are the reason PR 1 exists:
+### The mis-merge. Read this before believing the site is up to date.
 
-1. **The rule check crashes about half the time.** Two Gunicorn workers fight
-   over an exclusive DuckDB file lock. Live evidence: 200, 500, 200, 500 across
-   the four `/api/strategy/validate` calls made today. The Supabase fallback in
-   `realized_vol.py` is correct and unreachable, because it sits after the line
-   that fails.
-2. **Rules 2 and 4 can never light up.** The desk never sends a planned exit
-   date, so rule 2 is always "intraday, not tested"; rule 4 is hardcoded idle in
-   the page.
-3. **Nothing on either page refreshes.** `broadcast_spot()` is never called from
-   anywhere, Home has no timer at all, and leg prices are fetched once. He cannot
-   trade from a screen whose option premiums are twenty minutes old.
-4. **The AI is running the rule set deleted on 2026-09-07.** It told him his risk
-   cap was Rs 8,500, which is 1% of the stale `swayam_config.margin_base_inr` of
-   Rs 8,50,000. It also believes the black-swan ceiling is 3% not 5%, that an
-   R:R floor exists, and that a red readiness verdict can stop him.
-5. **The recorder fails every minute** with `Please provide valid token`. It runs
-   each minute so its container never goes cold and never re-reads the secret.
-   Same root cause as the morning no-prices trap. Today's option chain is lost.
+**PR #35 was merged into PR #34's branch, not into `main`.** It was opened with
+PR 1's branch as its base, and GitHub did not retarget it when PR 1 merged
+first. GitHub reports it as merged, and it is, into a branch that was already a
+dead end.
 
-Plus **eight invented constants** still in the market feeds, and the option chain
-endpoint **ignores the expiry it is asked for** and always returns the nearest.
+So `main` and the live site carry **PR 1 only**: real numbers, the live-price
+plumbing, the working rules, breadth and futures volume. **Everything visual is
+missing** — the Devanagari mark, the auto-theme fix, the depth and the larger
+type, the ritual tile, So Far Today's play button and collapse, chat thumbnails,
+one leg per row, the greeks in the left rail, the payoff axis and the resets, the
+seventeen presets, and the whole option chain panel.
 
-**Two things he decided that change later work:**
+Branch `feature/swayam-desk-onto-main-017` merges that work onto `main` cleanly
+and is the pull request that fixes it. **Do not delete
+`feature/swayam-round2-pr2-the-desk-016` until that has merged.**
 
-- **He uses calendar spreads more than half the time and they were profitable.**
-  That raises section 3 from "the big one" to the next job after this round.
-- **He mostly carries positions overnight.** He arrives at 2:30 pm for swing and
-  positional trades, not intraday. The desk must default to the overnight answer.
+**The lesson, and it is new:** opening a pull request against another pull
+request's branch is not safe here. GitHub only retargets to `main` when the base
+branch is deleted on merge. Stack the work in one branch, or open the second
+pull request against `main` after the first has landed.
 
-**The logo is settled:** the full Devanagari spelling with the tagline
-"Discipline builds tomorrow", nothing drawn above the letters. His wife is a
-graphic designer and will do the letterform work later.
+### Tomorrow morning, and only with the market open
 
-Do not start anything in section 2 until he says the pages are right.
+None of these can be claimed before 09:15 IST. Do not describe any of them as
+working until they have been run and the answer read.
 
-### Round 2, PR 1 built 2026-09-08 evening: "Real numbers, live prices, working rules"
+1. **Do prices actually tick.** Watch `frames_sent` climb on
+   `/api/market/spot-feed/status`. A socket that merely opened is not a tick.
+2. **Do leg prices move on their own** within a minute of a real market move,
+   on the desk, without touching anything.
+3. **Do the rules answer every time.** Call `/api/strategy/validate` twenty
+   times against the live site and expect twenty 200s. Before round 2 the same
+   test gave roughly half 500s.
+4. **Does the recorder write its first file** into
+   `gs://swayam-capital-options-data`. The bucket is empty; one object proves it.
+5. **Is the token re-read without a restart.** Refresh it, wait, and confirm the
+   live site still prices without a redeploy.
+6. **Put-call ratio and max pain against a live chain**, not the dead one.
+7. **One question to the AI**, "what is my running-loss cap today?" It must
+   answer with 1% of the live balance and name FYERS. Costs money; ask once.
 
-Steps 1 to 9 of the brief, on branch `feature/swayam-round2-pr1-real-numbers-015`.
-What was checked, and how, is in the pull request. In short:
+### After market, any time. In this order.
 
-- **Verified on a local backend against the real FYERS account and the live
-  database, market closed (after 15:30 IST):** the AI context now carries the
-  live balance and the caps from it (`₹9,71,111`, rule 1 `₹9,711`), never the
-  config table; breadth `17 ▲ / 31 ▼ / 2 unchanged` from a real quote of all
-  50 constituents; futures volume `21,75,290` from `NSE:NIFTY26SEPFUT`; an iron
-  condor at 29 Sep loaded at real prices and all four rules answered, rule 2
-  as a carry test (`₹555` of `₹19,422`, "if you carry this overnight") and
-  rule 4 as pass/fail (`₹81,053` of `₹5,54,961`); the socket watchdog fell
-  back to a REST poll after 10 s of silence; 365 Python tests and 174 web
-  tests pass, the two known failures remain.
-- **Not verified, because they need the live site or an open market:** the
-  token being re-read from Secret Manager without a restart, the recorder
-  writing to the bucket, frames arriving over the socket during market hours,
-  twenty consecutive 200s from `/api/strategy/validate` on Cloud Run.
-- **Found while building, not in the brief:** the snapshot's put-call ratio
-  and max pain read `call_oi`/`put_oi` keys FYERS never sends, so every OI was
-  zero, the PCR was always the 1.0 constant and "max pain" was the lowest
-  strike in the chain (21,150 on his screen). Fixed to read FYERS' per-contract
-  rows. Also the quote endpoint fetched a 50-strike chain twice per leg with no
-  cache; a four-leg desk re-quoting every 5 s hit FYERS' request limit. A
-  3-second raw-chain cache now makes that at most two calls.
-- **Left alone, flagged:** `validation.py` still runs the deleted
-  reward-to-risk check as an advisory. Its arithmetic was off-limits this
-  round, so the desk drops that one line from the warnings it prints.
+1. **Deploy the recorder.** It is a separate service at `cloud/recorder/` and
+   merging to `main` does not touch it. Until it is deployed, every trading day
+   is another day of option chain data lost forever. **Needs his explicit go.**
+2. **The after-hours blackout.** See §2.8 below. This is the one he reported
+   himself and it stops him working in the evening.
+3. **The Trade Journal, all three faults in one pass.** See §2.2. From Monday
+   that page holds his paper record, so it is on the critical path.
+4. **Remove the deleted reward-to-risk check** still running server-side as an
+   advisory. See §2.9.
+5. **Close-out.** Delete merged branches, remove the leftover worktree
+   `.claude/worktrees/swayam-capital-ui-build-f2a909`, record what is live.
+6. **The calendar backend.** `docs/CALENDAR_BUILD_BRIEF.md` PR 1. Independent of
+   everything above and can start any time.
 
-### Round 2, PR 2 built 2026-09-08 evening: "The desk he wants to sit at"
+### On calendars, his position as of 2026-09-08
 
-Steps 10 to 21, on branch `feature/swayam-round2-pr2-the-desk-016`, branched
-off PR 1 so it does not conflict. **Merge PR 1 first, wait for the green
-tick, then merge PR 2.**
-
-- **Verified in a real browser against the local backend, real FYERS and the
-  live database, market closed:** the Devanagari mark `स्वयम्` in sage with
-  "Discipline builds tomorrow" underneath, in the header only, `Tiro
-  Devanagari Hindi` loaded; the ritual strip as a near-black tile on the
-  light desk and a raised slate on the dark one; depth on every card; 1840px
-  wide, 330px sidebar, 14px rows; one leg per row with a 1 to 20 lots
-  dropdown and the dustbin inside the card at 1280, 1440 and 1920; greeks in
-  the left rail; the payoff axis snapped to 50s and labelled every 100; the
-  date slider running today to expiry with Reset on both; 17 ready-made
-  structures plus the naked call; the chain endpoint returning the 29 Sep
-  contracts (`NSE:NIFTY26SEP…`) with change in OI, volume, bid, ask and a
-  solved IV per strike, and refusing a date FYERS does not list; the floating
-  chain panel with 61 strikes, the ATM row marked, real OI totals and bars,
-  and an iron condor built by four clicks that matched the hand-built one on
-  every rule, the margin and the payoff; Escape closing it and stopping its
-  timer. 367 Python tests pass, 190 web tests pass; the long-standing chain
-  test now passes honestly against FYERS' real row shape, so one known
-  failure remains (`test_notifications`).
-- **Theme, auto:** follows the computer on both pages, header and page
-  together, in both schemes, on a fresh load and when the scheme flips with
-  the page open (checked by screenshot; the pane's computed-style report
-  lagged the paint by a few seconds, the paint itself was right).
-- **Not verified:** the chain's put-call ratio against Home's figure. Home
-  reads the nearest (weekly) expiry over 50 strikes; the panel follows the
-  desk's expiry over 30 strikes, so the two are different measurements by
-  design and will not match unless the same expiry is chosen. Live
-  refreshes of the chain during market hours.
-- So Far Today: play button and a collapse that starts folded for the rest of
-  the day once expanded; the cost gate is untouched and the auto-fire test
-  still passes. Chat images are 40px thumbnails beside the file name that
-  open the existing zoom.
-
-### State as of the end of the 2026-09-08 session
-
-- PRs #23 through #30 are all merged. `main` is at `cb2c75a`.
-- Cloud Run revision `swayam-dashboard-00037-7cz`, deployed 09:04 UTC, is live
-  and carries both the new pages and today's FYERS token.
-- No branch is open. No commit is stranded. Nothing is uncommitted.
-- Verified live with the market open: balance ₹9,71,111 from FYERS, the four
-  caps derived from it, a bear put spread at the 29 Sep expiry pricing from
-  the real chain, max profit ₹8,570 and max loss ₹4,430 summing to the 200
-  point width times 65.
+Undecided, and deliberately so. Whether he needs them for Monday depends on the
+market: if volatility is already high with no event ahead, he will not put on a
+calendar, because the premium can collapse. If an event is coming and volatility
+is rising, a calendar is the trade. **He will decide when he has looked at the
+market. Do not push him and do not assume either way.**
 
 ## 2. NEXT, IN ORDER
 
@@ -175,7 +124,25 @@ the app into verification.
 Nothing is lost meanwhile. The outbox holds the note and the local drainer
 completes it, and his PC is on whenever he trades.
 
-### 2.2 Journal analytics must exclude test rows
+### 2.2 The Trade Journal, three faults in one pass
+
+Found in review on 2026-09-08. All three live on the same page, so fix them
+together, and before any performance figure appears on a screen.
+
+1. **A ninth invented constant.** `api/routes/journal.py` lines 297 and 542
+   hardcode a margin base of `500000.0`, used for
+   `cumulative_pnl_pct_of_margin` and `max_drawdown_pct_of_margin`. Rendered by
+   `web/src/components/kpi-strip.js`. It is a different made-up number from the
+   Rs 8,50,000 the AI was using, with the same disease. Take live capital from
+   `services/capital.py`, as execution and positions now do.
+2. **The page writes to the database when you open it.**
+   `web/src/pages/journal.js:58` fires `POST /api/journal/archive-test-trades`
+   on the first load of each browser session, gated only by `sessionStorage`.
+   Nothing is clicked. Pre-existing and wrong; make it explicit or remove it.
+3. **Analytics does not filter `provenance`**, so any win rate or cumulative
+   profit would be computed from the 81 quarantined build-and-test rows.
+
+### 2.2b Journal analytics must exclude test rows
 `swayam_positions` and `swayam_journal_entries` both carry `provenance`. The
 analytics endpoint does not filter on it, so any win rate or cumulative profit
 today would be computed from 81 rows of build-and-test data. **Fix this before
@@ -213,6 +180,35 @@ which needs a second project he cannot currently create.
 Both pre-date all of this. Do not "fix" them by weakening assertions.
 
 ---
+
+### 2.8 The after-hours blackout, which he reported himself
+
+**His words, 2026-09-08:** "when the market closes, I notice that I lose all the
+prices and everything. It should not happen. I should have the last traded price
+of the day... I should also do my homework, strategy building, etc., after the
+market closes."
+
+**Root-caused live at 17:44 IST with the market shut. FYERS is not the problem.**
+The spot came back at the close (23,635.1) and all 26 option rows carried a real
+last traded price, open interest, change in open interest and volume.
+
+**The fault is ours.** `/api/market/expiries` keeps an expiry in the list once
+its day has passed: it computes `cal = (d - today).days` and filters nothing, so
+after 15:30 on an expiry day the app still offers today's expiry, labelled
+"08 Sep (0d)". Those contracts no longer exist and every price reads 0.05, which
+is what an expired option is worth. 2026-09-08 was a weekly expiry, which is why
+he hit it that evening.
+
+**Fix:** drop an expiry once its day has passed, default to the next live one,
+and label prices as the close rather than as live.
+
+### 2.9 The deleted reward-to-risk rule is still running
+
+`api/routes/validation.py` still evaluates the reward-to-risk check as an
+advisory. That rule was deleted on 2026-09-07 and does not exist any more. Round
+2 was forbidden from touching that file's arithmetic, so the desk simply drops
+the line from what it prints. **Remove the check server-side**; a rule that no
+longer exists should not be computed.
 
 ## 3. THE BIG ONE, AFTER THE ABOVE
 
