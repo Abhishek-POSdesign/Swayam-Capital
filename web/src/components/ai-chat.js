@@ -11,7 +11,7 @@
  * Markdown: bold, italic, code, lists rendered via simple inline parser.
  */
 
-import { openImageModal } from './chat-surface.js';
+import { openImageModal, attachmentName } from './chat-surface.js';
 import {
   createTTSButton,
   playText,
@@ -358,12 +358,19 @@ export class AIChatPanel {
     inner.classList.add('ai-message__content');
 
     if (attachmentUrl) {
+      // A thumbnail beside the file name, not a full-size picture in the drawer.
+      const att = document.createElement('div');
+      att.className = 'chat-att';
       const img = document.createElement('img');
       img.src = attachmentUrl;
-      img.style.cssText = 'max-width: 100%; max-height: 200px; border-radius: 6px; cursor: pointer; margin-bottom: 6px; display: block; object-fit: contain; background: #1a1b23; border: 1px solid var(--dl-line);';
-      img.title = 'Click to expand image';
+      img.alt = 'attached image';
+      img.title = 'Click to view full size';
       img.addEventListener('click', () => openImageModal(attachmentUrl));
-      inner.appendChild(img);
+      const label = document.createElement('span');
+      label.textContent = attachmentName(attachmentUrl);
+      att.appendChild(img);
+      att.appendChild(label);
+      inner.appendChild(att);
     }
 
     if (content) {

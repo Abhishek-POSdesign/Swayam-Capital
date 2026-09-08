@@ -17,7 +17,11 @@ describe('Sticky Navigation Header Architecture', () => {
   it('initializes header with swayam-header class and sticky position', () => {
     initHeader(container);
     expect(container.innerHTML).toContain('swayam-header');
-    expect(container.innerHTML).toContain('SWAYAM CAPITAL');
+    // The mark is the Devanagari spelling with the tagline; the old words are gone.
+    expect(container.innerHTML).toContain('स्वयम्');
+    expect(container.innerHTML).toContain('Discipline builds tomorrow');
+    expect(container.innerHTML).not.toContain('SWAYAM CAPITAL');
+    expect(container.innerHTML).not.toContain('swayam-logo-mark');
   });
 
   it('verifies styles.css defines #header-container and .swayam-header as sticky without overflow clipping on ancestors', () => {

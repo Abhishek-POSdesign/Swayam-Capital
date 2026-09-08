@@ -64,6 +64,17 @@ function inlineMarkdown(text) {
     .replace(/`([^`]+)`/g, '<code style="font-family: var(--font-mono); font-size: 0.85em; background: var(--dl-card-2); padding: 1px 5px; border-radius: 4px; color: var(--accent-blue);">$1</code>');
 }
 
+/** The file name from an attachment URL, for the label beside its thumbnail. */
+export function attachmentName(url) {
+  try {
+    const last = String(url || '').split('?')[0].split('#')[0].split('/').pop() || '';
+    const name = decodeURIComponent(last);
+    return name && name.length <= 40 ? name : name ? `${name.slice(0, 18)}…${name.slice(-14)}` : 'image attached';
+  } catch (_) {
+    return 'image attached';
+  }
+}
+
 export function openImageModal(imgSrc) {
   let modal = document.getElementById('ai-image-modal');
   if (!modal) {
@@ -514,7 +525,9 @@ export class ChatSurfaceComponent {
       if (!attachmentUrl) {
         bubble.textContent = content || '';
       } else {
-        bubble.innerHTML = `<img src="${attachmentUrl}" title="Click to expand image" style="max-width: 480px; max-height: 280px; width: 100%; border-radius: 8px; cursor: pointer; margin-bottom: 8px; display: block; object-fit: contain; background: #1a1b23;" /><div class="bubble-text">${content || ''}</div>`;
+        // An attachment, not a billboard: a 40px thumbnail beside the file
+        // name. Clicking it opens the existing zoom modal.
+        bubble.innerHTML = `<div class="chat-att"><img src="${attachmentUrl}" alt="attached image" title="Click to view full size" /><span>${attachmentName(attachmentUrl)}</span></div><div class="bubble-text">${content || ''}</div>`;
         const imgEl = bubble.querySelector('img');
         if (imgEl) imgEl.addEventListener('click', () => openImageModal(attachmentUrl));
       }
