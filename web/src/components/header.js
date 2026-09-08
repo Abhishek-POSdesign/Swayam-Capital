@@ -37,13 +37,12 @@ export function initHeader(container, options = {}) {
 
   container.innerHTML = `
     <header class="swayam-header">
-      <div class="swayam-brand">
-        <div class="swayam-logo-mark">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <circle cx="6" cy="6" r="4" fill="#101116"/>
-          </svg>
-        </div>
-        <span>SWAYAM CAPITAL</span>
+      <!-- The mark, decided 2026-09-08: the full Devanagari spelling in sage,
+           the tagline underneath, nothing drawn above the letters. One mark,
+           here, only. -->
+      <div class="swayam-brand" role="img" aria-label="Swayam Capital. Discipline builds tomorrow">
+        <span class="swayam-word" lang="hi">स्वयम्</span>
+        <span class="swayam-tagline">Discipline builds tomorrow</span>
       </div>
 
       <div class="header-spot-pill" id="header-spot-display">

@@ -13,6 +13,8 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def clear_market_caches():
+    from swayam.api.routes.market import _raw_chain_cache
+    _raw_chain_cache.clear()
     _candle_cache.clear()
     _vix_cache["data"] = None
     _vix_cache["timestamp"] = 0.0
@@ -37,24 +39,72 @@ def test_get_nifty_spot_returns_price(monkeypatch) -> None:
     assert "as_of" in data
 
 
+# The real shape of FYERS' optionchain response, captured 2026-09-08. The old
+# version of this test mocked a shape FYERS never returns ({"spot", "strikes"}
+# already grouped) and called the client with arguments it does not take, so it
+# had failed since it was written. It is fixed here against the real shape.
+FYERS_CHAIN = {
+    "expiryData": [
+        {"date": "15-09-2026", "expiry": "1789467000", "expiry_flag": "W"},
+        {"date": "29-09-2026", "expiry": "1790676600", "expiry_flag": "M"},
+    ],
+    "optionsChain": [
+        {"symbol": "NSE:NIFTY50-INDEX", "option_type": "", "strike_price": -1, "ltp": 24867.5, "oi": None},
+        {"symbol": "NSE:NIFTY26SEP24850CE", "option_type": "CE", "strike_price": 24850, "ltp": 150.0, "oi": 1000,
+         "oich": 120, "oichp": 13.6, "volume": 50000, "bid": 149.5, "ask": 150.5, "ltpch": -12.0, "ltpchp": -7.4},
+        {"symbol": "NSE:NIFTY26SEP24850PE", "option_type": "PE", "strike_price": 24850, "ltp": 80.0, "oi": 1200,
+         "oich": -40, "oichp": -3.2, "volume": 42000, "bid": 79.5, "ask": 80.5, "ltpch": 6.0, "ltpchp": 8.1},
+        {"symbol": "NSE:NIFTY26SEP24900CE", "option_type": "CE", "strike_price": 24900, "ltp": 0, "oi": 300,
+         "oich": 0, "oichp": 0, "volume": 0, "bid": 0, "ask": 0, "ltpch": 0, "ltpchp": 0},
+    ],
+}
+
+
 def test_get_option_chain_returns_strikes(monkeypatch) -> None:
-    mock_chain = {
-        "spot": 24867.5,
-        "strikes": [
-            {
-                "strike": 24850.0,
-                "ce": {"ltp": 150.0, "iv": 0.15, "oi": 1000},
-                "pe": {"ltp": 80.0, "iv": 0.16, "oi": 1200},
-            }
-        ],
-    }
-    monkeypatch.setattr(fyers_client, "get_option_chain", lambda symbol, expiry: mock_chain)
-    response = client.get("/api/option-chain?expiry=2026-09-24&strike_count=10")
-    assert response.status_code == 200
+    calls = []
+
+    def fake_chain(underlying="NSE:NIFTY50-INDEX", strike_count=20, timestamp=None):
+        calls.append(timestamp)
+        return FYERS_CHAIN
+
+    monkeypatch.setattr(fyers_client, "get_option_chain", fake_chain)
+    from swayam.api.routes.market import _raw_chain_cache
+    _raw_chain_cache.clear()
+
+    response = client.get("/api/option-chain?expiry=2026-09-29&strike_count=10")
+    assert response.status_code == 200, response.text
     data = response.json()
     assert data["underlying"] == "NIFTY"
-    assert len(data["strikes"]) == 1
-    assert data["strikes"][0]["strike"] == 24850.0
+    assert data["spot"] == 24867.5
+    # The requested expiry was resolved to FYERS' epoch and fetched by it.
+    assert data["expiry"] == "2026-09-29"
+    assert data["expiry_epoch"] == "1790676600"
+    assert calls == [None, "1790676600"]
+
+    assert [s["strike"] for s in data["strikes"]] == [24850.0, 24900.0]
+    ce = data["strikes"][0]["ce"]
+    pe = data["strikes"][0]["pe"]
+    assert ce["ltp"] == 150.0 and ce["oi"] == 1000 and ce["oi_change"] == 120 and ce["volume"] == 50000
+    assert ce["bid"] == 149.5 and ce["ask"] == 150.5 and ce["ltp_change"] == -12.0
+    assert pe["ltp"] == 80.0 and pe["oi_change"] == -40
+    # IV is solved from the traded price, and null where there is no trade.
+    assert ce["iv"] is not None and 0.01 < ce["iv"] < 2.0
+    assert data["strikes"][1]["ce"]["ltp"] is None
+    assert data["strikes"][1]["ce"]["iv"] is None
+    # Open-interest totals and the put-call ratio come from the same rows.
+    assert data["total_call_oi"] == 1300 and data["total_put_oi"] == 1200
+    assert data["pcr"] == round(1200 / 1300, 2)
+    assert data["atm_strike"] == 24850.0
+
+
+def test_get_option_chain_refuses_an_expiry_fyers_does_not_list(monkeypatch) -> None:
+    """A chain for the wrong expiry is worse than no chain."""
+    monkeypatch.setattr(fyers_client, "get_option_chain", lambda **kw: FYERS_CHAIN)
+    from swayam.api.routes.market import _raw_chain_cache
+    _raw_chain_cache.clear()
+    response = client.get("/api/option-chain?expiry=2026-10-06&strike_count=10")
+    assert response.status_code == 404
+    assert "does not list" in response.json()["detail"]
 
 
 def test_get_nifty_candles_from_fyers(monkeypatch) -> None:

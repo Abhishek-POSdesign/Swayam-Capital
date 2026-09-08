@@ -31,6 +31,22 @@
   --f: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --m: 'JetBrains Mono', 'Roboto Mono', ui-monospace, Consolas, monospace;
 
+  /* Depth. His words: "everything is so flat... no depth, no 3D-ness". Taken
+     from the feel of his Atlas app, not its tokens: Atlas uses lilac, which
+     is banned here. */
+  --shadow:    0 1px 2px rgba(16,20,20,.06), 0 6px 18px rgba(16,20,20,.07);
+  --shadow-hi: 0 2px 4px rgba(16,20,20,.09), 0 12px 30px rgba(16,20,20,.11);
+  --edge:      inset 0 1px 0 rgba(255,255,255,.7);
+  --ease:      cubic-bezier(.16,1,.3,1);
+  --dur:       180ms;
+  /* The morning ritual is the same physical object in both themes, not the
+     same colour: a deep near-black bar lying on a light desk here, a raised
+     slate above a near-black page in the dark theme. */
+  --tile:      #141616;
+  --tile-fg:   #f2f4f3;
+  --tile-fg-2: rgba(242,244,243,.6);
+  --tile-line: rgba(255,255,255,.12);
+
   background: var(--bg);
   color: var(--fg);
   font-family: var(--f);
@@ -38,9 +54,11 @@
   line-height: 1.45;
 }
 
-/* The app ships with data-theme="dark" on <html>, so this is the usual case. */
-:root[data-theme='dark'] .sw-desk,
-:root[data-theme='auto'] .sw-desk {
+/* The app ships with data-theme="dark" on <html>, so this is the usual case.
+   `auto` is NOT listed here: it follows the computer, through the media query
+   below, exactly as swayam-tokens.css does. Listing it here painted a dark
+   page under a light header on a light system. */
+:root[data-theme='dark'] .sw-desk {
   --bg: #0d0f0f;
   --panel: #141717;
   --panel-2: #1a1e1e;
@@ -59,6 +77,13 @@
   --info: #4bb4d0;
   --info-bg: #0d2b34;
   --brand: #9dbba3;
+  --shadow:    0 1px 2px rgba(0,0,0,.45), 0 8px 22px rgba(0,0,0,.42);
+  --shadow-hi: 0 3px 6px rgba(0,0,0,.5), 0 16px 36px rgba(0,0,0,.55);
+  --edge:      inset 0 1px 0 rgba(255,255,255,.05);
+  --tile:      #1f2525;
+  --tile-fg:   #eef2f1;
+  --tile-fg-2: rgba(238,242,241,.6);
+  --tile-line: rgba(255,255,255,.1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -81,6 +106,13 @@
     --info: #4bb4d0;
     --info-bg: #0d2b34;
     --brand: #9dbba3;
+    --shadow:    0 1px 2px rgba(0,0,0,.45), 0 8px 22px rgba(0,0,0,.42);
+    --shadow-hi: 0 3px 6px rgba(0,0,0,.5), 0 16px 36px rgba(0,0,0,.55);
+    --edge:      inset 0 1px 0 rgba(255,255,255,.05);
+    --tile:      #1f2525;
+    --tile-fg:   #eef2f1;
+    --tile-fg-2: rgba(238,242,241,.6);
+    --tile-line: rgba(255,255,255,.1);
   }
 }
 
@@ -88,22 +120,21 @@
 .sw-desk *::before,
 .sw-desk *::after { box-sizing: border-box; }
 
-.sw-desk .app { max-width: 1440px; margin: 0 auto; padding: 12px 14px 70px; }
+/* He uses this on a desktop and wants the room used. 1440 was leaving a
+   third of a wide screen empty. */
+.sw-desk .app { max-width: 1840px; margin: 0 auto; padding: 12px 16px 70px; }
 
 /* ---------- head strip ---------- */
 .sw-desk .top {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   padding: 8px 2px 12px;
 }
-.sw-desk .brandmark {
-  font-weight: 700; font-size: 15px; display: flex; align-items: baseline; gap: 9px;
+/* The page name only. The mark lives in the header, once. */
+.sw-desk .pagename {
+  margin: 0; font-weight: 700; font-size: 16px; display: flex; align-items: baseline; gap: 9px;
   color: var(--fg);
 }
-.sw-desk .brandmark .mark {
-  font-size: 25px; color: var(--brand); line-height: 1; font-weight: 600;
-  letter-spacing: -0.02em; position: relative; top: 2px;
-}
-.sw-desk .brandmark em { font-style: normal; color: var(--fg-3); font-weight: 500; }
+.sw-desk .pagename em { font-style: normal; color: var(--fg-3); font-weight: 500; font-size: 14px; }
 .sw-desk .spot { display: flex; align-items: baseline; gap: 9px; margin-left: auto; flex-wrap: wrap; }
 .sw-desk .spot b {
   font-family: var(--m); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;
@@ -140,7 +171,7 @@
   .sw-desk .ticker { overflow-x: auto; }
 }
 .sw-desk .tk {
-  font-family: var(--m); font-size: 12px; padding: 0 18px; border-right: 1px solid var(--line);
+  font-family: var(--m); font-size: 13.5px; padding: 0 18px; border-right: 1px solid var(--line);
   display: inline-flex; gap: 7px; align-items: baseline;
 }
 .sw-desk .tk i {
@@ -149,21 +180,27 @@
 }
 .sw-desk .tk b { font-weight: 600; font-variant-numeric: tabular-nums; }
 
-/* ---------- morning ritual: one thin strip, never a wall of cards ---------- */
+/* ---------- morning ritual: one thin strip, never a wall of cards ----------
+   A tactile block: near-black on the light desk, raised slate on the dark
+   one. Same object, lit differently. */
 .sw-desk .ritual {
-  display: flex; align-items: center; background: var(--panel); border: 1px solid var(--line);
-  border-radius: 9px; margin-bottom: 12px; overflow-x: auto;
+  display: flex; align-items: center; background: var(--tile); color: var(--tile-fg);
+  border: 1px solid transparent; border-radius: 10px; margin-bottom: 12px; overflow-x: auto;
+  box-shadow: var(--edge), var(--shadow-hi);
 }
 .sw-desk .ritual .rr {
-  padding: 8px 14px; border-right: 1px solid var(--line); white-space: nowrap;
-  display: flex; gap: 7px; align-items: baseline; flex: none;
+  padding: 9px 15px; border-right: 1px solid var(--tile-line); white-space: nowrap;
+  display: flex; gap: 7px; align-items: baseline; flex: none; color: var(--tile-fg);
 }
 .sw-desk .ritual .rr i {
   font-style: normal; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--fg-3); font-family: var(--m); font-weight: 600;
+  color: var(--tile-fg-2); font-family: var(--m); font-weight: 600;
 }
-.sw-desk .ritual .rr b { font-family: var(--m); font-size: 13px; font-weight: 600; }
+.sw-desk .ritual .rr b { font-family: var(--m); font-size: 13.5px; font-weight: 600; color: var(--tile-fg); }
+.sw-desk .ritual .rr span { color: var(--tile-fg-2); }
 .sw-desk .ritual .edit { margin-left: auto; padding: 6px 12px; flex: none; }
+.sw-desk .ritual .lnk { color: var(--tile-fg); }
+.sw-desk .ritual .lnk:hover { background: rgba(255,255,255,.1); }
 .sw-desk .lnk {
   background: none; border: none; color: var(--info); font-family: var(--f); font-size: 12px;
   cursor: pointer; font-weight: 600; padding: 4px 6px; border-radius: 5px;
@@ -172,14 +209,30 @@
 
 /* ---------- shell ---------- */
 .sw-desk .cols {
-  display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 12px; align-items: start;
+  display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 12px; align-items: start;
 }
-.sw-desk .cols-desk { grid-template-columns: minmax(340px, 430px) minmax(0, 1fr); gap: 14px; }
+/* The left rail carries one leg per row. 430px less 28px of card padding is
+   the narrowest the leg grid is designed for; the dustbin never leaves the card. */
+.sw-desk .cols-desk { grid-template-columns: minmax(430px, 520px) minmax(0, 1fr); gap: 14px; }
 @media (max-width: 1080px) { .sw-desk .cols { grid-template-columns: 1fr; } }
 @media (max-width: 1000px) { .sw-desk .cols-desk { grid-template-columns: 1fr; } }
 
 .sw-desk .card {
-  background: var(--panel); border: 1px solid var(--line); border-radius: 9px; margin-bottom: 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 12px;
+  box-shadow: var(--edge), var(--shadow);
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.sw-desk .card:hover { transform: translateY(-3px); box-shadow: var(--edge), var(--shadow-hi); }
+.sw-desk .rl, .sw-desk .mn, .sw-desk .met, .sw-desk .preset {
+  box-shadow: var(--edge), var(--shadow);
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.sw-desk .rl:hover, .sw-desk .mn:hover, .sw-desk .met:hover, .sw-desk .preset:hover {
+  transform: translateY(-3px); box-shadow: var(--edge), var(--shadow-hi); position: relative; z-index: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sw-desk .card, .sw-desk .rl, .sw-desk .mn, .sw-desk .met, .sw-desk .preset { transition: none; }
+  .sw-desk .card:hover, .sw-desk .rl:hover, .sw-desk .mn:hover, .sw-desk .met:hover, .sw-desk .preset:hover { transform: none; }
 }
 .sw-desk .card > h3 {
   margin: 0; padding: 10px 14px; font-size: 12px; font-weight: 600; letter-spacing: 0.03em;
@@ -202,15 +255,15 @@
   align-items: baseline; flex-wrap: wrap;
 }
 .sw-desk .kv {
-  display: flex; justify-content: space-between; gap: 10px; padding: 7px 14px;
-  border-bottom: 1px solid var(--line); font-size: 12.5px;
+  display: flex; justify-content: space-between; gap: 10px; padding: 9px 14px;
+  border-bottom: 1px solid var(--line); font-size: 14px; line-height: 1.35;
 }
 .sw-desk .kv:last-child { border-bottom: none; }
 .sw-desk .kv span { color: var(--fg-2); }
 .sw-desk .kv b { font-family: var(--m); font-weight: 600; font-variant-numeric: tabular-nums; }
 .sw-desk .rangebar { padding: 11px 14px; border-bottom: 1px solid var(--line); }
 .sw-desk .rangebar .lbl {
-  display: flex; justify-content: space-between; font-family: var(--m); font-size: 10px;
+  display: flex; justify-content: space-between; font-family: var(--m); font-size: 12.5px;
   color: var(--fg-3); margin-bottom: 5px; gap: 8px;
 }
 .sw-desk .track { height: 5px; border-radius: 3px; background: var(--sunk); position: relative; }
@@ -262,6 +315,12 @@
 .sw-desk .met .v { font-size: 26px; }
 .sw-desk .rl .v { font-size: 19px; }
 .sw-desk .v.sm { font-size: 16px; }
+/* The one accent, on the numbers that matter: Balance and the four limits on
+   Home, Margin needed and Max loss on the desk. Semantic green and red keep
+   their meaning and win where they apply. */
+.sw-desk .v.acc { font-size: 28px; color: var(--brand); }
+.sw-desk .rl .v.acc { font-size: 22px; }
+.sw-desk .met .v.acc { font-size: 28px; }
 .sw-desk .s { font-size: 11px; color: var(--fg-2); margin-top: 3px; }
 .sw-desk .met .s, .sw-desk .mn .s { font-family: var(--m); }
 
@@ -280,7 +339,7 @@
 .sw-desk .empty { padding: 26px 14px; text-align: center; color: var(--fg-2); font-size: 13px; }
 .sw-desk .na { color: var(--fg-3); font-style: italic; }
 .sw-desk .why {
-  font-family: var(--m); font-size: 10.5px; color: var(--fg-3); padding: 8px 14px;
+  font-family: var(--m); font-size: 12px; color: var(--fg-3); padding: 8px 14px;
   border-top: 1px dashed var(--line-2); line-height: 1.6;
 }
 .sw-desk .banner { padding: 9px 0; font-size: 12.5px; color: var(--fg-2); }
@@ -300,11 +359,16 @@
   background: var(--panel); color: var(--fg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
-/* ---------- legs ---------- */
+/* ---------- legs: one leg, one row, the dustbin inside the card ----------
+   The old grid needed 429px inside a card that offered 402px, so the dustbin
+   hung outside. This one needs 396px at its narrowest and the strike column
+   takes whatever is left. */
 .sw-desk .lh, .sw-desk .lr {
-  display: grid; grid-template-columns: 24px 30px 56px 104px 46px 46px 66px 22px;
-  gap: 5px; align-items: center;
+  display: grid; grid-template-columns: 18px 28px 48px minmax(98px, 1fr) 48px 50px 62px 20px;
+  gap: 4px; align-items: center;
 }
+.sw-desk .lr select, .sw-desk .lr input { padding: 5px 4px; font-size: 12px; }
+.sw-desk .lr select.lots { text-align: center; }
 .sw-desk .lh {
   font-family: var(--m); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--fg-3); font-weight: 600; padding: 0 0 7px;
@@ -354,6 +418,35 @@
   color: var(--fg-3); font-weight: 600;
 }
 
+/* ---------- greeks: four pairs across two rows, no header ---------- */
+.sw-desk .greeks { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); }
+.sw-desk .greeks .gk { background: var(--panel); padding: 10px 14px; }
+.sw-desk .greeks .gk .v { font-size: 18px; }
+.sw-desk .greeks .na-row { grid-column: 1 / -1; background: var(--panel); padding: 12px 14px; }
+
+/* ---------- So Far Today, on the desk's tokens ---------- */
+.sw-desk .sft-card .cb p { margin: 0 0 10px; line-height: 1.55; font-size: 13.5px; }
+.sw-desk .sft-setup {
+  background: var(--panel-2); border-left: 3px solid var(--brand); padding: 10px 14px;
+  border-radius: 0 6px 6px 0; margin-top: 10px; font-weight: 500;
+}
+.sw-desk .sft-sources { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sw-desk .sft-sources a {
+  font-size: 12px; color: var(--info); text-decoration: none; background: var(--panel-2);
+  padding: 3px 8px; border-radius: 4px; border: 1px solid var(--line);
+}
+.sw-desk .sft-sources a:hover { border-color: var(--info); }
+.sw-desk .sft-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 10px 0; color: var(--fg-2); font-size: 13.5px; }
+.sw-desk .sft-loading { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px 0; color: var(--fg-2); font-size: 13px; }
+.sw-desk .sft-spinner { width: 26px; height: 26px; border: 3px solid var(--sunk); border-top-color: var(--brand); border-radius: 50%; animation: sw-spin .8s linear infinite; }
+@keyframes sw-spin { to { transform: rotate(360deg); } }
+.sw-desk .sft-error { background: var(--down-bg); border: 1px solid var(--down); color: var(--down); padding: 8px 12px; border-radius: 6px; font-size: 12.5px; margin-bottom: 12px; }
+
+/* ---------- chat attachments: a thumbnail beside the file name, not a billboard ---------- */
+.chat-att { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.chat-att img { height: 40px; width: auto; max-width: 72px; border-radius: 4px; cursor: zoom-in; object-fit: cover; background: #1a1b23; border: 1px solid rgba(255,255,255,.15); }
+.chat-att span { font-size: 0.78rem; opacity: .85; }
+
 /* ---------- ready-made presets ---------- */
 .sw-desk .presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 7px; }
 .sw-desk .preset {
@@ -379,6 +472,8 @@
   color: var(--fg); font-size: 13px; letter-spacing: 0; text-transform: none;
   margin-left: auto; font-variant-numeric: tabular-nums;
 }
+.sw-desk .btn.sm { font-size: 11px; padding: 3px 9px; border-radius: 5px; }
+.sw-desk .sl label .btn.sm { margin-left: 8px; letter-spacing: 0; text-transform: none; font-weight: 600; }
 .sw-desk input[type='range'] {
   width: 100%; accent-color: var(--info); padding: 0; background: none; border: none;
 }
@@ -447,6 +542,51 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 }
 .sw-desk .carry .seg { margin-left: 0; }
 .sw-desk .carry .s { margin-top: 0; font-family: var(--m); font-size: 11px; }
+
+/* ---------- the option chain, a floating panel on the desk ---------- */
+.ocm-backdrop { position: fixed; inset: 0; z-index: 900; background: rgba(0,0,0,.18); }
+.ocm {
+  position: fixed; left: 50%; top: 6vh; transform: translateX(-50%);
+  width: min(1180px, 96vw); max-height: 88vh; display: flex; flex-direction: column;
+  background: var(--panel); color: var(--fg); border: 1px solid var(--line-2); border-radius: 12px;
+  box-shadow: var(--edge), 0 24px 60px rgba(0,0,0,.35); font-family: var(--f); font-size: 12.5px;
+}
+.ocm .ocm-h {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px;
+  border-bottom: 1px solid var(--line); cursor: move; user-select: none; touch-action: none;
+}
+.ocm .ocm-h b { font-size: 14px; }
+.ocm .ocm-h .r { margin-left: auto; font-family: var(--m); font-size: 10.5px; color: var(--fg-3); }
+.ocm .ocm-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); }
+.ocm .ocm-stat { background: var(--panel-2); padding: 8px 14px; }
+.ocm .ocm-scroll { overflow: auto; flex: 1; }
+.ocm table.ocm-t { width: 100%; border-collapse: collapse; font-family: var(--m); font-variant-numeric: tabular-nums; }
+.ocm table.ocm-t th {
+  position: sticky; top: 0; background: var(--panel); z-index: 1; font-size: 9.5px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--fg-3); padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: right;
+}
+.ocm table.ocm-t th.k-strike { text-align: center; }
+.ocm table.ocm-t td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.ocm table.ocm-t td.k-strike { text-align: center; background: var(--sunk); font-weight: 700; position: relative; }
+.ocm table.ocm-t td.k-strike i { display: block; font-style: normal; font-size: 8.5px; color: var(--brand); letter-spacing: .1em; }
+.ocm table.ocm-t tr.atm td { background: var(--info-bg); }
+.ocm table.ocm-t tr.atm td.k-strike { color: var(--info); }
+.ocm table.ocm-t td.oi { position: relative; min-width: 110px; }
+.ocm table.ocm-t td.oi i.bar { position: absolute; top: 3px; bottom: 3px; right: 0; opacity: .18; border-radius: 2px; }
+.ocm table.ocm-t td.oi i.bar.ce { background: var(--down); }
+.ocm table.ocm-t td.oi i.bar.pe { background: var(--up); left: 0; right: auto; }
+.ocm table.ocm-t td.oi span { position: relative; }
+.ocm table.ocm-t td.up { color: var(--up); }
+.ocm table.ocm-t td.down { color: var(--down); }
+.ocm table.ocm-t td.px b { font-weight: 700; }
+.ocm table.ocm-t td.px small { display: block; font-size: 9.5px; opacity: .8; }
+.ocm table.ocm-t td.act { width: 58px; padding: 3px 4px; }
+.ocm .bs-mini { display: inline-flex; gap: 3px; opacity: 0; transition: opacity 120ms ease; }
+.ocm table.ocm-t tr:hover .bs-mini, .ocm .bs-mini:focus-within { opacity: 1; }
+.ocm .bs-mini .bs { width: 24px; padding: 3px 0; font-size: 10.5px; border-radius: 3px; }
+.ocm .bs-mini .bs[disabled] { opacity: .35; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .ocm .bs-mini { transition: none; } }
+@media (max-width: 900px) { .ocm { top: 2vh; max-height: 94vh; } }
 
 /* Screen-reader-only: keeps a real region label without drawing a heading. */
 .sw-desk .sr-only {

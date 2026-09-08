@@ -101,6 +101,44 @@ What was checked, and how, is in the pull request. In short:
   reward-to-risk check as an advisory. Its arithmetic was off-limits this
   round, so the desk drops that one line from the warnings it prints.
 
+### Round 2, PR 2 built 2026-09-08 evening: "The desk he wants to sit at"
+
+Steps 10 to 21, on branch `feature/swayam-round2-pr2-the-desk-016`, branched
+off PR 1 so it does not conflict. **Merge PR 1 first, wait for the green
+tick, then merge PR 2.**
+
+- **Verified in a real browser against the local backend, real FYERS and the
+  live database, market closed:** the Devanagari mark `स्वयम्` in sage with
+  "Discipline builds tomorrow" underneath, in the header only, `Tiro
+  Devanagari Hindi` loaded; the ritual strip as a near-black tile on the
+  light desk and a raised slate on the dark one; depth on every card; 1840px
+  wide, 330px sidebar, 14px rows; one leg per row with a 1 to 20 lots
+  dropdown and the dustbin inside the card at 1280, 1440 and 1920; greeks in
+  the left rail; the payoff axis snapped to 50s and labelled every 100; the
+  date slider running today to expiry with Reset on both; 17 ready-made
+  structures plus the naked call; the chain endpoint returning the 29 Sep
+  contracts (`NSE:NIFTY26SEP…`) with change in OI, volume, bid, ask and a
+  solved IV per strike, and refusing a date FYERS does not list; the floating
+  chain panel with 61 strikes, the ATM row marked, real OI totals and bars,
+  and an iron condor built by four clicks that matched the hand-built one on
+  every rule, the margin and the payoff; Escape closing it and stopping its
+  timer. 367 Python tests pass, 190 web tests pass; the long-standing chain
+  test now passes honestly against FYERS' real row shape, so one known
+  failure remains (`test_notifications`).
+- **Theme, auto:** follows the computer on both pages, header and page
+  together, in both schemes, on a fresh load and when the scheme flips with
+  the page open (checked by screenshot; the pane's computed-style report
+  lagged the paint by a few seconds, the paint itself was right).
+- **Not verified:** the chain's put-call ratio against Home's figure. Home
+  reads the nearest (weekly) expiry over 50 strikes; the panel follows the
+  desk's expiry over 30 strikes, so the two are different measurements by
+  design and will not match unless the same expiry is chosen. Live
+  refreshes of the chain during market hours.
+- So Far Today: play button and a collapse that starts folded for the rest of
+  the day once expanded; the cost gate is untouched and the auto-fire test
+  still passes. Chat images are 40px thumbnails beside the file name that
+  open the existing zoom.
+
 ### State as of the end of the 2026-09-08 session
 
 - PRs #23 through #30 are all merged. `main` is at `cb2c75a`.

@@ -54,6 +54,10 @@
   --plotly-bg: #191b21;
   --plotly-grid: #272a33;
 
+  /* The brand sage of the mark: #7d9d84 on light, #9dbba3 on dark. */
+  --brand-sage: #9dbba3;
+  --font-devanagari: 'Tiro Devanagari Hindi', 'Noto Sans Devanagari', 'Nirmala UI', 'Mangal', 'Kohinoor Devanagari', serif;
+
   /* Typography */
   --font-serif: Georgia, 'Times New Roman', serif;
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -128,6 +132,7 @@
   --theme-switcher-bg: rgba(0, 0, 0, 0.06);
   --plotly-bg: #ffffff;
   --plotly-grid: #f1f5f9;
+  --brand-sage: #7d9d84;
 }
 
 /* ===== AUTO (follows OS preference) ===== */
@@ -152,6 +157,7 @@
     --dl-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 6px 16px rgba(0, 0, 0, 0.04);
     --theme-switcher-bg: rgba(0, 0, 0, 0.06);
     --plotly-bg: #ffffff;  --plotly-grid: #f1f5f9;
+    --brand-sage: #7d9d84;
   }
 }
 
@@ -258,25 +264,39 @@ body {
   z-index: 100;
 }
 
+/* The mark: स्वयम् in sage, "Discipline builds tomorrow" underneath. Nothing
+   above the letters. The tagline is dropped where there is no room. */
 .swayam-brand {
   display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.075em;
-  text-transform: uppercase;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  line-height: 1;
   color: var(--dl-fg);
 }
 
-.swayam-logo-mark {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--accent-sage);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.swayam-word {
+  font-family: var(--font-devanagari);
+  font-size: 1.6rem;
+  font-weight: 500;
+  color: var(--brand-sage);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.swayam-tagline {
+  font-family: var(--font-sans);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dl-fg-3);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .swayam-tagline { display: none; }
+  .swayam-word { font-size: 1.35rem; }
 }
 
 .header-spot-pill {
@@ -349,10 +369,6 @@ body {
   color: #edeff4;
 }
 
-:root[data-theme="dark"] .swayam-header .swayam-logo-mark circle,
-:root:not([data-theme="light"]) .swayam-header .swayam-logo-mark circle {
-  fill: #101116;
-}
 
 /* Light mode header, left rails, and navigation */
 :root[data-theme="light"] .swayam-header {
@@ -364,9 +380,6 @@ body {
   color: #0f172a;
 }
 
-:root[data-theme="light"] .swayam-logo-mark circle {
-  fill: #ffffff;
-}
 
 :root[data-theme="light"] .swayam-header .header-spot-pill {
   background: #f8fafc;
