@@ -106,31 +106,52 @@ describe('Home — the rebuilt page', () => {
     expect(text).not.toContain('80 pts');
   });
 
-  it('shows the four limits as percentages of the live balance', () => {
+  it('shows the four caps as percentages of the live balance, inside Your money', () => {
     const page = new HomePage(container);
     page.render();
     page.capital = CAPITAL;
-    page.renderLimits();
+    page.renderMoney();
 
-    const text = container.querySelector('#home-limits').textContent;
+    // The standalone "Today's limits" card is gone. Its four figures live in a
+    // band under the money tiles they are derived from.
+    expect(container.querySelector('#home-limits')).toBeNull();
+    const text = container.querySelector('#home-money').textContent;
+    expect(text).toContain("Today's caps");
     expect(text).toContain('9,710'); // 1%
     expect(text).toContain('19,420'); // 2%
     expect(text).toContain('48,550'); // 5%
     expect(text).toContain('5,54,961'); // the ceiling
-    expect(text).toContain('Nothing blocks an intraday entry');
+    expect(text).toContain('never a stored number');
   });
 
-  it('shows no limits at all, rather than a stored number, when the balance cannot be read', () => {
+  it('prints the margin ceiling exactly once, as rule 4 and not also as a money tile', () => {
+    const page = new HomePage(container);
+    page.render();
+    page.capital = CAPITAL;
+    page.renderMoney();
+
+    const text = container.querySelector('#home-money').textContent;
+    expect(text.split('5,54,961').length - 1).toBe(1);
+    expect(text).toContain('4 · Margin ceiling');
+    // The money tiles are what he holds and what he is using, nothing else.
+    expect(text).toContain('Balance');
+    expect(text).toContain('Free cash');
+    expect(text).toContain('Collateral');
+    expect(text).toContain('Margin used');
+  });
+
+  it('shows no caps at all, rather than a stored number, when the balance cannot be read', () => {
     const page = new HomePage(container);
     page.render();
     page.capital = null;
     page.capitalError = 'Could not reach the broker for funds';
-    page.renderLimits();
     page.renderMoney();
 
-    expect(container.querySelector('#home-limits').textContent).toContain('Without the balance');
-    expect(container.querySelector('#home-money').textContent).toContain('Could not reach the broker');
-    expect(container.querySelector('#home-money').textContent).not.toContain('₹0');
+    const text = container.querySelector('#home-money').textContent;
+    expect(text).toContain('Could not reach the broker');
+    expect(text).toContain("every one of today's four caps is a percentage of that balance".replace('every', 'Every'));
+    expect(text).not.toContain('₹0');
+    expect(text).not.toContain('9,710');
   });
 
   it('says why margin used is unknown, rather than showing it as zero', () => {
@@ -169,6 +190,176 @@ describe('Home — the rebuilt page', () => {
     page.book = 'real';
     page.renderRecord();
     expect(container.querySelector('#home-record').textContent).toContain('no order-placement code');
+  });
+
+  it('draws every record row with a dash rather than a zero when there are no trades', () => {
+    const page = new HomePage(container);
+    page.render();
+    page.readAt.record = new Date().toISOString();
+    // What the journal really returns for an empty book: a zero count, and
+    // zeroes and a 100 on figures it had nothing to compute from.
+    page.record = {
+      total_trades: 0,
+      win_rate_pct: 0.0,
+      avg_rr_actual: 0.0,
+      cumulative_net_pnl_inr: 0.0,
+      discipline_rate_pct: 100.0,
+    };
+    page.renderRecord();
+
+    const text = container.querySelector('#home-record').textContent;
+    expect(text).toContain('Win rate');
+    expect(text).toContain('Cumulative profit');
+    expect(text).toContain('Expectancy per trade');
+    expect(text).toContain('Rules followed');
+    // A zero win rate and an unknown win rate are different facts.
+    expect(text).not.toContain('0.0%');
+    expect(text).not.toContain('100%');
+    expect(text).not.toContain('₹0');
+    expect(text).toContain('—');
+    expect(text).toContain('No closed paper trades yet');
+  });
+
+  it('shows the real record figures once there are trades in that book', () => {
+    const page = new HomePage(container);
+    page.render();
+    page.readAt.record = new Date().toISOString();
+    page.record = {
+      total_trades: 4,
+      win_rate_pct: 75.0,
+      avg_rr_actual: 1.45,
+      cumulative_net_pnl_inr: 8200,
+      discipline_rate_pct: 100.0,
+    };
+    page.renderRecord();
+
+    const text = container.querySelector('#home-record').textContent;
+    expect(text).toContain('75.0%');
+    expect(text).toContain('8,200');
+    expect(text).toContain('1 : 1.45');
+    // Expectancy is the book's own cumulative result over its own trade count.
+    expect(text).toContain('2,050');
+    expect(text).not.toContain('No closed paper trades yet');
+  });
+
+  it('asks the journal for one book at a time, so Paper never silently includes real money', async () => {
+    const spy = vi.spyOn(api, 'getJournalTrades').mockResolvedValue({ kpis: { total_trades: 0 } });
+    const page = new HomePage(container);
+    page.render();
+    await page.loadRecord();
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ mode: 'paper', status: 'closed' }));
+
+    page.book = 'real';
+    await page.loadRecord();
+    expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ mode: 'real' }));
+  });
+
+  it('collapses open positions to one muted line, and expands to the full table', () => {
+    const page = new HomePage(container);
+    page.render();
+    page.positions = [];
+    page.livePositions = [];
+    page.positionsExpanded = false;
+    page.renderPositions();
+
+    const host = container.querySelector('#home-positions');
+    expect(host.textContent).toContain('Nothing open');
+    expect(host.textContent).toContain('paper record starts clean from 8 September');
+    // Nothing open means no colour: neither the profit nor the loss edge.
+    expect(host.innerHTML).toContain('posstrip t-flat');
+    expect(host.innerHTML).toContain('aria-expanded="false"');
+    // Shut means shut: the detail is not merely hidden, it is not rendered.
+    expect(host.innerHTML).toContain('id="home-positions-body" hidden');
+
+    page.togglePositions();
+    const opened = container.querySelector('#home-positions');
+    expect(opened.innerHTML).toContain('aria-expanded="true"');
+    expect(opened.innerHTML).not.toContain('home-positions-body" hidden');
+    expect(page.positionsExpanded).toBe(true);
+    // And it is remembered for the next visit.
+    expect(localStorage.getItem('swayam-home-positions-expanded')).toBe('1');
+  });
+
+  it('colours the strip from the live money and prints the running-loss headroom', () => {
+    const page = new HomePage(container);
+    page.render();
+    page.capital = CAPITAL; // 1% running-loss cap of 9,710.02
+    page.positions = [{ id: 'a1' }, { id: 'a2' }];
+    page.livePositions = [
+      { position_id: 'a1', unrealized_pnl_inr: -800 },
+      { position_id: 'a2', unrealized_pnl_inr: -440 },
+    ];
+    page.renderPositions();
+
+    const host = container.querySelector('#home-positions');
+    expect(host.innerHTML).toContain('posstrip t-loss');
+    expect(host.textContent).toContain('2 open');
+    expect(host.textContent).toContain('1,240');
+    expect(host.textContent).toContain('running loss 13% used');
+
+    page.livePositions = [
+      { position_id: 'a1', unrealized_pnl_inr: 800 },
+      { position_id: 'a2', unrealized_pnl_inr: 440 },
+    ];
+    page.renderPositions();
+    const now = container.querySelector('#home-positions');
+    expect(now.innerHTML).toContain('posstrip t-profit');
+    // A profit consumes none of the running-loss cap, so no headroom is claimed.
+    expect(now.textContent).not.toContain('running loss');
+  });
+
+  it('never sums a partial valuation into a total that looks complete', () => {
+    const page = new HomePage(container);
+    page.render();
+    page.capital = CAPITAL;
+    page.positions = [{ id: 'a1' }, { id: 'a2' }];
+    page.livePositions = [
+      { position_id: 'a1', unrealized_pnl_inr: -800 },
+      { position_id: 'a2', unrealized_pnl_inr: null, error: 'strike missing from the chain' },
+    ];
+    page.renderPositions();
+
+    const text = container.querySelector('#home-positions').textContent;
+    expect(page.combinedPnl()).toBeNull();
+    expect(text).toContain('profit and loss unavailable');
+    expect(text).not.toContain('800');
+  });
+
+  it('shows an events impact brief only on the events that have one', () => {
+    const page = new HomePage(container);
+    page.render();
+    page.events = [
+      { event_name: 'RBI policy', event_date: '2026-09-12', importance: 'high', impact_brief: 'A hold is priced in; a cut would lift banks.' },
+      { event_name: 'US CPI', event_date: '2026-09-11', importance: 'medium' },
+    ];
+    page.renderEvents();
+
+    const host = container.querySelector('#home-events');
+    // Exactly one of the two rows carries a brief, so exactly one anchor and
+    // one popover exist. The other row gets no marker and no placeholder.
+    expect(host.querySelectorAll('.evb').length).toBe(1);
+    expect(host.querySelectorAll('.evpop').length).toBe(1);
+    expect(host.innerHTML).toContain('a cut would lift banks');
+    expect(host.innerHTML).toContain('aria-controls="home-evb-0"');
+    expect(host.innerHTML).not.toContain('home-evb-1');
+    expect(host.textContent).not.toContain('no brief available');
+    expect(host.textContent).toContain('US CPI');
+    expect(host.textContent).toContain('Nothing here is scraped live yet');
+  });
+
+  it('escapes an impact brief rather than letting the curator inject markup', () => {
+    const page = new HomePage(container);
+    page.render();
+    page.events = [{
+      event_name: 'RBI policy',
+      event_date: '2026-09-12',
+      impact_brief: '<img src=x onerror="alert(1)">',
+    }];
+    page.renderEvents();
+
+    const html = container.querySelector('#home-events').innerHTML;
+    expect(html).not.toContain('<img');
+    expect(html).toContain('&lt;img');
   });
 
   it('prints market breadth in the ticker as unavailable with its reason', () => {

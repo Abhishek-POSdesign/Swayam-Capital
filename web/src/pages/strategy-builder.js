@@ -203,6 +203,9 @@ export class StrategyBuilderPage {
 
   async init() {
     this.renderLayout();
+    // The stepper starts at 1, which is its floor, so the minus button has to
+    // look disabled from the first paint rather than only after a click.
+    this.renderMultiplier();
     this.initSubComponents();
     this.startOvernightWatch();
     this.startDataHealth();
@@ -344,12 +347,13 @@ export class StrategyBuilderPage {
                 <div class="toolbar">
                   <label class="tf"><span>Expiry, all legs</span>
                     <select id="global-expiry"></select></label>
-                  <label class="tf"><span>Lot multiplier</span>
-                    <select id="global-mult">
-                      <option value="1">1x</option><option value="2">2x</option>
-                      <option value="3">3x</option><option value="5">5x</option>
-                      <option value="10">10x</option>
-                    </select></label>
+                  <div class="tf"><span id="global-mult-label">Lot multiplier</span>
+                    <div class="stepper">
+                      <button type="button" id="global-mult-down" aria-label="One lot multiple fewer">&minus;</button>
+                      <input id="global-mult" type="number" inputmode="numeric" min="1" step="1" value="1"
+                        aria-labelledby="global-mult-label" />
+                      <button type="button" id="global-mult-up" aria-label="One lot multiple more">+</button>
+                    </div></div>
                 </div>
                 <div class="cb">
                   <div class="lh">
@@ -424,6 +428,10 @@ export class StrategyBuilderPage {
                 </div>
                 <div class="rules" id="rule-validation-mount"></div>
                 <div class="why" id="rule-why"></div>
+                <div class="why">Nothing blocks an intraday entry, including a naked or half-built
+                  structure: converting a straddle into a condor has to pass through states no gate
+                  would allow. Only carrying overnight is gated, and only on two conditions — hedged,
+                  and inside the 2% gap test.</div>
                 <div class="exec">
                   <div class="banner" id="entry-banner"></div>
                   <div class="execbar" id="execute-row-mount"></div>
@@ -559,7 +567,13 @@ export class StrategyBuilderPage {
 
     on('global-expiry', 'change', (e) => this.setExpiry(e.target.value, true));
     on('preset-expiry', 'change', (e) => this.setExpiry(e.target.value, true));
-    on('global-mult', 'change', (e) => this.applyMultiplier(Number(e.target.value) || 1));
+    // The dropdown became a stepper on 2026-09-08. It drives every leg exactly
+    // as the dropdown did — applyMultiplier is untouched — and it is typeable as
+    // well as steppable, so ten is one keystroke rather than nine clicks.
+    on('global-mult', 'change', () => this.setMultiplier(this.readMultiplier()));
+    on('global-mult', 'input', () => this.renderMultiplier());
+    on('global-mult-down', 'click', () => this.setMultiplier(this.readMultiplier() - 1));
+    on('global-mult-up', 'click', () => this.setMultiplier(this.readMultiplier() + 1));
 
     on('carry-overnight', 'click', () => this.setCarry('overnight'));
     on('carry-today', 'click', () => this.setCarry('today'));
@@ -707,6 +721,7 @@ export class StrategyBuilderPage {
     this.baseLots = this.legs.map((l) => l.lots);
     const mult = this.container.querySelector('#global-mult');
     if (mult) mult.value = '1';
+    this.renderMultiplier();
     this.renderAll();
     await this.repriceLegs();
   }
@@ -828,6 +843,36 @@ export class StrategyBuilderPage {
     if (!this.strategyName) this.strategyName = 'Custom';
     this.renderAll();
     this.scheduleServerRefresh();
+  }
+
+  /**
+   * The multiplier currently in the box. One is the floor and it is enforced
+   * here, so neither the minus button nor a typed 0 nor a typed -4 can ever
+   * reach a leg. An empty or unparseable box reads as 1.
+   */
+  readMultiplier() {
+    const el = this.container.querySelector('#global-mult');
+    const n = el ? Math.floor(Number(el.value)) : 1;
+    return Number.isFinite(n) && n >= 1 ? n : 1;
+  }
+
+  /** Writes the clamped value back and greys the minus button at the floor. */
+  renderMultiplier() {
+    const mult = this.readMultiplier();
+    const el = this.container.querySelector('#global-mult');
+    const down = this.container.querySelector('#global-mult-down');
+    if (el && String(mult) !== el.value) el.value = String(mult);
+    if (down) down.disabled = mult <= 1;
+    return mult;
+  }
+
+  /** Sets the multiplier from a stepper click or a typed value, then applies it. */
+  setMultiplier(next) {
+    const mult = Number.isFinite(next) && next >= 1 ? Math.floor(next) : 1;
+    const el = this.container.querySelector('#global-mult');
+    if (el) el.value = String(mult);
+    this.renderMultiplier();
+    this.applyMultiplier(mult);
   }
 
   /** Scales every leg from its ORIGINAL lot count, so 3x back to 1x returns home. */

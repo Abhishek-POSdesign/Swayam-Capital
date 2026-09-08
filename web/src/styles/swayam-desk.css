@@ -338,10 +338,16 @@
 .sw-desk .tw { overflow-x: auto; }
 .sw-desk .empty { padding: 26px 14px; text-align: center; color: var(--fg-2); font-size: 13px; }
 .sw-desk .na { color: var(--fg-3); font-style: italic; }
+/* Raised from --fg-3 on 2026-09-08. He asked whether the muted explanation
+   under each card was the market being shut; it was not, it is a fixed style
+   and it read the same at one o'clock. It stays smaller than body copy because
+   it is secondary, but it is meant to be read, not to decorate. The all-caps
+   section labels keep --fg-3: those are meant to recede. */
 .sw-desk .why {
-  font-family: var(--m); font-size: 12px; color: var(--fg-3); padding: 8px 14px;
+  font-family: var(--m); font-size: 12px; color: var(--fg-2); padding: 8px 14px;
   border-top: 1px dashed var(--line-2); line-height: 1.6;
 }
+.sw-desk .dash { color: var(--fg-3); }
 .sw-desk .banner { padding: 9px 0; font-size: 12.5px; color: var(--fg-2); }
 .sw-desk .banner b { color: var(--fg); }
 
@@ -654,3 +660,155 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   .sw-health { font-size: 11px; }
   .sw-health__detail { flex-basis: 100%; }
 }
+
+
+/* =============================================================================
+   ROUND 3 — the open-positions strip, the caps band, the record rows and the
+   impact-brief popover.
+   ========================================================================== */
+
+/* ---------- open positions: one full-width collapsible line ----------------
+   Its colour follows the money and nothing else: grey with nothing open, sage
+   in profit, coral in loss. There is no colour at all when there is no
+   position to colour, which is why `t-flat` sets a neutral edge rather than a
+   third hue. Sage and coral are the brand tokens, defined in both themes, so
+   the value is read rather than hardcoded. */
+.sw-desk .posstrip { margin-bottom: 12px; overflow: visible; }
+.sw-desk .posstrip .posline {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 10px 14px; background: none; border: none; cursor: pointer;
+  font-family: var(--f); font-size: 13px; color: var(--fg);
+  border-left: 3px solid var(--line-2); border-radius: 10px;
+}
+.sw-desk .posstrip .posline:hover { background: var(--panel-2); }
+.sw-desk .posstrip .posline:focus-visible { outline: 2px solid var(--info); outline-offset: -2px; }
+.sw-desk .posstrip.t-profit .posline { border-left-color: var(--accent-sage); }
+.sw-desk .posstrip.t-loss .posline { border-left-color: var(--accent-coral); }
+.sw-desk .posstrip .pcar {
+  font-size: 10px; color: var(--fg-3); width: 12px; flex: none; line-height: 1;
+}
+.sw-desk .posstrip .plbl {
+  font-family: var(--m); font-size: 9.5px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--fg-3); font-weight: 600; flex: none;
+}
+.sw-desk .posstrip .psum {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0;
+  color: var(--fg-2);
+}
+.sw-desk .posstrip .psum .pn { font-family: var(--m); font-weight: 600; color: var(--fg); }
+.sw-desk .posstrip .psum .pv { font-family: var(--m); font-weight: 700; font-variant-numeric: tabular-nums; }
+.sw-desk .posstrip .psum .pv.up { color: var(--accent-sage); }
+.sw-desk .posstrip .psum .pv.dn { color: var(--accent-coral); }
+.sw-desk .posstrip .psum .pdim { color: var(--fg-3); font-size: 12px; }
+.sw-desk .posstrip .psum .psep { color: var(--line-2); }
+.sw-desk .posstrip .posline > .r {
+  margin-left: auto; font-family: var(--m); font-size: 10.5px; color: var(--fg-3);
+  font-weight: 500; flex: none; padding-left: 10px;
+}
+.sw-desk .posstrip .posdet { border-top: 1px solid var(--line); }
+.sw-desk .posstrip .posdet table.g td b.up { color: var(--accent-sage); }
+.sw-desk .posstrip .posdet table.g td b.dn { color: var(--accent-coral); }
+.sw-desk .posstrip .posdet .pdim {
+  font-style: normal; color: var(--fg-3); font-family: var(--m); font-size: 10.5px;
+  margin-left: 6px;
+}
+/* The strip is chrome at the top of the page, not a card to lift off it. */
+.sw-desk .posstrip:hover { transform: none; box-shadow: var(--edge), var(--shadow); }
+@media (max-width: 720px) {
+  .sw-desk .posstrip .posline { flex-wrap: wrap; }
+  .sw-desk .posstrip .posline > .r { margin-left: 0; padding-left: 22px; width: 100%; }
+}
+
+/* ---------- today's caps, inside "Your money" ------------------------------
+   A band, deliberately not a row of tiles: its own ground and its own heading,
+   so what he holds and what he may risk read as two different questions. Every
+   figure here appears here ONLY — the margin ceiling is rule 4 and was
+   previously printed both as a money tile and as a limit. */
+.sw-desk .caps { border-top: 1px solid var(--line-2); background: var(--panel-2); }
+.sw-desk .caps .capsh {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding: 9px 15px 0; font-family: var(--m); font-size: 9.5px; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--fg-2); font-weight: 700;
+}
+.sw-desk .caps .capsh i {
+  font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 500;
+  font-size: 11px; color: var(--fg-3);
+}
+.sw-desk .caps .capsr {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 2px 18px; padding: 8px 15px 12px;
+}
+.sw-desk .caps .cap { min-width: 0; }
+.sw-desk .caps .ck {
+  font-family: var(--m); font-size: 10px; letter-spacing: 0.05em; color: var(--fg-2);
+  font-weight: 600;
+}
+.sw-desk .caps .cv {
+  font-family: var(--m); font-size: 17px; font-weight: 700; color: var(--brand);
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.25;
+}
+.sw-desk .caps .cv .na { font-size: 12px; color: var(--fg-3); }
+.sw-desk .caps .cs { font-size: 10.5px; color: var(--fg-3); }
+
+/* ---------- your record: labelled rows, dashes where nothing is known ------ */
+.sw-desk table.g.rec td { font-size: 13px; }
+.sw-desk table.g.rec td.n b { font-weight: 700; }
+.sw-desk table.g.rec td.n b.up { color: var(--accent-sage); }
+.sw-desk table.g.rec td.n b.dn { color: var(--accent-coral); }
+
+/* Equal height in the two-column row. The grid cell already stretched; the
+   card inside it did not, and the gap under the short one was the dead
+   background he reported. */
+.sw-desk .bento-grid > .span-6 { display: flex; flex-direction: column; }
+.sw-desk .bento-grid > .span-6 > .card { flex: 1; margin-bottom: 0; }
+
+/* ---------- events ahead: the impact brief on hover, focus or tap ----------
+   The card is the right size already, so the brief floats over the page rather
+   than growing the card. Rows without a brief get no marker and no popover. */
+.sw-desk table.g.evt td.evc { position: relative; overflow: visible; }
+.sw-desk .evb {
+  border-bottom: 1px dotted var(--fg-3); cursor: help; outline: none;
+}
+.sw-desk .evb:hover, .sw-desk .evb:focus-visible, .sw-desk .evb.on { border-bottom-color: var(--info); color: var(--info); }
+.sw-desk .evb:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; border-radius: 3px; }
+.sw-desk .evpop {
+  display: none; position: absolute; left: 12px; top: calc(100% - 2px); z-index: 30;
+  width: max-content; max-width: min(340px, 74vw);
+  background: var(--panel); color: var(--fg-2); border: 1px solid var(--line-2);
+  border-left: 3px solid var(--info); border-radius: 8px; box-shadow: var(--shadow-hi);
+  padding: 9px 12px; font-size: 12px; line-height: 1.55; white-space: normal;
+  font-family: var(--f);
+}
+.sw-desk .evb:hover + .evpop,
+.sw-desk .evb:focus + .evpop,
+.sw-desk .evb.on + .evpop { display: block; }
+@media (hover: none) {
+  /* No mouse, so hover would latch. Only an explicit tap opens it. */
+  .sw-desk .evb:hover + .evpop { display: none; }
+  .sw-desk .evb { cursor: pointer; }
+}
+
+/* ---------- the lot multiplier: minus, number, plus ------------------------
+   It replaced a dropdown of five fixed multiples. It cannot reach zero: the
+   minus button is disabled at one and every path through setMultiplier
+   clamps, so a typed 0 or -4 lands on 1. */
+.sw-desk .stepper {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) 34px; align-items: stretch;
+  border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden; background: var(--panel);
+}
+.sw-desk .stepper button {
+  border: none; background: var(--panel-2); color: var(--fg); cursor: pointer;
+  font-family: var(--m); font-size: 15px; font-weight: 700; line-height: 1; padding: 0;
+}
+.sw-desk .stepper button:hover:not(:disabled) { background: var(--sunk); color: var(--info); }
+.sw-desk .stepper button:disabled { color: var(--fg-3); cursor: default; opacity: .55; }
+.sw-desk .stepper button:focus-visible { outline: 2px solid var(--info); outline-offset: -2px; }
+.sw-desk .stepper input {
+  border: none; border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+  background: var(--panel); color: var(--fg); text-align: center; min-width: 0;
+  font-family: var(--m); font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+  padding: 7px 2px; -moz-appearance: textfield;
+}
+.sw-desk .stepper input::-webkit-outer-spin-button,
+.sw-desk .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.sw-desk .stepper input:focus-visible { outline: 2px solid var(--info); outline-offset: -2px; }

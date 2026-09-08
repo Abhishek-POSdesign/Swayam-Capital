@@ -38,7 +38,7 @@ describe('ChatSurfaceComponent (Full-Width AI Workspace)', () => {
     expect(container.textContent).not.toContain('Suggested Questions');
   });
 
-  it('appends user message with 70% max-width and lilac theme', () => {
+  it('gives his own message a pale sage tint and body text, never white on green', () => {
     const chat = new ChatSurfaceComponent(container);
     chat.render();
 
@@ -48,9 +48,14 @@ describe('ChatSurfaceComponent (Full-Width AI Workspace)', () => {
     const bubble = row.children[0];
     expect(bubble.textContent).toBe('Can we take a bear put spread?');
     expect(bubble.style.maxWidth).toBe('70%');
+    // The tint is read from the theme, not hardcoded, and it is a tint rather
+    // than the saturated fill it used to be.
+    expect(bubble.style.background).toContain('--accent-sage-tint');
+    expect(bubble.style.background).not.toContain('var(--accent-sage)');
+    expect(bubble.style.color).toContain('--dl-fg');
   });
 
-  it('appends assistant message with 75% max-width and action toolbar', () => {
+  it('gives the AI no background at all, full width, with its action toolbar', () => {
     const chat = new ChatSurfaceComponent(container);
     chat.render();
 
@@ -59,7 +64,11 @@ describe('ChatSurfaceComponent (Full-Width AI Workspace)', () => {
 
     const bubble = row.children[0];
     expect(bubble.innerHTML).toContain('12.85 VIX compresses reward');
-    expect(bubble.style.maxWidth).toBe('75%');
+    expect(bubble.style.maxWidth).toBe('100%');
+    expect(bubble.style.background).toBe('none');
+    // No card behind the AI: no border, no tint, no rounded corners.
+    expect(bubble.style.cssText).not.toContain('border');
+    expect(bubble.style.cssText).not.toContain('--dl-card-2');
 
     const toolbar = row.children[1];
     expect(toolbar).not.toBeNull();

@@ -3,7 +3,10 @@
  *
  * Refactors "What Matters Today" into an inline conversation surface with:
  * - AI Pre-market Brief at top with speaker/note/pin toolbar
- * - Scrollable dialogue history (blue user bubbles right, dark AI bubbles left)
+ * - Scrollable dialogue history. His messages carry a pale sage tint and stay
+ *   right; the AI's have no background at all and run the full width, the way
+ *   Claude and Gemini read. The saturated green bubble is gone: it was the one
+ *   loud thing on a page that is otherwise muted and calm.
  * - Per-response actions: TTS speech playback (Indian English), notebook memory, rule pinning
  * - Real-time SSE streaming for AI replies
  * - Session continuity via ?session= query parameter
@@ -509,17 +512,18 @@ export class ChatSurfaceComponent {
 
     if (role === 'user') {
       const bubble = document.createElement('div');
+      // A tint, not a fill. --accent-sage-tint is defined in both themes, so
+      // this is read rather than hardcoded, and the text stays body colour
+      // instead of white-on-green.
       bubble.style.cssText = `
         max-width: 70%;
-        background: var(--accent-sage);
-        color: #ffffff;
+        background: var(--accent-sage-tint);
+        color: var(--dl-fg);
         padding: 12px 18px;
         border-radius: 14px 14px 3px 14px;
         font-size: 0.92rem;
         line-height: 1.55;
-        font-weight: 500;
         word-break: break-word;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
       `;
 
       if (!attachmentUrl) {
@@ -534,15 +538,14 @@ export class ChatSurfaceComponent {
 
       msgRow.appendChild(bubble);
     } else {
-      // AI Assistant response card
+      // The AI answers on the page itself: no card, no border, no tint, full
+      // width. Only his own words are marked as his.
       const bubble = document.createElement('div');
       bubble.style.cssText = `
-        max-width: 75%;
-        background: var(--dl-card-2);
+        max-width: 100%;
+        background: none;
         color: var(--dl-fg);
-        padding: 16px 20px;
-        border-radius: 14px 14px 14px 3px;
-        border: 1px solid var(--dl-line);
+        padding: 6px 2px;
         font-size: 0.93rem;
         line-height: 1.65;
         word-break: break-word;
