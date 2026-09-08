@@ -148,7 +148,28 @@ Both pre-date all of this. Do not "fix" them by weakening assertions.
 
 ## 3. THE BIG ONE, AFTER THE ABOVE
 
-### Multi-expiry valuation, so calendars work — NOW THE NEXT JOB AFTER ROUND 2
+### Multi-expiry valuation, so calendars work — BRIEFED. `docs/CALENDAR_BUILD_BRIEF.md`
+
+**His decisions, settled 2026-09-08, do not relitigate.** Risk is measured at
+the NEAR expiry date, never the far one, because he exits the whole trade at or
+before the near expiry. No decay-based early-exit trigger: "We cannot decide
+70%, 80%, or 50%. Those market dynamics we cannot predict. We only know what is
+fixed: the expiry date." A calendar is a swing trade and may be carried
+overnight. How calendars fit his method, around the budget and RBI and Fed
+announcements, is deferred by name.
+
+**The volatility question was researched, not guessed.** Every retail platform,
+Sensibull included, holds the far leg's volatility at today's level to the near
+expiry, and every source flags that as the weak point around events. The payoff
+graph will match them and say so. The two rules that gate money will instead use
+a shock MEASURED from real India VIX history over the horizon to the near
+expiry, propagated to the far leg by the square-root-of-time rule, tested both
+directions, worse answer wins. If VIX history is short the rule says
+`unavailable` rather than falling back to a constant.
+
+**Backend first, and it can start immediately** — round 2 is forbidden from
+touching `options_math/` and `rule_engine/`. The screen work waits until round 2
+is on `main`, because both change the leg table.
 Calendars are visible and computable but **blocked from execution**, because
 the payoff across two expiries is approximate. **Ten of his twenty-one
 historical trades are calendars, and on 2026-09-08 he said he uses them more
