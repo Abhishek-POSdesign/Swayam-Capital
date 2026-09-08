@@ -72,14 +72,20 @@ export class TradesTableComponent {
       const openedTime = t.opened_at && t.opened_at.length > 16 ? t.opened_at.substring(11, 16) : '';
       const isClosed = t.status === 'closed';
 
-      // Discipline icon
-      const rulesFollowed = t.rules_followed !== false;
-      const disciplineHtml = rulesFollowed
+      // Discipline marker, in THREE states. `undefined` used to read as
+      // followed, which claimed discipline that was never recorded; marking it
+      // as a violation instead would be the same lie the other way round.
+      const rulesFollowed = typeof t.rules_followed === 'boolean' ? t.rules_followed : null;
+      const disciplineHtml = rulesFollowed === null
+        ? `<span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; color: var(--dl-fg-3); font-size: 0.75rem;" title="Nothing recorded about rules on this trade">—</span>`
+        : rulesFollowed
         ? `<span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-sage-tint, rgba(134,171,146,0.15)); color: var(--accent-sage); font-weight: 700; font-size: 0.75rem;" title="Discipline kept: all method rules followed">✓</span>`
         : `<span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-coral-tint, rgba(221,129,112,0.15)); color: var(--accent-coral); font-weight: 700; font-size: 0.75rem;" title="${t.rules_broken_reason || 'Rule violation recorded'}">✗</span>`;
 
       // Direction Badge
-      const dir = (t.directional_view || 'Neutral').toLowerCase();
+      // No view recorded is not the same as a neutral view.
+      const dirLabel = t.directional_view || '—';
+      const dir = String(t.directional_view || '').toLowerCase();
       const dirBg = dir.includes('bull') ? 'var(--accent-sage-tint, rgba(134,171,146,0.15))' : dir.includes('bear') ? 'var(--accent-coral-tint, rgba(221,129,112,0.15))' : 'rgba(255,255,255,0.06)';
       const dirColor = dir.includes('bull') ? 'var(--accent-sage)' : dir.includes('bear') ? 'var(--accent-coral)' : 'var(--dl-fg-3)';
 
@@ -101,7 +107,7 @@ export class TradesTableComponent {
           </td>
           <td style="padding: 10px 12px;">
             <span style="display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.68rem; font-weight: 600; text-transform: uppercase; background: ${dirBg}; color: ${dirColor};">
-              ${t.directional_view || 'Neutral'}
+              ${dirLabel}
             </span>
           </td>
           <td style="padding: 10px 12px; font-family: var(--font-mono, monospace); font-size: 0.76rem;">
@@ -199,8 +205,69 @@ export class TradesTableComponent {
     });
   }
 
+  /**
+   * The cost of a trade, leg by leg, and the three totals.
+   *
+   * Nothing renders for a trade closed before charges were recorded this way,
+   * because inventing a split across its legs would be exactly the thing this
+   * card exists to stop.
+   */
+  renderCostBreakdown(t) {
+    const legs = Array.isArray(t.cost_legs) ? t.cost_legs : [];
+    if (!legs.length) return '';
+
+    const rs = (v) => (typeof v === 'number'
+      ? `${v < 0 ? '-' : ''}₹${Math.abs(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : '—');
+    const tone = (v) => (typeof v !== 'number' ? 'var(--dl-fg-3)'
+      : v > 0 ? 'var(--accent-sage)' : v < 0 ? 'var(--accent-coral)' : 'var(--dl-fg-2)');
+
+    const rows = legs.map((l) => `
+      <tr>
+        <td style="padding: 3px 0; color: var(--dl-fg-2);">${String(l.direction || '').toUpperCase()} ${Math.round(l.strike || 0)} ${l.option_type || ''}</td>
+        <td style="padding: 3px 0; text-align: right; color: ${tone(l.gross_pnl_inr)};">${rs(l.gross_pnl_inr)}</td>
+        <td style="padding: 3px 0; text-align: right; color: var(--dl-fg-3);">${rs(l.charges_inr)}</td>
+        <td style="padding: 3px 0; text-align: right; font-weight: 600; color: ${tone(l.net_pnl_inr)};">${rs(l.net_pnl_inr)}</td>
+      </tr>`).join('');
+
+    return `
+      <div style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: 6px; padding: 12px 14px;">
+        <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dl-fg-3); font-weight: 600; margin-bottom: 8px;">
+          What it cost, leg by leg
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem; font-family: var(--font-mono, monospace);">
+          <thead>
+            <tr style="color: var(--dl-fg-3); font-size: 0.68rem;">
+              <th style="text-align: left; font-weight: 600; padding-bottom: 4px;">Leg</th>
+              <th style="text-align: right; font-weight: 600; padding-bottom: 4px;">Gross</th>
+              <th style="text-align: right; font-weight: 600; padding-bottom: 4px;">Charges</th>
+              <th style="text-align: right; font-weight: 600; padding-bottom: 4px;">Net</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+          <tfoot>
+            <tr style="border-top: 1px solid var(--dl-line);">
+              <td style="padding-top: 5px; color: var(--dl-fg-2); font-weight: 600;">Trade</td>
+              <td style="padding-top: 5px; text-align: right; color: ${tone(t.gross_pnl_inr)};">${rs(t.gross_pnl_inr)}</td>
+              <td style="padding-top: 5px; text-align: right; color: var(--dl-fg-3);">${rs(t.charges_inr)}</td>
+              <td style="padding-top: 5px; text-align: right; font-weight: 700; color: ${tone(t.net_pnl_inr)};">${rs(t.net_pnl_inr)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>`;
+  }
+
+  /**
+   * The detail rows behind a trade.
+   *
+   * Every field here used to carry a written-sounding default, so a trade where
+   * he had written nothing displayed a setup description, a location, a trend
+   * alignment and an exit reason he never wrote, on his own record. They are
+   * dashes now. The discipline line is the same story: an unrecorded value read
+   * as rules followed.
+   */
   renderExpandedDetails(t) {
-    const rulesFollowed = t.rules_followed !== false;
+    const rulesFollowed = typeof t.rules_followed === 'boolean' ? t.rules_followed : null;
     const lessonText = t.lesson_text || 'No lesson recorded for this trade yet.';
     const lessonSource = t.lesson_source || 'ai_generated';
     const isUserEdited = lessonSource === 'user_edited';
@@ -216,15 +283,17 @@ export class TradesTableComponent {
                 📐 Trade Context &amp; Rationale
               </div>
               <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.78rem;">
-                <div><strong style="color: var(--dl-fg-2);">Technical Trigger:</strong> <span style="color: var(--dl-fg);">${t.setup_technical || 'Standard breakout'}</span></div>
-                <div><strong style="color: var(--dl-fg-2);">Setup Location:</strong> <span style="color: var(--dl-fg);">${t.setup_location || 'Key support/resistance level'}</span></div>
-                <div><strong style="color: var(--dl-fg-2);">Moneyness &amp; Structure:</strong> <span style="color: var(--dl-fg);">${t.moneyness_summary || t.legs_summary || 'Standard option spread'}</span></div>
-                <div><strong style="color: var(--dl-fg-2);">Trend Alignment:</strong> <span style="color: var(--dl-fg);">${t.with_or_against_trend || 'With Trend'}</span></div>
-                <div><strong style="color: var(--dl-fg-2);">Exit Reason:</strong> <span style="color: var(--dl-fg);">${t.exit_reason || 'Manual / Target'}</span></div>
+<div><strong style="color: var(--dl-fg-2);">Technical Trigger:</strong> <span style="color: var(--dl-fg);">${t.setup_technical || '—'}</span></div>
+                <div><strong style="color: var(--dl-fg-2);">Setup Location:</strong> <span style="color: var(--dl-fg);">${t.setup_location || '—'}</span></div>
+                <div><strong style="color: var(--dl-fg-2);">Moneyness &amp; Structure:</strong> <span style="color: var(--dl-fg);">${t.moneyness_summary || t.legs_summary || '—'}</span></div>
+                <div><strong style="color: var(--dl-fg-2);">Trend Alignment:</strong> <span style="color: var(--dl-fg);">${t.with_or_against_trend || '—'}</span></div>
+                <div><strong style="color: var(--dl-fg-2);">Exit Reason:</strong> <span style="color: var(--dl-fg);">${t.exit_reason || '—'}</span></div>
                 ${t.entry_rationale ? `<div><strong style="color: var(--dl-fg-2);">Entry Notes:</strong> <span style="color: var(--dl-fg-3); font-style: italic;">"${t.entry_rationale}"</span></div>` : ''}
                 ${t.exit_rationale ? `<div><strong style="color: var(--dl-fg-2);">Exit Notes:</strong> <span style="color: var(--dl-fg-3); font-style: italic;">"${t.exit_rationale}"</span></div>` : ''}
               </div>
             </div>
+
+            ${this.renderCostBreakdown(t)}
 
             <!-- Discipline Audit -->
             <div style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: 6px; padding: 12px 14px;">
@@ -233,11 +302,11 @@ export class TradesTableComponent {
               </div>
               <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.78rem;">
                 <div style="display: flex; align-items: center; gap: 6px;">
-                  <span style="font-weight: 600; color: ${rulesFollowed ? 'var(--accent-sage)' : 'var(--accent-coral)'};">
-                    ${rulesFollowed ? '✓ 100% Rules Followed' : '✗ Discipline Violation Recorded'}
+                  <span style="font-weight: 600; color: ${rulesFollowed === null ? 'var(--dl-fg-3)' : rulesFollowed ? 'var(--accent-sage)' : 'var(--accent-coral)'};">
+                    ${rulesFollowed === null ? '— Not recorded' : rulesFollowed ? '✓ Rules Followed' : '✗ Discipline Violation Recorded'}
                   </span>
                 </div>
-                ${!rulesFollowed && t.rules_broken_reason ? `
+                ${rulesFollowed === false && t.rules_broken_reason ? `
                   <div style="padding: 8px 10px; border-radius: 4px; background: var(--accent-coral-tint); border: 1px solid rgba(221,129,112,0.3); color: var(--accent-coral); font-size: 0.75rem;">
                     <strong>Violation:</strong> ${t.rules_broken_reason}
                   </div>

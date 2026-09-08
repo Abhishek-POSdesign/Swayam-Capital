@@ -21,6 +21,8 @@ over a closing price before this was traced to the flag they all read.
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -86,8 +88,23 @@ def test_a_future_expiry_is_always_alive() -> None:
 # ------------------------------------------------- the provider every caller reads
 
 
-def test_the_provider_drops_the_dead_expiry_and_rolls_the_weekly_forward() -> None:
-    """Reads the real FYERS contract master, with the clock pinned."""
+# The contract master is pinned for the two tests below. Pinning the CLOCK was
+# not enough: they read the live FYERS master, which stopped listing 8 September
+# once that expiry passed, so they went red on 9 September and would have stayed
+# red every day after. A test about what the rule does with an expiry must not
+# depend on that expiry still being tradeable today.
+FIXED_MASTER = [
+    date(2026, 9, 8),
+    date(2026, 9, 15),
+    date(2026, 9, 22),
+    date(2026, 9, 29),
+    date(2026, 10, 27),
+]
+
+
+@patch("swayam.services.expiry.fetch_nifty_expiries_from_fyers", return_value=FIXED_MASTER)
+def test_the_provider_drops_the_dead_expiry_and_rolls_the_weekly_forward(_master) -> None:
+    """The rule, against a fixed contract master and a pinned clock."""
     after = get_expiry_metadata(ref_date=EXPIRY_DAY, now=at(17, 44))
 
     assert "2026-09-08" not in after["upcoming_expiries"]
@@ -95,7 +112,8 @@ def test_the_provider_drops_the_dead_expiry_and_rolls_the_weekly_forward() -> No
     assert after["weekly_expiry"] == "2026-09-15"
 
 
-def test_the_provider_keeps_it_while_the_market_is_open() -> None:
+@patch("swayam.services.expiry.fetch_nifty_expiries_from_fyers", return_value=FIXED_MASTER)
+def test_the_provider_keeps_it_while_the_market_is_open(_master) -> None:
     during = get_expiry_metadata(ref_date=EXPIRY_DAY, now=at(13, 30))
 
     assert during["upcoming_expiries"][0] == "2026-09-08"

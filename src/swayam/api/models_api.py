@@ -413,6 +413,10 @@ class JournalTradeItem(BaseModel):
     gross_pnl_inr: Optional[float] = None
     net_pnl_inr: Optional[float] = None
     charges_inr: Optional[float] = None
+    # Per leg: its own gross, its own entry and exit charges, its own net.
+    # His instruction, 2026-09-09: "charges per leg, like profit/loss per leg".
+    # Empty for a trade closed before charges were recorded this way.
+    cost_legs: list[dict[str, Any]] = []
     rr_planned: Optional[float] = None
     rr_actual: Optional[float] = None
     time_in_trade_str: Optional[str] = None

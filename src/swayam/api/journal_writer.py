@@ -16,6 +16,21 @@ class JournalWriteError(Exception):
     """Raised when writing the trade journal fails or attempts an unsafe overwrite."""
     pass
 
+
+def _charge_cell(value: Optional[float], *, signed: bool = False) -> str:
+    """A rupee figure for a table cell, or an em dash when nothing is known.
+
+    A leg opened before charges were recorded per leg carries no entry cost.
+    That is a gap, and a gap prints as a dash rather than as zero rupees.
+    """
+    if value is None:
+        return "—"
+    amount = float(value)
+    if signed:
+        sign = "+" if amount > 0 else ""
+        return f"{sign}₹{amount:,.2f}"
+    return f"₹{amount:,.2f}"
+
 def _default_vault_base() -> Path:
     """The vault every write lands in when the caller names no other.
 
@@ -127,7 +142,8 @@ def write_new_trade_journal(
         leg_rows.append(
             f"| {idx} | {leg.get('strike'):,.0f} | {leg.get('option_type')} | "
             f"{leg.get('direction', '').upper()} | {leg.get('quantity_lots', 1)} | "
-            f"₹{float(leg.get('entry_premium', 0.0)):,.2f} |"
+            f"₹{float(leg.get('entry_premium', 0.0)):,.2f} | "
+            f"{_charge_cell(leg.get('entry_charges_inr'))} |"
         )
     legs_table = "\n".join(leg_rows)
 
@@ -168,8 +184,8 @@ mode: paper
 
 ### Legs
 
-| # | Strike | Type | Direction | Lots | Entry Premium |
-|:---:|---:|:---:|:---:|:---:|---:|
+| # | Strike | Type | Direction | Lots | Entry Premium | Charges |
+|:---:|---:|:---:|:---:|:---:|---:|---:|
 {legs_table}
 
 ### Risk / Reward
@@ -305,9 +321,14 @@ def append_exit_block(
             exit_dir = leg.get("exit_direction", "CLOSE").upper()
 
         prem = float(leg.get("exit_premium", 0.0))
-        leg_rows.append(f"| {idx} | {strike:,.0f} | {opt_type} | {exit_dir} | ₹{prem:,.2f} |")
+        leg_rows.append(
+            f"| {idx} | {strike:,.0f} | {opt_type} | {exit_dir} | ₹{prem:,.2f} | "
+            f"{_charge_cell(leg.get('gross_pnl_inr'), signed=True)} | "
+            f"{_charge_cell(leg.get('charges_inr'))} | "
+            f"{_charge_cell(leg.get('net_pnl_inr'), signed=True)} |"
+        )
 
-    exit_legs_table = "\n".join(leg_rows) if leg_rows else "| 1 | - | - | CLOSE | ₹0.00 |"
+    exit_legs_table = "\n".join(leg_rows) if leg_rows else "| 1 | — | — | CLOSE | — | — | — | — |"
 
     # Risk metrics
     pct_of_risk = (net_pnl_inr / max_loss_inr * 100.0) if max_loss_inr > 0 else 0.0
@@ -323,14 +344,14 @@ def append_exit_block(
 
 ### Exit legs
 
-| # | Strike | Type | Direction | Exit Premium |
-|:---:|---:|:---:|:---:|---:|
+| # | Strike | Type | Direction | Exit Premium | Gross | Charges | Net |
+|:---:|---:|:---:|:---:|---:|---:|---:|---:|
 {exit_legs_table}
 
 ### Realized P&L
 
 - **Gross P&L**: ₹{gross_pnl_inr:,.0f}
-- **Charges (estimated)**: ₹{charges_inr:,.0f}
+- **Charges, entry and exit, summed from the legs**: ₹{charges_inr:,.2f}
 - **NET realized P&L**: ₹{net_pnl_inr:,.0f}
 - **% of max risk**: {pct_of_risk:.1f}%
 - **% of margin base**: {pct_of_margin:.2f}%

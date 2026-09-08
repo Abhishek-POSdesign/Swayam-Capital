@@ -74,8 +74,19 @@ def test_close_position_success(client):
     Exit: Long leg sold @ 250 (proceeds +18,750), Short leg bought @ 30 (cost -2,250)
     Gross exit value = 18,750 - 2,250 = 16,500
     Gross P&L = 16,500 - (-9,000) = 7,500
-    Charges = 2 legs * 150 = 300
-    Net realized P&L = 7,500 - 300 = 7,200
+
+    Charges are PER LEG, on the side each leg was actually transacted, at the
+    price it was transacted at. His instruction, 2026-09-09: "The buy leg has
+    its own charges, and the sell leg has its own charges."
+
+        leg 1, bought at 180 and sold at 250:  31.12 + 61.61 =  92.73
+        leg 2, sold at 60 and bought at 30:    32.72 + 24.85 =  57.57
+        trade                                                = 150.30
+
+    Net realized P&L = 7,500 - 150.30 = 7,349.70.
+
+    This used to be a flat 2 legs x Rs 150 = Rs 300, with nothing charged at
+    entry at all.
     """
     open_pos = _make_open_position()
 
@@ -106,16 +117,42 @@ def test_close_position_success(client):
     data = resp.json()
     assert data["position_id"] == "pos-close-123"
     assert data["status"] == "closed"
-    assert data["realized_pnl_inr"] == 7200.0
-    assert data["total_charges_inr"] == 300.0
+    assert data["realized_pnl_inr"] == 7349.70
+    assert data["total_charges_inr"] == 150.30
     assert data["journal_path"] == open_pos["journal_path"]
+
+    # Not a multiple of the old flat per-leg guess, in either direction.
+    assert data["total_charges_inr"] % 150 != 0
+
+    # Every leg carries its own three figures, and they add up to the trade's.
+    legs = data["exit_legs"]
+    assert len(legs) == 2
+    for leg in legs:
+        assert leg["entry_charges_inr"] > 0, "entry was never charged before this"
+        assert leg["exit_charges_inr"] > 0
+        assert leg["charges_inr"] == pytest.approx(
+            leg["entry_charges_inr"] + leg["exit_charges_inr"]
+        )
+        assert leg["net_pnl_inr"] == pytest.approx(
+            leg["gross_pnl_inr"] - leg["charges_inr"]
+        )
+
+    assert sum(l["charges_inr"] for l in legs) == pytest.approx(data["total_charges_inr"])
+    assert sum(l["gross_pnl_inr"] for l in legs) == pytest.approx(data["gross_pnl_inr"])
+    assert data["realized_pnl_inr"] == pytest.approx(
+        data["gross_pnl_inr"] - data["total_charges_inr"]
+    )
+
+    # The bought leg and the sold leg cost different amounts, because the
+    # securities transaction tax falls on the sell side only.
+    assert legs[0]["entry_charges_inr"] != legs[1]["entry_charges_inr"]
 
     # Verify journal writer was invoked with correct parameters
     mock_journal.assert_called_once()
     kwargs = mock_journal.call_args.kwargs
-    assert kwargs["net_pnl_inr"] == 7200.0
+    assert kwargs["net_pnl_inr"] == 7349.70
     assert kwargs["close_reason"] == "target_hit"
-    assert kwargs["charges_inr"] == 300.0
+    assert kwargs["charges_inr"] == 150.30
 
 
 def test_close_position_404_when_not_found(client):
@@ -247,7 +284,7 @@ def test_close_position_fetches_ltp_when_exit_legs_omitted(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "closed"
-    assert data["realized_pnl_inr"] == 7200.0
+    assert data["realized_pnl_inr"] == 7349.70
     mock_fyers.get_option_chain.assert_called_once()
 
 

@@ -327,6 +327,7 @@ def get_journal_trades(
             gross_pnl_inr=round(gross_pnl, 2) if is_squared_off else None,
             net_pnl_inr=round(net_pnl, 2) if is_squared_off else None,
             charges_inr=round(charges, 2) if is_squared_off else None,
+            cost_legs=(hist_rec.get("exit_legs") or []) if hist_rec else [],
             rr_planned=rr_planned,
             rr_actual=rr_actual,
             time_in_trade_str=_format_time_in_trade(tit_mins),

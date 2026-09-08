@@ -81,10 +81,16 @@ class Settings:
     gcs_options_bucket: str = field(default_factory=lambda: os.getenv("GCS_OPTIONS_BUCKET", "swayam-capital-options-data"))
     gcp_billing_account: str = field(default_factory=lambda: os.getenv("GCP_BILLING_ACCOUNT", ""))
 
-    # Trading Execution & Charges Configuration
-    estimated_charge_per_leg_inr: float = field(
-        default_factory=lambda: float(os.getenv("ESTIMATED_CHARGE_PER_LEG_INR", "150.0"))
-    )
+    # ESTIMATED_CHARGE_PER_LEG_INR is GONE, deliberately.
+    #
+    # It was a flat Rs 150 per leg, applied once when a trade closed, with
+    # nothing charged at entry at all. On a one-lot iron condor that guessed
+    # Rs 600 against a real round trip of about Rs 223, and the error grew with
+    # the number of legs rather than with the size of the trade, which is
+    # backwards. Charges now come from services/charges.py, per leg, at the
+    # price and on the side each leg was actually transacted at.
+    #
+    # If this constant ever reappears, the record is inventing money again.
 
     # AI Integration (3-Tier Routing)
     ai_provider: str = field(default_factory=lambda: os.getenv("AI_PROVIDER", "vertex"))

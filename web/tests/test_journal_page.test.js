@@ -185,6 +185,79 @@ describe('BUILD-11 Trade Journal & Lesson Ledger Components', () => {
       expect(container.innerHTML).toContain('Bear Put Spread captured target profit after breakdown.');
       expect(container.innerHTML).toContain('Refine Lesson');
     });
+
+    it('shows what a trade cost leg by leg, and never invents a split', () => {
+      const trade = {
+        position_id: 'pos-cost',
+        opened_at: '2026-09-08T10:15:00Z',
+        strategy_name: 'Bear Put Spread',
+        legs_summary: 'BUY 24850 PE / SELL 24100 PE (1 lot)',
+        gross_pnl_inr: 7500,
+        charges_inr: 150.3,
+        net_pnl_inr: 7349.7,
+        rules_followed: true,
+        cost_legs: [
+          { direction: 'buy', strike: 24850, option_type: 'PE', gross_pnl_inr: 5250, charges_inr: 92.73, net_pnl_inr: 5157.27 },
+          { direction: 'sell', strike: 24100, option_type: 'PE', gross_pnl_inr: 2250, charges_inr: 57.57, net_pnl_inr: 2192.43 },
+        ],
+      };
+
+      const table = new TradesTableComponent(container, { trades: [trade] });
+      table.expandedTradeId = 'pos-cost';
+      table.render();
+
+      const html = container.innerHTML;
+      expect(html).toContain('What it cost, leg by leg');
+      expect(html).toContain('BUY 24850 PE');
+      expect(html).toContain('SELL 24100 PE');
+      // The two legs cost different amounts, which is the whole point.
+      expect(html).toContain('92.73');
+      expect(html).toContain('57.57');
+      expect(html).toContain('150.30');
+    });
+
+    it('renders no cost card at all for a trade with no per-leg breakdown', () => {
+      const trade = {
+        position_id: 'pos-old',
+        opened_at: '2026-09-01T10:15:00Z',
+        strategy_name: 'Iron Condor',
+        net_pnl_inr: 1000,
+        cost_legs: [],
+      };
+
+      const table = new TradesTableComponent(container, { trades: [trade] });
+      table.expandedTradeId = 'pos-old';
+      table.render();
+
+      expect(container.innerHTML).not.toContain('What it cost, leg by leg');
+    });
+
+    it('does not put words in his mouth about a setup he never described', () => {
+      const trade = {
+        position_id: 'pos-blank',
+        opened_at: '2026-09-08T10:15:00Z',
+        strategy_name: 'Iron Condor',
+        net_pnl_inr: 500,
+        cost_legs: [],
+      };
+
+      const table = new TradesTableComponent(container, { trades: [trade] });
+      table.expandedTradeId = 'pos-blank';
+      table.render();
+
+      const html = container.innerHTML;
+      for (const invented of [
+        'Standard breakout',
+        'Key support/resistance level',
+        'Standard option spread',
+        'With Trend',
+        'Manual / Target',
+        '100% Rules Followed',
+      ]) {
+        expect(html).not.toContain(invented);
+      }
+      expect(html).toContain('Not recorded');
+    });
   });
 
   describe('LessonsScrollComponent', () => {

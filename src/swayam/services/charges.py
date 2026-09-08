@@ -279,3 +279,70 @@ def round_trip_cost_reserve(
     ]
     exit_side = compute_charges(reversed_legs, on=on)
     return _q(entry.total_inr + exit_side.total_inr)
+
+
+# ---------------------------------------------------------------------------
+# Per leg, which is how he thinks about it and how a contract note works.
+#
+# His instruction, 2026-09-09: "Charges must be calculated as per each leg, not
+# as per the trade... The buy leg has its own charges, and the sell leg has its
+# own charges. Why would squaring one leg charge for the whole trade?"
+#
+# This is safe as well as correct. Brokerage is charged per ORDER and every
+# other line is a percentage of that leg's own turnover, so costing legs one at
+# a time and adding them up gives EXACTLY the same total as costing them
+# together. Measured on a one-lot iron condor, 2026-09-08:
+#
+#     35.47 + 25.22 + 34.80 + 25.22 = 120.71
+#
+# and 120.71 is what those four legs cost in a single call. To the paisa.
+# `tests/test_charges_per_leg.py` holds that as an assertion.
+# ---------------------------------------------------------------------------
+
+_BUY_WORDS = ("buy", "long", "b")
+_SELL_WORDS = ("sell", "short", "s")
+
+
+def side_from_direction(direction: str) -> Side:
+    """The side a stored leg was transacted on. Raises rather than guessing.
+
+    Leg direction reaches us from several places and has been spelled `buy`,
+    `BUY`, `long` and `short`. A leg whose side cannot be read cannot be
+    charged, and charging it as a buy by default would understate the cost of
+    a short by the whole of the securities transaction tax.
+    """
+    word = str(direction or "").strip().lower()
+    if word in _BUY_WORDS:
+        return "buy"
+    if word in _SELL_WORDS:
+        return "sell"
+    raise ChargeScheduleUnavailable(
+        f"Cannot charge a leg whose direction is {direction!r}. "
+        "It must say buy or sell."
+    )
+
+
+def opposite(side: Side) -> Side:
+    """Closing a leg transacts the other way. A bought leg is sold to exit."""
+    return "sell" if side == "buy" else "buy"
+
+
+def charge_for_leg(
+    *,
+    side: Side,
+    price_per_unit: Decimal,
+    quantity_units: int,
+    on: date,
+    schedule: Optional[ChargeSchedule] = None,
+) -> ChargeBreakdown:
+    """What ONE leg costs, on its own side, at its own price, on this date.
+
+    Call it when the leg is bought or sold, and again when it is squared off.
+    Every leg therefore carries an entry cost from the day it opens and an exit
+    cost from the day it closes, and a trade's cost is the sum of its legs'.
+    """
+    return compute_charges(
+        [ChargeableLeg(side=side, price_per_unit=price_per_unit, quantity_units=quantity_units)],
+        on=on,
+        schedule=schedule,
+    )
