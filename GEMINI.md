@@ -1,3 +1,22 @@
+> # STOP. THIS FILE IS NOT CURRENT. Updated 2026-09-08 late evening.
+>
+> **Do not plan from anything below.** Rounds 2 and 3 landed on 2026-09-08 and
+> changed a great deal of it: the desk and Home were rebuilt, the FYERS request
+> budget fix landed, a data-health strip now tells him whether his prices are
+> real, the dead-expiry bug was fixed at source, the recorder was finally
+> deployed, and the reward-to-risk rule was removed. Statements below about any
+> of those are stale.
+>
+> **The three current documents, in this order:**
+> 1. `docs/SWAYAM_START_HERE.md` — where everything is, what is verified, what is not done
+> 2. `docs/PLAN.md` — the one plan. Section 0 is his hours; section 1 is the live test
+> 3. `CLAUDE.md` — how to work in this repository
+>
+> `docs/SUCCESSOR_PROMPT.md` carries the prompt for a fresh session, plus what was
+> learned by talking to him rather than by reading code.
+>
+> This file is kept for its history only.
+
 > # ⛔ CORRECTION NOTICE — 2026-09-07, 18:30 IST
 >
 > **Everything written in this file BEFORE 2026-09-07 contained statements that were NOT TRUE.** They were written from intention, from a build report, or from another document — not from checking the running system. Abhishek trusted them, planned around them, and arrived at his desk to find the platform not working. That is the direct cost of the false lines below.

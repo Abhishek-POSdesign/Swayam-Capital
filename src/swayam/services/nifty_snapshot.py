@@ -565,8 +565,21 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
     }
 
     # 7. Assemble Full Snapshot with Badges
-    # Freshness states: LIVE, CALCULATED, PREVIOUS SESSION, STALE
-    primary_state = "LIVE" if spot_live else "UNAVAILABLE"
+    # Freshness states: LIVE, CLOSED, CALCULATED, UNAVAILABLE.
+    #
+    # This said LIVE whenever FYERS returned a number, which is not the same
+    # question. At 20:51 IST with the market shut his Sectors card read
+    # "LIVE · read 20:51 IST" over a closing price, on the same screen as a
+    # strip saying CLOSED. A price that is real but no longer moving is the
+    # close, and it says so.
+    from swayam.api.spot_feed import market_is_open  # local: avoids an import cycle
+
+    if not spot_live:
+        primary_state = "UNAVAILABLE"
+    elif market_is_open():
+        primary_state = "LIVE"
+    else:
+        primary_state = "CLOSED"
     metrics_state = "CALCULATED" if tech.get("atr_20") is not None else "UNAVAILABLE"
     sectors_have_real = any(s["change_pct"] is not None for s in sector_strip)
 
