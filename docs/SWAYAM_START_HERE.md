@@ -27,7 +27,7 @@ holding what was learned by talking to him rather than by reading the code.
 | Code | `D:\Claude\POS\Trading-Platform\Swayam Capital` |
 | GitHub | `Abhishek-POSdesign/Swayam-Capital` |
 | Python | `.\.venv\Scripts\python.exe` (editable install; work in the primary folder, NEVER a worktree) |
-| **Vault** | **`G:\My Drive\Second Brain`.** `D:\Second Brain` is EMPTY and STALE. Never use it. |
+| **Vault** | **`G:\My Drive\Second Brain`.** `D:\Second Brain` is EMPTY and STALE. Never use it. **Writes to it are caged during tests** — see §3 |
 | Database | Supabase `wxijlrwoiaeaupaaqecc`, ap-south-1. **Shared with two other apps.** Scope everything to `swayam_*`. |
 | DB connection | Session pooler `aws-1-ap-south-1.pooler.supabase.com:5432`, user `postgres.wxijlrwoiaeaupaaqecc`, in `SUPABASE_DB_URL`. **aws-1, not aws-0.** The direct host is IPv6-only and drops here. |
 | Cloud | GCP `swayam-capital`, project number 535273918813 |
@@ -70,7 +70,18 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: end of the 2026-09-08 LATE EVENING session
+### Latest first: the 2026-09-08 NIGHT session
+
+| | |
+|---|---|
+| Live revision | **`swayam-dashboard-00046-5hp`**, image digest `sha256:29fbb9e4…`, built from `main` at `f6fd3e2`, which is PR #40. Checked against the build record, not assumed. Any document naming 00045 is stale |
+| **The vault was NOT caged, and it had been polluted** | **26 fabricated trade notes were in `02 - Projects/Trading/04 - Journal/`**, his real journal folder. Only 4 had a database row; **22 existed nowhere but his Second Brain**, written by tests that mock the database so `db_guard` never saw them. **Deleted on his instruction** (he has taken no trade of his own since 31 March 2026, so anything later that he did not create is test data). The folder now holds zero notes |
+| The cage that stops it recurring | `journal_writer._default_vault_base()` refuses during a test run; `conftest.cage_the_vault` redirects writes to a temporary folder; `tests/test_vault_guard.py` proves both. **Proven: 0 notes before a full suite run, 0 after** |
+| The Trade Journal's four faults | **DONE**, plus two more found while fixing them, plus his squared-off-only rule. `docs/PLAN.md` §2.2 |
+| What he specified next | **A trade is a campaign with a trade number, and legs can be added, removed and squared off inside it.** `docs/PLAN.md` §2.11. This is the next job |
+| Tests | Python **418 pass, 1 fail**; JavaScript **217 pass, 0 fail** across 34 files including the real bundle. The one failure is still `test_notifications` dispatch |
+
+### Earlier: end of the 2026-09-08 LATE EVENING session
 
 **Everything built on 2026-09-08 is merged, deployed and digest-verified.**
 
@@ -176,11 +187,12 @@ His decisions, do not relitigate:
    headroom, the desk's margin-used figure feeding rule 4, and the Trade Journal
    row are all verified only against injected data. `docs/PLAN.md` §1 is the
    script, sized for his 90 minutes.
-2. **The Trade Journal's four faults**, which are the next job. A hardcoded
-   ₹5,00,000 margin base, a database write fired by opening the page, analytics
-   that never filter `provenance`, and two different marks for "this is not a
-   real trade" that can disagree. That last one is his own question, and round 3
-   put a win rate on his home page, which raises the stakes. `docs/PLAN.md` §2.2.
+2. **The trade lifecycle he specified on 2026-09-08 night, which is the next
+   job.** Today a position can only be opened whole and closed whole: there is
+   no add a leg, no remove a leg, no roll and no partial close. He manages his
+   trades and always has — roughly a third of his twenty-one historical trades
+   were adjusted mid-life. `docs/PLAN.md` §2.11 carries his own words.
+   (The Trade Journal's four faults are DONE. `docs/PLAN.md` §2.2.)
 3. **The recorder writing to its bucket**, and whether its Greeks and spot
    columns are real or zeros. `docs/PLAN.md` §2.10.
 4. **Calendars.** Briefed and ready, `docs/CALENDAR_BUILD_BRIEF.md`. Ten of his

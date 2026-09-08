@@ -487,20 +487,23 @@ export class JournalPage {
       const trendDiv = this.container.querySelector('#trend-alignment-breakdown');
       if (trendDiv && analyticsData.win_rate_by_trend) {
         const tb = analyticsData.win_rate_by_trend;
-        const withTrend = tb['With'] || { trades: 0, win_rate_pct: 0, pnl_inr: 0 };
-        const againstTrend = tb['Against'] || { trades: 0, win_rate_pct: 0, pnl_inr: 0 };
+        const withTrend = tb['With'] || { trades: 0, win_rate_pct: null, pnl_inr: 0 };
+        const againstTrend = tb['Against'] || { trades: 0, win_rate_pct: null, pnl_inr: 0 };
+        // A trend he has never traded has no win rate. It used to print 0% WR,
+        // which reads as having lost every one of them.
+        const wr = (t) => (typeof t.win_rate_pct === 'number' ? `${t.win_rate_pct}%` : '—');
 
         trendDiv.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 4px; background: rgba(255,255,255,0.02); border: 1px solid var(--dl-line);">
             <span>With Trend</span>
             <span style="font-family: var(--font-mono); font-weight: 600; color: ${withTrend.pnl_inr >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)'};">
-              ${withTrend.win_rate_pct}% WR (${withTrend.trades}T) · ${withTrend.pnl_inr >= 0 ? '+' : ''}₹${Math.round(withTrend.pnl_inr).toLocaleString('en-IN')}
+              ${wr(withTrend)} WR (${withTrend.trades}T) · ${withTrend.pnl_inr >= 0 ? '+' : ''}₹${Math.round(withTrend.pnl_inr).toLocaleString('en-IN')}
             </span>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 4px; background: rgba(255,255,255,0.02); border: 1px solid var(--dl-line);">
             <span>Against Trend</span>
             <span style="font-family: var(--font-mono); font-weight: 600; color: ${againstTrend.pnl_inr >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)'};">
-              ${againstTrend.win_rate_pct}% WR (${againstTrend.trades}T) · ${againstTrend.pnl_inr >= 0 ? '+' : ''}₹${Math.round(againstTrend.pnl_inr).toLocaleString('en-IN')}
+              ${wr(againstTrend)} WR (${againstTrend.trades}T) · ${againstTrend.pnl_inr >= 0 ? '+' : ''}₹${Math.round(againstTrend.pnl_inr).toLocaleString('en-IN')}
             </span>
           </div>
         `;

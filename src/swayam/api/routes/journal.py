@@ -636,7 +636,9 @@ def get_journal_analytics(
     # Trend stats calculation
     trend_stats = {}
     for k, v in by_trend.items():
-        wr = round((v["wins"] / v["trades"] * 100), 1) if v["trades"] > 0 else 0.0
+        # A trend he has never traded has no win rate. It used to report 0.0%,
+        # which reads as "you lost every one of them".
+        wr = round((v["wins"] / v["trades"] * 100), 1) if v["trades"] > 0 else None
         trend_stats[k] = {"trades": v["trades"], "win_rate_pct": wr, "pnl_inr": round(v["pnl"], 2)}
 
     avg_duration_days = (
@@ -653,7 +655,9 @@ def get_journal_analytics(
         "win_rate_by_trend": trend_stats,
         "avg_duration_days": avg_duration_days if scored_trades else None,
         "max_drawdown_inr": round(max_drawdown, 2) if scored_trades else None,
-        "max_drawdown_pct_of_capital": _pct(max_drawdown, capital_base),
+        "max_drawdown_pct_of_capital": (
+            _pct(max_drawdown, capital_base) if scored_trades else None
+        ),
         "expectancy_per_trade_inr": expectancy,
         "scored_trades": scored_trades,
         "unpriced_closed_trades": unpriced_closed,
