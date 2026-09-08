@@ -1116,6 +1116,11 @@ export class StrategyBuilderPage {
     const rr = v.realistic_risk || {};
     const blast = v.blast_radius || {};
     const carry = v.carry || null;
+    // The server omits `carry` for an intraday position, which is the normal
+    // case and NOT missing data. Without reading `intraday` the panel cannot
+    // tell the two apart, and it told him his daily-move history was missing
+    // when the backend had 20 sessions and an 80-point average.
+    const intraday = v.intraday !== false;
     const unlimited = Boolean(v.max_loss_is_unlimited);
 
     // pct_of_margin arrives ALREADY as a percentage: 1.74 means 1.74%.
@@ -1139,7 +1144,14 @@ export class StrategyBuilderPage {
               ? `of ${inr(carry.cap_inr)}`
               : 'cap unavailable',
         )
-      : this._rule('idle', '2 · Overnight gap', null, 'the gap test needs measured daily moves');
+      : this._rule(
+          'idle',
+          '2 · Overnight gap',
+          null,
+          intraday
+            ? 'not tested — this is an intraday position'
+            : 'the gap test needs measured daily moves',
+        );
 
     const rule3 = this._rule(
       unlimited ? 'fail' : typeof blast.loss_inr === 'number' ? (blast.passed ? 'pass' : 'fail') : 'idle',
