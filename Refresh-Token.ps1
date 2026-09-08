@@ -91,10 +91,10 @@ Write-Host ""
 Write-Host "  Done. The app on this PC will use the new token immediately." -ForegroundColor Green
 Write-Host ""
 Write-Host "  NOTE ABOUT THE LIVE WEBSITE:" -ForegroundColor Yellow
-Write-Host "  swayam.abhisheksikka.com reads the token when it starts up, so it" -ForegroundColor Yellow
-Write-Host "  may keep using the old one until it restarts. If the live site shows" -ForegroundColor Yellow
-Write-Host "  no prices after this, that is why. The permanent fix (reading the" -ForegroundColor Yellow
-Write-Host "  token while running, so no restart is ever needed) is the first item" -ForegroundColor Yellow
-Write-Host "  on the pending list." -ForegroundColor Yellow
+Write-Host "  swayam.abhisheksikka.com should pick this up within a minute, with" -ForegroundColor Yellow
+Write-Host "  no restart and no redeploy. It reads the token while running now." -ForegroundColor Yellow
+Write-Host "  That has NEVER been proven in production, so if the live site still" -ForegroundColor Yellow
+Write-Host "  shows no prices two minutes from now, a redeploy is the escape" -ForegroundColor Yellow
+Write-Host "  hatch. Do not redeploy before waiting those two minutes." -ForegroundColor Yellow
 Write-Host ""
 Read-Host "  Press Enter to close"

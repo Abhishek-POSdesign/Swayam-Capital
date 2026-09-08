@@ -94,6 +94,11 @@ def test_close_position_success(client):
         patch("swayam.api.routes.positions.db") as mock_db,
         patch("swayam.api.routes.positions.append_exit_block") as mock_journal,
     ):
+        # No prior result, and no note-path row. Both lookups are new in
+        # 2026-09-09's close path and a blanket mock would otherwise answer
+        # them with a truthy MagicMock, which reads as 'already closed'.
+        mock_db.client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+        mock_db.client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             open_pos
         ]
@@ -157,6 +162,11 @@ def test_close_position_success(client):
 
 def test_close_position_404_when_not_found(client):
     with patch("swayam.api.routes.positions.db") as mock_db:
+        # No prior result, and no note-path row. Both lookups are new in
+        # 2026-09-09's close path and a blanket mock would otherwise answer
+        # them with a truthy MagicMock, which reads as 'already closed'.
+        mock_db.client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+        mock_db.client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
 
         resp = client.post(
@@ -173,6 +183,11 @@ def test_close_position_400_when_already_closed(client):
     closed_pos["status"] = "closed"
 
     with patch("swayam.api.routes.positions.db") as mock_db:
+        # No prior result, and no note-path row. Both lookups are new in
+        # 2026-09-09's close path and a blanket mock would otherwise answer
+        # them with a truthy MagicMock, which reads as 'already closed'.
+        mock_db.client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+        mock_db.client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             closed_pos
         ]
@@ -195,6 +210,11 @@ def test_close_position_503_when_database_insert_fails(client):
     ):
         mock_db.url = "https://supabase.test"
         mock_db.key = "fake-key"
+        # No prior result, and no note-path row. Both lookups are new in
+        # 2026-09-09's close path and a blanket mock would otherwise answer
+        # them with a truthy MagicMock, which reads as 'already closed'.
+        mock_db.client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+        mock_db.client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             open_pos
         ]
@@ -220,13 +240,28 @@ def test_close_position_503_when_database_insert_fails(client):
     mock_journal.assert_not_called()
 
 
-def test_close_position_500_when_journal_write_fails_after_db(client):
+def test_a_failed_exit_note_no_longer_fails_a_close_that_already_happened(client):
+    """This test used to assert the bug. It now asserts the fix.
+
+    A NOTE IS NOT A TRADE. Migration 019 established that on the entry side
+    after the live site, which cannot reach his vault at all, returned an error
+    on every recorded trade and made him press the button again. The exit side
+    still raised HTTP 500 with the position already closed in the database, so
+    his screen said the close had failed when it had not.
+
+    The note goes to the outbox and the close succeeds.
+    """
     open_pos = _make_open_position()
 
     with (
         patch("swayam.api.routes.positions.db") as mock_db,
         patch("swayam.api.routes.positions.append_exit_block") as mock_journal,
     ):
+        # No prior result, and no note-path row. Both lookups are new in
+        # 2026-09-09's close path and a blanket mock would otherwise answer
+        # them with a truthy MagicMock, which reads as 'already closed'.
+        mock_db.client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+        mock_db.client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             open_pos
         ]
@@ -234,8 +269,8 @@ def test_close_position_500_when_journal_write_fails_after_db(client):
         mock_db.client.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
         mock_db.get_margin_base_inr.return_value = 850000.0
 
-        # Simulate journal append failure (e.g. disk permission or file lock)
-        mock_journal.side_effect = RuntimeError("Disk full / permission denied")
+        # The real case: the vault is unreachable from the container.
+        mock_journal.side_effect = RuntimeError("vault unreachable from this container")
 
         resp = client.post(
             "/api/positions/pos-close-123/close",
@@ -248,8 +283,10 @@ def test_close_position_500_when_journal_write_fails_after_db(client):
             },
         )
 
-    assert resp.status_code == 500
-    assert "Trade closed in DB, but writing to journal note failed" in resp.json()["detail"]
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["status"] == "closed"
+    assert data["realized_pnl_inr"] == 7349.70, "the result is still recorded in full"
 
 
 def test_close_position_fetches_ltp_when_exit_legs_omitted(client):
@@ -268,6 +305,11 @@ def test_close_position_fetches_ltp_when_exit_legs_omitted(client):
         patch("swayam.api.routes.positions.fyers_client") as mock_fyers,
         patch("swayam.api.routes.positions.append_exit_block") as mock_journal,
     ):
+        # No prior result, and no note-path row. Both lookups are new in
+        # 2026-09-09's close path and a blanket mock would otherwise answer
+        # them with a truthy MagicMock, which reads as 'already closed'.
+        mock_db.client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+        mock_db.client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             open_pos
         ]
@@ -301,6 +343,11 @@ def test_close_position_journal_uses_the_live_balance(client):
         patch("swayam.api.routes.positions.db") as mock_db,
         patch("swayam.api.routes.positions.append_exit_block") as mock_journal,
     ):
+        # No prior result, and no note-path row. Both lookups are new in
+        # 2026-09-09's close path and a blanket mock would otherwise answer
+        # them with a truthy MagicMock, which reads as 'already closed'.
+        mock_db.client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+        mock_db.client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             open_pos
         ]
@@ -334,6 +381,11 @@ def test_close_position_journal_refuses_503_when_live_balance_unavailable(client
         patch("swayam.api.routes.positions.append_exit_block") as mock_journal,
         patch("swayam.services.capital.get_capital", side_effect=CapitalUnavailable("Broker returned no fund limits.")),
     ):
+        # No prior result, and no note-path row. Both lookups are new in
+        # 2026-09-09's close path and a blanket mock would otherwise answer
+        # them with a truthy MagicMock, which reads as 'already closed'.
+        mock_db.client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+        mock_db.client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             open_pos
         ]

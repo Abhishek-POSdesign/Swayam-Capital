@@ -70,7 +70,36 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: the 2026-09-09 EARLY-HOURS session
+### Latest first: the 2026-09-09 END-TO-END SWEEP
+
+He asked for the whole flow to be broken on purpose before he trades. It was.
+
+| | |
+|---|---|
+| **⚠️ MIGRATION 020 MUST BE RUN** | `.\.venv\Scripts\python.exe scriptspply_migration.py up`. Without it he CANNOT close a trade |
+| **The close wrote two columns that do not exist** | `closed_at` and `journal_path` on `swayam_positions`. Proved against the live schema. The result row inserts FIRST, so a close would record the trade, then fail, leave the position open, and a second press would record it AGAIN |
+| One close, one result | A duplicate check in code plus a unique index in migration 020. The same rule 019 gave the entry side |
+| The note's path was never stored | Kept only in an in-memory dict, so at close there was nothing to append to and his note would have said "Exit: to be filled at close" for ever. Stored now, and older rows recover it from `swayam_journal_entries` |
+| **A failed exit note still failed the close** | HTTP 500 on a trade already closed in the database. It goes to the outbox now, and the drainer learned how to finish a close note, which it could not do before |
+| The token script told him to redeploy | Its closing message still said the live site needs a restart. It reads Secret Manager at request time now. Corrected, and it says the request-time read is unproven in production |
+| **A guard so this class of fault cannot return** | `tests/test_written_columns_exist.py` reads every column the trade path writes and every column the migrations create, and compares them. Proven to fail without migration 020 and pass with it |
+
+**The live walk, against a real backend, 2026-09-09 03:30 IST.** Data health,
+expiries, live spot, capital, payoff, rules, preview order, positions, live
+P&L, naked shorts, journal, analytics, home snapshot and the option chain all
+answered 200. Twenty consecutive rule validations: **20 of 20**. The chain
+returned 41 strikes with real prices against a spot of 23,635.10. Capital read
+his real ₹9,71,111 from FYERS.
+
+**What that walk could NOT cover: opening and closing a real trade.** Both
+write to his live record, so they are proven by test against the real engine
+and the real code path with the database faked. His live test this afternoon is
+the first time either runs for real.
+
+Tests: Python **433 pass, 1 fail**; JavaScript **215 pass, 0 fail**. The one
+failure is still `test_notifications` dispatch.
+
+### Earlier: the 2026-09-09 EARLY-HOURS session
 
 | | |
 |---|---|

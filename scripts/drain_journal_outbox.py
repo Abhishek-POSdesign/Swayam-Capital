@@ -41,7 +41,10 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(ROOT_DIR / ".env")
 
-from swayam.api.journal_writer import write_new_trade_journal  # noqa: E402
+from swayam.api.journal_writer import (  # noqa: E402
+    append_exit_block,
+    write_new_trade_journal,
+)
 from swayam.config import settings  # noqa: E402
 from swayam.db import db  # noqa: E402
 
@@ -137,6 +140,41 @@ def cmd_drain(dry_run: bool) -> int:
                 _mark_done(row["id"], payload.get("md_path"))
                 _mark_position(pid, "written")
                 print(f"  indexed      {label}")
+                written += 1
+            except Exception as exc:
+                _mark_attempt(row, str(exc))
+                print(f"  FAILED       {label}: {exc}")
+            continue
+
+        # A CLOSE note appends the exit block to a note that already exists,
+        # rather than writing a new one. Queued since 2026-09-09, when the exit
+        # side finally stopped returning an error on a trade that had already
+        # been recorded. Without this branch such a row would sit in the outbox
+        # for ever and his note would never get its result.
+        if row["kind"] == "close":
+            if dry_run:
+                print(f"  would append {label}")
+                skipped += 1
+                continue
+            try:
+                from datetime import datetime
+
+                target = append_exit_block(
+                    journal_rel_path=payload["journal_rel_path"],
+                    closed_at=datetime.fromisoformat(payload["closed_at"]),
+                    close_reason=payload["close_reason"],
+                    notes=payload.get("notes"),
+                    exit_legs=payload["exit_legs"],
+                    gross_pnl_inr=payload["gross_pnl_inr"],
+                    charges_inr=payload["charges_inr"],
+                    net_pnl_inr=payload["net_pnl_inr"],
+                    max_loss_inr=payload["max_loss_inr"],
+                    margin_base_inr=payload["margin_base_inr"],
+                    holding_days=payload["holding_days"],
+                )
+                _mark_done(row["id"], payload["journal_rel_path"])
+                _mark_position(pid, "written")
+                print(f"  appended     {target}")
                 written += 1
             except Exception as exc:
                 _mark_attempt(row, str(exc))
