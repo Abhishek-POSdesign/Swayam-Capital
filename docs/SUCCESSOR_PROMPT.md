@@ -86,11 +86,14 @@ docs/PLAN.md as work lands; every superseded plan was deleted for exactly this
 reason.
 
 WHERE THINGS STAND
-Rounds 2 and 3 are merged and deployed. The Trade Journal's four faults are
-fixed. The live revision is swayam-dashboard-00046-lg2 or later; check it rather
-than trusting this line. The desk no longer exhausts the FYERS request budget,
-there is a data-health strip on both pages, and the recorder is deployed but has
-never written an object.
+Everything is merged and deployed. Check the live revision and its image digest
+rather than trusting any number written in a document. The repository has
+exactly one branch, main, and no open pull requests.
+
+On the night of 8/9 September four separate faults were found that would have
+stopped or corrupted my first paper trade, including one that meant I could not
+close a trade at all. All are fixed and migration 020 is applied. The full story
+is in my vault at 00 - Developer Logs/SESSION_LOG_2026-09-09.md. Read it.
 
 My trade journal folder in the vault was polluted with 26 fabricated trades
 written by test runs. They are deleted and the vault is now caged. Do not

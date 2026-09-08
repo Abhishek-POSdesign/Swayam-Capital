@@ -70,7 +70,17 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: the 2026-09-09 END-TO-END SWEEP
+### Latest first: the 2026-09-09 CLOSE-OUT
+
+| | |
+|---|---|
+| **Migration 020 is APPLIED** | He ran it himself. Both columns confirmed present on the live schema afterwards; 81 rows untouched. **He can close a trade now** |
+| Live revision | `swayam-dashboard-00050-69d`, image digest `sha256:1877db12…`, built from `main` at `70b0814`. Checked by digest |
+| **The repository has exactly ONE branch** | `main`, local and remote. Zero open pull requests, one worktree. Five leftover branches were deleted after proving each merge commit is an ancestor of `main` |
+| The full story of this session | Vault `00 - Developer Logs/SESSION_LOG_2026-09-09.md`. Read it when you need to know WHY something looks the way it does |
+| **Still open, and it is his to decide** | `no_single_leg` is still evaluated by the backend. His rules one-pager says that rule is gone and the desk does not render it, so nothing wrong reaches his screen. **Ask him before removing it** |
+
+### Earlier: the 2026-09-09 END-TO-END SWEEP
 
 He asked for the whole flow to be broken on purpose before he trades. It was.
 

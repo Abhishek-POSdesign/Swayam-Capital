@@ -199,6 +199,20 @@ which he did not create himself is test data.
 - **Ask when unsure.** He has said so explicitly, and mid-build is fine.
 - **`node --check` is not verification.** It has passed files the browser then
   rejected. Load the real page in a real browser, in both themes.
+- **A thing that has never run has never been tested.** On 2026-09-09 the close
+  path was found to write two columns that did not exist. Three independent
+  audits had missed it, every test passed, and the code read correctly. It only
+  appears when a trade is actually closed, and nobody had ever closed one.
+  **Before trusting any path he has not personally exercised, exercise it.**
+- **Check that the columns you write actually exist.** `db_guard` stops a test
+  writing the wrong DATA, the vault cage stops the wrong FILE, and neither
+  catches writing to a column that is not there. `tests/test_written_columns_exist.py`
+  compares every column the trade path writes against every column the
+  migrations create. Keep it passing; do not weaken it.
+- **A note is not a trade, at BOTH ends.** Migration 019 established this for
+  entry. The exit side still returned HTTP 500 on a trade already closed in the
+  database until 2026-09-09. If a vault write can fail, it goes to the outbox
+  and the user's action still succeeds.
 - **Verify by invoking, never by reading a status.** Three things had never once
   worked on 2026-09-08 while something downstream reported success. Do not trust
   a status field, a log line saying "started", or a passing test.
@@ -237,6 +251,7 @@ which he did not create himself is test data.
 | `docs/SUCCESSOR_PROMPT.md` | The prompt he pastes into a new chat, plus what was learned by talking to him. **Keep it accurate** |
 | `docs/SWAYAM_START_HERE.md` | Where everything lives, what is verified, what is not done |
 | `docs/PLAN.md` | The one plan. What happens next, in order |
+| Vault `00 - Developer Logs/SESSION_LOG_2026-09-09.md` | **What the 8/9 September session found and fixed.** A historical record, not an authority. Read it when you need to know why the code looks the way it does |
 | `docs/UI_BUILD_BRIEF_ROUND_3.md` | His own sweep of the live pages. **Built and merged**, PR #39 |
 | `docs/UI_BUILD_BRIEF_ROUND_2.md` | Round 2. Built and merged. History |
 | `docs/CALENDAR_BUILD_BRIEF.md` | Multi-expiry valuation, so calendars work. Briefed and ready. **His decision whether he needs it.** Section 0 has how he actually trades one |
