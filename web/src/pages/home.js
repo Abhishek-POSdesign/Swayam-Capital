@@ -417,14 +417,22 @@ export class HomePage {
           ${this._money('Balance', inr(cap.risk_capital_inr), 'total')}
           ${this._money('Free cash', inr(cap.free_cash_inr), 'unpledged')}
           ${this._money('Collateral', inr(cap.collateral_inr), 'pledged holdings')}
-          ${this._money('Margin used', inr(used), used === null ? 'positions not read yet' : used === 0 ? 'nothing open' : 'across open positions', 'var(--fg-2)')}
+          ${this._money('Margin used', inr(used), this.marginUsedNote(), 'var(--fg-2)')}
           ${this._money('Margin ceiling', inr(cap.deployable_margin_ceiling_inr), cap.ceiling_unavailable_reason || 'twice your cash equivalent', 'var(--up)')}
         </div>
         ${cap.reconciliation_note ? `<div class="why">${escapeHtml(cap.reconciliation_note)}</div>` : ''}
       </div>`;
   }
 
-  /** Margin used is only known once positions have been read. Never assumed. */
+  /**
+   * Margin used, only once positions have been read, and only if a position
+   * actually carries the figure.
+   *
+   * Checked against /api/positions on 2026-09-08: a stored position has no
+   * margin field of any kind. So with nothing open this is a true zero, and
+   * with something open it is honestly unknown until the broker is asked. It is
+   * never assumed, and the sub-line below says which of the two it is.
+   */
   marginUsed() {
     if (!Array.isArray(this.positions)) return null;
     if (!this.positions.length) return 0;
@@ -435,6 +443,13 @@ export class HomePage {
       else if (typeof p.margin_blocked_inr === 'number') { total += p.margin_blocked_inr; sawOne = true; }
     }
     return sawOne ? total : null;
+  }
+
+  marginUsedNote() {
+    if (!Array.isArray(this.positions)) return 'positions not read yet';
+    if (!this.positions.length) return 'nothing open';
+    if (this.marginUsed() === null) return 'no margin figure is stored on a position';
+    return 'across open positions';
   }
 
   renderLimits() {

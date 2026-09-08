@@ -133,6 +133,30 @@ describe('Home — the rebuilt page', () => {
     expect(container.querySelector('#home-money').textContent).not.toContain('₹0');
   });
 
+  it('says why margin used is unknown, rather than showing it as zero', () => {
+    const page = new HomePage(container);
+    page.render();
+    page.capital = CAPITAL;
+
+    // Not read yet.
+    page.positions = null;
+    page.renderMoney();
+    expect(container.querySelector('#home-money').textContent).toContain('positions not read yet');
+
+    // Nothing open is a true zero.
+    page.positions = [];
+    page.renderMoney();
+    expect(container.querySelector('#home-money').textContent).toContain('nothing open');
+
+    // Something open, but /api/positions stores no margin figure on a position,
+    // so this is honestly unknown and must never render as zero.
+    page.positions = [{ id: 'a1', strategy_name: 'Bear Put Spread', opened_at: '2026-09-08' }];
+    page.renderMoney();
+    const text = container.querySelector('#home-money').textContent;
+    expect(text).toContain('no margin figure is stored on a position');
+    expect(text).toContain('unavailable');
+  });
+
   it('keeps the paper book and the real-money book separate, and explains each', () => {
     const page = new HomePage(container);
     page.render();

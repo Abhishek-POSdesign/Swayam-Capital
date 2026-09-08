@@ -242,6 +242,117 @@ describe('Strategy Desk — the rebuilt page', () => {
     expect(quote).toHaveBeenCalledWith(expect.objectContaining({ expiry: '2026-09-24' }));
   });
 
+  it('sends nothing to the server while a leg has no price, and drops any earlier answer', async () => {
+    // The zero-premium bug this exists for: an unpriced leg used to go up as
+    // entry_premium 0, the server priced all four rules off a premium nobody
+    // paid, and the page showed those figures as his.
+    const preview = vi.spyOn(api, 'previewOrder').mockResolvedValue({ ordered_legs: [{ lot_size: 65 }] });
+    const validate = vi.spyOn(api, 'validateStrategy').mockResolvedValue({ realistic_risk: {}, checks: [] });
+
+    const page = deskWithLegs(container, [
+      { on: true, bs: 'B', strike: 23800, type: 'PE', lots: 1, price: 210, priceSource: 'live' },
+      { on: true, bs: 'S', strike: 23600, type: 'PE', lots: 1, price: null, priceSource: 'no traded price' },
+    ], { validation: { realistic_risk: { loss_inr: 999, cap_inr: 9710.02, passed: true }, checks: [], capital: CAPITAL } });
+    page.expiry = '2026-09-24';
+
+    await page.refreshFromServer();
+
+    expect(preview).not.toHaveBeenCalled();
+    expect(validate).not.toHaveBeenCalled();
+    // The stale answer is gone, not left on screen describing a priced position.
+    expect(page.validation).toBeNull();
+    expect(container.querySelector('#rule-validation-mount').textContent).toContain('unavailable');
+    expect(container.querySelector('#rule-validation-mount').textContent).not.toContain('999');
+  });
+
+  it('sends the real premiums, and never a zero, once every leg is priced', async () => {
+    let seen = null;
+    vi.spyOn(api, 'previewOrder').mockResolvedValue({ ordered_legs: [{ lot_size: 65 }] });
+    vi.spyOn(api, 'validateStrategy').mockImplementation(async (payload) => {
+      seen = payload;
+      return { realistic_risk: {}, checks: [], capital: CAPITAL };
+    });
+
+    const page = deskWithLegs(container, [
+      { on: true, bs: 'B', strike: 23800, type: 'PE', lots: 1, price: 210, priceSource: 'live' },
+      { on: true, bs: 'S', strike: 23600, type: 'PE', lots: 1, price: 130, priceSource: 'live' },
+    ]);
+    page.expiry = '2026-09-24';
+
+    await page.refreshFromServer();
+
+    expect(seen.legs.map((l) => l.entry_premium)).toEqual([210, 130]);
+    expect(seen.legs.every((l) => l.entry_premium > 0)).toBe(true);
+  });
+
+  it('drops an implied volatility when the leg is repriced and the new quote has none', async () => {
+    const page = deskWithLegs(container, [
+      { on: true, bs: 'B', strike: 23800, type: 'PE', lots: 1, price: 210, priceSource: 'live' },
+    ]);
+    page.expiry = '2026-09-24';
+    page.ivPctByStrike[23800] = 11.3;
+    page.ivSource[23800] = 'implied from the traded price';
+
+    vi.spyOn(api, 'getOptionQuote').mockResolvedValue({ available: false, ltp: null, iv: null });
+    await page.repriceLeg(0);
+
+    // A volatility implied from a price that no longer exists must not carry
+    // over to a different expiry.
+    expect(page.ivPctByStrike[23800]).toBeUndefined();
+    expect(container.querySelector('#iv-mount').textContent).toContain('unavailable');
+  });
+
+  it('keeps a volatility he typed himself when a reprice returns none', async () => {
+    const page = deskWithLegs(container, [
+      { on: true, bs: 'B', strike: 23800, type: 'PE', lots: 1, price: 210, priceSource: 'live' },
+    ]);
+    page.expiry = '2026-09-24';
+    page.ivPctByStrike[23800] = 14.5;
+    page.ivSource[23800] = 'your own volatility';
+
+    vi.spyOn(api, 'getOptionQuote').mockResolvedValue({ available: false, ltp: null, iv: null });
+    await page.repriceLeg(0);
+
+    expect(page.ivPctByStrike[23800]).toBe(14.5);
+  });
+
+  it('keeps watching open positions for an unhedged short before the bell', async () => {
+    const detect = vi.spyOn(api, 'detectNakedShorts').mockResolvedValue({
+      has_naked_shorts: true,
+      violations: [{
+        position_id: 'abcdef1234',
+        suggested_hedges: [{ strike: 24050, option_type: 'CE', quantity_lots: 1, expiry_date: '2026-09-24' }],
+      }],
+    });
+    vi.spyOn(api, 'getOptionQuote').mockResolvedValue({ available: false, ltp: null, iv: null });
+
+    const page = deskWithLegs(container, []);
+    page.expiry = '2026-09-24';
+    await page.startOvernightWatch();
+    await new Promise((r) => setTimeout(r, 0));
+    page.destroy();
+
+    expect(detect).toHaveBeenCalledWith('15:20');
+
+    // The suggested hedge loads at the server's strike and NO price. The page
+    // this replaced pushed it in at an invented premium of 35.00.
+    page.loadSuggestedHedge({ suggested_hedges: [{ strike: 24050, option_type: 'CE', quantity_lots: 1 }] });
+    expect(page.legs[0].strike).toBe(24050);
+    expect(page.legs[0].price).toBeNull();
+    expect(JSON.stringify(page.legs)).not.toContain('35');
+  });
+
+  it('says the overnight check failed rather than staying quiet about it', async () => {
+    vi.spyOn(api, 'detectNakedShorts').mockRejectedValue(new Error('Supabase unreachable'));
+    const page = deskWithLegs(container, []);
+    await page.startOvernightWatch();
+    await new Promise((r) => setTimeout(r, 0));
+    page.destroy();
+
+    expect(container.querySelector('#execute-row-mount').textContent).toContain('Supabase unreachable');
+    expect(container.querySelector('#execute-row-mount').textContent).toContain('before the bell');
+  });
+
   it('never sends a browser-chosen contract size to the server', () => {
     const page = deskWithLegs(container, [
       { on: true, bs: 'B', strike: 23800, type: 'PE', lots: 1, price: 210, priceSource: 'live' },

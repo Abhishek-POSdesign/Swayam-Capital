@@ -20,6 +20,7 @@
 import { api } from '../api.js';
 import { MarketTickerComponent } from '../components/market-ticker.js';
 import { PayoffSvgComponent } from '../components/payoff-svg.js';
+import { OvernightBlockModalComponent } from '../components/overnight-block-modal.js';
 import {
   maxLossProfit,
   breakevens,
@@ -102,6 +103,9 @@ export class StrategyBuilderPage {
 
     this.payoffChart = null;
     this.ticker = null;
+    this.overnightModal = null;
+    this.cronTimer = null;
+    this.safetyWarning = null;
   }
 
   _resolveSessionId() {
@@ -121,6 +125,7 @@ export class StrategyBuilderPage {
   async init() {
     this.renderLayout();
     this.initSubComponents();
+    this.startOvernightWatch();
     await this.loadInitialData();
   }
 
@@ -220,6 +225,8 @@ export class StrategyBuilderPage {
             </div>
           </div>
         </div>
+
+        <div id="overnight-modal-container"></div>
       </div>
     `;
 
@@ -242,9 +249,89 @@ export class StrategyBuilderPage {
       this.payoffChart.init();
     }
 
+    const modalMount = this.container.querySelector('#overnight-modal-container');
+    if (modalMount) {
+      this.overnightModal = new OvernightBlockModalComponent(modalMount, {
+        onAddHedge: (violation) => this.loadSuggestedHedge(violation),
+        onExitPosition: (violation) => this.exitPosition(violation),
+      });
+    }
+
     this.renderPresets();
     this.bindControls();
     this.renderAll();
+  }
+
+  /**
+   * The 15:20 overnight-naked watch, carried over from the page this one
+   * replaces. It has nothing to do with the layout and everything to do with
+   * not waking up short and unhedged, so it stays.
+   *
+   * It watches positions that are already OPEN, which is a different job from
+   * the four rules below, which judge the position he is building.
+   */
+  startOvernightWatch() {
+    if (typeof setInterval !== 'function') return;
+    const check = async () => {
+      try {
+        const res = await api.detectNakedShorts('15:20');
+        this.safetyWarning = null;
+        if (res && res.has_naked_shorts && res.violations && res.violations.length) {
+          if (this.overnightModal && !this.overnightModal.isOpen) {
+            this.overnightModal.show(res.violations[0]);
+          }
+        }
+      } catch (err) {
+        this.safetyWarning =
+          'The overnight-naked check could not run: ' +
+          ((err && err.message) || err) +
+          '. Look at your open positions yourself before the bell.';
+      }
+      this.renderExecute();
+    };
+    check();
+    this.cronTimer = setInterval(check, 30000);
+    if (this.cronTimer && typeof this.cronTimer.unref === 'function') this.cronTimer.unref();
+  }
+
+  /**
+   * Loads the hedge the server suggested into the legs table, at no price.
+   *
+   * The page this replaces pushed the same leg in at a premium of 35.00 and a
+   * contract size of 75, both invented. The strike, type and expiry are the
+   * server's; the price is fetched from the chain like any other leg, and stays
+   * empty if there is none.
+   */
+  loadSuggestedHedge(violation) {
+    const h = violation && violation.suggested_hedges && violation.suggested_hedges[0];
+    if (!h) return;
+    this.legs.push({
+      on: true,
+      bs: 'B',
+      strike: h.strike,
+      type: h.option_type,
+      lots: h.quantity_lots || 1,
+      price: null,
+      priceSource: 'suggested hedge, not yet priced',
+    });
+    this.baseLots = this.legs.map((l) => l.lots);
+    this.renderAll();
+    this.repriceLeg(this.legs.length - 1);
+  }
+
+  async exitPosition(violation) {
+    if (!violation || !violation.position_id) return;
+    try {
+      await api.closePosition(violation.position_id, {
+        close_reason: 'time_exit',
+        notes: 'Exited before the 15:20 IST cutoff, overnight-naked rule.',
+      });
+      this.executeNote = `Position ${String(violation.position_id).slice(0, 8)} closed.`;
+      await this.refreshPositions();
+    } catch (err) {
+      this.executeNote = `Could not close it: ${(err && err.message) || err}`;
+    }
+    this.renderExecute();
   }
 
   bindControls() {
@@ -436,6 +523,12 @@ export class StrategyBuilderPage {
       if (q && typeof q.iv === 'number' && q.iv > 0) {
         this.ivPctByStrike[leg.strike] = q.iv * 100;
         this.ivSource[leg.strike] = 'implied from the traded price';
+      } else if (this.ivSource[leg.strike] === 'implied from the traded price') {
+        // The old expiry's volatility must not linger on the new one. His own
+        // typed volatility is his and survives; an implied one belongs to the
+        // price it came from, and that price is gone.
+        delete this.ivPctByStrike[leg.strike];
+        delete this.ivSource[leg.strike];
       }
     } catch (err) {
       leg.price = null;
@@ -565,17 +658,25 @@ export class StrategyBuilderPage {
 
   // ------------------------------------------------------------ server calls
 
+  activeLegs() {
+    return this.legs.filter((l) => l.on);
+  }
+
+  /** True once every active leg carries a price the server can price rules from. */
+  fullyPriced() {
+    const on = this.activeLegs();
+    return on.length > 0 && on.every((l) => l.price !== null);
+  }
+
   legsPayload() {
-    return this.legs
-      .filter((l) => l.on)
-      .map((l) => ({
-        strike: l.strike,
-        option_type: l.type,
-        direction: l.bs === 'B' ? 'buy' : 'sell',
-        quantity_lots: l.lots,
-        entry_premium: l.price === null ? 0 : l.price,
-        expiry_date: this.expiry,
-      }));
+    return this.activeLegs().map((l) => ({
+      strike: l.strike,
+      option_type: l.type,
+      direction: l.bs === 'B' ? 'buy' : 'sell',
+      quantity_lots: l.lots,
+      entry_premium: l.price,
+      expiry_date: this.expiry,
+    }));
   }
 
   scheduleServerRefresh() {
@@ -591,6 +692,21 @@ export class StrategyBuilderPage {
   async refreshFromServer() {
     const legs = this.legsPayload();
     if (!legs.length || !this.expiry || !this.spot) return;
+
+    // An unpriced leg used to be sent as a zero premium. The server would then
+    // price all four rules off a premium nobody paid and the page would show
+    // those figures as his own. Nothing is sent until every leg has a price,
+    // and any answer from an earlier, priced state is dropped so it cannot sit
+    // on screen describing a position that no longer exists.
+    if (!this.fullyPriced()) {
+      this.preview = null;
+      this.validation = null;
+      this.previewError = null;
+      this.validationError = 'A leg has no price yet, so the rules were not checked.';
+      this.renderAll();
+      return;
+    }
+
     const payload = {
       strategy_name: this.strategyName || 'Custom',
       underlying: 'NIFTY',
@@ -935,7 +1051,7 @@ export class StrategyBuilderPage {
   renderGreeks() {
     const host = this.container.querySelector('#greeks-table');
     if (!host) return;
-    if (!this.legs.filter((l) => l.on).length) {
+    if (!this.activeLegs().length) {
       host.innerHTML = '<tbody><tr><td class="na">Add a leg.</td></tr></tbody>';
       return;
     }
@@ -971,7 +1087,7 @@ export class StrategyBuilderPage {
     const src = this.container.querySelector('#rules-source');
     if (!host) return;
 
-    if (!this.legs.filter((l) => l.on).length) {
+    if (!this.activeLegs().length) {
       host.innerHTML = '<div class="rl idle" style="grid-column:1/-1"><div class="k">Waiting for a position</div></div>';
       if (why) why.textContent = '';
       if (src) src.textContent = '';
@@ -1064,7 +1180,7 @@ export class StrategyBuilderPage {
   renderExecute() {
     const banner = this.container.querySelector('#entry-banner');
     if (banner) {
-      banner.innerHTML = this.legs.filter((l) => l.on).length
+      banner.innerHTML = this.activeLegs().length
         ? '<b>Intraday entry is never blocked</b>, including a naked or half-built structure. Only carrying overnight is gated, and only on two conditions: hedged, and inside the 2% gap test.'
         : 'Load a strategy on the left to see every number recalculate.';
     }
@@ -1085,10 +1201,13 @@ export class StrategyBuilderPage {
     }
 
     const blocked = v && v.execution_blocked_reason ? v.execution_blocked_reason : null;
-    const hasLegs = this.legs.filter((l) => l.on).length > 0;
-    const priced = hasLegs && this.legs.filter((l) => l.on).every((l) => l.price !== null);
+    const hasLegs = this.activeLegs().length > 0;
+    const priced = this.fullyPriced();
 
     host.innerHTML =
+      (this.safetyWarning
+        ? `<div style="flex-basis:100%;color:var(--down);font-size:12px">${escapeHtml(this.safetyWarning)}</div>`
+        : '') +
       `<span class="verdict ${cls}">${escapeHtml(text)}</span>` +
       `<button class="btn pri" id="btn-execute" type="button"${hasLegs && priced ? '' : ' disabled'}>Execute paper trade</button>` +
       `<span style="margin-left:auto;font-family:var(--m);font-size:11px;color:var(--fg-3)" id="execute-note">${escapeHtml(
@@ -1135,6 +1254,10 @@ export class StrategyBuilderPage {
     if (this._serverTimer) {
       clearTimeout(this._serverTimer);
       this._serverTimer = null;
+    }
+    if (this.cronTimer) {
+      clearInterval(this.cronTimer);
+      this.cronTimer = null;
     }
   }
 }

@@ -26,6 +26,26 @@ No FYERS token, no Supabase credentials, no Google Cloud access in this session.
 checked against the live account, the deployed site or a real trade. See the pull request body
 for the full list.
 
+## Second pass, after the first push
+
+A sweep over the finished work found four things and fixed all four:
+
+1. **An unpriced leg was sent to the server as a zero premium.** The server then priced all
+   four rules off a premium nobody paid, and the desk showed those figures as real. Nothing is
+   sent now until every leg has a price, and any answer from an earlier priced state is
+   dropped rather than left on screen.
+2. **An implied volatility survived an expiry change.** Repricing a leg onto a new expiry that
+   has no traded price left the old expiry's volatility in place, and the greeks and the
+   on-date curve quietly used it. It is cleared now. A volatility typed by hand is his and
+   still survives.
+3. **The 15:20 overnight-naked watch had been dropped** with the old page and not mentioned.
+   It is back: it polls open positions, raises the block modal, and says so in the execute row
+   when the check itself cannot run. The suggested hedge loads at the server's strike with NO
+   price — the old page pushed it in at an invented premium of 35.00 and a contract size of 75.
+4. **Margin used said "positions not read yet" when something was open.** Checked against
+   /api/positions: a stored position carries no margin field at all, so it now says which of
+   the two situations it is in.
+
 ## Left for a human
 
 1. Load both pages against the real backend during market hours and confirm every figure.
