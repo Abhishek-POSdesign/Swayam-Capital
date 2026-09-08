@@ -10,7 +10,14 @@ import uuid
 from typing import Any, Optional
 from fastapi import APIRouter, HTTPException
 import logging
+from decimal import Decimal
+
 from swayam.api.journal_writer import write_new_trade_journal
+from swayam.services.charges import (
+    ChargeScheduleUnavailable,
+    charge_for_leg,
+    side_from_direction,
+)
 from swayam.services.execution_safety import (
     DuplicateExecution,
     ReplayedExecution,
@@ -258,7 +265,47 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
     position_id = str(uuid.uuid4())
     opened_at = datetime.now(timezone.utc).isoformat()
 
-    legs_dict = [l.model_dump() for l in req.legs]
+    # Two things happen to every leg before it is stored, and both are money.
+    #
+    # ONE: the contract size stored on the leg is the SERVER'S, resolved from
+    # the FYERS contract master by build_spread_from_request. It used to be
+    # whatever the request carried, which is None from the desk he actually
+    # uses. A leg stored with no contract size CANNOT BE CLOSED: close_position
+    # refuses to value it rather than guess, so the trade would open and then
+    # never close. Proven on 2026-09-09 with the exact payload the desk sends.
+    #
+    # TWO: the leg is charged as it is bought or sold, at its own price, on its
+    # own side. His instruction, 2026-09-09: "Whenever we buy or sell, the
+    # charges will be calculated then and there." Entry charges were not
+    # recorded at all before this.
+    trade_day = date.today()
+    legs_dict = []
+    entry_charges_total = 0.0
+    for leg_req, resolved in zip(req.legs, spread.legs):
+        leg = leg_req.model_dump()
+        leg["lot_size"] = int(resolved.lot_size)
+        contracts = int(resolved.quantity_lots) * int(resolved.lot_size)
+        try:
+            entry_cost = charge_for_leg(
+                side=side_from_direction(leg["direction"]),
+                price_per_unit=Decimal(str(leg["entry_premium"])),
+                quantity_units=contracts,
+                on=trade_day,
+            )
+        except ChargeScheduleUnavailable as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Trade not executed: this leg cannot be charged, so its cost "
+                    f"would be unknown from the moment it opened. {exc}"
+                ),
+            ) from exc
+        leg["entry_charges_inr"] = float(entry_cost.total_inr)
+        leg["charges_schedule_version"] = entry_cost.schedule_version
+        entry_charges_total += float(entry_cost.total_inr)
+        legs_dict.append(leg)
+    entry_charges_total = round(entry_charges_total, 2)
+
     spread_payload = {
         "strategy_name": req.strategy_name,
         "underlying": req.underlying,
@@ -310,6 +357,10 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
         "status": "open",
         "mode": "paper",
         "opened_at": opened_at,
+        # What getting in cost, summed from the legs. Replaced at close by the
+        # full round trip, so this column always means "what this trade has
+        # cost so far".
+        "charges_inr": entry_charges_total,
         "notes": "; ".join(filter(None, [
             f"session_id={req.session_id}" if req.session_id else None,
             f"order_type={req.order_type}" if req.order_type else None,

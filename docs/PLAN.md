@@ -246,10 +246,7 @@ in green, and does the age beside it stay small.
 2. **The trade as a campaign: one trade, legs that change.** Section 2.11. He
    specified this himself on 2026-09-08 night and it is the largest remaining
    gap between the terminal and how he trades. **This is the next job.**
-3. **Charges at execution.** Section 2.3. **Moved up.** His FY 2025-26 was a
-   gross profit of ₹6,109 turned into a net loss of ₹86,299 by ₹92,408 of
-   charges. Costs are not a rounding error to him; they are the thing that
-   ended his last year.
+3. ~~Charges at execution.~~ **DONE 2026-09-09, per leg.** Section 2.3.
 4. **Scheduled backups.** Section 2.6.
 5. **The kill switch.** Section 2.5.
 6. **The calendar backend.** Section 3, and `docs/CALENDAR_BUILD_BRIEF.md` PR 1.
@@ -312,10 +309,33 @@ squared off to go in as a trade journal." A trade scores only when it is closed
 **What this did NOT do.** It did not change how a trade is modelled. That is
 section 2.11, and it is now the next job.
 
-### 2.3 Charges applied at execution
-The versioned charge engine is real and the risk gate uses it. The execution
-path still closes with a flat `ESTIMATED_CHARGE_PER_LEG_INR` of ₹150. Wrong,
-but it changes a recorded result rather than a decision he makes at the screen.
+### 2.3 Charges — DONE 2026-09-09, and per LEG, which is his correction
+
+**His instruction, 2026-09-09, correcting the plan:** "The charges should not be
+recorded as per the trade. Charges are recorded as per the leg. The buy leg has
+its own charges, and the sell leg has its own charges. Why would squaring one
+leg charge for the whole trade?... Whenever we buy or sell, the charges will be
+calculated then and there."
+
+He was right, and the real system was worse than the plan said. **Nothing was
+charged at entry at all.** The only charge ever booked was a flat ₹150 times the
+number of legs, once, at the close.
+
+| | Was | Is |
+|---|---|---|
+| Entry | Nothing charged, ever | Each leg costed as it is bought or sold, at its own price, on its own side |
+| Exit | Flat ₹150 × legs | Each leg costed at its real exit price, on the reversed side |
+| One-lot condor round trip | ₹600 | About ₹223 |
+| A trade held across 1 April 2026 | One rate | Entry on the old schedule, exit on the new one |
+| Per leg | Nothing | Gross, entry charges, exit charges, total charges, net |
+| Per trade | One net figure | Cumulative gross, cumulative charges, net after them |
+
+**Costing leg by leg is exact, not an approximation.** Brokerage is per order and
+every other line is a percentage of that leg's own turnover, so the parts sum to
+the whole to the paisa. `tests/test_charges_per_leg.py` asserts it.
+
+`ESTIMATED_CHARGE_PER_LEG_INR` is deleted from `config.py`, and a source-level
+guard fails if it returns.
 
 ### 2.4 Live ticks — MOVED INTO ROUND 2, PR 1 (steps 4 to 6)
 `/ws/spot` accepts a connection and answers ping with pong. Nothing is ever
@@ -581,6 +601,10 @@ Kept short. Detail is in the git history and the pull requests.
 | 2026-09-08 | Nothing calls a closing price "live" any more | Home badge and desk chip both read "at the close · 19:22 IST" with the market shut |
 | 2026-09-08 | The deleted reward-to-risk rule stopped being computed | The four-rule block renders exactly four rules from a live balance of ₹9,71,111 |
 | 2026-09-08 | Recorder deployed, first time since 3 September | Revision `swayam-recorder-00002-lez` ACTIVE, answers 200, reads the token, FYERS returns 82 rows |
+| 2026-09-09 | Charges are computed PER LEG, at entry and at exit | A one-lot condor's real round trip is ₹223. It used to book ₹600, and nothing at all at entry |
+| 2026-09-09 | A leg's costs sum to the trade's, exactly | Four legs costed separately: 35.47 + 25.22 + 34.80 + 25.22 = 120.71, the same paisa as costing them together |
+| 2026-09-09 | **His first paper trade can now be closed at all** | The desk sends no contract size, so the stored leg was null and `close_position` refuses to value a leg it cannot size. Proven with the desk's exact payload |
+| 2026-09-09 | His record stopped describing setups he never wrote | "Standard breakout", "Key support/resistance level", "With Trend", "Manual / Target" and a default "100% Rules Followed" all became dashes |
 | 2026-09-08 | **The vault can no longer be written by a test run** | 26 fabricated notes were in his real journal folder; 22 had no database row. Folder held 0 notes before a full suite run and 0 after |
 | 2026-09-08 | The 26 fabricated notes are gone from his Second Brain | Journal folder holds zero markdown files. The vault is under git, so they remain recoverable |
 | 2026-09-08 | The Trade Journal stopped inventing a margin base | Live backend at 23:26 IST returns his real ₹9,71,111 from FYERS, and `null` where it cannot compute |

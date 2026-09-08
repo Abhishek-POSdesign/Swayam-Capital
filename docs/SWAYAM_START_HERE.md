@@ -70,7 +70,18 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: the 2026-09-08 NIGHT session
+### Latest first: the 2026-09-09 EARLY-HOURS session
+
+| | |
+|---|---|
+| **Charges are per LEG now, his correction** | "The buy leg has its own charges, and the sell leg has its own charges. Why would squaring one leg charge for the whole trade?" Entry was never charged at all before this, and the exit booked a flat ₹150 a leg. A one-lot condor really costs about ₹223 round trip, not ₹600. `docs/PLAN.md` §2.3 |
+| **His first paper trade could not have been closed** | The desk sends no contract size, so the stored leg carried `null`, and `close_position` REFUSES to value a leg it cannot size rather than guess. The trade would have opened and then failed to close. The server's resolved size is stored now. Proven with the desk's exact payload |
+| His record stopped inventing his own words | The expanded trade row defaulted to "Standard breakout", "Key support/resistance level", "With Trend", "Manual / Target" and "100% Rules Followed" for a trade where he wrote nothing. All dashes now |
+| Two expiry tests were red on any day but 2026-09-08 | They read the live FYERS contract master, which stopped listing that expiry once it passed. Pinned to a fixed master |
+| Tests | Python **424 pass, 1 fail**; JavaScript **220 pass, 0 fail** across 34 files. The one failure is still `test_notifications` dispatch |
+| **Not yet seen with a real trade** | The charge path is proven against the real engine and against the real execute path with the database faked. It has never run on a trade he actually took, because he has never taken one |
+
+### Earlier: the 2026-09-08 NIGHT session
 
 | | |
 |---|---|

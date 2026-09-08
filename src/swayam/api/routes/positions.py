@@ -11,12 +11,19 @@ Provides:
 from datetime import date, datetime, timezone
 import logging
 import time
+from decimal import Decimal
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from swayam.api.journal_writer import append_exit_block
+from swayam.services.charges import (
+    ChargeScheduleUnavailable,
+    charge_for_leg,
+    opposite,
+    side_from_direction,
+)
 from swayam.api.models_api import PositionResponse
 from swayam.config import settings
 from swayam.db import db
@@ -96,10 +103,19 @@ class ClosePositionRequest(BaseModel):
 
 
 class ClosePositionResponse(BaseModel):
+    """What a close actually cost and made, in the three lines he asked for.
+
+    Cumulative gross, cumulative charges for the whole round trip, and the net
+    after them. `exit_legs` carries the same three figures for each individual
+    leg, because a charge belongs to the leg that incurred it.
+    """
+
     position_id: str
     status: str
+    gross_pnl_inr: float = 0.0
     realized_pnl_inr: float
     total_charges_inr: float
+    exit_legs: list[dict[str, Any]] = []
     journal_path: Optional[str] = None
     lesson: Optional[dict[str, Any]] = None
 
@@ -535,7 +551,23 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
         if spot_val > 0:
             spot_at_exit = spot_val
 
+    # Both dates are needed inside the leg loop: an exit is charged on today's
+    # schedule and an entry on the schedule in force the day it opened. Rates
+    # change, and a trade carried across 1 April 2026 straddles two of them.
+    closed_at = datetime.now(timezone.utc)
+    opened_at_str = str(pos.get("opened_at", closed_at.isoformat()))
+    try:
+        opened_at_dt = datetime.fromisoformat(opened_at_str.replace("Z", "+00:00"))
+        holding_days = max(0, (closed_at.date() - opened_at_dt.date()).days)
+        time_in_trade_minutes = max(0, int((closed_at - opened_at_dt).total_seconds() / 60))
+    except Exception:
+        opened_at_dt = closed_at
+        holding_days = 0
+        time_in_trade_minutes = None
+
     gross_exit_value = 0.0
+    total_entry_charges = 0.0
+    total_exit_charges = 0.0
     closed_legs: list[dict[str, Any]] = []
 
     for leg in legs:
@@ -582,6 +614,60 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
         leg_pnl = ((exit_prem - entry_prem) * contracts) if is_buy else ((entry_prem - exit_prem) * contracts)
         gross_exit_value += leg_pnl
 
+        # THE CHARGE BELONGS TO THE LEG, ON ITS OWN SIDE, AT ITS OWN PRICE.
+        #
+        # His instruction, 2026-09-09: "Charges are recorded as per the leg. The
+        # buy leg has its own charges, and the sell leg has its own charges. Why
+        # would squaring one leg charge for the whole trade?"
+        #
+        # This replaces a flat Rs 150 multiplied by the number of legs, applied
+        # once at the close, with nothing charged at entry at all. On a one-lot
+        # condor that guess was Rs 600 against a real Rs 223 round trip.
+        #
+        # Costing legs one at a time is exact, not an approximation: brokerage
+        # is per order and every other line is a percentage of that leg's own
+        # turnover, so the per-leg costs sum to the same paisa as costing the
+        # whole side together. tests/test_charges_per_leg.py asserts it.
+        entry_side = side_from_direction(direction)
+        try:
+            exit_cost = charge_for_leg(
+                side=opposite(entry_side),
+                price_per_unit=Decimal(str(exit_prem)),
+                quantity_units=contracts,
+                on=closed_at.date(),
+            )
+        except ChargeScheduleUnavailable as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    f"Cannot close this position: the {strike:.0f} {opt_type} leg "
+                    f"cannot be charged, so its result would be unknown. {exc}"
+                ),
+            ) from exc
+
+        # What getting in cost. Recorded on the leg since 2026-09-09; for a
+        # position opened before that, rebuilt from the real schedule in force
+        # on the day it opened. Rebuilt is not invented, and it says which.
+        recorded_entry = leg.get("entry_charges_inr")
+        if recorded_entry is None:
+            entry_cost_inr = float(
+                charge_for_leg(
+                    side=entry_side,
+                    price_per_unit=Decimal(str(entry_prem)),
+                    quantity_units=contracts,
+                    on=opened_at_dt.date(),
+                ).total_inr
+            )
+            entry_charges_source = "rebuilt from the schedule in force at entry"
+        else:
+            entry_cost_inr = float(recorded_entry)
+            entry_charges_source = "recorded when the leg was opened"
+
+        exit_cost_inr = float(exit_cost.total_inr)
+        leg_charges = round(entry_cost_inr + exit_cost_inr, 2)
+        total_entry_charges += entry_cost_inr
+        total_exit_charges += exit_cost_inr
+
         closed_legs.append({
             "strike": strike,
             "option_type": opt_type,
@@ -590,23 +676,22 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
             "lot_size": lot_size,
             "entry_premium": entry_prem,
             "exit_premium": exit_prem,
+            # Per leg, the three figures he asked for.
+            "gross_pnl_inr": round(leg_pnl, 2),
+            "entry_charges_inr": round(entry_cost_inr, 2),
+            "exit_charges_inr": round(exit_cost_inr, 2),
+            "charges_inr": leg_charges,
+            "net_pnl_inr": round(leg_pnl - leg_charges, 2),
+            "entry_charges_source": entry_charges_source,
+            "charges_schedule_version": exit_cost.schedule_version,
         })
 
     # 3. Compute Realized P&L and Estimated Charges
-    gross_pnl_inr = gross_exit_value
-    total_charges_inr = len(closed_legs) * settings.estimated_charge_per_leg_inr
-    realized_pnl_inr = gross_pnl_inr - total_charges_inr
-
-
-    closed_at = datetime.now(timezone.utc)
-    opened_at_str = str(pos.get("opened_at", closed_at.isoformat()))
-    try:
-        opened_at_dt = datetime.fromisoformat(opened_at_str.replace("Z", "+00:00"))
-        holding_days = max(0, (closed_at.date() - opened_at_dt.date()).days)
-        time_in_trade_minutes = max(0, int((closed_at - opened_at_dt).total_seconds() / 60))
-    except Exception:
-        holding_days = 0
-        time_in_trade_minutes = None
+    # The trade's three figures, each the sum of its legs': cumulative gross,
+    # cumulative charges for the whole round trip, and the net after them.
+    gross_pnl_inr = round(gross_exit_value, 2)
+    total_charges_inr = round(total_entry_charges + total_exit_charges, 2)
+    realized_pnl_inr = round(gross_pnl_inr - total_charges_inr, 2)
 
     spot_at_entry = float(pos.get("spot_at_entry") or 0.0) if pos.get("spot_at_entry") else None
     points_in_trade = round(spot_at_exit - spot_at_entry, 2) if (spot_at_exit and spot_at_entry) else None
@@ -741,8 +826,10 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
     return ClosePositionResponse(
         position_id=position_id,
         status="closed",
+        gross_pnl_inr=round(gross_pnl_inr, 2),
         realized_pnl_inr=round(realized_pnl_inr, 2),
         total_charges_inr=round(total_charges_inr, 2),
+        exit_legs=closed_legs,
         journal_path=journal_path,
         lesson=lesson_info,
     )

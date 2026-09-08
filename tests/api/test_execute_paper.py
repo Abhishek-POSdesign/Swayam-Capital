@@ -333,3 +333,73 @@ def test_execute_creates_no_orphan_journal_file_on_db_failure(mocker, tmp_path: 
         object.__setattr__(settings, "vault_path", original_vault)
 
 
+
+
+@pytest.mark.fake_db
+def test_the_stored_leg_carries_the_servers_contract_size_and_its_entry_cost(fake_db) -> None:
+    """Two money bugs in one line, both proven against the desk's real payload.
+
+    ONE. `web/src/pages/strategy-builder.js` sends no `lot_size` at all. The
+    stored leg used to be a dump of the request, so it was stored as null, and
+    `close_position` REFUSES to value a leg with no contract size rather than
+    guess. His first paper trade would have opened and then never closed.
+
+    TWO. Nothing was charged at entry. A leg is now costed as it is bought or
+    sold, on its own side, at its own price.
+
+    The payload below is copied from `legsPayload()` in that file. If the desk
+    ever starts sending a contract size, the server still wins: a browser that
+    hardcodes 75 is how every contract-scaled figure came to be 15.4% too big.
+    """
+    payload = {
+        "strategy_name": "Bull Call Spread",
+        "underlying": "NIFTY",
+        "current_spot": 24800.0,
+        "order_type": "LIMIT",
+        "mode": "paper",
+        "legs": [
+            {
+                "strike": 25000.0,
+                "option_type": "CE",
+                "direction": "buy",
+                "quantity_lots": 1,
+                "entry_premium": 150.0,
+                "expiry_date": "2026-09-24",
+                "order_type": "LIMIT",
+            },
+            {
+                "strike": 25200.0,
+                "option_type": "CE",
+                "direction": "sell",
+                "quantity_lots": 1,
+                "entry_premium": 80.0,
+                "expiry_date": "2026-09-24",
+                "order_type": "LIMIT",
+            },
+        ],
+        "iv_per_leg": {"default": 0.15},
+    }
+
+    response = client.post("/api/execute/multi-leg", json=payload)
+    assert response.status_code == 200, response.text
+
+    written = fake_db.inserted_into("swayam_positions")
+    assert len(written) == 1
+    legs = written[0]["legs"]
+    assert len(legs) == 2
+
+    for leg in legs:
+        assert isinstance(leg["lot_size"], int) and leg["lot_size"] > 0, (
+            "a leg stored without a contract size can never be closed"
+        )
+        assert leg["lot_size"] != 75, "75 is the old contract size; the server resolves 65"
+        assert leg["entry_charges_inr"] > 0, "getting in was never charged before this"
+        assert leg["charges_schedule_version"]
+
+    # The bought leg and the sold leg cost different amounts to open.
+    assert legs[0]["entry_charges_inr"] != legs[1]["entry_charges_inr"]
+
+    # The position's running cost is the sum of its legs'.
+    assert written[0]["charges_inr"] == pytest.approx(
+        round(sum(l["entry_charges_inr"] for l in legs), 2)
+    )
