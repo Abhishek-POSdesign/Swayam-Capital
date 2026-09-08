@@ -10,6 +10,12 @@ from unittest.mock import patch
 # ticks. Never in tests.
 os.environ.setdefault("SWAYAM_DISABLE_SPOT_FEED", "1")
 
+# The live vault, captured before any test can redirect it. `cage_the_vault`
+# compares against this to tell "a test isolated itself" from "a test is about
+# to write into his Second Brain".
+from swayam.config import settings as _startup_settings  # noqa: E402
+_REAL_VAULT_PATH = _startup_settings.vault_path
+
 
 @pytest.fixture(autouse=True)
 def default_mock_realized_vol(request):
@@ -141,3 +147,48 @@ def fake_db(request):
             "@pytest.mark.fake_db, so the guard installs an in-memory database."
         )
     return replacement
+
+
+@pytest.fixture(autouse=True)
+def cage_the_vault(tmp_path_factory, request):
+    """Stops the test suite writing trade notes into Abhishek's real Second Brain.
+
+    WHY THIS EXISTS
+    ---------------
+    On 2026-09-08, twenty-six fabricated trade notes were found in his live
+    vault at `02 - Projects/Trading/04 - Journal/`, all named "Violating
+    Spread". Only four had a matching database row. The other twenty-two
+    existed nowhere else: they were written straight into his Second Brain by
+    test runs and nothing recorded them.
+
+    `db_guard.py` cages the database. Nothing caged the vault. Every writer in
+    `journal_writer.py` fell back to the live path when no override was passed,
+    so any test exercising `/api/execute` end to end wrote a real file into the
+    folder that holds his trading record.
+
+    This redirects the default write base to a per-session temporary folder, so
+    the write path still runs and is still exercised, but lands nowhere near
+    him. Reads are untouched, because the AI persona genuinely needs to read
+    his Method files.
+
+    Opt out with `@pytest.mark.real_vault` only if you mean to touch his vault.
+    """
+    if request.node.get_closest_marker("real_vault"):
+        yield None
+        return
+
+    cage = tmp_path_factory.mktemp("caged_vault")
+
+    def caged_base():
+        # A test that redirected `settings.vault_path` itself has already taken
+        # deliberate control, exactly as the database guard respects an injected
+        # client. Honour it. The cage only stands in where the LIVE vault would
+        # otherwise be used, which is the only path that can reach his record.
+        from swayam.config import settings as live_settings
+
+        if live_settings.vault_path != _REAL_VAULT_PATH:
+            return live_settings.vault_path
+        return cage
+
+    with patch("swayam.api.journal_writer._default_vault_base", side_effect=caged_base):
+        yield cage
