@@ -13,8 +13,8 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def clear_market_caches():
-    from swayam.api.routes.market import _raw_chain_cache
-    _raw_chain_cache.clear()
+    from swayam.api.chain_feed import chain_feed
+    chain_feed.reset()
     _candle_cache.clear()
     _vix_cache["data"] = None
     _vix_cache["timestamp"] = 0.0
@@ -68,8 +68,8 @@ def test_get_option_chain_returns_strikes(monkeypatch) -> None:
         return FYERS_CHAIN
 
     monkeypatch.setattr(fyers_client, "get_option_chain", fake_chain)
-    from swayam.api.routes.market import _raw_chain_cache
-    _raw_chain_cache.clear()
+    from swayam.api.chain_feed import chain_feed
+    chain_feed.reset()
 
     response = client.get("/api/option-chain?expiry=2026-09-29&strike_count=10")
     assert response.status_code == 200, response.text
@@ -100,8 +100,8 @@ def test_get_option_chain_returns_strikes(monkeypatch) -> None:
 def test_get_option_chain_refuses_an_expiry_fyers_does_not_list(monkeypatch) -> None:
     """A chain for the wrong expiry is worse than no chain."""
     monkeypatch.setattr(fyers_client, "get_option_chain", lambda **kw: FYERS_CHAIN)
-    from swayam.api.routes.market import _raw_chain_cache
-    _raw_chain_cache.clear()
+    from swayam.api.chain_feed import chain_feed
+    chain_feed.reset()
     response = client.get("/api/option-chain?expiry=2026-10-06&strike_count=10")
     assert response.status_code == 404
     assert "does not list" in response.json()["detail"]

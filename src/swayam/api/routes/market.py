@@ -9,10 +9,11 @@ BUILD-9-FIXES-A additions:
   GET /api/market/vix/history?days=N                 — for VIX percentile band
 """
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time as _dtime, timedelta, timezone
 import time
 from typing import Any, Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
+from swayam.api.chain_feed import ChainSnapshot, chain_feed
 from swayam.api.models_api import OptionChainResponse, StrikeQuote, StrikeRow
 from swayam.fyers_client import fyers_client
 from swayam.db import db
@@ -25,12 +26,6 @@ router = APIRouter()
 # In-memory caches
 _spot_cache: dict[str, Any] = {"data": None, "timestamp": 0.0}
 _chain_cache: dict[str, Any] = {}
-# The raw FYERS chain per (symbol, expiry epoch, strike count), for a few
-# seconds. The desk re-quotes every leg every 5 seconds and each quote used to
-# fetch a 50-strike chain twice, so a four-leg structure was eight FYERS chain
-# calls every five seconds. Now it is at most two.
-_raw_chain_cache: dict[str, Any] = {}
-RAW_CHAIN_TTL_SECONDS = 3.0
 _candle_cache: dict[str, Any] = {}   # keyed by timeframe
 _vix_cache: dict[str, Any] = {"data": None, "timestamp": 0.0}
 
@@ -38,19 +33,149 @@ _vix_cache: dict[str, Any] = {"data": None, "timestamp": 0.0}
 _CANDLE_TTL = {"15m": 60, "1h": 300, "1d": 900}
 
 
-def fetch_chain_cached(symbol: str, strike_count: int, timestamp: Optional[str] = None) -> dict[str, Any]:
-    """The FYERS chain for one expiry, shared across callers for a few seconds.
+def fetch_chain_snapshot(symbol: str, strike_count: int, timestamp: Optional[str] = None) -> ChainSnapshot:
+    """The chain for one expiry, with the age of the reading attached.
 
-    Raises whatever the FYERS client raises; nothing is substituted.
+    A browser request never calls FYERS while the feed already holds that
+    expiry. It registers interest and reads what the feed last fetched. Only a
+    completely cold cache costs one inline call, so the first page load of the
+    day is not blank while the feed makes its first pass.
+
+    This replaced a three-second cache that the desk's five-second re-quote
+    always outlived, so every leg on every poll became a FYERS call and FYERS
+    began refusing. Raises whatever the client raises, but only on that cold
+    path; nothing is ever substituted.
     """
-    key = f"{symbol}|{strike_count}|{timestamp or 'nearest'}"
-    now = time.time()
-    hit = _raw_chain_cache.get(key)
-    if hit and (now - hit["timestamp"]) < RAW_CHAIN_TTL_SECONDS:
-        return hit["data"]
-    data = fyers_client.get_option_chain(underlying=symbol, strike_count=strike_count, timestamp=timestamp)
-    _raw_chain_cache[key] = {"data": data, "timestamp": now}
-    return data
+    key = chain_feed.register(symbol, strike_count, timestamp)
+    snap = chain_feed.snapshot(key)
+    if snap.data is not None:
+        return snap
+    chain_feed.fetch_now(key)
+    return chain_feed.snapshot(key)
+
+
+def fetch_chain_cached(symbol: str, strike_count: int, timestamp: Optional[str] = None) -> dict[str, Any]:
+    """The chain itself, for callers that do not need to know its age."""
+    return fetch_chain_snapshot(symbol, strike_count, timestamp).data or {}
+
+
+# The order matters: the screen shows the worst of the sources, so one glance
+# is enough and nothing hides behind an average.
+_STATE_RANK = {"live": 0, "closing": 1, "delayed": 2, "unavailable": 3}
+
+
+@router.get("/api/market/data-health")
+def get_data_health(request: Request) -> dict[str, Any]:
+    """Whether the numbers on screen are live, old, or missing, and why.
+
+    He asked for exactly one thing here: if FYERS stops giving data while he is
+    trading, he must know, without having to notice that a number stopped
+    moving. This is the single answer the screen reads. It never guesses and it
+    never smooths over a failure.
+    """
+    now_ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    market_open = chain_feed.is_open()
+
+    # ---- the option chain
+    watching = chain_feed.wanted_keys()
+    chain_snaps = [chain_feed.snapshot(k) for k in watching]
+    fresh = [s for s in chain_snaps if s.data is not None]
+    if not watching:
+        chain_state = "live" if market_open else "closing"
+        chain_detail = "No expiry is being watched yet."
+        chain_age = None
+    elif not fresh:
+        chain_state = "unavailable"
+        chain_detail = chain_feed.explain() or "The option chain has not been read."
+        chain_age = None
+    else:
+        newest = min(fresh, key=lambda s: s.age_seconds if s.age_seconds is not None else 1e9)
+        chain_state = newest.state
+        chain_age = newest.as_dict()["age_seconds"]
+        chain_detail = (
+            f"Option chain read {chain_age:.0f} seconds ago."
+            if chain_age is not None
+            else "Option chain read."
+        )
+        if chain_feed.explain():
+            chain_state = "delayed" if market_open else "closing"
+            chain_detail = chain_feed.explain() or chain_detail
+
+    # ---- the spot tick feed
+    feed = getattr(request.app.state, "spot_feed", None)
+    if feed is None:
+        spot_state = "unavailable"
+        spot_detail = "The tick feed is not running in this process."
+        spot_status: dict[str, Any] = {}
+    else:
+        spot_status = feed.status()
+        last = spot_status.get("last_tick") or {}
+        if not market_open:
+            spot_state = "closing"
+            spot_detail = "Market is shut. Showing the last price of the session."
+        elif spot_status.get("last_error"):
+            spot_state = "delayed"
+            spot_detail = f"The last spot read failed: {spot_status['last_error']}"
+        elif not last:
+            spot_state = "unavailable"
+            spot_detail = "No tick has arrived yet."
+        else:
+            spot_state = "live"
+            spot_detail = f"Spot ticking, {spot_status.get('frames_sent', 0)} frames sent."
+
+    worst = max([chain_state, spot_state], key=lambda s: _STATE_RANK.get(s, 3))
+    headline = {
+        "live": "Live prices from FYERS",
+        "closing": "Closing prices, market is shut",
+        "delayed": "Prices are behind",
+        "unavailable": "No prices from FYERS",
+    }[worst]
+
+    # What HE should do about it, in his own terms, or nothing when all is well.
+    action: Optional[str] = None
+    if worst in ("delayed", "unavailable"):
+        last_error = chain_feed.last_error or spot_status.get("last_error") or ""
+        if "token" in last_error.lower():
+            action = (
+                "Refresh your FYERS token, then restart the service, because the running "
+                "container will not pick up a new token on its own."
+            )
+        elif chain_feed.backoff_until > time.time():
+            action = (
+                "Nothing to do. Too many requests went to FYERS and it is waiting before "
+                "asking again. Prices should return on their own."
+            )
+        else:
+            action = "Type your own price on any leg to keep working. Nothing is invented while this lasts."
+
+    return {
+        "state": worst,
+        "headline": headline,
+        "detail": f"{chain_detail} {spot_detail}".strip(),
+        "action": action,
+        "market_open": market_open,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "ist_time": now_ist.strftime("%H:%M"),
+        "sources": {
+            "chain": {
+                "state": chain_state,
+                "detail": chain_detail,
+                "age_seconds": chain_age,
+                "expiries_watched": len(watching),
+                "fyers_calls": chain_feed.fetches,
+                "fyers_refusals": chain_feed.refusals,
+                "backoff_seconds_remaining": round(max(0.0, chain_feed.backoff_until - time.time()), 1),
+                "error": chain_feed.last_error,
+            },
+            "spot": {
+                "state": spot_state,
+                "detail": spot_detail,
+                "frames_sent": spot_status.get("frames_sent"),
+                "role": spot_status.get("role"),
+                "error": spot_status.get("last_error"),
+            },
+        },
+    }
 
 
 def resolve_expiry_epoch(base_chain: dict[str, Any], expiry_iso: str) -> Optional[str]:
@@ -312,14 +437,20 @@ def get_option_quote(
     bid: Optional[float] = None
     ask: Optional[float] = None
     quote_error: Optional[str] = None
+    freshness: Optional[ChainSnapshot] = None
     try:
-        base_chain = fetch_chain_cached(symbol, 50)
+        base = fetch_chain_snapshot(symbol, 50)
+        base_chain = base.data or {}
         # Map requested expiry (YYYY-MM-DD) -> FYERS epoch via expiryData (dates are DD-MM-YYYY).
         want_epoch = resolve_expiry_epoch(base_chain, expiry)
-        # Use the base chain if the requested expiry is the nearest; else fetch that expiry by epoch.
-        chain = base_chain
+        # Use the base chain if the requested expiry is the nearest; else the
+        # chain for that expiry. Both come from the shared feed, so neither
+        # costs a FYERS call while the feed already holds them.
+        snap = base
         if want_epoch:
-            chain = fetch_chain_cached(symbol, 50, want_epoch)
+            snap = fetch_chain_snapshot(symbol, 50, want_epoch)
+        freshness = snap
+        chain = snap.data or {}
         for row in chain.get("optionsChain", []) or []:
             if row.get("option_type") != opt_type:
                 continue
@@ -358,9 +489,15 @@ def get_option_quote(
             iv_val = None
 
     price_available = bool(ltp and ltp > 0)
+    # How old the reading actually is, rather than when this response was built.
+    # A price the feed read forty seconds ago is not a live price and must not
+    # be presented as one.
+    chain_state = freshness.state if freshness else "unavailable"
     source = "unavailable"
     if price_available:
-        source = "live" if market_open else "prev_close"
+        source = {"live": "live", "delayed": "delayed", "closing": "prev_close"}.get(
+            chain_state, "live" if market_open else "prev_close"
+        )
 
     return {
         "symbol": symbol,
@@ -381,7 +518,10 @@ def get_option_quote(
         "spot": round(float(spot), 2) if spot else None,
         "market_open": market_open,
         "days_to_expiry": days_to_expiry,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        # When FYERS was actually read, not when this reply was assembled.
+        "as_of": (freshness.as_dict()["as_of"] if freshness else None) or datetime.now(timezone.utc).isoformat(),
+        "price_age_seconds": freshness.as_dict()["age_seconds"] if freshness else None,
+        "freshness": chain_state,
         "note": (
             None if price_available
             else (
@@ -390,7 +530,7 @@ def get_option_quote(
                 else "No real price found for this strike/expiry — type your own price. (No fabricated prices, ever.)"
             )
         ),
-        "error": quote_error,
+        "error": quote_error or (freshness.error if freshness else None),
     }
 
 
@@ -399,6 +539,12 @@ def get_expiries() -> dict[str, Any]:
     """Returns the real upcoming NIFTY expiries (Tuesday-migrated, holiday-adjusted) for the
     per-leg expiry dropdown. Sourced from the FYERS contract master with disk-cache + computed
     fallback, so it works off-hours. Each item carries a human label and weekly/monthly flags.
+
+    An expiry is dropped the moment its day is over. This used to keep it, so
+    on a weekly expiry evening the desk still offered "08 Sep (0d)", those
+    contracts no longer existed, and every price read 0.05, which is what an
+    expired option is worth. That is what he reported as losing all the prices
+    after the close.
     """
     try:
         meta = get_expiry_metadata()
@@ -406,22 +552,45 @@ def get_expiries() -> dict[str, Any]:
         raise HTTPException(status_code=503, detail=f"Expiry metadata unavailable: {e}") from e
 
     today = date.today()
+    now_ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    # On expiry day the contracts die at 15:30 IST. Before that they are the
+    # live front month and must stay; after it they are gone.
+    todays_expiry_is_over = now_ist.time() > _dtime(15, 30)
+
     items: list[dict[str, Any]] = []
+    dropped: list[str] = []
     for iso in meta.get("upcoming_expiries", []):
         try:
             d = date.fromisoformat(iso)
         except ValueError:
             continue
         cal = (d - today).days
+        if cal < 0 or (cal == 0 and todays_expiry_is_over):
+            dropped.append(iso)
+            continue
         items.append(
             {
                 "date": iso,
                 "calendar_days": cal,
                 "label": f"{d.strftime('%d %b')} ({cal}d)",
-                "is_weekly": iso == meta.get("weekly_expiry"),
+                "is_weekly": False,
                 "is_monthly": iso == meta.get("monthly_expiry"),
             }
         )
+
+    live_dates = {item["date"] for item in items}
+
+    def _still_live(iso: Optional[str]) -> Optional[str]:
+        """Never point the desk at an expiry that has just been dropped."""
+        return iso if iso in live_dates else (items[0]["date"] if items else None)
+
+    # The flags are set only after the dropping, or the row for the weekly that
+    # just expired takes the badge with it and no row carries one at all.
+    weekly = _still_live(meta.get("weekly_expiry"))
+    monthly = _still_live(meta.get("monthly_expiry"))
+    for item in items:
+        item["is_weekly"] = item["date"] == weekly
+        item["is_monthly"] = item["date"] == monthly
 
     # The desk assumes he carries a position overnight (he arrives at 2:30 pm
     # for swing and positional trades), so it needs the next trading day to
@@ -440,10 +609,13 @@ def get_expiries() -> dict[str, Any]:
 
     return {
         "expiries": items,
-        "weekly_expiry": meta.get("weekly_expiry"),
-        "monthly_expiry": meta.get("monthly_expiry"),
+        "weekly_expiry": weekly,
+        "monthly_expiry": monthly,
         "today": today.isoformat(),
         "next_trading_day": next_trading_day,
+        # Named so the desk can say why the expiry it had selected vanished,
+        # rather than silently switching under him.
+        "expired_today": dropped,
     }
 
 

@@ -81,14 +81,16 @@ A browser that sends 75 is ignored.
 
 | | |
 |---|---|
-| Round 2 | **Built, reviewed, merged.** PRs #32 to #36. See `docs/PLAN.md` §1 |
-| Live revision | `swayam-dashboard-00042-b7t`, started clean on both workers |
-| **PR #35 did NOT reach `main`** | It was merged into PR #34's branch. **The live site carries PR 1 only; every visual change is missing.** Branch `feature/swayam-desk-onto-main-017` fixes it |
+| Round 2 | **Built, reviewed, merged.** PRs #32 to #37. See `docs/PLAN.md` §1 |
+| Live revision | `swayam-dashboard-00043-8xq`, 100% of traffic |
+| ~~PR #35 did not reach `main`~~ | **FIXED by PR #37, 18:18 IST.** Verified by image digest: revision 00043 runs the image built from `main` at `1699157`. **Every visual change is live.** |
+| **FYERS request budget** | **Was being exhausted by the desk: 46 refusals in 10 minutes, blank leg prices.** Fixed on branch `feature/swayam-desk-live-ticks-018`. `docs/PLAN.md` §1a |
+| **Data health on screen** | **NEW.** A strip on Home and the desk says live / behind / at the close / no data, with the age and what to do. `/api/market/data-health` |
 | Prices after the close | **Real from FYERS.** Verified 17:44 IST: spot 23,635.1, all 26 option rows with a real last traded price, OI, change in OI and volume |
-| Why the screen still looked dead | **Our expiry list keeps an expiry after its day has passed.** `docs/PLAN.md` §2.8 |
+| ~~Why the screen still looked dead~~ | **FIXED.** Two causes: the expiry list kept a dead expiry, and the FYERS budget was exhausted. `docs/PLAN.md` §2.8 and §1a |
 | The Trade Journal | **Three faults, none fixed.** A hardcoded Rs 5,00,000 margin base, a database write fired by opening the page, and analytics that do not exclude the 81 quarantined test rows. `docs/PLAN.md` §2.2 |
-| The deleted reward-to-risk rule | **Still evaluated server-side.** `docs/PLAN.md` §2.9 |
-| Recorder | **Still dead.** Revision `swayam-recorder-00001-baf` from 3 September has served a token from that day ever since. The fix is in `main`; the service needs its own deployment |
+| ~~The deleted reward-to-risk rule~~ | **REMOVED.** `docs/PLAN.md` §2.9. `no_single_leg` is still evaluated; ask him before removing that one too |
+| Recorder | **DEPLOYED 2026-09-08 19:05 IST**, on his go. Revision `swayam-recorder-00002-lez`. Proven: starts, refuses correctly out of hours, reads the token, FYERS returns 82 real rows. **Not proven until 09:15 tomorrow: that it writes to the bucket.** And its Greeks and spot came back as zeros in a local probe. `docs/PLAN.md` §2.10 |
 | Next job after this | `docs/CALENDAR_BUILD_BRIEF.md`. Ten of his 21 trades are calendars |
 
 ### Earlier the same day, verified 2026-09-08
@@ -112,8 +114,11 @@ A browser that sends 75 is ignored.
 | Deploying | Cloud Build trigger `swayam-main-deploy` on `main`. **Merge one PR, wait for the green tick, then merge the next** — two at once races two deploys and the wrong one can win. |
 | Real-money trading | **Code-blocked by absence.** No order-placement code exists anywhere. |
 
-Migrations: 20 applied, 0 pending. Tests: 327 pass, 2 fail (both pre-date this
-work: `test_market` option chain, `test_notifications` dispatch).
+Tests, run 2026-09-08 evening: **Python 394 pass, 1 fail**; **JavaScript 206
+pass, 0 fail** across 34 files, including a real bundle. The single failure is
+`test_notifications` dispatch, confirmed identical on a clean tree, so it
+pre-dates this work. **The old `test_market` option-chain failure is gone**;
+round 2 fixed it, so there is one long-standing failure now, not two.
 
 ---
 

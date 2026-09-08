@@ -78,7 +78,6 @@ router = APIRouter()
 RULE_DISPLAY_NAMES = {
     "realistic_risk": "the 1% running-loss rule",
     "blast_radius": "the 5% black-swan rule",
-    "rr_minimum": "the reward-to-risk minimum",
     "no_single_leg": "the single-leg check",
     "hedged_structure": "the hedge check",
     "absolute_max_loss": "the worst case at expiry",
@@ -96,7 +95,6 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
     spread, iv_map, _iv_available = build_spread_from_request(req)
     max_profit, max_loss = compute_max_profit_loss(spread)
     unlimited = math.isinf(max_loss)
-    rr_implied = (max_profit / max_loss) if (max_loss > 0.0 and not unlimited) else 0.0
 
     # --- dependencies, every one of which blocks -------------------------
     try:
@@ -232,19 +230,11 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
         )
     )
 
-    # --- Check 3: reward to risk -----------------------------------------
-    passed_rr = comparator.meets_floor(rr_implied, rules.rr_minimum)
-    checks.append(
-        ValidationCheck(
-            rule="rr_minimum",
-            verdict="PASS" if passed_rr else "FAIL",
-            blocking=False,
-            actual=round(rr_implied, 2),
-            floor=rules.rr_minimum,
-            tolerance_pct=settings.default_tolerance_pct,
-            note=f"reward to risk {rr_implied:.2f} against a minimum of {rules.rr_minimum:.1f}",
-        )
-    )
+    # --- The reward-to-risk minimum was DELETED on 2026-09-07 -------------
+    # It kept being evaluated here as an advisory long after the rule stopped
+    # existing. A rule he has removed must not be computed, scored or shown.
+    # `rr_implied` itself stays: it is a number he reads in the metric row, not
+    # a rule with a floor to pass.
 
     # --- Check 4: no single leg ------------------------------------------
     passed_multileg = len(req.legs) >= 2

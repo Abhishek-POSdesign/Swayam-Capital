@@ -593,3 +593,64 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
+
+/* ---------------------------------------------------------------------------
+   Data health strip.
+
+   Always on show, not only on failure: a warning he has never seen before is a
+   warning he will not trust the first time it matters. Tokens only, and no
+   purple anywhere.
+--------------------------------------------------------------------------- */
+.sw-health {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 10px;
+  margin: 0 0 8px;
+  border: 1px solid var(--dl-line);
+  border-left-width: 3px;
+  border-radius: 5px;
+  background: var(--dl-card);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.sw-health__dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor; flex: 0 0 auto;
+  align-self: center;
+}
+.sw-health__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+.sw-health__headline { color: var(--text-primary); font-weight: 600; }
+.sw-health__age { font-family: var(--font-mono); font-size: 10.5px; opacity: .8; }
+.sw-health__detail { opacity: .85; }
+.sw-health__action {
+  flex-basis: 100%;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.sw-health--live { border-left-color: var(--accent-sage); color: var(--accent-sage); }
+.sw-health--closing { border-left-color: var(--dl-track); color: var(--text-muted); }
+.sw-health--delayed { border-left-color: var(--accent-amber); color: var(--accent-amber); }
+.sw-health--unavailable {
+  border-left-color: var(--accent-coral);
+  color: var(--accent-coral);
+  background: var(--accent-coral-tint);
+}
+
+/* The two states that mean something is wrong get a little more weight, so a
+   glance at the top of the page is enough. */
+.sw-health--delayed .sw-health__headline,
+.sw-health--unavailable .sw-health__headline { color: currentColor; }
+
+@media (max-width: 700px) {
+  .sw-health { font-size: 11px; }
+  .sw-health__detail { flex-basis: 100%; }
+}
