@@ -18,6 +18,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from swayam.api.journal_writer import append_exit_block
+from swayam.services.execution_safety import mark_journal_status, queue_journal_note
 from swayam.services.charges import (
     ChargeScheduleUnavailable,
     charge_for_leg,
@@ -502,6 +503,40 @@ def get_positions_live() -> list[LivePositionResponse]:
     return results
 
 
+def _resolve_journal_path(pos: dict[str, Any], position_id: str) -> Optional[str]:
+    """Where this trade's note lives in his vault, or nothing at all.
+
+    The path was only ever kept in an in-memory dict at entry, so the position
+    row did not carry it and the exit block was never appended. It is stored on
+    the row from 2026-09-09, and any row written before that is recovered from
+    `swayam_journal_entries.md_path`, where it was always recorded.
+
+    Returns None when there genuinely is no note, which happens when the vault
+    was unreachable and the note is sitting in the outbox. That is a real state,
+    not an error, and the close must still succeed.
+    """
+    stored = pos.get("journal_path")
+    if stored:
+        return str(stored)
+
+    try:
+        res = (
+            db.client.table("swayam_journal_entries")
+            .select("md_path")
+            .eq("position_id", position_id)
+            .eq("entry_type", "entry")
+            .limit(1)
+            .execute()
+        )
+        rows = res.data or []
+        if rows and rows[0].get("md_path"):
+            return str(rows[0]["md_path"])
+    except Exception as exc:
+        logger.warning("Could not look up the note path for %s: %s", position_id, exc)
+
+    return None
+
+
 @router.post("/api/positions/{position_id}/close", response_model=ClosePositionResponse)
 def close_position(position_id: str, req: ClosePositionRequest) -> ClosePositionResponse:
     """Closes an open position with Database-before-Journal ordering.
@@ -537,7 +572,7 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
     legs = pos.get("legs", [])
     entry_debit_credit = float(pos.get("net_debit_credit_inr", 0.0))
     max_loss = float(pos.get("max_loss_inr", 0.0))
-    journal_path = pos.get("journal_path")
+    journal_path = _resolve_journal_path(pos, position_id)
     underlying = pos.get("underlying", "NIFTY")
     expiry_val = pos.get("expiry_date") or (legs[0].get("expiry_date") if legs else None)
 
@@ -710,8 +745,39 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
         "journal_md_path": journal_path,
     }
 
+    # ONE CLOSE, ONE RESULT.
+    #
+    # Until 2026-09-09 the UPDATE below failed on a column that did not exist,
+    # so the position stayed `open` after its result had already been written.
+    # Pressing close again passed the "already closed" check and wrote a SECOND
+    # result row, double counting the trade in his record. The migration adds a
+    # unique index; this is the same rule in code, so the retry heals the
+    # half-finished close instead of duplicating it.
+    already_recorded = False
     try:
-        db.client.table("swayam_trade_history").insert(trade_history_record).execute()
+        prior = (
+            db.client.table("swayam_trade_history")
+            .select("id")
+            .eq("position_id", position_id)
+            .limit(1)
+            .execute()
+        )
+        already_recorded = bool(prior.data)
+    except Exception as exc:
+        logger.warning(
+            "Could not check for an existing result on %s: %s", position_id, exc
+        )
+
+    if already_recorded:
+        logger.info(
+            "Position %s already has a recorded result; completing the close "
+            "rather than writing a second one.",
+            position_id,
+        )
+
+    try:
+        if not already_recorded:
+            db.client.table("swayam_trade_history").insert(trade_history_record).execute()
     except Exception as exc:
         logger.error("Database insert to swayam_trade_history failed for %s: %s", position_id, exc)
         if db.url and db.key:
@@ -780,11 +846,40 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
                 holding_days=holding_days,
             )
         except Exception as exc:
+            # A NOTE IS NOT A TRADE, and this end of it was never fixed.
+            #
+            # Migration 019 solved exactly this on the entry side: the vault is
+            # unreachable from Cloud Run, so the note write fails, and the old
+            # behaviour returned an error on a trade that had already been
+            # recorded, which made him press the button again. The exit side
+            # still raised HTTP 500 with the position already closed in the
+            # database, so his screen said the close failed when it had not.
+            #
+            # The note goes to the outbox instead and the close succeeds. The
+            # drainer completes it from his PC, where the vault is reachable.
             logger.error("Failed to append exit block to journal %s: %s", journal_path, exc)
-            raise HTTPException(
-                status_code=500,
-                detail=f"Trade closed in DB, but writing to journal note failed: {exc}",
-            ) from exc
+            journal_status = "pending"
+            queued = queue_journal_note(
+                position_id=position_id,
+                payload={
+                    "journal_rel_path": journal_path,
+                    "closed_at": closed_at.isoformat(),
+                    "close_reason": req.close_reason,
+                    "notes": req.notes,
+                    "exit_legs": closed_legs,
+                    "gross_pnl_inr": gross_pnl_inr,
+                    "charges_inr": total_charges_inr,
+                    "net_pnl_inr": realized_pnl_inr,
+                    "max_loss_inr": max_loss,
+                    "margin_base_inr": margin_base,
+                    "holding_days": holding_days,
+                },
+                kind="close",
+                error=str(exc),
+            )
+            if not queued:
+                journal_status = "failed"
+            mark_journal_status(position_id, journal_status)
 
     # Step D: Auto-generate lesson into Lesson Ledger
     lesson_info = None

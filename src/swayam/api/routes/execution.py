@@ -444,8 +444,27 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
             )
             logger.warning("Journal index insert failed for %s: %s", position_id, e)
 
+    # The note's path belongs ON THE POSITION, not only in a local dict.
+    #
+    # It used to be set on `db_record` after the insert had already happened,
+    # so the database row never carried it. At close, `pos.get("journal_path")`
+    # was therefore always None and the exit block was never appended: his note
+    # would have sat on "Exit: to be filled at close" forever, whatever he did.
+    # Found 2026-09-09 while probing the live schema.
     mark_journal_status(position_id, journal_status)
     db_record["journal_status"] = journal_status
+    if journal_rel_path is not None:
+        try:
+            client.table("swayam_positions").update(
+                {"journal_path": journal_rel_path}
+            ).eq("id", position_id).execute()
+        except Exception as exc:
+            # A note that exists but is not linked is recoverable: the close
+            # falls back to swayam_journal_entries. Never fail a recorded trade
+            # over a link.
+            logger.warning(
+                "Could not link journal path to position %s: %s", position_id, exc
+            )
 
     # Step 7: Best-effort event notification dispatch (Telegram + Browser Push)
     strikes_desc = " / ".join([f"{l.direction.upper()} {l.strike} {l.option_type}" for l in req.legs])

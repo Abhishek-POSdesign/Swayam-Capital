@@ -1,48 +1,34 @@
-> # STOP. THIS FILE IS NOT CURRENT. Updated 2026-09-08 late evening.
+> # STOP. THIS FILE IS NOT CURRENT. Last refreshed 2026-09-09 early hours.
 >
-> **Do not plan from anything below.** Rounds 2 and 3 landed on 2026-09-08 and
-> changed a great deal of it: the desk and Home were rebuilt, the FYERS request
-> budget fix landed, a data-health strip now tells him whether his prices are
-> real, the dead-expiry bug was fixed at source, the recorder was finally
-> deployed, and the reward-to-risk rule was removed. Statements below about any
-> of those are stale.
+> **Do not plan from anything below.** It describes the app as it was before
+> 2026-09-08, and a great deal has changed since. Statements below about the
+> desk, Home, expiries, the recorder, backups, charges or the reward-to-risk
+> rule are stale.
+>
+> What changed on 2026-09-08 and 2026-09-09, in one list:
+>
+> - The desk and Home were rebuilt to the prototypes he approved.
+> - The desk stopped exhausting the FYERS request budget, and a data-health
+>   strip on both pages now says whether his prices are real.
+> - A dead expiry is no longer offered after the close, fixed at source.
+> - The recorder was deployed. **It has still never written an object.**
+> - **The vault is caged.** Twenty-six fabricated trade notes were found in his
+>   real journal folder and deleted; tests can no longer write there.
+> - The Trade Journal stopped inventing a margin base, stopped writing to the
+>   database when opened, and now counts only squared-off trades.
+> - **Charges are computed PER LEG, at entry and at exit**, from
+>   `src/swayam/services/charges.py`. The flat Rs 150 a leg is deleted. That
+>   module is the ONLY correct money math in the repository.
+> - A leg is stored with the contract size the SERVER resolved. Before that fix
+>   his first paper trade would have opened and then failed to close.
 >
 > **The three current documents, in this order:**
 > 1. `docs/SWAYAM_START_HERE.md` — where everything is, what is verified, what is not done
 > 2. `docs/PLAN.md` — the one plan. Section 0 is his hours; section 1 is the live test
-> 3. `CLAUDE.md` — how to work in this repository
+> 3. `CLAUDE.md` — how to work here, and what he actually trades
 >
-> `docs/SUCCESSOR_PROMPT.md` carries the prompt for a fresh session, plus what was
-> learned by talking to him rather than by reading code.
->
-> This file is kept for its history only.
-
-> # ⛔ CORRECTION NOTICE — 2026-09-07, 18:30 IST
->
-> **Everything written in this file BEFORE 2026-09-07 contained statements that were NOT TRUE.** They were written from intention, from a build report, or from another document — not from checking the running system. Abhishek trusted them, planned around them, and arrived at his desk to find the platform not working. That is the direct cost of the false lines below.
->
-> On 2026-09-07 Claude Code (Opus 5) checked every infrastructure and status claim in this file against the live Google Cloud project, the live Supabase database, the live FYERS account, the deployed Cloud Run service and a real run of both test suites. The corrections are applied inline below, and the specific false statements are listed here so nobody repeats them.
->
-> **What was wrong before this date:**
->
-> | Claim that was written | The verified truth on 2026-09-07 |
-> |---|---|
-> | "Behind IAP", "private login", "IAM invoker restricted to abhisheksikka99.99@gmail.com" | **FALSE. The site is PUBLIC.** Live Cloud Run IAM on `swayam-dashboard` is `allUsers -> roles/run.invoker`. Proved by anonymous request: `/api/nifty/spot`, `/api/positions` and `/api/readiness/today` all return 200 with no credentials, and `/api/readiness/today` serves Abhishek's sleep, mood and stress notes to the open internet. `cloudbuild.yaml` deploys with `--allow-unauthenticated` and the API sets CORS `allow_origins=["*"]`. |
-> | "Options recorder runs every minute during market hours / recorder is LIVE" | **FALSE. It has never succeeded once.** Since deployment on 2026-09-03 every scheduled invocation returns PERMISSION_DENIED because the Cloud Scheduler identity has no `run.invoker` on the function. Zero HTTP 200 in its entire log history. The destination bucket `gs://swayam-capital-options-data` is EMPTY. Second fault behind the first: the `swayam-recorder` service account holds only `logging.logWriter`, so it could not write to storage even if it were reached. |
-> | "Backups LIVE / durable automated multi-destination backup pipeline" | **FALSE.** No backup schedule exists in any region. `gs://swayam-backups` holds one manual run from 2026-09-05 and nothing since. The backup code also cannot succeed if deployed: `swayam-dashboard-sa` has `storage.objectViewer` only, with no write permission, and `upload_to_gcs` returns `False` on failure while the calling job ignores that and still returns success. |
-> | "Restore from backup: automated one-command script" | **FALSE.** `scripts/restore_from_backup.py` counts INSERT lines, pings the database and returns success. It executes no restore. The SQL dump is also data-only with no schema, so it could not rebuild an empty project. |
-> | "The rule engine reads Method files from the vault at runtime — vault edits become new runtime behaviour without code changes" | **FALSE in production.** Cloud Run runs with `TRADING_METHOD_PATH=/app/src/swayam/data/method_files`, a build-time copy baked into the container, holding only 3 of the 7 Method files in the vault. Editing rules in Obsidian changes nothing on the live site until a rebuild and redeploy. It is true only on Abhishek's local machine. |
-> | "Cloud Run service `swayam-web`" | **WRONG NAME.** The deployed service is `swayam-dashboard` in `asia-southeast1`. There is no `swayam-web`. |
-> | "Cloud Functions `cron_notifications`, `cron_macro_refresh`, `cron_email_digest`, `cron_backup_db`, `cron_backup_weekly_zip`, `cron_backup_ai_chat`" | **NOT DEPLOYED.** The only Cloud Function that exists in the project is `swayam-recorder` (asia-south1). The only two Cloud Scheduler jobs that exist are `swayam-ai-compaction` (working) and `swayam-recorder-schedule` (failing, above). |
-> | Secrets list naming `fcm-server-key`, `vapid-public-key`, `vapid-private-key`, `trading-economics-api-key`, `cron-shared-secret`, `gemini-api-key` | **DO NOT EXIST.** Secret Manager holds exactly 11 secrets: the four FYERS ones, the three Supabase ones, `telegram-bot-token`, `telegram-chat-id`, `gmail-app-password`, `gmail-sender-address`. |
-> | "153 automated tests passing (51 pytest + 102 vitest, 0 failures)" / "327 backend" / "~400 tests" | **ALL WRONG.** Verified by running them on 2026-09-07: backend collects **322**, of which **2 FAIL** (`tests/api/test_market.py::test_get_option_chain_returns_strikes` returns 503 not 200, and `tests/test_notifications.py::test_execute_endpoint_best_effort_dispatch_on_success`). Frontend is **109 passing**, but a real browser error, `rule-panel.js:35 Cannot read properties of undefined (reading 'toFixed')`, is printed and swallowed inside a test that still reports green. |
-> | "Ready for live paper trading on Monday Sep 8, 2026" | **NOT TRUE and must not be repeated.** The safety gate fails open three separate ways, fabricated numbers still sit in trade paths, the site is public, there is no working backup, and no kill switch exists. |
-> | "GCS bucket `swayam-capital-options-data` populated nightly / DuckDB populated nightly from GCS Parquet" | **FALSE.** The bucket is empty. The local DuckDB rows (36,998 option rows, 22 daily bars) came from a one-off historical backfill and stop at **2026-09-03**. The realized-volatility risk gate needs 20 daily bars and has 22, all stale. |
->
-> **Standing rule from this date forward.** Nothing in this file may be written as LIVE, done, working, deployed or passing unless the writer checked it on the running system that same day and can name the command or query that proved it. Write the date of the check next to the claim. If it was not checked, write "not verified". A build report is not evidence. Another document is not evidence.
-
-
----
+> This file is kept for its cloud, backup and restore detail, which is still
+> broadly right. Verify anything else against the three above before acting.
 
 # WHERE_EVERYTHING_LIVES — Swayam Capital Master Reference (Repo Mirror)
 

@@ -79,6 +79,13 @@ def test_close_position_triggers_lesson_generation(monkeypatch) -> None:
                 m.update = mock_update
             elif name == "swayam_trade_history":
                 m.insert.return_value.execute.return_value.data = [{"id": "hist-1"}]
+                # No prior result: this close is the first one for this position.
+                m.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+            elif name == "swayam_journal_entries":
+                # No note-path row either, so the close has no exit block to
+                # append. A blanket MagicMock answers this with a MagicMock,
+                # which the writer then treats as a filename.
+                m.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
             elif name == "swayam_lessons":
                 m.select.return_value.eq.return_value.execute.return_value.data = []
                 def mock_insert(payload):
