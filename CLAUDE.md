@@ -120,7 +120,8 @@ can be lied to.
 |---|---|
 | `docs/SWAYAM_START_HERE.md` | Where everything lives, what is verified, what is not done |
 | `docs/PLAN.md` | The one plan. What happens next, in order |
-| `docs/UI_BUILD_BRIEF.md` | The active job: the two page rebuilds |
+| `docs/UI_BUILD_BRIEF_ROUND_2.md` | **The active job**: his feedback on the rebuilt pages, 21 steps, two PRs |
+| `docs/UI_BUILD_BRIEF.md` | Round 1, finished and live on 2026-09-08. History |
 | `docs/reference/` | The two approved page prototypes, as working code |
 
 Deeper reference only when needed: `WHERE_EVERYTHING_LIVES.md`,
