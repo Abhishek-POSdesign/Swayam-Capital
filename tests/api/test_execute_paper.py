@@ -157,11 +157,19 @@ def test_execute_paper_mode_creates_journal_and_position(tmp_path: Path) -> None
         object.__setattr__(settings, "vault_path", original_vault)
 
 
-def test_execute_raises_503_when_supabase_unreachable_for_margin_base(mocker) -> None:
-    """If db.get_margin_base_inr raises, execute returns 503, not silent fallback."""
-    from swayam.db import DatabaseError
+def test_execute_raises_503_when_live_capital_unavailable(mocker) -> None:
+    """If the live FYERS balance cannot be read, execute returns 503, not a stored figure.
 
-    mocker.patch("swayam.db.db.get_margin_base_inr", side_effect=DatabaseError("Config row missing"))
+    The journal states risk as a percentage of capital. That denominator used
+    to be `swayam_config.margin_base_inr`; it is the live balance now, and
+    without it the trade must not happen.
+    """
+    from swayam.services.capital import CapitalUnavailable
+
+    mocker.patch(
+        "swayam.services.capital.get_capital",
+        side_effect=CapitalUnavailable("Could not reach the broker for funds"),
+    )
     payload = {
         "strategy_name": "Paper Bear Put",
         "underlying": "NIFTY",
@@ -191,7 +199,9 @@ def test_execute_raises_503_when_supabase_unreachable_for_margin_base(mocker) ->
     }
     response = client.post("/api/execute", json=payload)
     assert response.status_code == 503
-    assert "margin base unavailable" in response.json()["detail"].lower()
+    detail = response.json()["detail"].lower()
+    assert "live account balance is unavailable" in detail
+    assert "could not reach the broker" in detail
 
 
 def test_execute_raises_503_when_supabase_insert_fails(mocker, tmp_path: Path) -> None:
@@ -217,7 +227,6 @@ def test_execute_raises_503_when_supabase_insert_fails(mocker, tmp_path: Path) -
         encoding="utf-8",
     )
 
-    mocker.patch("swayam.db.db.get_margin_base_inr", return_value=850000.0)
     mock_table = mocker.MagicMock()
     mock_table.insert.return_value.execute.side_effect = Exception("Supabase connection timeout")
     mocker.patch.object(db.client, "table", return_value=mock_table)
@@ -283,7 +292,6 @@ def test_execute_creates_no_orphan_journal_file_on_db_failure(mocker, tmp_path: 
         encoding="utf-8",
     )
 
-    mocker.patch("swayam.db.db.get_margin_base_inr", return_value=850000.0)
     mock_table = mocker.MagicMock()
     mock_table.insert.return_value.execute.side_effect = Exception("Disk full / DB connection lost")
     mocker.patch.object(db.client, "table", return_value=mock_table)

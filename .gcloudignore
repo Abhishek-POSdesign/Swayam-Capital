@@ -12,8 +12,11 @@ web/dist/
 __pycache__/
 *.py[cod]
 
-# Only top-level data cache directory (DuckDB & Bhavcopy)
-/data/
+# Only top-level data cache directory (DuckDB & Bhavcopy). The two reference
+# files are needed in the image and are re-included.
+/data/*
+!/data/nse_holidays_2026.json
+!/data/nifty50_constituents.json
 
 # Tests & temporary caches
 .pytest_cache/

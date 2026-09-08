@@ -23,9 +23,10 @@ dist/
 node_modules/
 .next/
 
-# Data and Cache
-/data/
-!data/nse_holidays_2026.json
+# Data and Cache (the two reference files below are tracked; everything else is a local cache)
+/data/*
+!/data/nse_holidays_2026.json
+!/data/nifty50_constituents.json
 *.parquet
 *.csv
 *.sqlite

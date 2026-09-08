@@ -67,24 +67,11 @@ class SupabaseDB:
         payload = {"key": key, "value": value, "updated_by": updated_by}
         self.client.table("swayam_config").upsert(payload).execute()
 
-    def get_margin_base_inr(self) -> float:
-        """Retrieves the current margin base in INR from the config table.
-
-        Raises:
-            DatabaseError: If the config row is missing or the value cannot be parsed.
-        """
-        val = self.get_config("margin_base_inr")
-        if val is None:
-            raise DatabaseError(
-                "Config key 'margin_base_inr' not found in Supabase. "
-                "Ensure migration 001 has been applied and seeded."
-            )
-        try:
-            return float(val)
-        except (ValueError, TypeError) as e:
-            raise DatabaseError(
-                f"Config value for 'margin_base_inr' is not a valid float: {val!r}"
-            ) from e
+    # `get_margin_base_inr()` used to live here. It read a stored Rs 8,50,000
+    # that was never updated, and every rupee cap in the platform was a
+    # percentage of it. Capital is read live from FYERS now
+    # (services/capital.py); there is deliberately no read path left for the
+    # stored figure, so it cannot quietly come back.
 
 
 # Global database instance

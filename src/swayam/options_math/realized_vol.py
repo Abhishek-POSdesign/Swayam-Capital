@@ -67,51 +67,72 @@ def compute_realized_vol(
     if as_of_date is None:
         as_of_date = date.today()
 
+    # DuckDB is the preferred source, because local development uses it. But
+    # it takes an exclusive file lock, and the live site runs two Gunicorn
+    # workers: worker one won the lock and worker two raised on every rule
+    # check, so /api/strategy/validate returned 500 about half the time
+    # (200, 500, 200, 500 on 2026-09-08). A locked or absent DuckDB file is
+    # treated as "no local database here" and falls through to Supabase. It
+    # can never fail the request on its own.
     target_db = db or local_db
-    conn = target_db.get_connection()
+    conn = None
+    local_db_error: Optional[str] = None
+    try:
+        conn = target_db.get_connection()
+    except Exception as exc:  # noqa: BLE001 - IOException on the lock, or any other
+        local_db_error = str(exc)
+        if db is not None:
+            # An explicitly supplied database that cannot open is a real error.
+            raise HistoricalDataUnavailableError(
+                f"Local database could not be opened: {exc}"
+            ) from exc
 
     # 1. Check cache if table exists
     has_cache_table = False
-    try:
-        tables_res = conn.execute(
-            "SELECT table_name FROM information_schema.tables WHERE table_name = 'realized_vol_cache';"
-        ).fetchall()
-        if tables_res:
-            has_cache_table = True
-            cached = conn.execute(
-                """
-                SELECT annualized_vol FROM realized_vol_cache
-                WHERE symbol = ? AND as_of_date = ? AND window_days = ?;
-                """,
-                [symbol, as_of_date, window_days],
-            ).fetchone()
-            if cached is not None:
-                return float(cached[0])
-    except Exception as exc:
-        raise RealizedVolError(f"Database error checking realized_vol_cache: {exc}") from exc
+    if conn is not None:
+        try:
+            tables_res = conn.execute(
+                "SELECT table_name FROM information_schema.tables WHERE table_name = 'realized_vol_cache';"
+            ).fetchall()
+            if tables_res:
+                has_cache_table = True
+                cached = conn.execute(
+                    """
+                    SELECT annualized_vol FROM realized_vol_cache
+                    WHERE symbol = ? AND as_of_date = ? AND window_days = ?;
+                    """,
+                    [symbol, as_of_date, window_days],
+                ).fetchone()
+                if cached is not None:
+                    return float(cached[0])
+        except Exception as exc:
+            raise RealizedVolError(f"Database error checking realized_vol_cache: {exc}") from exc
 
     # 2. Check if nifty_daily_bars exists in DuckDB
     rows: list[tuple[Any, Any]] = []
     daily_bars_res = []
-    try:
-        daily_bars_res = conn.execute(
-            "SELECT table_name FROM information_schema.tables WHERE table_name = 'nifty_daily_bars';"
-        ).fetchall()
-        if daily_bars_res:
-            rows = conn.execute(
-                """
-                SELECT trade_date, close
-                FROM nifty_daily_bars
-                WHERE symbol = ? AND trade_date <= ?
-                ORDER BY trade_date DESC
-                LIMIT ?;
-                """,
-                [symbol, as_of_date, window_days],
+    if conn is not None:
+        try:
+            daily_bars_res = conn.execute(
+                "SELECT table_name FROM information_schema.tables WHERE table_name = 'nifty_daily_bars';"
             ).fetchall()
-    except Exception as exc:
-        raise RealizedVolError(f"Database error querying nifty_daily_bars schema: {exc}") from exc
+            if daily_bars_res:
+                rows = conn.execute(
+                    """
+                    SELECT trade_date, close
+                    FROM nifty_daily_bars
+                    WHERE symbol = ? AND trade_date <= ?
+                    ORDER BY trade_date DESC
+                    LIMIT ?;
+                    """,
+                    [symbol, as_of_date, window_days],
+                ).fetchall()
+        except Exception as exc:
+            raise RealizedVolError(f"Database error querying nifty_daily_bars schema: {exc}") from exc
 
-    # Fallback to Supabase swayam_nifty_daily_bars for cloud deployments when DuckDB table is absent
+    # 3. Supabase swayam_nifty_daily_bars, for the cloud, where there is no
+    # local file, or where the local file is held by the other worker.
+    supabase_error: Optional[str] = None
     if db is None and len(rows) < window_days:
         try:
             from swayam.db import db as cloud_db
@@ -127,11 +148,22 @@ def compute_realized_vol(
                 )
                 if sb_res.data and len(sb_res.data) > len(rows):
                     rows = [(r["trade_date"], float(r["close"])) for r in sb_res.data]
-        except Exception:
-            pass
+            else:
+                supabase_error = "Supabase is not configured"
+        except Exception as exc:  # noqa: BLE001 - reported below, never swallowed
+            supabase_error = str(exc)
 
     if not rows and not daily_bars_res:
-        raise HistoricalDataUnavailableError("Table 'nifty_daily_bars' does not exist in DuckDB.")
+        reasons = []
+        if local_db_error:
+            reasons.append(f"local DuckDB unavailable ({local_db_error})")
+        elif conn is not None:
+            reasons.append("table 'nifty_daily_bars' does not exist in DuckDB")
+        if supabase_error:
+            reasons.append(f"Supabase swayam_nifty_daily_bars unavailable ({supabase_error})")
+        elif db is None:
+            reasons.append("Supabase swayam_nifty_daily_bars returned no rows")
+        raise HistoricalDataUnavailableError("; ".join(reasons) or "no daily bars found")
 
     if len(rows) < window_days:
         raise InsufficientHistoryError(
@@ -155,7 +187,7 @@ def compute_realized_vol(
 
     # 4. Save to cache if realized_vol_cache exists
     try:
-        if has_cache_table:
+        if has_cache_table and conn is not None:
             now_utc = datetime.now(timezone.utc)
             conn.execute(
                 """

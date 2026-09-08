@@ -163,7 +163,6 @@ class MockDBClient:
 
 def test_get_journal_trades_returns_200_and_kpis(monkeypatch):
     monkeypatch.setattr(db, "_client", MockDBClient())
-    monkeypatch.setattr(db, "get_margin_base_inr", lambda: 500000.0)
 
     res = client.get("/api/journal/trades?status=closed")
     assert res.status_code == 200
@@ -204,7 +203,6 @@ def test_get_journal_trade_detail_404(monkeypatch):
 
 def test_get_journal_analytics(monkeypatch):
     monkeypatch.setattr(db, "_client", MockDBClient())
-    monkeypatch.setattr(db, "get_margin_base_inr", lambda: 500000.0)
 
     res = client.get("/api/journal/analytics")
     assert res.status_code == 200

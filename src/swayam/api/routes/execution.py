@@ -31,6 +31,8 @@ from swayam.api.routes.validation import audit_strategy_rules
 from swayam.db import db
 from swayam.notifications.events import dispatch
 from swayam.options_math import compute_payoff_curve, compute_position_greeks
+from swayam.services import capital as capital_service
+from swayam.services.capital import CapitalUnavailable
 from swayam.services.contract_master import ContractMasterUnavailable, get_lot_size
 from swayam.services.margin import MarginLeg, try_get_margin
 
@@ -276,16 +278,19 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
         },
     }
 
-    # Retrieve current margin base — no fallback, fail loudly if unavailable
+    # The journal expresses the trade's risk as a percentage of his capital.
+    # That used to be `swayam_config.margin_base_inr`, a stored Rs 8,50,000 that
+    # was never updated. It is the live FYERS balance now, the same figure the
+    # risk gate used a moment ago. No fallback: if the broker cannot be read the
+    # trade does not happen, because nothing here may invent a denominator.
     try:
-        margin_base_inr = db.get_margin_base_inr()
-    except Exception as e:
+        margin_base_inr = capital_service.get_capital().risk_capital_inr
+    except CapitalUnavailable as e:
         raise HTTPException(
             status_code=503,
             detail=(
-                f"Cannot execute: margin base unavailable from Supabase config table. "
-                f"Journal writer needs the live margin_base_inr for % display. "
-                f"Underlying error: {e}"
+                f"Cannot execute: the live account balance is unavailable, so the "
+                f"journal cannot express this trade as a percentage of capital. {e}"
             ),
         ) from e
 

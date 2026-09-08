@@ -9,6 +9,7 @@ Execution methods (order placement/modification) are deferred to Phase 2.
 from typing import Any, Callable, Optional
 from fyers_apiv3 import fyersModel
 from swayam.config import settings
+from swayam.services.fyers_token import get_access_token
 
 
 class FyersClientError(Exception):
@@ -29,23 +30,40 @@ class FyersClient:
         self.client_id = client_id or settings.fyers_client_id
         self.app_id = app_id or settings.fyers_app_id
         self.secret_key = secret_key or settings.fyers_secret_key
-        self.access_token = access_token or settings.fyers_access_token
+        # An explicit token (tests, scripts) is fixed. Otherwise the token is
+        # resolved at request time, so a refresh reaches a running container
+        # without a restart. See services/fyers_token.py for why.
+        self._explicit_token: Optional[str] = access_token or None
         self._model: Optional[fyersModel.FyersModel] = None
+        self._model_token: Optional[str] = None
+
+    @property
+    def access_token(self) -> str:
+        """The token in force right now: explicit if given, else resolved fresh."""
+        if self._explicit_token:
+            return self._explicit_token
+        return get_access_token()
+
+    @access_token.setter
+    def access_token(self, value: Optional[str]) -> None:
+        self._explicit_token = value or None
 
     @property
     def model(self) -> fyersModel.FyersModel:
-        """Returns the initialized FyersModel REST client instance."""
-        if self._model is None:
-            if not self.access_token or not self.app_id:
-                raise FyersClientError(
-                    "FYERS access token or App ID not configured. Please run `python scripts/generate_fyers_token.py`."
-                )
+        """The FyersModel REST client, rebuilt whenever the token has changed."""
+        token = self.access_token
+        if not token or not self.app_id:
+            raise FyersClientError(
+                "FYERS access token or App ID not configured. Please run `python scripts/generate_fyers_token.py`."
+            )
+        if self._model is None or self._model_token != token:
             self._model = fyersModel.FyersModel(
                 client_id=self.app_id,
-                token=self.access_token,
+                token=token,
                 is_async=False,
                 log_path="",
             )
+            self._model_token = token
         return self._model
 
     def get_profile(self) -> dict[str, Any]:

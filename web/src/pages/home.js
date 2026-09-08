@@ -19,9 +19,13 @@ import { ChatSurfaceComponent } from '../components/chat-surface.js';
 import { SoFarTodayCardComponent } from '../components/so-far-today-card.js';
 import { PwaInstallPromptComponent } from '../components/pwa-install-prompt.js';
 import { updateHeaderSpot } from '../components/header.js';
-import { inr, num, signedPct, escapeHtml } from '../utils/display.js';
+import { spotFeed } from '../modules/ws-client.js';
+import { inr, num, signedPct, escapeHtml, istTime, flashFor } from '../utils/display.js';
 
 const NA = '<b class="na">unavailable</b>';
+
+/** How often the panels that claim to be live re-read their feeds. */
+const REFRESH_MS = 15000;
 
 export class HomePage {
   constructor(container, options = {}) {
@@ -40,6 +44,16 @@ export class HomePage {
     this.dailyError = null;
     this.book = 'paper';
 
+    /** The last tick from the spot stream, and when the server read it. */
+    this.liveSpot = null;
+    this.liveSpotAt = null;
+    /** When each feed was last read, ISO. Every panel prints its own. */
+    this.readAt = {};
+    this._flash = {};
+    this._refreshTimer = null;
+    this._unsubSpot = null;
+    this.refreshMs = REFRESH_MS;
+
     /**
      * main.js reaches for homePage.niftyChart.retheme() on every route change.
      * The rebuilt sidebar is plain SVG-free markup, so retheme simply redraws
@@ -53,6 +67,65 @@ export class HomePage {
     this.mountComponents();
     // Independently try-caught, so one dead feed cannot blank the page.
     this.loadData();
+    this.startLiveUpdates();
+  }
+
+  /**
+   * Until round 2 this page had no timer of any kind: the ticker and the NIFTY
+   * sidebar were frozen at page load. Now the spot follows the tick stream and
+   * the snapshot and daily candles are re-read every 15 seconds. Both are torn
+   * down in destroy(), or navigating away would leak them.
+   */
+  startLiveUpdates() {
+    if (!this._unsubSpot) {
+      this._unsubSpot = spotFeed.subscribe((spot, meta) => this.onSpotTick(spot, meta));
+    }
+    if (typeof setInterval === 'function' && !this._refreshTimer) {
+      this._refreshTimer = setInterval(() => this.refreshLive(), this.refreshMs);
+      if (this._refreshTimer && typeof this._refreshTimer.unref === 'function') this._refreshTimer.unref();
+    }
+  }
+
+  async refreshLive() {
+    await Promise.all([this.loadSnapshot(), this.loadDaily()]);
+    this.renderTicker();
+  }
+
+  onSpotTick(spot, meta) {
+    if (typeof spot !== 'number' || !Number.isFinite(spot)) return;
+    this.liveSpot = spot;
+    this.liveSpotAt = (meta && meta.asOf) || new Date().toISOString();
+    this.renderSidebar();
+    this.renderTicker();
+    const chg = this.dayChangePct();
+    updateHeaderSpot(spot, null, chg);
+  }
+
+  /** The spot on screen: the latest tick if one has arrived, else the snapshot's. */
+  spotNow() {
+    if (typeof this.liveSpot === 'number') return this.liveSpot;
+    const c = this.cash();
+    return c && typeof c.spot === 'number' ? c.spot : null;
+  }
+
+  /**
+   * Today's change, recomputed from the live spot against the real previous
+   * close the snapshot carries. Without a previous close it is the snapshot's
+   * own figure, which is as old as the snapshot.
+   */
+  dayChangePct() {
+    const c = this.cash();
+    if (!c) return null;
+    const spot = this.spotNow();
+    if (typeof this.liveSpot === 'number' && typeof c.prev_close === 'number' && c.prev_close > 0 && spot !== null) {
+      return ((spot - c.prev_close) / c.prev_close) * 100;
+    }
+    return typeof c.day_change_pct === 'number' ? c.day_change_pct : null;
+  }
+
+  _readStamp(key) {
+    const t = istTime(this.readAt[key]);
+    return t ? `read ${t} IST` : 'not read yet';
   }
 
   render() {
@@ -152,6 +225,7 @@ export class HomePage {
     try {
       this.snapshot = await api.getNiftySnapshot();
       this.snapshotError = null;
+      this.readAt.snapshot = new Date().toISOString();
     } catch (err) {
       this.snapshot = null;
       this.snapshotError = (err && err.message) || String(err);
@@ -164,6 +238,7 @@ export class HomePage {
     try {
       this.capital = await api.getRiskCapital();
       this.capitalError = null;
+      this.readAt.capital = new Date().toISOString();
     } catch (err) {
       this.capital = null;
       this.capitalError = (err && err.message) || String(err);
@@ -177,6 +252,7 @@ export class HomePage {
       const res = await api.getPositions('open');
       this.positions = Array.isArray(res) ? res : (res && res.positions) || [];
       this.positionsError = null;
+      this.readAt.positions = new Date().toISOString();
     } catch (err) {
       this.positions = null;
       this.positionsError = (err && err.message) || String(err);
@@ -191,6 +267,7 @@ export class HomePage {
       const res = await api.getMacroEvents(false);
       this.events = (res && res.events) || [];
       this.eventsError = null;
+      this.readAt.events = new Date().toISOString();
     } catch (err) {
       this.events = null;
       this.eventsError = (err && err.message) || String(err);
@@ -225,6 +302,7 @@ export class HomePage {
       }
       this.daily = out;
       this.dailyError = null;
+      this.readAt.daily = new Date().toISOString();
     } catch (err) {
       this.daily = null;
       this.dailyError = (err && err.message) || String(err);
@@ -253,9 +331,14 @@ export class HomePage {
     const f = this.fno() || {};
     const d = this.daily || {};
     const cap = this.capital || {};
+    const spot = this.spotNow();
+    const chg = this.dayChangePct();
+    const spotNote = typeof this.liveSpot === 'number'
+      ? `tick ${istTime(this.liveSpotAt) || ''}`.trim()
+      : c.spot_freshness ? String(c.spot_freshness).toLowerCase() : '';
     const items = [
-      { label: 'NIFTY 50', value: num(c.spot, 2), note: c.spot_freshness ? String(c.spot_freshness).toLowerCase() : '', dir: (c.day_change_pct || 0) < 0 ? 'down' : 'up' },
-      { label: 'Today', value: signedPct(c.day_change_pct), dir: (c.day_change_pct || 0) < 0 ? 'down' : 'up' },
+      { label: 'NIFTY 50', value: num(spot, 2), raw: spot, note: spotNote, dir: (chg || 0) < 0 ? 'down' : 'up' },
+      { label: 'Today', value: signedPct(chg), raw: chg, dir: (chg || 0) < 0 ? 'down' : 'up' },
       { label: 'Day low', value: num(d.dayLow, 2) },
       { label: 'Day high', value: num(d.dayHigh, 2) },
       { label: '20d low', value: c.range_20d ? num(c.range_20d.low, 2) : null },
@@ -277,9 +360,32 @@ export class HomePage {
     });
     items.push({ label: 'Balance', value: inr(cap.risk_capital_inr), note: cap.source ? 'FYERS funds()' : '' });
     items.push({ label: 'Margin ceiling', value: inr(cap.deployable_margin_ceiling_inr), note: cap.ceiling_unavailable_reason || '' });
-    // Breadth has no wired source. It says so; it never borrows a number.
-    items.push({ label: 'Breadth', value: null, note: 'no wired source' });
+    // Breadth is counted from a real FYERS quote of all 50 constituents now.
+    const breadth = this.breadthText();
+    items.push({ label: 'Breadth', value: breadth.value, note: breadth.note });
+    items.push({
+      label: 'Futures volume',
+      value: typeof c.futures_volume === 'number' ? num(c.futures_volume, 0) : null,
+      raw: typeof c.futures_volume === 'number' ? c.futures_volume : null,
+      note: c.futures_symbol || c.futures_volume_unavailable_reason || '',
+    });
     return items;
+  }
+
+  /** "31 ▲ / 18 ▼" with how many of the 50 were quoted and the list's date. */
+  breadthText() {
+    const c = this.cash() || {};
+    if (typeof c.advances !== 'number' || typeof c.declines !== 'number') {
+      return { value: null, note: c.breadth_unavailable_reason || 'no constituent quotes' };
+    }
+    const quoted = typeof c.breadth_quoted === 'number' && typeof c.breadth_total === 'number'
+      ? `${c.breadth_quoted} of ${c.breadth_total} quoted`
+      : '';
+    const asOf = c.breadth_as_of ? `list as of ${c.breadth_as_of}` : '';
+    return {
+      value: `${c.advances} ▲ / ${c.declines} ▼`,
+      note: [quoted, asOf].filter(Boolean).join(', '),
+    };
   }
 
   renderTicker() {
@@ -311,11 +417,12 @@ export class HomePage {
     return dte.formatted || null;
   }
 
-  _kv(label, formatted, colour) {
+  _kv(label, formatted, colour, note) {
     const body = formatted === null || formatted === undefined
       ? NA
       : `<b${colour ? ` style="color:${colour}"` : ''}>${escapeHtml(formatted)}</b>`;
-    return `<div class="kv"><span>${escapeHtml(label)}</span>${body}</div>`;
+    const sub = note ? `<i class="kvn">${escapeHtml(note)}</i>` : '';
+    return `<div class="kv"><span>${escapeHtml(label)}${sub}</span>${body}</div>`;
   }
 
   renderSidebar() {
@@ -332,11 +439,15 @@ export class HomePage {
     const c = this.cash() || {};
     const f = this.fno() || {};
     const d = this.daily || {};
-    const spot = typeof c.spot === 'number' ? c.spot : null;
-    const chg = typeof c.day_change_pct === 'number' ? c.day_change_pct : null;
-    const fresh = c.spot_freshness || 'UNAVAILABLE';
+    const spot = this.spotNow();
+    const chg = this.dayChangePct();
+    const live = typeof this.liveSpot === 'number';
+    const fresh = live ? 'LIVE' : c.spot_freshness || 'UNAVAILABLE';
     const spotInt = spot === null ? null : Math.floor(spot);
     const spotFrac = spot === null ? null : (spot - Math.floor(spot)).toFixed(2).slice(1);
+    const spotFlash = flashFor(this._flash, 'spot', spot);
+    const spotStamp = live ? `tick ${istTime(this.liveSpotAt) || ''} IST` : this._readStamp('snapshot');
+    const breadth = this.breadthText();
 
     const dmaGap = spot !== null && typeof c.dma_20 === 'number' ? spot - c.dma_20 : null;
 
@@ -354,9 +465,9 @@ export class HomePage {
 
     host.innerHTML = `
       <div class="card">
-        <h3>NIFTY 50 <span class="tag ${fresh === 'LIVE' ? 't-live' : 't-na'}">${escapeHtml(String(fresh).toLowerCase())}</span><span class="r">FYERS</span></h3>
+        <h3>NIFTY 50 <span class="tag ${fresh === 'LIVE' ? 't-live' : 't-na'}">${escapeHtml(String(fresh).toLowerCase())}</span><span class="r">FYERS · ${escapeHtml(spotStamp)}</span></h3>
         <div class="hero">
-          <div class="px">${spot === null ? '<span class="na" style="font-size:.5em">unavailable</span>' : `${escapeHtml(num(spotInt, 0))}<span style="font-size:.55em;color:var(--fg-2)">${spotFrac}</span>`}</div>
+          <div class="px${spotFlash}" id="home-spot-px">${spot === null ? '<span class="na" style="font-size:.5em">unavailable</span>' : `${escapeHtml(num(spotInt, 0))}<span style="font-size:.55em;color:var(--fg-2)">${spotFrac}</span>`}</div>
           <div class="sub">
             ${chg === null
               ? '<span class="na">no change figure</span>'
@@ -372,19 +483,19 @@ export class HomePage {
         ${this._kv('Realised vol, 20d', typeof c.realized_vol_20 === 'number' ? `${c.realized_vol_20}%` : null)}
         ${this._kv('20-day moving average', num(c.dma_20, 0), dmaGap === null ? null : dmaGap < 0 ? 'var(--down)' : 'var(--up)')}
         ${this._kv('Spot against 20 DMA', dmaGap === null ? null : `${dmaGap < 0 ? '−' : '+'}${Math.round(Math.abs(dmaGap))}`, dmaGap === null ? null : dmaGap < 0 ? 'var(--down)' : 'var(--up)')}
-        ${this._kv('Volume today', null)}
-        ${this._kv('Advances / declines', typeof c.advances === 'number' && typeof c.declines === 'number' ? `${c.advances} / ${c.declines}` : null)}
+        ${this._kv('Futures volume', typeof c.futures_volume === 'number' ? num(c.futures_volume, 0) : null, null, c.futures_symbol || c.futures_volume_unavailable_reason || null)}
+        ${this._kv('Advances / declines', breadth.value, null, breadth.note)}
         ${this._kv('Sentiment', c.sentiment || null)}
-        <div class="why">Sentiment is computed from spot against the 20-day average and where price sits inside the 20-day range. Volume and market breadth have no wired source and say so rather than borrow a number.</div>
+        <div class="why">Sentiment is computed from spot against the 20-day average and where price sits inside the 20-day range. Breadth counts the 50 NIFTY constituents quoted live from FYERS. Volume is the front-month NIFTY futures contract, because the index itself has no volume. Anything not measured says unavailable.</div>
       </div>
 
       <div class="card">
-        <h3>Sectors today <span class="r">${escapeHtml(c.sector_freshness || 'unavailable')}</span></h3>
+        <h3>Sectors today <span class="r">${escapeHtml(c.sector_freshness || 'unavailable')} · ${escapeHtml(this._readStamp('snapshot'))}</span></h3>
         ${sectors || '<div class="empty">No sector figures in this response.</div>'}
       </div>
 
       <div class="card">
-        <h3>Options, weekly <span class="r">chain</span></h3>
+        <h3>Options, weekly <span class="r">chain · ${escapeHtml(this._readStamp('snapshot'))}</span></h3>
         ${this._kv('India VIX', num(f.india_vix, 2))}
         ${this._kv('Put-call ratio', num(f.weekly_pcr, 2))}
         ${this._kv('Max pain', num(f.max_pain, 0))}
@@ -412,7 +523,7 @@ export class HomePage {
     const used = this.marginUsed();
     host.innerHTML = `
       <div class="card">
-        <h3>Your money <span class="r">${escapeHtml(cap.source || 'source not stated')}${cap.taken_at ? `, read ${escapeHtml(String(cap.taken_at))}` : ''}</span></h3>
+        <h3>Your money <span class="r">${escapeHtml(cap.source || 'source not stated')}${cap.taken_at ? `, broker read ${escapeHtml(istTime(cap.taken_at) || String(cap.taken_at))} IST` : ''} · ${escapeHtml(this._readStamp('capital'))}</span></h3>
         <div class="money">
           ${this._money('Balance', inr(cap.risk_capital_inr), 'total')}
           ${this._money('Free cash', inr(cap.free_cash_inr), 'unpledged')}
@@ -504,7 +615,7 @@ export class HomePage {
           </tr>`).join('')}
         </tbody></table></div>`;
     }
-    host.innerHTML = `<div class="card"><h3>Open positions <span class="r">paper</span></h3>${body}</div>`;
+    host.innerHTML = `<div class="card"><h3>Open positions <span class="r">paper · ${escapeHtml(this._readStamp('positions'))}</span></h3>${body}</div>`;
   }
 
   renderEvents() {
@@ -534,7 +645,7 @@ export class HomePage {
       </tbody></table></div>
       <div class="why">From your own macro events table. Nothing here is scraped live yet.</div>`;
     }
-    host.innerHTML = `<div class="card"><h3>Events ahead <span class="r">factor these into every trade</span></h3>${body}</div>`;
+    host.innerHTML = `<div class="card"><h3>Events ahead <span class="r">factor these into every trade · ${escapeHtml(this._readStamp('events'))}</span></h3>${body}</div>`;
   }
 
   renderRecord() {
@@ -566,6 +677,14 @@ export class HomePage {
   }
 
   destroy() {
+    if (this._refreshTimer) {
+      clearInterval(this._refreshTimer);
+      this._refreshTimer = null;
+    }
+    if (this._unsubSpot) {
+      this._unsubSpot();
+      this._unsubSpot = null;
+    }
     this.ticker = null;
     this.ritual = null;
   }

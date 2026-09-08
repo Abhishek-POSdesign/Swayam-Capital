@@ -44,6 +44,35 @@ export function orNA(formatted, reason = null) {
   return formatted;
 }
 
+/** "13:42:07" in IST from an ISO timestamp; null when there is no timestamp. */
+export function istTime(iso, withSeconds = true) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    ...(withSeconds ? { second: '2-digit' } : {}),
+  });
+}
+
+/**
+ * The class that flashes a value green or red for about 400 ms when it has
+ * changed since the last render. `store` is a plain object the caller keeps
+ * per page; the previous value is remembered there. A first render, a missing
+ * value or an unchanged value flashes nothing. The animation itself lives in
+ * swayam-desk.css and is switched off under prefers-reduced-motion.
+ */
+export function flashFor(store, key, value) {
+  if (!store) return '';
+  const prev = store[key];
+  store[key] = value;
+  if (!isNum(value) || !isNum(prev) || prev === value) return '';
+  return value > prev ? ' fl-up' : ' fl-down';
+}
+
 export function escapeHtml(s) {
   return String(s === null || s === undefined ? '' : s)
     .replace(/&/g, '&amp;')

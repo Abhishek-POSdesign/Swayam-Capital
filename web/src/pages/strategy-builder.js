@@ -29,9 +29,25 @@ import {
   netGreeks,
   unlimitedFlags,
 } from '../modules/options-math.js';
-import { inr, num, signedPct, escapeHtml } from '../utils/display.js';
+import { spotFeed } from '../modules/ws-client.js';
+import { inr, num, signedPct, escapeHtml, istTime, flashFor } from '../utils/display.js';
 
 const STRIKE_STEP = 50;
+
+/** How often every leg is re-quoted from the chain while the desk is open. */
+const REQUOTE_MS = 5000;
+
+/** A price he typed himself carries this source and is never overwritten. */
+const OWN_PRICE = 'your own limit price';
+
+/** Removes the reward-to-risk minimum from an advisory line; that rule was deleted. */
+function stripDeletedRules(warning) {
+  const text = String(warning || '');
+  const marker = 'Worth knowing before you enter, though nothing here stops you: ';
+  if (!text.startsWith(marker)) return text;
+  const kept = text.slice(marker.length).split(', ').filter((r) => !/reward-to-risk/i.test(r));
+  return kept.length ? marker + kept.join(', ') : '';
+}
 
 /** Offsets from the at-the-money strike. Nothing here is a price. */
 const PRESETS = {
@@ -79,6 +95,16 @@ export class StrategyBuilderPage {
     this.expiries = [];
     this.expiry = null;
     this.expiryError = null;
+    /** From the server, computed against the NSE holiday file. Never guessed here. */
+    this.today = null;
+    this.nextTradingDay = null;
+
+    /**
+     * He arrives at 2:30 pm for swing and positional trades, so the desk
+     * assumes the position is carried overnight and rule 2 is tested against
+     * the next trading day. "Closing today" sends no planned exit date.
+     */
+    this.carry = 'overnight'; // 'overnight' | 'today'
 
     this.ivPctByStrike = {}; // strike -> implied volatility in percent
     this.ivSource = {}; // strike -> where that volatility came from
@@ -100,6 +126,14 @@ export class StrategyBuilderPage {
 
     this.sessionId = this._resolveSessionId();
     this._serverTimer = null;
+    this._requoteTimer = null;
+    this._requoting = false;
+    this._unsubSpot = null;
+    this.requoteMs = REQUOTE_MS;
+    this._flash = {};
+    this.spotAt = null;
+    this.pricesReadAt = null;
+    this.rulesCheckedAt = null;
 
     this.payoffChart = null;
     this.ticker = null;
@@ -127,6 +161,79 @@ export class StrategyBuilderPage {
     this.initSubComponents();
     this.startOvernightWatch();
     await this.loadInitialData();
+    this.startLiveUpdates();
+  }
+
+  /**
+   * Until round 2 the spot and every leg price were fetched once. Now the spot
+   * follows the tick stream and every active leg is re-quoted from the chain
+   * every 5 seconds, except a price he typed himself, which is his. Both are
+   * torn down in destroy().
+   */
+  startLiveUpdates() {
+    if (!this._unsubSpot) {
+      this._unsubSpot = spotFeed.subscribe((spot, meta) => this.onSpotTick(spot, meta));
+    }
+    if (typeof setInterval === 'function' && !this._requoteTimer) {
+      this._requoteTimer = setInterval(() => this.requoteLegs(), this.requoteMs);
+      if (this._requoteTimer && typeof this._requoteTimer.unref === 'function') this._requoteTimer.unref();
+    }
+  }
+
+  onSpotTick(spot, meta) {
+    if (typeof spot !== 'number' || !Number.isFinite(spot)) return;
+    this.spot = spot;
+    this.spotFreshness = 'live';
+    this.spotError = null;
+    this.spotAt = (meta && meta.asOf) || new Date().toISOString();
+    if (this.targetSpot === null) this.targetSpot = Math.round(spot / 5) * 5;
+    this.renderSpot();
+    this.renderMetrics();
+    this.renderChart();
+    this.renderGreeks();
+    if (this.ticker) this.ticker.render(this.tickerItems());
+  }
+
+  /** True while he is typing into a leg row, so a re-quote must not redraw it under him. */
+  _legInputFocused() {
+    try {
+      const el = typeof document !== 'undefined' ? document.activeElement : null;
+      return Boolean(el && el.dataset && el.dataset.i !== undefined && el.dataset.f);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /** Re-quotes every active leg that is not carrying a price he typed. */
+  async requoteLegs() {
+    if (this._requoting || !this.expiry) return;
+    const indexes = this.legs
+      .map((l, i) => (l.on && l.priceSource !== OWN_PRICE ? i : -1))
+      .filter((i) => i >= 0);
+    if (!indexes.length) return;
+
+    this._requoting = true;
+    let changed = false;
+    try {
+      await Promise.all(indexes.map(async (i) => {
+        const before = this.legs[i] ? this.legs[i].price : null;
+        await this.repriceLeg(i, { render: false, keepStale: true });
+        if (this.legs[i] && this.legs[i].price !== before) changed = true;
+      }));
+    } finally {
+      this._requoting = false;
+    }
+    this.pricesReadAt = new Date().toISOString();
+
+    if (changed) {
+      if (!this._legInputFocused()) this.renderLegs();
+      this.renderIvs();
+      this.renderRight();
+      this.scheduleServerRefresh();
+    } else if (!this._legInputFocused()) {
+      this.renderLegs(); // only the "prices read" stamp moves
+    }
+    return changed;
   }
 
   // ------------------------------------------------------------------ layout
@@ -215,6 +322,14 @@ export class StrategyBuilderPage {
 
               <div class="card">
                 <h3>Rules and execution <span class="r" id="rules-source"></span></h3>
+                <div class="carry" id="carry-row">
+                  <span class="k">Plan</span>
+                  <div class="seg" role="group" aria-label="Carrying overnight or closing today">
+                    <button id="carry-overnight" type="button" aria-pressed="true">Carrying overnight</button>
+                    <button id="carry-today" type="button" aria-pressed="false">Closing today</button>
+                  </div>
+                  <span class="s" id="carry-note"></span>
+                </div>
                 <div class="rules" id="rule-validation-mount"></div>
                 <div class="why" id="rule-why"></div>
                 <div class="exec">
@@ -354,6 +469,9 @@ export class StrategyBuilderPage {
     on('preset-expiry', 'change', (e) => this.setExpiry(e.target.value, true));
     on('global-mult', 'change', (e) => this.applyMultiplier(Number(e.target.value) || 1));
 
+    on('carry-overnight', 'click', () => this.setCarry('overnight'));
+    on('carry-today', 'click', () => this.setCarry('today'));
+
     on('target-range', 'input', (e) => this.setTarget(Number(e.target.value)));
     on('dte-range', 'input', (e) => {
       this.dteDays = Number(e.target.value);
@@ -401,6 +519,7 @@ export class StrategyBuilderPage {
       this.spot = res && typeof res.spot === 'number' ? res.spot : null;
       this.spotFreshness = this.spot === null ? null : 'live';
       this.spotError = null;
+      this.spotAt = res && res.as_of ? res.as_of : new Date().toISOString();
       if (this.spot !== null && this.targetSpot === null) this.targetSpot = Math.round(this.spot / 5) * 5;
     } catch (err) {
       this.spot = null;
@@ -414,6 +533,8 @@ export class StrategyBuilderPage {
       const res = await api.getExpiries();
       this.expiries = (res && res.expiries) || [];
       this.expiryError = null;
+      this.today = (res && res.today) || null;
+      this.nextTradingDay = (res && res.next_trading_day) || null;
       if (this.expiries.length && !this.expiry) {
         const monthly = this.expiries.find((e) => e.is_monthly) || this.expiries[0];
         this.expiry = monthly.date;
@@ -508,14 +629,22 @@ export class StrategyBuilderPage {
     this.scheduleServerRefresh();
   }
 
-  async repriceLeg(index) {
+  async repriceLeg(index, opts = {}) {
     const leg = this.legs[index];
     if (!leg || !this.expiry) return;
+    // His own limit price is his. A quote never overwrites it.
+    if (leg.priceSource === OWN_PRICE && opts.render === false) return;
     try {
       const q = await api.getOptionQuote({ strike: leg.strike, expiry: this.expiry, type: leg.type });
       if (q && q.available && typeof q.ltp === 'number') {
         leg.price = q.ltp;
         leg.priceSource = q.source || 'chain';
+        leg.priceAt = q.as_of || new Date().toISOString();
+      } else if (opts.keepStale && leg.price !== null && q && q.error) {
+        // The chain could not be READ this time round. The price already on
+        // the row was a real traded price a few seconds ago; blanking it would
+        // drop every rule for a transient. It stays, labelled with its age.
+        leg.priceSource = `last traded price, read ${istTime(leg.priceAt) || 'earlier'} IST; the latest re-quote failed: ${q.error}`;
       } else {
         leg.price = null;
         leg.priceSource = (q && q.note) || 'no traded price for this strike and expiry';
@@ -534,6 +663,8 @@ export class StrategyBuilderPage {
       leg.price = null;
       leg.priceSource = (err && err.message) || 'quote unavailable';
     }
+    this.pricesReadAt = new Date().toISOString();
+    if (opts.render === false) return;
     this.renderLegs();
     this.renderIvs();
     this.renderRight();
@@ -581,7 +712,7 @@ export class StrategyBuilderPage {
     } else if (f === 'price') {
       const v = parseFloat(t.value);
       this.legs[i].price = Number.isFinite(v) && v >= 0 ? v : null;
-      this.legs[i].priceSource = 'your own limit price';
+      this.legs[i].priceSource = OWN_PRICE;
     } else if (f === 'type') this.legs[i].type = t.value;
     this.renderRight();
     this.renderIvs();
@@ -668,6 +799,41 @@ export class StrategyBuilderPage {
     return on.length > 0 && on.every((l) => l.price !== null);
   }
 
+  /** The active legs with no price, named the way he reads them: "24,900 CE". */
+  unpricedLegs() {
+    return this.activeLegs().filter((l) => l.price === null).map((l) => `${num(l.strike)} ${l.type}`);
+  }
+
+  setCarry(mode) {
+    this.carry = mode === 'today' ? 'today' : 'overnight';
+    this.renderCarry();
+    this.renderRules();
+    this.renderExecute();
+    this.scheduleServerRefresh();
+  }
+
+  /** The planned exit the server is told about. Null means closing today. */
+  plannedExitDate() {
+    if (this.carry !== 'overnight') return null;
+    return this.nextTradingDay || null;
+  }
+
+  renderCarry() {
+    const over = this.container.querySelector('#carry-overnight');
+    const today = this.container.querySelector('#carry-today');
+    const note = this.container.querySelector('#carry-note');
+    const overnight = this.carry === 'overnight';
+    if (over) over.setAttribute('aria-pressed', String(overnight));
+    if (today) today.setAttribute('aria-pressed', String(!overnight));
+    if (note) {
+      note.textContent = overnight
+        ? this.nextTradingDay
+          ? `rule 2 is tested against the next session, ${this.nextTradingDay}`
+          : 'the next trading day is unknown, so rule 2 cannot be tested'
+        : 'closing before the bell, so rule 2 is not tested';
+    }
+  }
+
   legsPayload() {
     return this.activeLegs().map((l) => ({
       strike: l.strike,
@@ -697,12 +863,14 @@ export class StrategyBuilderPage {
     // price all four rules off a premium nobody paid and the page would show
     // those figures as his own. Nothing is sent until every leg has a price,
     // and any answer from an earlier, priced state is dropped so it cannot sit
-    // on screen describing a position that no longer exists.
+    // on screen describing a position that no longer exists. The panel then
+    // names the leg holding things up rather than going blank.
     if (!this.fullyPriced()) {
       this.preview = null;
       this.validation = null;
       this.previewError = null;
-      this.validationError = 'A leg has no price yet, so the rules were not checked.';
+      const missing = this.unpricedLegs();
+      this.validationError = `${missing.join(', ')} ${missing.length === 1 ? 'has' : 'have'} no traded price, so rules 1, 2 and 3 are not checked.`;
       this.renderAll();
       return;
     }
@@ -713,6 +881,9 @@ export class StrategyBuilderPage {
       current_spot: this.spot,
       iv_per_leg: {},
       legs,
+      // Carrying overnight by default: the server computes the gap test only
+      // when this is later than today. Closing today sends nothing.
+      planned_exit_date: this.plannedExitDate(),
     };
 
     await Promise.all([
@@ -734,6 +905,7 @@ export class StrategyBuilderPage {
         try {
           this.validation = await api.validateStrategy(payload);
           this.validationError = null;
+          this.rulesCheckedAt = new Date().toISOString();
         } catch (err) {
           this.validation = null;
           this.validationError = (err && err.message) || String(err);
@@ -749,6 +921,7 @@ export class StrategyBuilderPage {
   renderAll() {
     this.renderSpot();
     this.renderExpiryPickers();
+    this.renderCarry();
     this.renderLegs();
     this.renderIvs();
     this.renderRight();
@@ -767,7 +940,7 @@ export class StrategyBuilderPage {
   tickerItems() {
     const cap = this.capital || {};
     return [
-      { label: 'NIFTY 50', value: num(this.spot, 2), note: this.spotFreshness || '' },
+      { label: 'NIFTY 50', value: num(this.spot, 2), raw: this.spot, note: this.spotAt ? `tick ${istTime(this.spotAt) || ''}`.trim() : this.spotFreshness || '' },
       { label: 'Lot', value: this.lotSize === null ? null : String(this.lotSize), note: this.lotSize === null ? 'server has not confirmed it' : 'contract master' },
       { label: 'Expiry', value: this.expiry || null },
       { label: 'Balance', value: inr(cap.risk_capital_inr), note: cap.source ? 'FYERS funds()' : '' },
@@ -787,7 +960,7 @@ export class StrategyBuilderPage {
       `<b>${this.spot === null ? '—' : escapeHtml(num(this.spot, 2))}</b>` +
       (this.spot === null
         ? `<span class="chip c-na">${escapeHtml(this.spotError || 'no live price')}</span>`
-        : `<span class="chip c-live">live</span>`) +
+        : `<span class="chip c-live">live${this.spotAt ? ` · ${escapeHtml(istTime(this.spotAt) || '')} IST` : ''}</span>`) +
       (this.lotSize === null
         ? `<span class="chip c-na">lot unconfirmed</span>`
         : `<span class="chip c-info">lot ${this.lotSize}</span>`);
@@ -843,6 +1016,7 @@ export class StrategyBuilderPage {
           </select>
           <input value="${l.lots}" data-i="${i}" data-f="lots" inputmode="numeric" aria-label="Lots">
           <input value="${l.price === null ? '' : l.price.toFixed(2)}" data-i="${i}" data-f="price"
+                 class="${l.priceSource === OWN_PRICE ? 'own' : ''}${flashFor(this._flash, `price-${i}-${l.strike}-${l.type}`, l.price)}"
                  inputmode="decimal" placeholder="—" title="${escapeHtml(l.priceSource || '')}" aria-label="Price">
           <button class="trash" data-i="${i}" data-f="del" type="button" aria-label="Delete leg" title="Delete leg">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -880,7 +1054,8 @@ export class StrategyBuilderPage {
             : `Contract size ${this.lotSize} per lot, ${this.lotSizeSource}. ${on.length} active leg(s), ${contracts} contracts. `) +
           (missing
             ? `${missing} leg(s) have no traded price — type your own; nothing is seeded for you.`
-            : 'Prices are the traded prices from the chain, or the ones you typed.');
+            : 'Prices are the traded prices from the chain, or the ones you typed.') +
+          (this.pricesReadAt ? ` Prices read ${istTime(this.pricesReadAt)} IST, re-read every ${Math.round(this.requoteMs / 1000)} s; a price you typed is never overwritten.` : '');
       }
     }
   }
@@ -913,9 +1088,10 @@ export class StrategyBuilderPage {
       `</tbody></table>`;
   }
 
-  _met(k, value, sub, colour) {
+  _met(k, value, sub, colour, raw) {
+    const flash = raw === undefined ? '' : flashFor(this._flash, `met-${k}`, raw);
     return `<div class="met"><div class="k">${escapeHtml(k)}</div>
-      <div class="v${value !== null && String(value).length > 7 ? ' sm' : ''}"${colour ? ` style="color:${colour}"` : ''}>${value === null ? '<span class="na" style="font-size:14px">unavailable</span>' : escapeHtml(value)}</div>
+      <div class="v${value !== null && String(value).length > 7 ? ' sm' : ''}${flash}"${colour ? ` style="color:${colour}"` : ''}>${value === null ? '<span class="na" style="font-size:14px">unavailable</span>' : escapeHtml(value)}</div>
       <div class="s">${escapeHtml(sub || '')}</div></div>`;
   }
 
@@ -972,9 +1148,9 @@ export class StrategyBuilderPage {
           : 'ceiling unavailable', 'var(--fg-2)') +
       this._met('Max profit', maxProfit === null ? null : inr(maxProfit),
         maxProfit !== null && bal ? `${((maxProfit / bal) * 100).toFixed(2)}% of balance` : '',
-        maxProfit === null ? null : maxProfit >= 0 ? 'var(--up)' : 'var(--down)') +
+        maxProfit === null ? null : maxProfit >= 0 ? 'var(--up)' : 'var(--down)', maxProfit) +
       this._met('Max loss', unlimited ? 'Unlimited' : maxLoss === null ? null : inr(maxLoss),
-        unlimited ? `no ceiling ${unlimitedUp ? 'above' : 'below'}` : maxLoss !== null && bal ? `${((maxLoss / bal) * 100).toFixed(2)}% of balance` : '', 'var(--down)') +
+        unlimited ? `no ceiling ${unlimitedUp ? 'above' : 'below'}` : maxLoss !== null && bal ? `${((maxLoss / bal) * 100).toFixed(2)}% of balance` : '', 'var(--down)', unlimited ? undefined : maxLoss) +
       this._met('Breakeven', bes.length ? bes.map((b) => num(b)).join(' / ') : mathRan ? 'none' : null,
         bes.length === 1 && this.spot
           ? `${bes[0] - this.spot > 0 ? '+' : ''}${Math.round(bes[0] - this.spot)} pts from spot`
@@ -986,7 +1162,7 @@ export class StrategyBuilderPage {
       this._met('Reward : risk', unlimited || (mathRan && rr === null) ? 'n/a' : rr === null ? null : `1 : ${rr.toFixed(2)}`, rrNote) +
       this._met('At your target', proj === null ? null : inr(proj),
         this.targetSpot ? `${num(this.targetSpot)} in ${Math.max(0, (this.dteMax || 0) - (this.dteDays || 0))}d` : '',
-        proj === null ? null : proj >= 0 ? 'var(--up)' : 'var(--down)');
+        proj === null ? null : proj >= 0 ? 'var(--up)' : 'var(--down)', proj);
   }
 
   renderSliders() {
@@ -1096,15 +1272,26 @@ export class StrategyBuilderPage {
 
     const v = this.validation;
     if (src) {
+      const stamp = this.rulesCheckedAt ? ` · checked ${istTime(this.rulesCheckedAt)} IST` : '';
       src.textContent = v && v.capital && typeof v.capital.risk_capital_inr === 'number'
-        ? `caps from a live balance of ${inr(v.capital.risk_capital_inr)}`
+        ? `caps from a live balance of ${inr(v.capital.risk_capital_inr)}${stamp}`
         : 'caps unavailable';
     }
 
     if (!v) {
-      host.innerHTML = ['1 · Running loss', '2 · Overnight gap', '3 · Black swan', '4 · Margin ceiling']
-        .map((k) => this._rule('idle', k, null, 'the server has not checked this position'))
-        .join('');
+      // Unpriced leg or a failed check: the rules that can be answered from
+      // what is known are still drawn, and the reason names the leg.
+      const missing = this.unpricedLegs();
+      const held = missing.length
+        ? `${missing.join(', ')} ${missing.length === 1 ? 'has' : 'have'} no traded price`
+        : null;
+      const idleWhy = held ? `${held}, so this is not checked` : 'the server has not checked this position';
+      host.innerHTML =
+        this._rule('idle', '1 · Running loss', null, idleWhy) +
+        this._rule('idle', '2 · Overnight gap', null,
+          this.carry !== 'overnight' ? 'not tested — you are closing before the bell' : idleWhy) +
+        this._rule('idle', '3 · Black swan', null, idleWhy) +
+        this._rule4();
       if (why) {
         why.textContent = this.validationError
           ? `The rule check could not run: ${this.validationError}`
@@ -1133,24 +1320,30 @@ export class StrategyBuilderPage {
       typeof rr.cap_inr === 'number' ? `of ${inr(rr.cap_inr)}${pctNote(rr)}` : 'cap unavailable',
     );
 
+    // Rule 2 is worded as a hypothetical, "if you carry this overnight", so it
+    // is never read as something that already happened.
     const rule2 = carry
       ? this._rule(
           carry.hedged === false || typeof carry.gap_loss_inr !== 'number' ? 'fail' : carry.may_carry_overnight ? 'pass' : 'fail',
           '2 · Overnight gap',
           carry.hedged === false ? 'Unlimited' : typeof carry.gap_loss_inr === 'number' ? inr(carry.gap_loss_inr) : null,
           carry.hedged === false
-            ? 'not hedged, cannot carry'
+            ? 'if you carry this overnight: not hedged, cannot carry'
             : typeof carry.cap_inr === 'number'
-              ? `of ${inr(carry.cap_inr)}`
-              : 'cap unavailable',
+              ? `if you carry this overnight · of ${inr(carry.cap_inr)}`
+              : 'if you carry this overnight · cap unavailable',
         )
       : this._rule(
           'idle',
           '2 · Overnight gap',
           null,
-          intraday
-            ? 'not tested — this is an intraday position'
-            : 'the gap test needs measured daily moves',
+          this.carry !== 'overnight'
+            ? 'not tested — you are closing before the bell'
+            : !this.nextTradingDay
+              ? 'not tested — the next trading day is unknown'
+              : intraday
+                ? 'not tested — the server treated this as intraday'
+                : 'the gap test needs measured daily moves',
         );
 
     const rule3 = this._rule(
@@ -1164,15 +1357,7 @@ export class StrategyBuilderPage {
           : 'cap unavailable',
     );
 
-    const ceilingCheck = (v.checks || []).find((c) => c.rule === 'deployable_margin_ceiling');
-    const ceiling = ceilingCheck && typeof ceilingCheck.cap_inr === 'number'
-      ? ceilingCheck.cap_inr
-      : v.capital && typeof v.capital.deployable_margin_ceiling_inr === 'number'
-        ? v.capital.deployable_margin_ceiling_inr
-        : null;
-    const rule4 = this._rule('idle', '4 · Margin ceiling', ceiling === null ? null : inr(ceiling), 'twice your cash equivalent');
-
-    host.innerHTML = rule1 + rule2 + rule3 + rule4;
+    host.innerHTML = rule1 + rule2 + rule3 + this._rule4();
 
     if (why) {
       const parts = [];
@@ -1184,9 +1369,52 @@ export class StrategyBuilderPage {
         parts.push(`Rule 2: NIFTY gaps ${carry.move.gap_tested_points} points either way, twice your ${carry.move.average_daily_move_points}-point average over ${carry.move.sessions_used} sessions, held to the next session.`);
       }
       if (carry && carry.reasons && carry.reasons.length) parts.push(carry.reasons.join(' '));
-      (v.warnings || []).forEach((w) => parts.push(w));
-      why.textContent = parts.join(' ');
+      // The server still carries an advisory reward-to-risk check from the
+      // rule set he deleted on 2026-09-07. Its arithmetic is off-limits in this
+      // round, so the page drops that one line rather than print a rule that
+      // no longer exists. Everything else the server says is shown verbatim.
+      (v.warnings || []).forEach((w) => parts.push(stripDeletedRules(w)));
+      why.textContent = parts.filter(Boolean).join(' ');
     }
+  }
+
+  /**
+   * Rule 4, the deployable margin ceiling. Margin needed for this structure
+   * (the broker's number from the preview) plus margin already used, against
+   * the ceiling of twice the cash equivalent. Green when it fits, red with the
+   * shortfall in rupees when it does not. It used to be hardcoded idle.
+   */
+  _rule4() {
+    const need = this.preview && typeof this.preview.margin_required_inr === 'number'
+      ? this.preview.margin_required_inr
+      : null;
+    const used = this.marginUsed;
+    const cap = this.capital || (this.validation && this.validation.capital) || {};
+    const ceiling = typeof cap.deployable_margin_ceiling_inr === 'number' ? cap.deployable_margin_ceiling_inr : null;
+
+    if (ceiling === null) {
+      return this._rule('idle', '4 · Margin ceiling', null,
+        cap.ceiling_unavailable_reason || 'the ceiling needs the cash-equivalent figure');
+    }
+    if (need === null) {
+      const reason = this.previewError
+        || (this.preview && this.preview.margin_unavailable_reason)
+        || (this.unpricedLegs().length ? 'margin needed is unknown until every leg is priced' : 'the broker has not priced this basket');
+      return this._rule('idle', '4 · Margin ceiling', inr(ceiling), `ceiling · ${reason}`);
+    }
+    if (used === null) {
+      return this._rule('idle', '4 · Margin ceiling', inr(need), `needed · margin already used is unknown, so the ceiling of ${inr(ceiling)} cannot be tested`);
+    }
+    const total = need + used;
+    const fits = total <= ceiling;
+    return this._rule(
+      fits ? 'pass' : 'fail',
+      '4 · Margin ceiling',
+      inr(total),
+      fits
+        ? `of ${inr(ceiling)} · ${inr(ceiling - total)} free after this`
+        : `SHORT BY ${inr(total - ceiling)} · ceiling ${inr(ceiling)}`,
+    );
   }
 
   renderExecute() {
@@ -1210,6 +1438,9 @@ export class StrategyBuilderPage {
     } else if (carry) {
       cls = 'v-warn';
       text = 'Intraday ok · must close before the bell';
+    } else if (this.carry !== 'overnight') {
+      cls = 'v-ok';
+      text = 'Intraday ok · closing today, overnight not tested';
     }
 
     const blocked = v && v.execution_blocked_reason ? v.execution_blocked_reason : null;
@@ -1270,6 +1501,14 @@ export class StrategyBuilderPage {
     if (this.cronTimer) {
       clearInterval(this.cronTimer);
       this.cronTimer = null;
+    }
+    if (this._requoteTimer) {
+      clearInterval(this._requoteTimer);
+      this._requoteTimer = null;
+    }
+    if (this._unsubSpot) {
+      this._unsubSpot();
+      this._unsubSpot = null;
     }
   }
 }

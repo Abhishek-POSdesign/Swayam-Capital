@@ -24,6 +24,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src/
 RUN pip install --no-cache-dir -e .
 
+# Reference data the app reads at runtime: the NSE holiday calendar (expiry and
+# next-trading-day maths) and the NIFTY 50 constituent list (market breadth).
+# `data/` is otherwise a local cache and is not copied.
+COPY data/nse_holidays_2026.json data/nifty50_constituents.json ./data/
+
 # Copy built frontend assets from Stage 1
 COPY --from=frontend-builder /app/web/dist ./web/dist
 

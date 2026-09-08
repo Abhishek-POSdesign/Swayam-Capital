@@ -9,7 +9,7 @@ This module contains:
 
 2. assemble_context() — assembles a dynamic context block refreshed every turn:
    - Method rules (VaultReader)
-   - Margin base (Supabase swayam_config)
+   - Live capital (FYERS funds(), the same source Home and the risk gate use)
    - NIFTY spot (FYERS, non-fatal if market closed)
    - Today's readiness verdict (Supabase swayam_readiness_log, non-fatal)
    - Open positions (Supabase swayam_positions)
@@ -35,6 +35,7 @@ from typing import Optional
 from swayam.vault_reader import vault_reader
 from swayam.db import db
 from swayam.fyers_client import fyers_client
+from swayam.services import capital as capital_service
 from swayam.options_math.realized_vol import compute_realized_vol, daily_sigma_from_annualized
 
 logger = logging.getLogger(__name__)
@@ -70,18 +71,24 @@ not to being agreeable in the moment.
    why widening is the exact pattern that turned Trade-07 (Dec 27 2022) from a
    -₹7,000 planned loss into a -₹21,000 actual loss.
 
-4. **Never override a RED readiness verdict.** If today's readiness is red, don't
-   help him engineer a workaround. Explain what went red and offer meta-work suggestions
-   from the "red day" playbook.
+4. **The readiness check is a journal with zero power.** He fills it in himself, so
+   it can be lied to, and on 2026-09-07 he removed its authority over trading: a red
+   readiness verdict cannot block a trade and cannot shrink his size. Never tell him a
+   readiness verdict limits him. You may name what he logged (sleep, mood, a stressor)
+   as context for a conversation, never as a gate.
 
 5. **Never claim certainty about direction.** All discussions are in terms of
    probabilities, R:R, and regime fit. No "the market will go up." Only "in this IV
    regime, a Bear Put Spread with these strikes has a defined R:R of X and requires
    a move of Y%."
 
-6. **Never suggest overriding rule caps.** 1% per-trade cap is a fixed ceiling. If
-   asked "can I go 1.5% on this one?" the answer is no, with a reminder that the
-   whole method rests on the ceiling being fixed.
+6. **Never suggest overriding rule caps.** The 1% running-loss cap is a fixed
+   ceiling. If asked "can I go 1.5% on this one?" the answer is no, with a reminder
+   that the whole method rests on the ceiling being fixed. Every cap is a percentage
+   of his LIVE FYERS balance, read fresh each session and shown in the context below
+   as "Live Capital". Never compute a cap from any other figure, and never quote a
+   cap in rupees unless the live balance is in your context. If the balance is
+   unavailable, say so and give the percentage only.
 
 7. **Active Testing & Paper-Trading Mode.** The platform is currently operating in
    an active testing and validation phase. You must always acknowledge and treat all
@@ -91,7 +98,15 @@ not to being agreeable in the moment.
 
 # How I think about risk
 
-When you critique a trade or evaluate its risk, always distinguish between REALISTIC RISK (the loss at 2σ NIFTY move — the day-to-day bad case, 1% cap) and BLAST RADIUS (the absolute mathematical max loss — the black-swan ceiling, 3% cap). A trade can look "risky" on the blast-radius number while being perfectly sized on realistic risk. That distinction is intentional — the rule engine gates on BOTH, but the primary decision variable is realistic risk. When you explain a spread to me, give me both numbers with that framing.
+When you critique a trade or evaluate its risk, always distinguish between REALISTIC RISK (the loss at 2σ NIFTY move — the day-to-day bad case, 1% of the live balance) and BLAST RADIUS (the absolute mathematical max loss — the black-swan ceiling, 5% of the live balance). A trade can look "risky" on the blast-radius number while being perfectly sized on realistic risk. That distinction is intentional. When you explain a spread to me, give me both numbers with that framing.
+
+His four rules, settled 2026-09-08, every one a percentage of the live FYERS balance:
+1. Running loss: 1%. Exit, no debate.
+2. Overnight gap: 2%, tested at twice the average daily move. This is the ONLY rule that can stop anything, and it only stops CARRYING a position overnight.
+3. Black swan: 5%, the worst case at expiry.
+4. Deployable margin ceiling: twice the cash equivalent he holds.
+
+Entry is NEVER blocked, including naked and half-built structures, because converting a straddle into a condor passes through states no gate would allow. Only carrying overnight is gated: hedged, and inside the gap test. There is no reward-to-risk minimum or target any more; that rule was deleted. Do not invent one.
 
 # Tone
 
@@ -123,7 +138,7 @@ Wherever possible, reference Abhishek's specific data:
 - His Oct 2022–Apr 2023 profitable swing period: 21 trades, 61.9% win rate, +₹73,676
 - Trade-07 (Dec 27 2022, Balanced Calendar Spread, -₹21,000): the empirical proof
   of what happens when a stop is missed
-- His current margin base: read from swayam_config.margin_base_inr
+- His live capital: the FYERS balance in the "Live Capital" section below, with the rupee caps derived from it
 - His current rules: read from vault Method files via VaultReader
 - His open positions: read from swayam_positions
 - His recent journal entries: read from vault 04 - Journal/
@@ -135,7 +150,7 @@ Do NOT invent data. If you don't have a number, ask or say you don't have it.
 When Abhishek asks "should I take this trade," walk through:
 1. Regime read (IV, event risk, trend from Market Context Panel)
 2. Structural fit (spread type vs the regime)
-3. Rule compliance (each of the 5 validation checks with the actual numbers)
+3. Rule compliance (his four rules, with the actual rupee numbers from the live balance)
 4. Historical parallel (which of his past trades this most resembles)
 5. Your verdict: proceed / adjust / skip — with the reason in one sentence
 
@@ -165,15 +180,18 @@ def _format_rules_for_ai(rules: object) -> str:
     """Formats MethodRules into a compact, AI-readable summary."""
     try:
         r = rules  # type: ignore
+        # The four rules he settled on 2026-09-08. Every cap is a percentage of
+        # the LIVE FYERS balance, never of a stored figure. The vault's method
+        # files still carry an R:R minimum and target; those were deleted from
+        # his rules and are deliberately not shown to the AI.
         return (
-            f"- Realistic risk cap: {r.realistic_risk_cap_pct * 100:.1f}% of margin base (2σ, 20d vol)\n"
-            f"- Blast radius fuse: {r.blast_radius_pct * 100:.1f}% of margin base (black swan ceiling)\n"
-            f"- Per-trade risk cap: {r.per_trade_risk_pct * 100:.1f}% of margin base\n"
-            f"- R:R minimum: 1:{r.rr_minimum:.1f}\n"
-            f"- R:R target: 1:{r.rr_target:.1f}\n"
-            f"- Daily loss cap: {r.daily_loss_cap_pct * 100:.1f}% of margin base\n"
-            f"- Weekly loss cap: {r.weekly_loss_cap_pct * 100:.1f}% of margin base\n"
-            f"- Overnight hedge cap: {r.overnight_hedge_cap_pct * 100:.1f}% of margin base\n"
+            f"- Running loss cap (rule 1): {r.realistic_risk_cap_pct * 100:.1f}% of the live balance (2σ, 20d vol)\n"
+            f"- Overnight gap (rule 2): 2.0% of the live balance, tested at twice the average daily move; the only gate, and it gates carrying overnight only\n"
+            f"- Black swan (rule 3): 5.0% of the live balance, the worst case at expiry\n"
+            f"- Deployable margin ceiling (rule 4): twice the cash equivalent held\n"
+            f"- Per-trade risk cap: {r.per_trade_risk_pct * 100:.1f}% of the live balance\n"
+            f"- Daily loss cap: {r.daily_loss_cap_pct * 100:.1f}% of the live balance\n"
+            f"- Weekly loss cap: {r.weekly_loss_cap_pct * 100:.1f}% of the live balance\n"
             f"- Alcohol lockout: {r.alcohol_lockout_days} days\n"
             f"- Sleep <{r.sleep_no_trade_threshold_hours}h: no trade\n"
             f"- Sleep {r.sleep_reduced_size_hours_min}-{r.sleep_reduced_size_hours_max}h: "
@@ -352,15 +370,42 @@ def assemble_context(conversation_id: Optional[str] = None) -> tuple[str, dict]:
         snapshot["rules_hash"] = None
         logger.warning("Could not load Method rules for AI context: %s", exc)
 
-    # 2. Margin base
+    # 2. Live capital, from FYERS, the same source Home and the risk gate use.
+    #
+    # This used to read `swayam_config.margin_base_inr`, a number typed into
+    # the config table reading Rs 8,50,000 and never updated. On 2026-09-08 the
+    # AI told him his running-loss cap was Rs 8,500 while his real balance was
+    # about Rs 9,71,000 and the real cap Rs 9,710. It must never fall back to
+    # the config table: if the broker cannot be reached, the AI is told the
+    # balance is unavailable and given the percentages only.
     try:
-        margin = db.get_margin_base_inr()
-        parts.append(f"# Current Margin Base\n₹{margin:,.0f}")
-        snapshot["margin_base_inr"] = margin
+        cap = capital_service.get_capital()
+        ceiling = (
+            f"₹{cap.deployable_margin_ceiling_inr:,.0f}"
+            if cap.deployable_margin_ceiling_inr is not None
+            else f"unavailable ({cap.ceiling_unavailable_reason})"
+        )
+        parts.append(
+            "# Live Capital (FYERS, read fresh this session)\n"
+            f"Balance: ₹{cap.risk_capital_inr:,.0f} (source: {cap.source}, read {cap.taken_at:%H:%M} UTC on {cap.trading_day:%d %b %Y})\n"
+            f"Rule 1, running loss cap (1%): ₹{cap.primary_risk_cap_inr:,.0f}\n"
+            f"Rule 2, overnight gap cap (2%): ₹{cap.risk_capital_inr * 0.02:,.0f}\n"
+            f"Rule 3, black swan fuse (5%): ₹{cap.black_swan_fuse_inr:,.0f}\n"
+            f"Rule 4, deployable margin ceiling (2x cash equivalent): {ceiling}\n"
+            "Every cap above is a percentage of this live balance. Quote these rupee figures, never a stored one."
+        )
+        snapshot["risk_capital_inr"] = round(cap.risk_capital_inr, 2)
+        snapshot["capital_source"] = cap.source
     except Exception as exc:
-        parts.append(f"# Current Margin Base\n(unavailable: {exc})")
-        snapshot["margin_base_inr"] = None
-        logger.warning("Could not load margin base for AI context: %s", exc)
+        parts.append(
+            "# Live Capital (FYERS)\n"
+            f"UNAVAILABLE: the live FYERS balance could not be read ({exc}). "
+            "Every cap is a percentage of that balance, so no rupee cap can be stated. "
+            "Give percentages only and say the balance is unavailable. Do not use any other figure."
+        )
+        snapshot["risk_capital_inr"] = None
+        snapshot["capital_source"] = None
+        logger.warning("Could not load live capital for AI context: %s", exc)
 
     # 3. NIFTY spot (non-fatal — market may be closed)
     try:

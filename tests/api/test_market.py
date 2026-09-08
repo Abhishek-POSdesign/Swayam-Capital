@@ -128,3 +128,27 @@ def test_get_vix_history_unavailable_when_no_real_rows(mocker) -> None:
     response = client.get("/api/market/vix/history?days=60")
     assert response.status_code == 503
     assert "unavailable" in response.json()["detail"].lower()
+
+
+def test_get_expiries_names_the_next_trading_day(monkeypatch) -> None:
+    """The desk defaults to carrying overnight, so it needs the next trading day.
+
+    Computed server-side from the NSE holiday file, never guessed in the browser.
+    """
+    from datetime import date as _date
+    import swayam.api.routes.market as market_module
+
+    class FixedDate(_date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 10, 1)  # Thursday; 2 Oct is Gandhi Jayanti, then the weekend
+
+    monkeypatch.setattr(market_module, "date", FixedDate)
+    monkeypatch.setattr(
+        market_module,
+        "get_expiry_metadata",
+        lambda: {"upcoming_expiries": ["2026-10-06"], "weekly_expiry": "2026-10-06", "monthly_expiry": "2026-10-27"},
+    )
+    data = client.get("/api/market/expiries").json()
+    assert data["today"] == "2026-10-01"
+    assert data["next_trading_day"] == "2026-10-05"

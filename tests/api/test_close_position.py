@@ -251,24 +251,24 @@ def test_close_position_fetches_ltp_when_exit_legs_omitted(client):
     mock_fyers.get_option_chain.assert_called_once()
 
 
-def test_close_position_margin_fallback_to_method_rules(client):
+def test_close_position_journal_uses_the_live_balance(client):
+    """The exit block's percentage is of the live FYERS balance.
+
+    This test used to prove a fallback to a constant in the vault when the
+    stored margin base was unreachable. Both the stored figure and the
+    fallback are gone; conftest pins the live balance at 9,71,002.38.
+    """
     open_pos = _make_open_position()
 
     with (
         patch("swayam.api.routes.positions.db") as mock_db,
         patch("swayam.api.routes.positions.append_exit_block") as mock_journal,
-        patch("swayam.vault_reader.vault_reader.load_rules") as mock_load,
     ):
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             open_pos
         ]
         mock_db.client.table.return_value.insert.return_value.execute.return_value = MagicMock()
         mock_db.client.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
-        mock_db.get_margin_base_inr.side_effect = RuntimeError("DB down")
-
-        mock_rules = MagicMock()
-        mock_rules.margin_base_default_inr = 900000.0
-        mock_load.return_value = mock_rules
 
         resp = client.post(
             "/api/positions/pos-close-123/close",
@@ -283,23 +283,25 @@ def test_close_position_margin_fallback_to_method_rules(client):
 
     assert resp.status_code == 200
     mock_journal.assert_called_once()
-    assert mock_journal.call_args.kwargs["margin_base_inr"] == 900000.0
+    assert mock_journal.call_args.kwargs["margin_base_inr"] == 971002.38
+    assert not mock_db.get_margin_base_inr.called
 
 
-def test_close_position_margin_fails_503_when_both_unreachable(client):
+def test_close_position_journal_refuses_503_when_live_balance_unavailable(client):
+    """No balance, no percentage: the journal write refuses rather than invent one."""
+    from swayam.services.capital import CapitalUnavailable
     open_pos = _make_open_position()
 
     with (
         patch("swayam.api.routes.positions.db") as mock_db,
         patch("swayam.api.routes.positions.append_exit_block") as mock_journal,
-        patch("swayam.vault_reader.vault_reader.load_rules", side_effect=RuntimeError("Vault missing")),
+        patch("swayam.services.capital.get_capital", side_effect=CapitalUnavailable("Broker returned no fund limits.")),
     ):
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             open_pos
         ]
         mock_db.client.table.return_value.insert.return_value.execute.return_value = MagicMock()
         mock_db.client.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
-        mock_db.get_margin_base_inr.side_effect = RuntimeError("DB down")
 
         resp = client.post(
             "/api/positions/pos-close-123/close",
@@ -313,5 +315,6 @@ def test_close_position_margin_fails_503_when_both_unreachable(client):
         )
 
     assert resp.status_code == 503
-    assert "margin base" in resp.json()["detail"].lower()
+    assert "live account balance is unavailable" in resp.json()["detail"].lower()
+    mock_journal.assert_not_called()
 

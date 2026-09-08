@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException, Query
 from swayam.api.models_api import OptionChainResponse, StrikeQuote, StrikeRow
 from swayam.fyers_client import fyers_client
 from swayam.db import db
-from swayam.services.expiry import get_expiry_metadata
+from swayam.services.expiry import get_expiry_metadata, is_trading_day
 import logging
 
 logger = logging.getLogger(__name__)
@@ -25,11 +25,49 @@ router = APIRouter()
 # In-memory caches
 _spot_cache: dict[str, Any] = {"data": None, "timestamp": 0.0}
 _chain_cache: dict[str, Any] = {}
+# The raw FYERS chain per (symbol, expiry epoch, strike count), for a few
+# seconds. The desk re-quotes every leg every 5 seconds and each quote used to
+# fetch a 50-strike chain twice, so a four-leg structure was eight FYERS chain
+# calls every five seconds. Now it is at most two.
+_raw_chain_cache: dict[str, Any] = {}
+RAW_CHAIN_TTL_SECONDS = 3.0
 _candle_cache: dict[str, Any] = {}   # keyed by timeframe
 _vix_cache: dict[str, Any] = {"data": None, "timestamp": 0.0}
 
 # Candle cache TTL in seconds by timeframe
 _CANDLE_TTL = {"15m": 60, "1h": 300, "1d": 900}
+
+
+def fetch_chain_cached(symbol: str, strike_count: int, timestamp: Optional[str] = None) -> dict[str, Any]:
+    """The FYERS chain for one expiry, shared across callers for a few seconds.
+
+    Raises whatever the FYERS client raises; nothing is substituted.
+    """
+    key = f"{symbol}|{strike_count}|{timestamp or 'nearest'}"
+    now = time.time()
+    hit = _raw_chain_cache.get(key)
+    if hit and (now - hit["timestamp"]) < RAW_CHAIN_TTL_SECONDS:
+        return hit["data"]
+    data = fyers_client.get_option_chain(underlying=symbol, strike_count=strike_count, timestamp=timestamp)
+    _raw_chain_cache[key] = {"data": data, "timestamp": now}
+    return data
+
+
+def resolve_expiry_epoch(base_chain: dict[str, Any], expiry_iso: str) -> Optional[str]:
+    """Maps YYYY-MM-DD to FYERS' epoch for that expiry via the chain's expiryData.
+
+    FYERS dates its expiries DD-MM-YYYY. None when the expiry is not listed,
+    in which case the caller must not pretend the nearest expiry is the one
+    asked for.
+    """
+    try:
+        want = datetime.strptime(expiry_iso, "%Y-%m-%d").strftime("%d-%m-%Y")
+    except (TypeError, ValueError):
+        return None
+    for ed in base_chain.get("expiryData", []) or []:
+        if ed.get("date") == want and ed.get("expiry") is not None:
+            return str(ed.get("expiry"))
+    return None
 
 
 @router.get("/api/nifty/spot")
@@ -191,25 +229,15 @@ def get_option_quote(
     oi: Optional[int] = None
     bid: Optional[float] = None
     ask: Optional[float] = None
+    quote_error: Optional[str] = None
     try:
-        base_chain = fyers_client.get_option_chain(underlying=symbol, strike_count=50)
+        base_chain = fetch_chain_cached(symbol, 50)
         # Map requested expiry (YYYY-MM-DD) -> FYERS epoch via expiryData (dates are DD-MM-YYYY).
-        want_ddmmyyyy = None
-        try:
-            want_ddmmyyyy = datetime.strptime(expiry, "%Y-%m-%d").strftime("%d-%m-%Y")
-        except Exception:
-            want_ddmmyyyy = None
-        want_epoch = None
-        for ed in base_chain.get("expiryData", []) or []:
-            if want_ddmmyyyy and ed.get("date") == want_ddmmyyyy:
-                want_epoch = str(ed.get("expiry"))
-                break
+        want_epoch = resolve_expiry_epoch(base_chain, expiry)
         # Use the base chain if the requested expiry is the nearest; else fetch that expiry by epoch.
         chain = base_chain
         if want_epoch:
-            chain = fyers_client.get_option_chain(
-                underlying=symbol, strike_count=50, timestamp=want_epoch
-            )
+            chain = fetch_chain_cached(symbol, 50, want_epoch)
         for row in chain.get("optionsChain", []) or []:
             if row.get("option_type") != opt_type:
                 continue
@@ -223,7 +251,10 @@ def get_option_quote(
                     ask = row.get("ask")
                 break
     except Exception as exc:
-        logger.debug("Option chain fetch failed for quote (strike=%s expiry=%s): %s", strike, expiry, exc)
+        # Visible in the logs, not swallowed at debug: a quote that fails is a
+        # blank price on his screen, and he should be able to see why.
+        quote_error = str(exc)
+        logger.warning("Option chain fetch failed for quote (strike=%s expiry=%s): %s", strike, expiry, exc)
 
     # Real IV implied from the real LTP; Greeks computed from that IV. Keep the real price even
     # if the IV solve fails (show the price, just omit Greeks) — never hide a real number.
@@ -271,8 +302,13 @@ def get_option_quote(
         "as_of": datetime.now(timezone.utc).isoformat(),
         "note": (
             None if price_available
-            else "No real price found for this strike/expiry — type your own price. (No fabricated prices, ever.)"
+            else (
+                f"The chain could not be read ({quote_error}). No price is invented; the last one you had is kept if you had one."
+                if quote_error
+                else "No real price found for this strike/expiry — type your own price. (No fabricated prices, ever.)"
+            )
         ),
+        "error": quote_error,
     }
 
 
@@ -305,10 +341,27 @@ def get_expiries() -> dict[str, Any]:
             }
         )
 
+    # The desk assumes he carries a position overnight (he arrives at 2:30 pm
+    # for swing and positional trades), so it needs the next trading day to
+    # send as the planned exit. Computed here from the NSE holiday file so the
+    # browser never guesses at a holiday.
+    next_trading_day: Optional[str] = None
+    try:
+        candidate = today + timedelta(days=1)
+        for _ in range(15):
+            if is_trading_day(candidate):
+                next_trading_day = candidate.isoformat()
+                break
+            candidate += timedelta(days=1)
+    except Exception as e:  # noqa: BLE001 - reported as unavailable, never guessed
+        logger.warning("Next trading day could not be computed: %s", e)
+
     return {
         "expiries": items,
         "weekly_expiry": meta.get("weekly_expiry"),
         "monthly_expiry": meta.get("monthly_expiry"),
+        "today": today.isoformat(),
+        "next_trading_day": next_trading_day,
     }
 
 
@@ -615,7 +668,9 @@ def get_vix_history(
 
         dates = [r["date"] for r in rows]
         values = [float(r["vix_close"]) for r in rows]
-        current_vix = values[-1] if values else 0.0
+        # At least 20 real rows are guaranteed above, so the last close is
+        # real. No zero fallback: a VIX of zero was never a measurement.
+        current_vix = values[-1]
 
         # 1-year percentile stats
         sorted_vals = sorted(values)
@@ -634,7 +689,8 @@ def get_vix_history(
 
         # Current VIX percentile rank
         below_count = sum(1 for v in values if v < current_vix)
-        percentile_rank = round((below_count / n) * 100, 1) if n > 0 else 50.0
+        # n >= 20 here. A "50th percentile" default was a fabricated regime.
+        percentile_rank = round((below_count / n) * 100, 1)
 
         # Regime classification
         if percentile_rank < 25:

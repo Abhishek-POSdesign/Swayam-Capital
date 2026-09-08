@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setupTestDOM } from './setup_test_dom.js';
 import { initHeader } from '../src/components/header.js';
-import { NiftySnapshotCardComponent } from '../src/components/nifty-snapshot-card.js';
 import { AIBriefCardComponent } from '../src/components/ai-brief-card.js';
 
 describe('BUILD-9-FIXES-A Frontend Enhancements', () => {
@@ -40,36 +39,8 @@ describe('BUILD-9-FIXES-A Frontend Enhancements', () => {
     expect(localStorage.getItem('swayam-theme')).toBe('auto');
   });
 
-  it('2. NIFTY snapshot renders Cash and F&O panes with freshness badges', async () => {
-    const card = new NiftySnapshotCardComponent(container);
-    card.data = {
-      cash_pane: {
-        spot: 24864.20,
-        day_change_pct: 0.09,
-        spot_freshness: 'LIVE',
-        range_20d: { low: 24200, high: 25100 },
-        sentiment: 'Neutral',
-      },
-      fno_pane: {
-        weekly_expiry: '2026-09-08',
-        weekly_dte: { formatted: '2 calendar days · 2 trading sessions' },
-        expiry_freshness: 'CALCULATED',
-        institutional: {
-          fii_cash_net_cr: -485.50,
-          fii_cash_freshness: 'PREVIOUS SESSION',
-          fii_fno_net_contracts: '+14,230',
-        },
-      },
-    };
-    card.render();
-
-    expect(container.textContent).toContain('NIFTY 50 SNAPSHOT');
-    expect(container.textContent).toContain('24,864.20');
-    expect(container.textContent).toContain('2026-09-08');
-    expect(container.textContent).toContain('LIVE');
-    expect(container.textContent).toContain('CALCULATED');
-    expect(container.textContent).toContain('PREVIOUS SESSION');
-  });
+  // Test 2 covered the NIFTY snapshot card, deleted in round 2: no page mounts
+  // it and it was the only place the invented 68.5% rollover was ever drawn.
 
   it('3. AI Brief renders markdown (bold, italic, code, bullets) as HTML elements', () => {
     const comp = new AIBriefCardComponent(container);
