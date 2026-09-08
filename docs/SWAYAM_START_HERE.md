@@ -10,20 +10,13 @@
 
 ## 0. THE PROMPT HE PASTES INTO A NEW CHAT
 
-```
-You are picking up Swayam Capital, my NIFTY options paper-trading terminal.
-I am not a developer. Plain English, never code to approve, give me a
-recommendation rather than a menu. Write in English, not Hinglish.
+**It lives in `docs/SUCCESSOR_PROMPT.md`**, in full, ready to copy. It is kept
+there rather than here so it can be maintained properly and so he never has to
+reconstruct it from memory.
 
-Read docs/SWAYAM_START_HERE.md first. It has everything. Do not ask me where
-my vault, database or cloud project is, and do not re-audit or re-plan.
-
-Two rules I will not repeat:
-- No fake data. Every number is real from FYERS or the database, or it says
-  unavailable. Never a placeholder shown as real.
-- Never tell me something is done, live or passing unless you checked it on the
-  running system that day and can show me the proof.
-```
+That file also carries a second half, "notes for the session that reads this",
+holding what was learned by talking to him rather than by reading the code.
+**Read both halves.**
 
 ---
 
@@ -77,59 +70,68 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: end of the 2026-09-08 evening session
+### Latest first: end of the 2026-09-08 LATE EVENING session
+
+**Everything built on 2026-09-08 is merged, deployed and digest-verified.**
 
 | | |
 |---|---|
-| Round 2 | **Built, reviewed, merged.** PRs #32 to #37. See `docs/PLAN.md` §1 |
-| Live revision | `swayam-dashboard-00043-8xq`, 100% of traffic |
-| ~~PR #35 did not reach `main`~~ | **FIXED by PR #37, 18:18 IST.** Verified by image digest: revision 00043 runs the image built from `main` at `1699157`. **Every visual change is live.** |
-| **FYERS request budget** | **Was being exhausted by the desk: 46 refusals in 10 minutes, blank leg prices.** Fixed on branch `feature/swayam-desk-live-ticks-018`. `docs/PLAN.md` §1a |
-| **Data health on screen** | **NEW.** A strip on Home and the desk says live / behind / at the close / no data, with the age and what to do. `/api/market/data-health` |
-| Prices after the close | **Real from FYERS.** Verified 17:44 IST: spot 23,635.1, all 26 option rows with a real last traded price, OI, change in OI and volume |
-| ~~Why the screen still looked dead~~ | **FIXED.** Two causes: the expiry list kept a dead expiry, and the FYERS budget was exhausted. `docs/PLAN.md` §2.8 and §1a |
-| The Trade Journal | **Three faults, none fixed.** A hardcoded Rs 5,00,000 margin base, a database write fired by opening the page, and analytics that do not exclude the 81 quarantined test rows. `docs/PLAN.md` §2.2 |
-| ~~The deleted reward-to-risk rule~~ | **REMOVED.** `docs/PLAN.md` §2.9. `no_single_leg` is still evaluated; ask him before removing that one too |
-| Recorder | **DEPLOYED 2026-09-08 19:05 IST**, on his go. Revision `swayam-recorder-00002-lez`. Proven: starts, refuses correctly out of hours, reads the token, FYERS returns 82 real rows. **Not proven until 09:15 tomorrow: that it writes to the bucket.** And its Greeks and spot came back as zeros in a local probe. `docs/PLAN.md` §2.10 |
-| Next job after this | `docs/CALENDAR_BUILD_BRIEF.md`. Ten of his 21 trades are calendars |
+| Live revision | `swayam-dashboard-00045-lg2`, running the image built from `main` at `573cd6b`. Checked by digest, not assumed |
+| Rounds 2 and 3 | **Merged and live.** PRs #32 to #39. The desk and Home are the pages he approved |
+| **The FYERS request budget** | **Was being exhausted by the desk**: 46 refusals in ten minutes, blank leg prices, three 503s on spot. **Fixed.** `src/swayam/api/chain_feed.py`. The live site has since served 124 leg requests with **zero** refusals |
+| **Data health on screen** | **NEW and important.** `/api/market/data-health` is the ONE clock. A strip on Home and the desk says live, behind, at the close, or no data, with the age and what to do |
+| The after-hours blackout | **Fixed at source**, `services/expiry.py`. An expiry dies at 15:30 on its own day and every caller inherits that |
+| "LIVE" over a closing price | **Found in four places and fixed in all four.** Home's NIFTY badge, the desk's spot chip, the Sectors card, and the `spot_live` flag they all read |
+| The deleted reward-to-risk rule | **Removed.** `no_single_leg` is still evaluated; the desk does not render it. **Ask him before removing that one too** |
+| Recorder | **Deployed** 19:05 IST, `swayam-recorder-00002-lez`. Proven: starts, refuses correctly out of hours, reads the token, and FYERS returns 82 real option rows to its fetch path. **NOT proven: that it writes to the bucket.** And spot plus every Greek came back `0.0` in a local probe. `docs/PLAN.md` §2.10 |
+| **The live market test** | **NOT DONE. This is the gate to paper trading.** `docs/PLAN.md` §1. Nothing from rounds 2 and 3 has been seen with a live market or a real open position |
+| Next job after the test | The Trade Journal's four faults. `docs/PLAN.md` §2.2 |
+
+Tests, run 2026-09-08 evening: **Python 413 pass, 1 fail**; **JavaScript 216
+pass, 0 fail** across 34 files, including a real bundle. The single failure is
+`test_notifications` dispatch, confirmed identical on a clean tree by stashing
+every change, so it pre-dates this work. **The old `test_market` option-chain
+failure is gone**; round 2 fixed it, so there is ONE long-standing failure now,
+not two. Any document saying two is stale.
+
+Migrations: 20 applied, 0 pending.
 
 ### Earlier the same day, verified 2026-09-08
 
 | | |
 |---|---|
-| Test suite writing to his record | **FIXED.** 81 rows before a full run, 81 after. |
-| The two late fixture rows | **QUARANTINED.** Zero open positions. |
-| Risk panel showing 174% for 1.74% | **FIXED**, with a regression test. |
-| One click, one trade | **DONE.** Idempotency key plus `swayam_execution_attempts`. |
-| A note can never fail a trade | **DONE.** `swayam_journal_outbox` plus `scripts/drain_journal_outbox.py`. |
-| Recorder | **FIXED.** Was missing `run.invoker`. Records from 09:15 IST. |
-| AI reads So Far Today | **DONE.** Section 15 of the context, cache only. |
-| AI reads readiness | **FIXED.** The query had never once run (Postgres 42703). |
-| FYERS WebSocket library | **UNBLOCKED.** Needed `setuptools<81`. `FyersDataSocket` imports. |
-| Drive API | **ENABLED** on the project. |
-| Google sign-in | **ON and verified 2026-09-08.** He signed in successfully. |
-| Site is public | **NO.** `allUsers` removed. Every path, on the custom domain AND the raw run.app URL, returns 302 to Google. The API answers "Invalid IAP credentials: empty token". |
-| `swayam-ai-compaction` | **RUNNING again** through IAP, audience set to the IAP client id. |
-| Home and Strategy Desk | **REBUILT AND LIVE** on revision `swayam-dashboard-00037-7cz`. Verified with the market open: live balance, live chain prices, correct payoff maths. |
-| Deploying | Cloud Build trigger `swayam-main-deploy` on `main`. **Merge one PR, wait for the green tick, then merge the next** — two at once races two deploys and the wrong one can win. |
-| Real-money trading | **Code-blocked by absence.** No order-placement code exists anywhere. |
-
-Tests, run 2026-09-08 evening: **Python 394 pass, 1 fail**; **JavaScript 206
-pass, 0 fail** across 34 files, including a real bundle. The single failure is
-`test_notifications` dispatch, confirmed identical on a clean tree, so it
-pre-dates this work. **The old `test_market` option-chain failure is gone**;
-round 2 fixed it, so there is one long-standing failure now, not two.
+| Test suite writing to his record | **FIXED.** 81 rows before a full run, 81 after. It used to go 67 to 79 to 81 |
+| The two late fixture rows | **QUARANTINED.** Zero open positions |
+| Risk panel showing 174% for 1.74% | **FIXED**, with a regression test |
+| One click, one trade | **DONE.** Idempotency key plus `swayam_execution_attempts` |
+| A note can never fail a trade | **DONE.** `swayam_journal_outbox` plus `scripts/drain_journal_outbox.py` |
+| AI reads So Far Today and readiness | **DONE.** The readiness query had never once run; Postgres 42703 is gone |
+| FYERS WebSocket library | **UNBLOCKED.** Needed `setuptools<81` |
+| Google sign-in | **ON and verified.** Every path 302s to Google, on the domain and the raw run.app URL |
+| Site is public | **NO.** `allUsers` removed |
+| Real-money trading | **Code-blocked by absence.** No order-placement code exists anywhere |
+| Deploying | Cloud Build trigger `swayam-main-deploy` on `main`. **Merge one PR, wait for the green tick, then merge the next** |
 
 ---
 
+**THE TOKEN, WHICH USED TO BITE HIM EVERY DAY.** `FYERS_ACCESS_TOKEN` reaches
+Cloud Run as a `secretKeyRef` with key `latest`, and Google resolves `latest`
+**once, at container start**, so a refreshed token never reached a container
+that started earlier and the site showed no prices all day.
 
-**THE ONE THING THAT WILL BITE HIM EVERY MORNING.** `FYERS_ACCESS_TOKEN`
-reaches Cloud Run as a `secretKeyRef` with key `latest`, and Google resolves
-`latest` **once, at container start**. So refreshing the token at 08:00 does
-NOT reach a container that started earlier, and the site shows
-"Live NIFTY price unavailable" all day with nothing explaining why. Until the
-app reads the secret at runtime (PLAN.md section 2.4), the only fix is to
-restart or redeploy the service after a refresh.
+**This is now solved in code.** `src/swayam/services/fyers_token.py` reads
+Secret Manager at request time with a 60-second cache whenever `K_SERVICE` is
+set, and the dashboard's service account holds `secretmanager.secretAccessor`
+on the secret. The recorder does the same through `cloud/recorder/config.py`.
+A refreshed token should therefore be live within a minute, with no restart and
+no redeploy.
+
+**It has never been proven in production.** It is one of the readings in
+`docs/PLAN.md` §1. Until then, if prices are missing after a refresh, a redeploy
+is still the escape hatch.
+
+**And tell him to refresh it when he sits down, not before.** A token generated
+around 5 am was rejected by 13:30 with FYERS code -15.
 
 ## 4. THE APPROVED DESIGNS. Build these; he has signed them off.
 
@@ -167,61 +169,46 @@ His decisions, do not relitigate:
 
 ## 5. WHAT IS NOT DONE. Do not claim any of these.
 
-1. **The two page rewrites.** `web/src/pages/home.js` and
-   `web/src/pages/strategy-builder.js` still carry the OLD layout. The designs
-   above are approved and the plumbing is ready (`api.getRiskCapital` added, AI
-   context wired) but the page files themselves are untouched. This is the next
-   job and it is the big one. Preserve the class contracts: `HomePage` and
-   `StrategyBuilderPage` each need `constructor(container, options)`, `init()`
-   and `destroy()`; the builder also needs `refreshPositions()` and a
-   `payoffChart` with `retheme()`; home needs a `niftyChart` object with
-   `retheme()`, because `main.js` calls it unguarded and will throw otherwise.
-   Home currently mounts these components, and he wants the AI chat kept
-   exactly as it is: PWA prompt, readiness ritual, verdict card, KPI history,
-   So Far Today, NIFTY snapshot, chat surface, macro events.
-2. **Cloud writes to the vault. BLOCKED ON A GOOGLE POLICY, NOT ON CODE.**
-   `scripts/link_google_drive.py` is written and works. A service account can
-   never do this (zero Drive quota since June 2023; Shared Drives and
-   domain-wide delegation both need Workspace, which he does not have), so the
-   app must act as him via OAuth. Scope is `drive.file`, which is
-   NON-SENSITIVE and needs no Google verification.
-   **The blocker:** the consent screen is in Testing, so sign-in returns 403
-   access_denied. Adding himself as a test user works immediately but the
-   refresh token then **expires every 7 days**, for every scope except name,
-   email and profile. Publishing gives an indefinite token and still needs no
-   verification, but Google asks for a **privacy policy and terms of service
-   URL on a domain he owns**, and his domain now sits behind sign-in. That is
-   the open question: where those two pages live. **Do NOT upload a logo on
-   the branding page; the console states that forces verification.**
-   Nothing is lost meanwhile: the outbox holds the note and the local drainer
-   completes it.
-
-2b. **Old wording, superseded:** The Drive API is enabled and the folder is
-   shared, but **a service account can never do this**: zero storage quota
-   since June 2023, and Shared Drives and domain-wide delegation both require
-   Workspace, which he does not have on a personal Gmail account. The only
-   route is **OAuth as Abhishek himself with the `drive.file` scope**, which is
-   non-sensitive and needs no security assessment, so the sign-in does not
-   expire. `drive.file` can only touch what the app created, so the app creates
-   its own folder once and he drags it into the vault; access follows the
-   folder, not the path. The outbox already means no note is lost meanwhile.
-3. **Charges at execution.** `ESTIMATED_CHARGE_PER_LEG_INR` (₹150) is still
-   used on close. The real versioned charge engine exists and the risk gate
-   uses it.
-4. **Kill switch.** None exists.
-5. **Multi-expiry valuation**, so calendars are visible but blocked from
-   execution. Ten of his 21 historical trades are calendars. Biggest single gap.
-6. **Backups have run once, by hand.** `scripts/backup_supabase.py --gcs` works
-   and the restore drill passed on 19 tables and 600 rows. Nothing is scheduled.
-7. **Journal analytics does not filter `provenance`**, so any win rate would be
-   computed from the 81 quarantined test rows. Fix before showing performance.
-8. **Volume and market breadth.** Volume is available from FYERS and unread.
-    Breadth has no free source; both pages say `unavailable`.
-9. **Live ticks.** `/ws/spot` accepts a connection and answers ping with pong.
-    Nothing is ever pushed. The library now imports, so this is buildable.
-10. **The two long-standing test failures.**
-
----
+1. **THE LIVE MARKET TEST. This is the gate to paper trading.** Nothing from
+   rounds 2 and 3 has been seen with a live market, and **nothing at all has
+   been seen with a real open position, because he has never had one.** The Home
+   positions strip's colour, its combined profit and loss, its running-loss
+   headroom, the desk's margin-used figure feeding rule 4, and the Trade Journal
+   row are all verified only against injected data. `docs/PLAN.md` §1 is the
+   script, sized for his 90 minutes.
+2. **The Trade Journal's four faults**, which are the next job. A hardcoded
+   ₹5,00,000 margin base, a database write fired by opening the page, analytics
+   that never filter `provenance`, and two different marks for "this is not a
+   real trade" that can disagree. That last one is his own question, and round 3
+   put a win rate on his home page, which raises the stakes. `docs/PLAN.md` §2.2.
+3. **The recorder writing to its bucket**, and whether its Greeks and spot
+   columns are real or zeros. `docs/PLAN.md` §2.10.
+4. **Calendars.** Briefed and ready, `docs/CALENDAR_BUILD_BRIEF.md`. Ten of his
+   twenty-one historical trades are calendars and they are blocked from
+   execution. **His decision whether he needs them to start. Do not push him.**
+5. **The AI chapter.** Not started, and he asked for it to be in the plan.
+   Grounded Google Search already exists and is wired to one feature only.
+   `docs/PLAN.md` §3.
+6. **Cloud writes to the vault. BLOCKED ON A GOOGLE POLICY, NOT ON CODE.**
+   `scripts/link_google_drive.py` works. A service account can never do it: zero
+   Drive quota since June 2023, and Shared Drives and domain-wide delegation
+   both need Workspace, which he does not have. So the app must act as him via
+   OAuth with the `drive.file` scope, which is non-sensitive and needs no
+   verification. **The blocker is where his privacy policy and terms pages
+   live**, because publishing the consent screen requires them on a domain he
+   owns and his domain sits behind sign-in. Staying in Testing works but the
+   token dies every 7 days. **Ask him; do not guess. And never upload a logo on
+   the branding page** — the console states that forces verification. Nothing is
+   lost meanwhile: the outbox holds the note and the local drainer completes it.
+7. **Charges at execution.** `ESTIMATED_CHARGE_PER_LEG_INR` (₹150) is still used
+   on close. The real versioned charge engine exists and the risk gate uses it.
+8. **Kill switch.** None exists.
+9. **Scheduled backups.** `scripts/backup_supabase.py --gcs` works and the
+   restore drill passed on 19 tables and 600 rows. It has run **once, by hand**.
+10. **Market breadth beyond the NIFTY 50 constituents.** No free source; the
+    pages say `unavailable`, which is correct.
+11. **The one long-standing test failure**, `test_notifications` dispatch. Do
+    not weaken the assertion.
 
 ## 6. HOW HE WORKS. Non-negotiable.
 
@@ -232,7 +219,11 @@ His decisions, do not relitigate:
 - **Never work on `main`.** Feature branch, pull request, he clicks Merge. The
   PR is his only revert button.
 - **Ask when unsure.** He said so explicitly, and mid-build is fine.
-- He trades **1 to 2 pm IST** and works the night shift.
+- **He is NOT at his desk in the morning.** Night shift. He wakes around 1 pm
+  IST and is at the screen by about 2 pm. He trades **1 to 2:30 pm**, mostly
+  swing and positional. **His live window is 60 to 90 minutes a day.** Never
+  plan anything for 09:15, and never write "tomorrow morning" in a plan for
+  him. He has corrected this more than once.
 - **Overstating anything is worse than saying it is not done.** He has burned
   days and real money on false status reports.
 

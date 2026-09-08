@@ -21,21 +21,40 @@ than starting a new document. That is the whole system.
 
 ---
 
+## 0. THE THING MOST LIKELY TO BE GOT WRONG
+
+**He is not at his desk in the morning.** He works a night shift, wakes around
+1 pm IST, and is at the screen by about 2 pm. He trades between 1 and 2:30 pm,
+mostly swing and positional, rarely intraday.
+
+So a plan that says "tomorrow morning, with the market open" is a plan he cannot
+run. **His live window is roughly 14:00 to 15:30 IST, which is 60 to 90 minutes,
+once a day.** Anything needing his hands must fit inside it, in priority order.
+Anything readable from the logs afterwards must not consume any of it.
+
+Every dated plan in this file assumes that. Earlier versions did not, and he has
+had to correct it more than once.
+
+---
+
 ## 1. IN FLIGHT RIGHT NOW
 
-### Where this stands, end of the 2026-09-08 EVENING session
+### Where this stands, end of the 2026-09-08 LATE EVENING session
 
-Round 2 is **built, reviewed and merged**, and **the mis-merge is fixed**. PR #37
-put the desk work on `main`; Cloud Run is on `swayam-dashboard-00043-8xq`, whose
-image digest was checked against the build for `main` at `1699157`. **Every
-visual change is live.**
+**All merged, all deployed, verified by image digest rather than by hope.**
 
-**A new fault was found and fixed the same evening: the desk was exhausting the
-FYERS request budget.** See §1a. Branch `feature/swayam-desk-live-ticks-018`.
+| | |
+|---|---|
+| Live revision | `swayam-dashboard-00045-lg2`, running the image built from `main` at `573cd6b` |
+| Round 2 | PRs #32 to #37. The desk and Home rebuilt to his approved prototypes |
+| The FYERS request budget | **Fixed**, PR #38 |
+| Round 3, Home's dead space | **Fixed**, PR #39 |
+| The recorder | **Deployed** 19:05 IST, revision `swayam-recorder-00002-lez`. Its first real chance to write is 09:15 on the next trading day |
+| Tests | Python **413 pass, 1 fail**. JavaScript **216 pass, 0 fail**. The one failure is `test_notifications` dispatch, confirmed identical on a clean tree, so it pre-dates all of this |
 
-**His deadline: Home and the Strategy Desk right by Friday 2026-09-11, so paper
-trading starts Monday 2026-09-14.** Wednesday, Thursday and Friday are the
-working days. There is room; do not rush and do not skip verification.
+**His deadline is Friday 2026-09-11.** Paper trading starts when the live
+verification passes, not on a fixed date. His words: "I'm not keeping a minimum
+fixed date, but a deadline is fixed."
 
 ### The mis-merge. RESOLVED 2026-09-08 by PR #37. Kept for the lesson.
 
@@ -107,7 +126,7 @@ shut, on the same screen as a strip saying CLOSED. Both now follow the market
 clock. The timestamp still names when the price was read, which was always the
 honest half.
 
-### 1b. Round 3, the UI brief. BUILT 2026-09-08 night, awaiting his merge.
+### 1b. Round 3, the UI brief. MERGED AND LIVE 2026-09-08 night, PR #39.
 
 `docs/UI_BUILD_BRIEF_ROUND_3.md`, written from his own sweep of the live pages.
 Branch `feature/swayam-round3-home-and-chat-019`. **Note the brief itself was
@@ -154,60 +173,84 @@ fourth places this has happened. `nifty_snapshot.py` is untouched, as §8 of the
 brief requires, but no label on Home now says LIVE unless
 `/api/market/data-health` says the market is open.
 
-**Still open, and it is the backend half of §8, not this branch.** The Options
-card still reads "Days to weekly expiry 0d · 1 session" on the evening of an
-expiry day, because `weekly_expiry` in `nifty_snapshot.py` reads the raw
-metadata rather than the corrected endpoint. Confirmed live at 20:51 IST on
-2026-09-08. That is a value, not a label, and the frontend cannot correct it
-without inventing a number.
+**The backend half is now also FIXED**, in the close-out change. The rule for
+when an expiry stops existing moved to `services/expiry.py`, so every caller
+inherits it instead of each one deciding for itself. The `spot_live` flag that
+made four screens claim LIVE is fixed at source in the same change.
 
 **Nothing here has been seen with a real open position**, because he has never
 had one. He has agreed to take a dummy paper position with the market open.
 Until that happens, the strip's profit, loss, colour and headroom are verified
 only against injected data, not against his own trade.
 
-### Tomorrow morning, and only with the market open
+### THE LIVE VERIFICATION. His next session at the desk. THIS IS THE GATE.
 
-None of these can be claimed before 09:15 IST. Do not describe any of them as
-working until they have been run and the answer read.
+**Nothing below has ever been run against a live market since rounds 2 and 3
+landed.** Until it has, nothing here may be described as working. Read section 0
+first: he has 60 to 90 minutes, from about 14:00 IST, and not a minute at 09:15.
 
-1. **Do prices actually tick.** Watch `frames_sent` climb on
-   `/api/market/spot-feed/status`. A socket that merely opened is not a tick.
-2. **Do leg prices move on their own** within a minute of a real market move,
-   on the desk, without touching anything.
-3. **Do the rules answer every time.** Call `/api/strategy/validate` twenty
-   times against the live site and expect twenty 200s. Before round 2 the same
-   test gave roughly half 500s.
-4. **Does the recorder write its first file** into
-   `gs://swayam-capital-options-data`. The bucket is empty; one object proves it.
-5. **Is the token re-read without a restart.** Refresh it, wait, and confirm the
-   live site still prices without a redeploy.
-6. **Put-call ratio and max pain against a live chain**, not the dead one.
-7. **One question to the AI**, "what is my running-loss cap today?" It must
-   answer with 1% of the live balance and name FYERS. Costs money; ask once.
+#### What he does. Four actions, about 30 minutes of his 90.
 
-### After market, any time. In this order.
+Ordered so that if he runs out of time, the things that block later work are
+already done.
 
-1. ~~**Deploy the recorder.**~~ **DONE 2026-09-08 19:05 IST**, on his explicit
-   go. Revision `swayam-recorder-00002-lez` is ACTIVE and answers HTTP 200.
-   **Proven:** it starts, runs the new code, refuses correctly outside market
-   hours, reads the token, and FYERS returns 82 real option rows to its own
-   fetch path. **NOT yet proven:** that it writes to `gs://swayam-capital-options-data`
-   under its own identity. Only 09:15 IST tomorrow can show that. All three
-   permissions were verified present at resource level first: `run.invoker` on
-   the service, `storage.objectAdmin` on the bucket, `secretmanager.secretAccessor`
-   on the token. **Open question for the first file: spot and every Greek came
-   back as 0.0 in the local probe.** See §2.10.
-2. ~~**The after-hours blackout.**~~ **FIXED**, and verified against real data at
-   19:08 IST on a weekly expiry day. See §2.8.
-3. **The Trade Journal, all three faults in one pass.** See §2.2. From Monday
-   that page holds his paper record, so it is on the critical path. **This is
-   the next job.**
-4. ~~**Remove the deleted reward-to-risk check.**~~ **DONE.** See §2.9.
-5. **Close-out.** Delete merged branches, remove the leftover worktree
-   `.claude/worktrees/swayam-capital-ui-build-f2a909`, record what is live.
-6. **The calendar backend.** `docs/CALENDAR_BUILD_BRIEF.md` PR 1. Independent of
-   everything above and can start any time.
+1. **Refresh the FYERS token** with `.\Refresh-Token.ps1` as soon as he sits
+   down, not before. A token generated pre-dawn has been rejected by 13:30.
+   **No redeploy or restart should be needed.** That is the fourth reading below
+   and it has never been proven in production.
+2. **Open the Strategy Desk, load a four-leg structure, leave it open** for the
+   session. That is the chain-feed load test and it runs in the background at no
+   cost to him.
+3. **Take one dummy paper position, then close it.** He has never had one.
+   *Nothing* about an open position has been seen with real data: not the Home
+   strip's colour, not its combined profit and loss, not the desk's margin-used
+   figure feeding rule 4, not the Trade Journal row. Closing it also gives the
+   record its first complete trade.
+4. **Ask the AI exactly one question:** "what is my running-loss cap today?" It
+   must answer with 1% of the live balance and name FYERS as the source. It
+   costs money, so once.
+
+#### What he reads back. One command.
+
+```
+gcloud storage ls -r gs://swayam-capital-options-data/
+```
+
+One object proves the recorder finally writes. **Then look inside it.** In a
+local probe on 2026-09-08 the price, volume and open-interest columns were real
+but `underlying_spot` and every Greek came back as `0.0`. See section 2.10.
+
+Beyond that he only glances at the desk: does the data-health strip read **LIVE**
+in green, and does the age beside it stay small.
+
+#### What is read from the logs afterwards, using none of his time
+
+- **FYERS refusals stayed at zero** under a real four-leg load. `fyers_refusals`
+  on `/api/market/data-health`, and `"request limit reached"` in the Cloud Run
+  logs. The live site has already gone from 46 refusals in ten minutes to zero
+  across two hours and 124 requests, but that was after the close.
+- **The tick feed pushed frames.** `frames_sent` climbing on
+  `/api/market/spot-feed/status`. A socket that opened is not a socket that ticks.
+- **The rules answered every time.** Twenty calls to `/api/strategy/validate`,
+  twenty 200s. Before round 2 the same test gave roughly half server errors.
+- **The token was re-read without a restart.** `services/fyers_token.py` reads
+  Secret Manager at request time with a 60-second cache, and the dashboard's
+  service account holds `secretmanager.secretAccessor` on the secret. Code and
+  permission are both in place. **Never proven in production.**
+- **Put-call ratio and max pain against a live chain**, not a dead one.
+
+### After the live test, in order
+
+1. **The Trade Journal, all four faults in one pass.** Section 2.2. From his
+   first paper trade that page holds his record, so it is the last thing on the
+   critical path. **This is the next job.**
+2. **Scheduled backups.** Section 2.6.
+3. **Charges at execution.** Section 2.3.
+4. **The kill switch.** Section 2.5.
+5. **The calendar backend.** Section 3, and `docs/CALENDAR_BUILD_BRIEF.md` PR 1.
+   Independent of everything above and can start any time.
+6. **The AI chapter.** Section 3, after the above. He named it himself as
+   something that must be in the plan.
 
 ### On calendars, his position as of 2026-09-08
 
@@ -242,29 +285,41 @@ the app into verification.
 Nothing is lost meanwhile. The outbox holds the note and the local drainer
 completes it, and his PC is on whenever he trades.
 
-### 2.2 The Trade Journal, three faults in one pass
+### 2.2 The Trade Journal, and how a row is marked not-real — THE NEXT JOB
 
-Found in review on 2026-09-08. All three live on the same page, so fix them
-together, and before any performance figure appears on a screen.
+From his first paper trade this page holds his record, so it is the last thing on
+the critical path. **Four faults, one pass.**
 
-1. **A ninth invented constant.** `api/routes/journal.py` lines 297 and 542
-   hardcode a margin base of `500000.0`, used for
-   `cumulative_pnl_pct_of_margin` and `max_drawdown_pct_of_margin`. Rendered by
-   `web/src/components/kpi-strip.js`. It is a different made-up number from the
-   Rs 8,50,000 the AI was using, with the same disease. Take live capital from
-   `services/capital.py`, as execution and positions now do.
+1. **A ninth invented constant.** `api/routes/journal.py` hardcodes a margin base
+   of `500000.0` in two places, used for `cumulative_pnl_pct_of_margin` and
+   `max_drawdown_pct_of_margin`, rendered by `web/src/components/kpi-strip.js`.
+   Take live capital from `services/capital.py`, as execution and positions do.
 2. **The page writes to the database when you open it.**
-   `web/src/pages/journal.js:58` fires `POST /api/journal/archive-test-trades`
-   on the first load of each browser session, gated only by `sessionStorage`.
-   Nothing is clicked. Pre-existing and wrong; make it explicit or remove it.
-3. **Analytics does not filter `provenance`**, so any win rate or cumulative
-   profit would be computed from the 81 quarantined build-and-test rows.
+   `web/src/pages/journal.js` fires `POST /api/journal/archive-test-trades` on
+   the first load of each browser session, gated only by `sessionStorage`.
+   Nothing is clicked. Make it explicit or remove it.
+3. **Analytics does not filter `provenance`.** More urgent than it was, because
+   round 3 put a win rate on his home page.
+4. **Two marks for one idea, which is his own question.** In his words: "I'm not
+   aware of how you are making a row. Know that it is not a real trade, and I am
+   never aware of it."
 
-### 2.2b Journal analytics must exclude test rows
-`swayam_positions` and `swayam_journal_entries` both carry `provenance`. The
-analytics endpoint does not filter on it, so any win rate or cumulative profit
-today would be computed from 81 rows of build-and-test data. **Fix this before
-any performance figure appears on a screen.**
+   There are **two** different marks and they can disagree. One is the
+   `provenance` column, which is the column built for this. The other is
+   `status = 'archived'`, applied by a hardcoded date cutoff of 2026-09-06.
+
+   **Verified in his database 2026-09-08:** all 81 rows are
+   `mode=paper, status=archived, provenance=build_test`, and Home's record card
+   asks for `status=closed`, so it reads zero rows. **The sentence on his screen
+   saying they are excluded is true today.** But it is true by coincidence: it
+   works only because one row cannot be both archived and closed. Nothing
+   consults `provenance`. If a test ever leaves a row as `closed`, which is
+   exactly what used to happen when his count climbed 67 to 79 to 81, it lands in
+   the win rate on his home page with nothing to stop it.
+
+   **Fix:** one flag, `provenance`, filtered in the analytics query, and shown on
+   screen so he can always see which rows are excluded and why. Retire the
+   date-cutoff archive path.
 
 ### 2.3 Charges applied at execution
 The versioned charge engine is real and the risk gate uses it. The execution
@@ -292,10 +347,15 @@ Run it nightly and show the last-backup age on screen. Say plainly that it
 protects against damage inside the project, not loss of the project itself,
 which needs a second project he cannot currently create.
 
-### 2.7 The two long-standing test failures
-`tests/api/test_market.py::test_get_option_chain_returns_strikes` and
-`tests/test_notifications.py::test_execute_endpoint_best_effort_dispatch_on_success`.
-Both pre-date all of this. Do not "fix" them by weakening assertions.
+### 2.7 The ONE long-standing test failure
+`tests/test_notifications.py::test_execute_endpoint_best_effort_dispatch_on_success`
+fails with `ValueError: not enough values to unpack (expected 3, got 2)` at
+`execution.py:244`. Confirmed identical on a clean tree by stashing every change,
+so it pre-dates all of this. **Do not "fix" it by weakening the assertion.**
+
+Its former sibling, the `test_market` option-chain failure, was genuinely fixed
+in round 2. **There is one now, not two.** Any document still saying two is
+stale.
 
 ---
 
@@ -327,8 +387,20 @@ close are labelled `closing`, never `live`.
 weekly expiry evening: the list now starts at 15 Sep (7d), `expired_today`
 names 08 Sep, and the weekly badge sits on 15 Sep.
 
-There was a **second cause of the same symptom**, not diagnosed here at the
-time: the FYERS budget exhaustion in §1a. Both are fixed.
+**Fixed AT SOURCE in the close-out change, and this matters.** The first fix
+lived in `api/routes/market.py`, so `services/nifty_snapshot.py` bypassed it and
+Home's Options card still counted down to a dead contract. The rule now lives in
+`services/expiry.py` as `session_is_over()` and `expiry_is_alive()`, and
+`get_expiry_metadata()` applies it, so **every caller inherits it**. The metadata
+also returns `expired_today`, so a screen can say why a selection vanished
+instead of switching under him. The countdown stays relative to today, not to
+tomorrow, which was the subtle trap: rolling the weekly forward must not roll the
+clock or every figure on screen would be short by a day.
+
+There was a **second cause of the same symptom**, not diagnosed here at the time:
+the FYERS budget exhaustion in §1a. Both are fixed. `tests/test_expiry_lifecycle.py`
+holds all of it, 19 tests, including the bell at exactly 15:30 and a naive
+datetime being read as IST rather than UTC.
 
 ### 2.9 The deleted reward-to-risk rule is still running — FIXED 2026-09-08
 
@@ -360,7 +432,9 @@ available at any time and should not be zero.
 those columns are zero every minute, the recorded history is far less useful
 than it looks, and a calendar backtest is the thing it exists to feed.
 
-**Check the first real file after 09:15 tomorrow before trusting the recorder.**
+**Check the first real file before trusting the recorder.** It records from
+09:15 on its own, so by the time he sits down at 14:00 there should be hours of
+it waiting. He does not need to be awake for it.
 One object in `gs://swayam-capital-options-data` proves it writes; reading the
 columns proves it is worth writing.
 
@@ -401,10 +475,32 @@ metrics strip, the ready-made grid, and execution on the page. Open interest
 bars on the payoff chart and the standard-deviation table are the two pieces
 the prototypes do not yet carry; add them with this work.
 
-### Then: the AI chapter
-He has said repeatedly this comes after the infrastructure is solid. The four
-learning loops are described in the vault at
-`06 - Platform Plan/Self-Improving Agent Integration.md`. Do not start it early.
+### Then: the AI chapter. He asked for it to be in the plan.
+
+He has said repeatedly this comes after the plumbing is solid, and he named it
+again on 2026-09-08 as something that must appear here. **Not started.**
+
+**What already works, so nobody rebuilds it.** The chat is real and grounded: it
+reads his Method rules, open positions, journal, saved memory, readiness form and
+"So Far Today". Macro events reach it automatically through
+`ai/context_builder.build_planning_context()`, so he never needs to paste them.
+The memory scaffold exists and the compaction scheduler is live. And **Google
+Search grounding is already built and proven**, `src/swayam/ai/grounded.py`,
+Gemini through Vertex AI, wired to exactly one feature: the So Far Today summary.
+
+**The four learning loops** are described in his vault at
+`06 - Platform Plan/Self-Improving Agent Integration.md`. That document is the
+authority. Do not re-derive it and do not start early.
+
+**Event research, which he asked for by name.** His words: "Can my AI read this
+data and do its ground research, like internet search, and help me understand the
+effects of each event?" Yes, and most of it exists. `swayam_macro_events` already
+carries an `impact_brief` per highlighted event, written by
+`services/macro_curator.py`, and round 3 put it on screen. The missing half is
+pointing the grounded search at one event on demand, so he can ask what
+Thursday's US CPI means for a bear put spread he is carrying and get a sourced
+answer rather than a general one. **Scope it as a manual button on an event row,
+under the standing cost rule below.** Never a background job, never on page load.
 
 **Standing cost rule, which is not negotiable:** AI-heavy features are always a
 manual button, a 60-minute cache and a daily cap. Never fire on page load. Left
@@ -441,79 +537,51 @@ Kept short. Detail is in the git history and the pull requests.
 
 ---
 
-## 4b. WHAT HAPPENED ON 2026-09-08, AND WHAT I SAW
+## 4b. THE LESSONS. All learned the hard way, all silent when they happened.
 
-A long session. Recorded because the pattern matters more than the list.
+**Silent failure is the house pattern.** On 2026-09-08 three separate things had
+never once worked while something downstream reported success: the recorder had
+failed every minute for five days with a completely empty IAM policy, the AI's
+readiness query had always failed with Postgres 42703 while a test asserted the
+same non-existent columns, and the FYERS websocket library would not import at
+all. **When checking whether a thing works, invoke it and read what comes back.**
+Never a status field, never a log line saying "started", never a test that passes.
 
-**What I set out to do** was work plan v9's unfinished scope. **What I found**
-was that Release 1 had been handed over as complete while its own Steps 5, 6
-and 7 were untouched, and that two separate things had never worked at all
-despite being reported as fine.
+**Pushing to a branch after its pull request merged strands the work.** It
+happened **three times** on 2026-09-08. The third was the round 3 brief, pushed 38
+minutes after PR #38 merged, and the next branch had to rescue it. **`git fetch`
+and check the pull request state before every push.**
 
-**Three things had never once run, and nobody knew:**
+**Opening a pull request against another pull request's branch is not safe.**
+GitHub only retargets to `main` when the base branch is deleted on merge. PR #35
+merged into a dead end and the live site silently kept the old interface. Stack
+the work in one branch, or open the second pull request against `main` after the
+first has landed.
 
-- The **recorder** had failed every minute of every trading day since
-  3 September. One missing grant: the service had a completely empty IAM
-  policy, so nothing could invoke it. His options data bucket is still empty
-  and that data is not recoverable.
-- The **AI's readiness query** had never succeeded. It asked for four columns
-  that do not exist on that table, so every call failed with Postgres 42703.
-  The test asserted the same non-existent columns, which is how a permanently
-  broken query kept passing CI.
-- The **FYERS websocket library** would not import at all, because setuptools
-  81 removed a package it needs.
+**Merging two pull requests within seconds races two deploys and the wrong one
+can win.** Both build jobs deploy `swayam-dashboard`; the second arrives holding a
+stale version number and Cloud Run aborts it. Once the winner carried a
+documentation change and the loser carried the new pages, so the site restarted
+with a fresh token and the OLD interface. **Merge one, wait for the green tick,
+then merge the next.** A failed build is silent; nothing tells him.
 
-**The lesson, and it is the one worth carrying forward:** each of these failed
-*silently* and something downstream reported success anyway. When checking
-whether a thing works, invoke it and read what comes back. Do not read a status
-field, a log line that says "started", or a test that passes.
+**A word on a screen is a claim.** "LIVE" over a closing price was found in four
+separate places, all reading one backend flag that meant "FYERS answered". A
+label the API cannot honour is a claim, not a fact. The same shape of error is
+why a fix applied at one route left the identical bug alive in a service that
+read the source directly. **Fix the rule where the rule lives, not where the
+symptom showed.**
 
-**A mistake I made twice:** pushing commits onto a feature branch after its
-pull request had already been merged, stranding them with no revert button.
-The rule is in `CLAUDE.md`; I still did it. Check before pushing.
-
-**A mistake in my own script:** the step that removed public access was written
-so both the error and the exit code were discarded. It failed and reported
-success. Nothing was exposed, because sign-in intercepts first, but the site
-would have been public again the moment sign-in was switched off. The same
-shape of bug as the three above, written by me, on the same day I was fixing
-them.
-
-**What he decided, that changed the work:** the pages are replaced directly
-rather than built alongside; So Far Today moves inside the AI chat and the AI
-must read it; the AI chat itself is not to be touched; and the design is his
-four rules first, big numbers, black and white, nothing invented.
+**Two sessions in one working tree is hazardous.** It worked on 2026-09-08 only
+because the second session started cleanly off `main` after a merge. If two are
+needed at once, one takes a separate clone.
 
 ---
 
-## 4c. TWO TRAPS LEARNED 2026-09-08, BOTH SILENT
+## 5. THE REVIEW CHECKLIST, for any pull request touching the pages
 
-**Merging two pull requests within seconds races two deploys, and the wrong
-one can win.** Both build jobs tried to deploy `swayam-dashboard`. The first
-changed the service; the second arrived holding a stale version number and
-Cloud Run aborted it with `ABORTED: Conflict for resource`. The refusal was
-correct. The problem was *which* one lost: the winner carried a documentation
-change and the loser carried the new pages, so the site restarted with a fresh
-token and the OLD interface. Re-running the trigger against `main` fixed it.
-
-**Tell him: merge one PR, wait for the green tick, then merge the next.**
-And a failed build is silent. Nothing told him; he found it by looking. Same
-shape as the recorder failing every minute for five days unnoticed.
-
-**The token still needs a restart to reach the live site.** `FYERS_ACCESS_TOKEN`
-is wired as `secretKeyRef` with key `latest`, and Google resolves "latest" ONCE
-at container start. His 08:31 refresh could not reach a container started at
-23:27 the night before. He only escaped it because merging triggered a deploy.
-On a day with no deploy his terminal shows no prices all afternoon and nothing
-explains why. **This is section 2.4 and it is the highest-value hour of work
-left.**
-
----
-
-## 5. THE MORNING REVIEW CHECKLIST
-
-For the cloud session's pull request. **Do not let him merge before this
-passes.** Work through it in order and report honestly.
+**Do not let him merge before this passes.** Work through it in order and
+report honestly.
 
 1. **Search the diff for the prototype constants.** `SPOT`, `BAL`, `CAP1`,
    `CAP2`, `CAP5`, `LOT`, `AVG_MOVE`, `MARGIN_USED`, `MARGIN_CEILING`, `23779`,
@@ -536,6 +604,12 @@ passes.** Work through it in order and report honestly.
    the presets, dustbin icon, rules at the bottom with execute, margin first in
    the metric row, the payoff graph still draggable, ticker, NIFTY sidebar,
    ritual as a thin strip, record toggle, black and white theme, no purple.
-8. **Read what it says it could not verify**, and verify those things.
+8. **Confirm nothing says LIVE** unless `/api/market/data-health` says the
+   market is open. That endpoint is the one clock, and four screens have got
+   this wrong.
+9. **Confirm no purple, lilac or violet.** The accent is sage.
+10. **Confirm the payoff graph, its drag and its two sliders are untouched.**
+11. **Run both suites** and compare with the counts in section 1.
+12. **Read what it says it could not verify**, and verify those things.
 
 Then tell him plainly what is right, what is wrong, and whether to merge.

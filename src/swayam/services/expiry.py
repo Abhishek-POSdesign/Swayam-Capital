@@ -10,7 +10,7 @@ Holidays are adjusted to the previous trading day according to official NSE holi
 from __future__ import annotations
 
 import csv
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time as dtime, timedelta
 import json
 import logging
 from pathlib import Path
@@ -166,7 +166,41 @@ def _generate_fallback_tuesdays() -> set[date]:
     return res
 
 
-def get_expiry_metadata(ref_date: Optional[date] = None) -> dict[str, Any]:
+MARKET_CLOSE = dtime(15, 30)
+
+
+def session_is_over(now: Optional[datetime] = None) -> bool:
+    """True once today's 15:30 bell has rung, in IST.
+
+    The single place that answers "are today's contracts still alive". Two
+    callers used to answer it differently and one of them never asked at all.
+    """
+    tz = ZoneInfo(TIMEZONE)
+    current = now or datetime.now(tz)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=tz)
+    return current.astimezone(tz).time() > MARKET_CLOSE
+
+
+def expiry_is_alive(expiry: date, ref_date: date, now: Optional[datetime] = None) -> bool:
+    """Whether an expiry's contracts still exist and can be traded or priced.
+
+    Today's expiry stays alive right up to the bell, because until then it is
+    the live front month and he may well be trading it. After the bell those
+    contracts are gone: every price reads 0.05, which is what an expired option
+    is worth, and that is exactly what he reported as "when the market closes I
+    lose all the prices".
+    """
+    if expiry > ref_date:
+        return True
+    if expiry < ref_date:
+        return False
+    return not session_is_over(now)
+
+
+def get_expiry_metadata(
+    ref_date: Optional[date] = None, now: Optional[datetime] = None
+) -> dict[str, Any]:
     """Authoritative expiry metadata provider.
 
     Returns:
@@ -189,11 +223,14 @@ def get_expiry_metadata(ref_date: Optional[date] = None) -> dict[str, Any]:
     """
     tz = ZoneInfo(TIMEZONE)
     if ref_date is None:
-        ref_date = datetime.now(tz).date()
+        ref_date = (now.astimezone(tz).date() if now else datetime.now(tz).date())
 
     all_expiries = fetch_nifty_expiries_from_fyers()
-    # Filter upcoming expiries (today or future)
-    upcoming = [d for d in all_expiries if d >= ref_date]
+    # Only expiries whose contracts still exist. This used to be `d >= ref_date`,
+    # which kept today's expiry all evening after it had already settled, so
+    # every figure downstream counted down to a contract that was gone.
+    upcoming = [d for d in all_expiries if expiry_is_alive(d, ref_date, now)]
+    expired_today = [d.isoformat() for d in all_expiries if d == ref_date and d not in upcoming]
     if not upcoming:
         upcoming = sorted(list(_generate_fallback_tuesdays()))
 
@@ -242,4 +279,7 @@ def get_expiry_metadata(ref_date: Optional[date] = None) -> dict[str, Any]:
         },
         "is_rollover_window": is_rollover_window,
         "upcoming_expiries": [d.isoformat() for d in upcoming[:10]],
+        # Named so a screen can explain a selection that vanished under him,
+        # rather than silently switching to a different expiry.
+        "expired_today": expired_today,
     }

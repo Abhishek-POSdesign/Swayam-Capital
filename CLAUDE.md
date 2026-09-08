@@ -22,7 +22,15 @@ for months. **This terminal is how he restarts.** He intends to trade real
 money through it. That is why a fabricated number is not a cosmetic bug: it
 damages the thing the Second Brain was built to be.
 
-He trades **1 to 2 pm IST** and works the night shift.
+**He is NOT at his desk in the morning.** He works a night shift, wakes around
+1 pm IST, and is at the screen by about 2 pm. He trades **1 to 2:30 pm**, mostly
+swing and positional, rarely intraday. **His live window is 60 to 90 minutes a
+day.**
+
+Never plan anything for 09:15 and never write "tomorrow morning" in a plan for
+him. Anything needing his hands has to fit in that window, in priority order,
+and anything readable from logs afterwards must not consume any of it. He has
+corrected this more than once.
 
 ---
 
@@ -93,16 +101,35 @@ can be lied to.
 
 - **Never work on `main`.** Feature branch, pull request, **he** clicks Merge.
   The PR is his only revert button.
-- **Check whether the branch's PR is already merged before pushing more work.**
-  He merges mid-session to review. Commits pushed onto a merged branch strand
-  with no PR and no revert button. This happened twice on 2026-09-08.
+- **`git fetch` and check whether the branch's PR is already merged before
+  pushing more work.** He merges mid-session to review. Commits pushed onto a
+  merged branch strand with no PR and no revert button. **This happened three
+  times on 2026-09-08**, the last time 38 minutes after the merge, and the next
+  branch had to rescue the file.
+- **Never open a pull request against another pull request's branch.** GitHub
+  only retargets to `main` when the base branch is deleted on merge. PR #35
+  merged into a dead end and the live site silently kept the old interface.
+- **Merge one pull request, wait for the green tick, then merge the next.** Two
+  at once races two deploys and the wrong one can win. A failed build is silent.
+- **Only one session may write to the working tree at a time.** Two sessions
+  sharing it will fight over the index and the checked-out branch. If two are
+  needed at once, one takes a separate clone.
 - **Work in the primary folder, never a git worktree.** The venv is an editable
   install pointing at it, so a worktree silently tests the wrong source tree.
 - **Plan first, plain English, six parts.** Then build. Then hand off, five
   parts. His `/layman-plan` and `/handoff` skills carry the shape.
 - **Ask when unsure.** He has said so explicitly, and mid-build is fine.
 - **`node --check` is not verification.** It has passed files the browser then
-  rejected. Load the real page in a real browser.
+  rejected. Load the real page in a real browser, in both themes.
+- **Verify by invoking, never by reading a status.** Three things had never once
+  worked on 2026-09-08 while something downstream reported success. Do not trust
+  a status field, a log line saying "started", or a passing test.
+- **Fix a rule where the rule lives, not where the symptom showed.** The dead
+  expiry was fixed at one route and survived in a service that read the source
+  directly. "LIVE" over a closing price was fixed on two screens and survived on
+  two more, because all four read one wrong backend flag.
+- **`/api/market/data-health` is the ONE clock.** Nothing may say "live" unless
+  it says the market is open.
 - **The dev environment points at the LIVE database.** The test suite is caged
   (`tests/db_guard.py`) because there is no staging project. Do not weaken or
   remove that guard.
@@ -118,10 +145,12 @@ can be lied to.
 
 | File | What it is |
 |---|---|
+| `docs/SUCCESSOR_PROMPT.md` | The prompt he pastes into a new chat, plus what was learned by talking to him. **Keep it accurate** |
 | `docs/SWAYAM_START_HERE.md` | Where everything lives, what is verified, what is not done |
 | `docs/PLAN.md` | The one plan. What happens next, in order |
-| `docs/UI_BUILD_BRIEF_ROUND_2.md` | **The active job**: his feedback on the rebuilt pages, 21 steps, two PRs |
-| `docs/CALENDAR_BUILD_BRIEF.md` | **The job after that**: multi-expiry valuation. Backend can start now |
+| `docs/UI_BUILD_BRIEF_ROUND_3.md` | His own sweep of the live pages. **Built and merged**, PR #39 |
+| `docs/UI_BUILD_BRIEF_ROUND_2.md` | Round 2. Built and merged. History |
+| `docs/CALENDAR_BUILD_BRIEF.md` | Multi-expiry valuation, so calendars work. Briefed and ready. **His decision whether he needs it** |
 | `docs/UI_BUILD_BRIEF.md` | Round 1, finished and live on 2026-09-08. History |
 | `docs/reference/` | The two approved page prototypes, as working code |
 
