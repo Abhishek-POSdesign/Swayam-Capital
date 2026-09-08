@@ -29,34 +29,44 @@ export class KPIStripComponent {
     if (!this.container) return;
     const k = this.kpis || {};
 
+    // `total_trades` is now SQUARED-OFF trades, not rows matched. With none of
+    // them there is no win rate, no discipline rate and no drag to report,
+    // whatever the API happens to have sent.
     const totalTrades = k.total_trades || 0;
+    const scored = totalTrades > 0;
     const wins = k.wins_count || 0;
     const losses = k.losses_count || 0;
     const be = k.breakeven_count || 0;
-    const winRate = k.win_rate_pct != null ? k.win_rate_pct.toFixed(1) : '0.0';
-    const avgRR = k.avg_rr_actual != null ? k.avg_rr_actual.toFixed(2) : '0.00';
+    const winRate = scored && typeof k.win_rate_pct === 'number' ? k.win_rate_pct.toFixed(1) : null;
+    const avgRR = scored && typeof k.avg_rr_actual === 'number' ? k.avg_rr_actual.toFixed(2) : '—';
     const netPnl = k.cumulative_net_pnl_inr || 0;
     const grossPnl = k.cumulative_gross_pnl_inr || 0;
-    const pctMargin = k.cumulative_pnl_pct_of_margin != null ? k.cumulative_pnl_pct_of_margin.toFixed(2) : '0.00';
-    const disciplineRate = k.discipline_rate_pct != null ? k.discipline_rate_pct.toFixed(1) : '100.0';
+    // Renamed: the divisor is his live balance, so the figure is a percentage
+    // of capital. It used to be divided by a hardcoded Rs 5,00,000. A dash
+    // when the balance cannot be read; never a confident 0.00%.
+    const pctCapital = scored && typeof k.cumulative_pnl_pct_of_capital === 'number'
+      ? `${k.cumulative_pnl_pct_of_capital.toFixed(2)}%`
+      : '—';
+    // Never a default 100%. An empty book has no discipline rate to report.
+    const disciplineRate = scored && typeof k.discipline_rate_pct === 'number' ? k.discipline_rate_pct.toFixed(1) : null;
     const chargesDrag = k.charges_drag_inr || 0;
-    const chargesPct = k.charges_drag_pct != null ? k.charges_drag_pct.toFixed(1) : '0.0';
+    const chargesPct = scored && typeof k.charges_drag_pct === 'number' ? k.charges_drag_pct.toFixed(1) : null;
 
     const maxWin = k.max_profit_trade;
     const maxLoss = k.max_loss_trade;
 
     const netColor = totalTrades === 0 ? 'var(--dl-fg-2)' : (netPnl > 0 ? 'var(--accent-sage)' : netPnl < 0 ? 'var(--accent-coral)' : 'var(--dl-fg-2)');
-    const winColor = totalTrades === 0 ? 'var(--dl-fg-2)' : (parseFloat(winRate) >= 50 ? 'var(--accent-sage)' : 'var(--accent-amber)');
-    const discColor = totalTrades === 0 ? 'var(--dl-fg-2)' : (parseFloat(disciplineRate) >= 80 ? 'var(--accent-sage)' : 'var(--accent-coral)');
+    const winColor = winRate === null ? 'var(--dl-fg-2)' : (parseFloat(winRate) >= 50 ? 'var(--accent-sage)' : 'var(--accent-amber)');
+    const discColor = disciplineRate === null ? 'var(--dl-fg-2)' : (parseFloat(disciplineRate) >= 80 ? 'var(--accent-sage)' : 'var(--accent-coral)');
 
     const netDisplay = totalTrades > 0 ? `${netPnl >= 0 ? '+' : ''}₹${Math.round(netPnl).toLocaleString('en-IN')}` : '—';
     const grossDisplay = totalTrades > 0 ? `Gross: ₹${Math.round(grossPnl).toLocaleString('en-IN')}` : 'Gross: —';
-    const capDisplay = totalTrades > 0 ? `${pctMargin}% cap` : '—';
+    const capDisplay = totalTrades > 0 ? `${pctCapital} of capital` : '—';
     const chargesDisplay = totalTrades > 0 ? `₹${Math.round(chargesDrag).toLocaleString('en-IN')}` : '—';
-    const winRateDisplay = totalTrades > 0 ? `${winRate}%` : '—';
+    const winRateDisplay = winRate !== null ? `${winRate}%` : '—';
     const avgRRDisplay = totalTrades > 0 ? `1 : ${avgRR}` : '—';
-    const disciplineDisplay = totalTrades > 0 ? `${disciplineRate}%` : '—';
-    const chargesPctDisplay = totalTrades > 0 ? `${chargesPct}% of gross` : '—';
+    const disciplineDisplay = disciplineRate !== null ? `${disciplineRate}%` : '—';
+    const chargesPctDisplay = chargesPct !== null ? `${chargesPct}% of gross` : '—';
 
     this.container.innerHTML = `
       <div class="kpi-strip-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px;">

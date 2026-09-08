@@ -125,7 +125,6 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ lesson_text: lessonText }),
     }),
-  archiveTestTrades: () => request('/api/journal/archive-test-trades', { method: 'POST' }),
   sendChatMessageWithImage: async (sessionId, text, imageBlob, filename = 'screenshot.png') => {
     const formData = new FormData();
     formData.append('content', text || '');

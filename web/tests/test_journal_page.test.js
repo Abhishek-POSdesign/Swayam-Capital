@@ -17,7 +17,6 @@ describe('BUILD-11 Trade Journal & Lesson Ledger Components', () => {
   beforeEach(() => {
     setupTestDOM();
     if (global.sessionStorage) global.sessionStorage.clear();
-    vi.spyOn(api, 'archiveTestTrades').mockResolvedValue({ archived: 0 });
     container = document.createElement('div');
     document.body.appendChild(container);
   });
@@ -33,7 +32,7 @@ describe('BUILD-11 Trade Journal & Lesson Ledger Components', () => {
         avg_rr_actual: 1.42,
         cumulative_net_pnl_inr: 45200.0,
         cumulative_gross_pnl_inr: 48000.0,
-        cumulative_pnl_pct_of_margin: 9.04,
+        cumulative_pnl_pct_of_capital: 9.04,
         discipline_rate_pct: 91.7,
         charges_drag_inr: 2800.0,
         charges_drag_pct: 5.8,
@@ -68,11 +67,14 @@ describe('BUILD-11 Trade Journal & Lesson Ledger Components', () => {
         wins_count: 0,
         losses_count: 0,
         breakeven_count: 0,
-        win_rate_pct: 0.0,
-        avg_rr_actual: 0.0,
+        // The API returns null rather than 0.0 and 100.0 on an empty book now.
+        // The old values are left in the second case below to prove the strip
+        // refuses them even if a stale server sends them.
+        win_rate_pct: null,
+        avg_rr_actual: null,
         cumulative_net_pnl_inr: 0,
         cumulative_gross_pnl_inr: 0,
-        discipline_rate_pct: 100.0,
+        discipline_rate_pct: null,
       };
 
       const kpiStrip = new KPIStripComponent(container, { kpis });
@@ -83,6 +85,30 @@ describe('BUILD-11 Trade Journal & Lesson Ledger Components', () => {
       expect(container.innerHTML).toContain('—');
       expect(container.innerHTML).not.toContain('0.0%');
       expect(container.innerHTML).not.toContain('1 : 0.00');
+    });
+
+    it('refuses a 0% win rate and a 100% discipline rate even if the API sends them', () => {
+      // The shape the endpoint used to return on an empty book. Both figures
+      // render as real results on his screen, and neither was ever measured.
+      const kpis = {
+        total_trades: 0,
+        wins_count: 0,
+        losses_count: 0,
+        breakeven_count: 0,
+        win_rate_pct: 0.0,
+        avg_rr_actual: 0.0,
+        cumulative_net_pnl_inr: 0,
+        cumulative_gross_pnl_inr: 0,
+        discipline_rate_pct: 100.0,
+        charges_drag_pct: 0.0,
+      };
+
+      const kpiStrip = new KPIStripComponent(container, { kpis });
+      kpiStrip.render();
+
+      expect(container.innerHTML).not.toContain('0.0%');
+      expect(container.innerHTML).not.toContain('100.0%');
+      expect(container.innerHTML).toContain('—');
     });
   });
 
@@ -240,13 +266,19 @@ describe('BUILD-11 Trade Journal & Lesson Ledger Components', () => {
       expect(api.getJournalAnalytics).toHaveBeenCalled();
     });
 
-    it('auto-archives seed trades on init once per session', async () => {
-      sessionStorage.clear();
-      const archiveSpy = vi.spyOn(api, 'archiveTestTrades').mockResolvedValue({ archived: 58 });
+    it('writes nothing to his database when the page is opened', async () => {
+      // Opening the Trade Journal used to fire POST /api/journal/archive-test-trades
+      // at his live record on the first load of each browser session, with
+      // nothing clicked. Reading a record must never write to it.
+      expect(api.archiveTestTrades).toBeUndefined();
+
       vi.spyOn(api, 'getJournalTrades').mockResolvedValue({
         trades: [],
         total_count: 0,
-        pre_launch_test_trades_count: 0,
+        excluded_test_rows: 0,
+        unpriced_closed_trades: 0,
+        capital_base_inr: 971002.38,
+        capital_base_source: 'FYERS funds() id 1 Total Balance',
         kpis: { total_trades: 0 },
       });
       vi.spyOn(api, 'getJournalAnalytics').mockResolvedValue({
@@ -261,23 +293,19 @@ describe('BUILD-11 Trade Journal & Lesson Ledger Components', () => {
       const page = new JournalPage(container);
       await page.init();
 
-      expect(archiveSpy).toHaveBeenCalledTimes(1);
-      expect(sessionStorage.getItem('swayam_seed_archived')).toBe('true');
+      // Nothing excluded and capital readable, so the note stays silent.
       const bannerMount = container.querySelector('#journal-housekeeping-banner-container');
       expect(bannerMount.innerHTML).toBe('');
-
-      // Second init in same session should NOT call archive again
-      const page2 = new JournalPage(container);
-      await page2.init();
-      expect(archiveSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('shows coral error banner with retry button if auto-archive fails', async () => {
-      sessionStorage.clear();
-      vi.spyOn(api, 'archiveTestTrades').mockRejectedValue(new Error('Network error'));
+    it('says on screen which rows it left out of his record, and why', async () => {
       vi.spyOn(api, 'getJournalTrades').mockResolvedValue({
         trades: [],
         total_count: 0,
+        excluded_test_rows: 81,
+        unpriced_closed_trades: 2,
+        capital_base_inr: null,
+        capital_base_source: 'live capital unavailable: FYERS token rejected',
         kpis: { total_trades: 0 },
       });
       vi.spyOn(api, 'getJournalAnalytics').mockResolvedValue({
@@ -292,10 +320,11 @@ describe('BUILD-11 Trade Journal & Lesson Ledger Components', () => {
       const page = new JournalPage(container);
       await page.init();
 
-      const bannerMount = container.querySelector('#journal-housekeeping-banner-container');
-      expect(bannerMount).not.toBeNull();
-      expect(bannerMount.innerHTML).toContain('Could not auto-archive test data — manual archive available');
-      expect(bannerMount.querySelector('#btn-retry-archive')).not.toBeNull();
+      const banner = container.querySelector('#journal-housekeeping-banner-container');
+      expect(banner.innerHTML).toContain('81 rows excluded as build tests');
+      expect(banner.innerHTML).toContain('2 closed trades could not be valued');
+      expect(banner.innerHTML).toContain('not counted as zero');
+      expect(banner.innerHTML).toContain('FYERS token rejected');
     });
 
     it('renders trades table inside 460px max-height container with swayam-scroll-thin', async () => {

@@ -60,10 +60,12 @@ def deterministic_capital(request):
         taken_at=datetime(2026, 9, 7, 20, 0, tzinfo=timezone.utc),
         trading_day=date(2026, 9, 7),
     )
-    # validation.py imports the name directly; the AI persona, execution, close
-    # and rules paths call it through the module, so both are pinned.
+    # validation.py and journal.py import the name directly; the AI persona,
+    # execution, close and rules paths call it through the module, so all are
+    # pinned. Miss one and that endpoint calls his live broker in every test.
     with (
         patch("swayam.api.routes.validation.get_capital", return_value=snapshot),
+        patch("swayam.api.routes.journal.get_capital", return_value=snapshot),
         patch("swayam.services.capital.get_capital", return_value=snapshot),
     ):
         yield

@@ -407,9 +407,12 @@ class JournalTradeItem(BaseModel):
     underlying: str = "NIFTY"
     legs_summary: str = ""
     entry_debit_credit_inr: float = 0.0
-    gross_pnl_inr: float = 0.0
-    net_pnl_inr: float = 0.0
-    charges_inr: float = 0.0
+    # None, not 0.0. A trade that is still open, or one that is closed but has
+    # no row in swayam_trade_history, has no result to show. Printing a zero
+    # there is an invented figure on his record.
+    gross_pnl_inr: Optional[float] = None
+    net_pnl_inr: Optional[float] = None
+    charges_inr: Optional[float] = None
     rr_planned: Optional[float] = None
     rr_actual: Optional[float] = None
     time_in_trade_str: Optional[str] = None
@@ -435,18 +438,28 @@ class JournalTradeItem(BaseModel):
 
 
 class JournalKPIs(BaseModel):
-    total_trades: int = 0
+    """His record. Every figure here is computed from SQUARED-OFF trades only.
+
+    The rates are Optional on purpose. An empty book used to return a 0.0% win
+    rate and a 100.0% discipline rate, and both render as real figures on a
+    screen. Nothing known means nothing printed.
+    """
+
+    total_trades: int = 0          # squared-off trades, not rows matched
     wins_count: int = 0
     losses_count: int = 0
     breakeven_count: int = 0
-    win_rate_pct: float = 0.0
-    avg_rr_actual: float = 0.0
+    win_rate_pct: Optional[float] = None
+    avg_rr_actual: Optional[float] = None
     cumulative_net_pnl_inr: float = 0.0
     cumulative_gross_pnl_inr: float = 0.0
-    cumulative_pnl_pct_of_margin: float = 0.0
-    discipline_rate_pct: float = 100.0
+    # Renamed from `cumulative_pnl_pct_of_margin`. It was divided by a hardcoded
+    # 500000.0 that was neither his margin nor his capital; it is now his live
+    # balance, so the name says capital and matches the divisor.
+    cumulative_pnl_pct_of_capital: Optional[float] = None
+    discipline_rate_pct: Optional[float] = None
     charges_drag_inr: float = 0.0
-    charges_drag_pct: float = 0.0
+    charges_drag_pct: Optional[float] = None
     max_profit_trade: Optional[dict[str, Any]] = None
     max_loss_trade: Optional[dict[str, Any]] = None
 
@@ -455,7 +468,13 @@ class JournalTradesResponse(BaseModel):
     trades: list[JournalTradeItem]
     total_count: int
     kpis: JournalKPIs
-    pre_launch_test_trades_count: int = 0
+    # What was left out of his record, and why, so the page can say it rather
+    # than leaving him to wonder. His question, 2026-09-08: "I'm not aware of
+    # how you are making a row... and I am never aware of it."
+    excluded_test_rows: int = 0
+    unpriced_closed_trades: int = 0
+    capital_base_inr: Optional[float] = None
+    capital_base_source: Optional[str] = None
 
 
 class ArchiveTestTradesResponse(BaseModel):

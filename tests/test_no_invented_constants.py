@@ -247,3 +247,30 @@ def test_max_pain_is_measured_from_fyers_rows_and_none_when_there_is_no_open_int
     zero = [dict(r, oi=0) for r in FYERS_ROWS]
     assert calculate_max_pain(zero) is None
     assert calculate_max_pain([]) is None
+
+
+# --- 9. the journal's margin base -------------------------------------------
+#
+# The ninth. `api/routes/journal.py` divided his cumulative result and his
+# maximum drawdown by a hardcoded 500000.0, in two separate places, and called
+# it a "margin base". It was neither his margin nor his capital: his live
+# balance on 2026-09-08 was Rs 9,71,002, so every percentage on the Trade
+# Journal was almost twice what it should have been.
+#
+# This is a source-level guard rather than a behavioural one, because the
+# failure mode is somebody reintroducing the literal, not the endpoint
+# misbehaving.
+
+def test_the_journal_no_longer_carries_a_hardcoded_margin_base():
+    from pathlib import Path
+
+    source = Path(__file__).resolve().parents[1] / "src" / "swayam" / "api" / "routes" / "journal.py"
+    text = source.read_text(encoding="utf-8")
+
+    for literal in ("500000.0", "500_000", "margin_base = "):
+        assert literal not in text, (
+            f"{literal!r} is back in journal.py. His record must divide by the live "
+            "balance from services/capital.py, or print nothing at all."
+        )
+
+    assert "_capital_base()" in text, "the journal must read live capital"
