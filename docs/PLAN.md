@@ -23,18 +23,53 @@ than starting a new document. That is the whole system.
 
 ## 1. IN FLIGHT RIGHT NOW
 
-### His feedback on the new pages. This is the next session.
+### Round 2: his feedback on the new pages. Briefed, awaiting the build.
 
-The rebuilt Home and Strategy Desk went live on 2026-09-08 and **he has used
-them with the market open**. His verdict: "the data is live, and the new
-website is live. I need some improvements."
+He used the rebuilt Home and Strategy Desk with the market open on 2026-09-08
+and gave twenty-two pieces of feedback. His verdict on round 1: "the data is
+live, and the new website is live. I need some improvements."
 
-**The next session is his feedback session.** He walks through what is wrong
-and what he does not like on the two pages; that gets fixed first, before
-anything else in section 2. Do not start section 2 work until he says the
-pages are right.
+**The brief is `docs/UI_BUILD_BRIEF_ROUND_2.md`.** Twenty-one steps, to be shipped
+as TWO pull requests by an unattended cloud session. He approved the plain-English
+plan at https://claude.ai/code/artifact/b99c1be3-8a29-4f54-af7c-a9917a449321 .
 
-Nothing is queued behind this that cannot wait a day.
+Five live faults were found while planning it, all proven against the running
+system on 2026-09-08. They are the reason PR 1 exists:
+
+1. **The rule check crashes about half the time.** Two Gunicorn workers fight
+   over an exclusive DuckDB file lock. Live evidence: 200, 500, 200, 500 across
+   the four `/api/strategy/validate` calls made today. The Supabase fallback in
+   `realized_vol.py` is correct and unreachable, because it sits after the line
+   that fails.
+2. **Rules 2 and 4 can never light up.** The desk never sends a planned exit
+   date, so rule 2 is always "intraday, not tested"; rule 4 is hardcoded idle in
+   the page.
+3. **Nothing on either page refreshes.** `broadcast_spot()` is never called from
+   anywhere, Home has no timer at all, and leg prices are fetched once. He cannot
+   trade from a screen whose option premiums are twenty minutes old.
+4. **The AI is running the rule set deleted on 2026-09-07.** It told him his risk
+   cap was Rs 8,500, which is 1% of the stale `swayam_config.margin_base_inr` of
+   Rs 8,50,000. It also believes the black-swan ceiling is 3% not 5%, that an
+   R:R floor exists, and that a red readiness verdict can stop him.
+5. **The recorder fails every minute** with `Please provide valid token`. It runs
+   each minute so its container never goes cold and never re-reads the secret.
+   Same root cause as the morning no-prices trap. Today's option chain is lost.
+
+Plus **eight invented constants** still in the market feeds, and the option chain
+endpoint **ignores the expiry it is asked for** and always returns the nearest.
+
+**Two things he decided that change later work:**
+
+- **He uses calendar spreads more than half the time and they were profitable.**
+  That raises section 3 from "the big one" to the next job after this round.
+- **He mostly carries positions overnight.** He arrives at 2:30 pm for swing and
+  positional trades, not intraday. The desk must default to the overnight answer.
+
+**The logo is settled:** the full Devanagari spelling with the tagline
+"Discipline builds tomorrow", nothing drawn above the letters. His wife is a
+graphic designer and will do the letterform work later.
+
+Do not start anything in section 2 until he says the pages are right.
 
 ### State as of the end of the 2026-09-08 session
 
@@ -83,7 +118,7 @@ The versioned charge engine is real and the risk gate uses it. The execution
 path still closes with a flat `ESTIMATED_CHARGE_PER_LEG_INR` of ₹150. Wrong,
 but it changes a recorded result rather than a decision he makes at the screen.
 
-### 2.4 Live ticks
+### 2.4 Live ticks — MOVED INTO ROUND 2, PR 1 (steps 4 to 6)
 `/ws/spot` accepts a connection and answers ping with pong. Nothing is ever
 pushed, so the header polls every ten seconds and the snapshot card never
 updates at all. The FYERS websocket library now imports (it needed
@@ -113,10 +148,11 @@ Both pre-date all of this. Do not "fix" them by weakening assertions.
 
 ## 3. THE BIG ONE, AFTER THE ABOVE
 
-### Multi-expiry valuation, so calendars work
+### Multi-expiry valuation, so calendars work — NOW THE NEXT JOB AFTER ROUND 2
 Calendars are visible and computable but **blocked from execution**, because
 the payoff across two expiries is approximate. **Ten of his twenty-one
-historical trades are calendars.** This is the largest single gap between what
+historical trades are calendars, and on 2026-09-08 he said he uses them more
+than half the time and that they were profitable for him.** This is the largest single gap between what
 he actually trades and what the terminal supports, and it deserves its own run.
 
 Everything else from the old plan's "Sensibull-grade builder" is now in the
