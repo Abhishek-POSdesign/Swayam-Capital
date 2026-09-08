@@ -60,6 +60,7 @@ def _format_legs_summary(legs: list[dict[str, Any]]) -> str:
 @router.get("/api/journal/trades", response_model=JournalTradesResponse)
 def get_journal_trades(
     status: str = Query(default="all", description="all | open | closed"),
+    mode: str = Query(default="all", description="all | paper | real"),
     outcome: str = Query(default="all", description="all | win | loss | breakeven"),
     strategy: Optional[str] = Query(default=None, description="Strategy preset filter"),
     exit_reason: Optional[str] = Query(default=None, description="Exit reason filter"),
@@ -81,6 +82,12 @@ def get_journal_trades(
             query = query.eq("status", status)
         else:
             query = query.neq("status", "archived")
+
+        # Paper and real money are two separate books and must never be added
+        # together. Home labels the record card "Paper", and a label the API
+        # cannot honour is a claim, not a fact.
+        if mode != "all":
+            query = query.eq("mode", mode)
 
         if strategy:
             query = query.ilike("strategy_name", f"%{strategy}%")

@@ -845,27 +845,29 @@ export class AIChatPanel {
         line-height: 1.5;
         word-break: break-word;
       }
+      /* Same treatment as the Home chat, for the same reason: a pale tint on
+         his own messages, nothing at all behind the AI's. */
       .ai-message--user .ai-message__content {
-        background: var(--accent-blue);
-        color: #101116;
+        background: var(--accent-sage-tint);
+        color: var(--dl-fg);
         border-bottom-right-radius: 3px;
-        font-weight: 500;
       }
       .ai-message--assistant .ai-message__content {
-        background: var(--dl-card-2);
+        max-width: 100%;
+        background: none;
         color: var(--dl-fg);
-        border: 1px solid var(--dl-line);
-        border-bottom-left-radius: 3px;
+        border: none;
+        padding: 6px 2px;
       }
       .ai-message__content code {
         font-family: 'JetBrains Mono', monospace;
-        background: rgba(0,0,0,0.3);
+        background: var(--dl-card-2);
         padding: 1px 4px;
         border-radius: 3px;
         font-size: 12px;
       }
       .ai-message__content pre {
-        background: rgba(0,0,0,0.3);
+        background: var(--dl-card-2);
         padding: 8px;
         border-radius: 6px;
         overflow-x: auto;

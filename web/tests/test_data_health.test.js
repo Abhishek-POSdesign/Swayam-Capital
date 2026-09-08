@@ -210,6 +210,33 @@ describe('Home never calls a closing price live', () => {
     page.renderSidebar();
     expect(sidebar()).not.toContain('>live<');
   });
+
+  it('will not let the Sectors card say LIVE while the health strip says CLOSED', async () => {
+    const { page, sidebar } = await mountedHome();
+    // What the running backend really sends after the close on 2026-09-08:
+    // spot_live means "FYERS returned a number", so the snapshot still labels
+    // both panes LIVE. The clock outranks the label.
+    page.snapshot = {
+      cash_pane: { spot: 23635.1, spot_freshness: 'LIVE', sector_freshness: 'LIVE', sector_rotation: [{ name: 'BANK', change_pct: -0.54 }] },
+      fno_pane: {},
+    };
+
+    page.marketOpen = false;
+    page.renderSidebar();
+    expect(sidebar()).toContain('Sectors today');
+    expect(sidebar().toLowerCase()).not.toContain('>live');
+    expect(sidebar()).toContain('closed');
+
+    // And an unknown clock is not permission either.
+    page.marketOpen = null;
+    page.renderSidebar();
+    expect(sidebar().toLowerCase()).not.toContain('>live');
+
+    // Open, and the server's own word stands.
+    page.marketOpen = true;
+    page.renderSidebar();
+    expect(sidebar().toLowerCase()).toContain('live');
+  });
 });
 
 describe('The desk never calls a closing price live', () => {
