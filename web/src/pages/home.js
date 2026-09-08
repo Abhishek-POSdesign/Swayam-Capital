@@ -18,6 +18,7 @@ import { RitualStripComponent } from '../components/ritual-strip.js';
 import { ChatSurfaceComponent } from '../components/chat-surface.js';
 import { SoFarTodayCardComponent } from '../components/so-far-today-card.js';
 import { PwaInstallPromptComponent } from '../components/pwa-install-prompt.js';
+import { DataHealthStrip } from '../components/data-health-strip.js';
 import { updateHeaderSpot } from '../components/header.js';
 import { spotFeed } from '../modules/ws-client.js';
 import { inr, num, signedPct, escapeHtml, istTime, flashFor } from '../utils/display.js';
@@ -34,6 +35,8 @@ export class HomePage {
 
     this.snapshot = null;
     this.snapshotError = null;
+    // null until the data-health check answers: unknown, not open, not shut.
+    this.marketOpen = null;
     this.capital = null;
     this.capitalError = null;
     this.positions = null;
@@ -65,9 +68,32 @@ export class HomePage {
   async init() {
     this.render();
     this.mountComponents();
+    this.startDataHealth();
     // Independently try-caught, so one dead feed cannot blank the page.
     this.loadData();
     this.startLiveUpdates();
+  }
+
+  /**
+   * The same strip as the desk, for the same reason: he must never have to
+   * work out for himself whether a number on screen is still real.
+   */
+  startDataHealth() {
+    const host = this.container.querySelector('#home-data-health');
+    if (!host || this.dataHealth) return;
+    this.dataHealth = new DataHealthStrip(host, {
+      onHealth: (health) => {
+        // One clock for the whole page. The NIFTY card used to call a price
+        // LIVE whenever any value had arrived, so at 19:12 with the market
+        // shut it said LIVE over a closing price, which is exactly the kind
+        // of claim this terminal must never make.
+        const open = health ? Boolean(health.market_open) : null;
+        if (open === this.marketOpen) return;
+        this.marketOpen = open;
+        this.renderSidebar();
+      },
+    });
+    this.dataHealth.init().catch(() => {});
   }
 
   /**
@@ -136,6 +162,7 @@ export class HomePage {
             <h2 class="pagename">Home <em>· so far today</em></h2>
           </div>
 
+          <div id="home-data-health"></div>
           <div id="home-ticker"></div>
           <div id="home-ritual"></div>
           <div id="home-pwa-prompt-container"></div>
@@ -441,12 +468,24 @@ export class HomePage {
     const d = this.daily || {};
     const spot = this.spotNow();
     const chg = this.dayChangePct();
-    const live = typeof this.liveSpot === 'number';
-    const fresh = live ? 'LIVE' : c.spot_freshness || 'UNAVAILABLE';
+    const hasSpot = typeof this.liveSpot === 'number';
+    // `marketOpen` is null until the health check answers, and an unknown
+    // clock must not be reported as a live price.
+    const live = hasSpot && this.marketOpen === true;
+    const fresh = live
+      ? 'LIVE'
+      : this.marketOpen === false
+        ? 'CLOSED'
+        : c.spot_freshness || 'UNAVAILABLE';
     const spotInt = spot === null ? null : Math.floor(spot);
     const spotFrac = spot === null ? null : (spot - Math.floor(spot)).toFixed(2).slice(1);
     const spotFlash = flashFor(this._flash, 'spot', spot);
-    const spotStamp = live ? `tick ${istTime(this.liveSpotAt) || ''} IST` : this._readStamp('snapshot');
+    // Two different questions, and one flag was wrongly answering both. The
+    // STAMP says where this number came from, so a tick that really arrived is
+    // named as a tick whatever the clock says. The BADGE above says whether it
+    // is still live, which is the market's business, not the tick's. After the
+    // close this reads "closed · tick 15:29 IST", which is the whole truth.
+    const spotStamp = hasSpot ? `tick ${istTime(this.liveSpotAt) || ''} IST` : this._readStamp('snapshot');
     const breadth = this.breadthText();
 
     const dmaGap = spot !== null && typeof c.dma_20 === 'number' ? spot - c.dma_20 : null;
@@ -684,6 +723,10 @@ export class HomePage {
     if (this._unsubSpot) {
       this._unsubSpot();
       this._unsubSpot = null;
+    }
+    if (this.dataHealth) {
+      this.dataHealth.destroy();
+      this.dataHealth = null;
     }
     this.ticker = null;
     this.ritual = null;

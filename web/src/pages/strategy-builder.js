@@ -22,6 +22,7 @@ import { MarketTickerComponent } from '../components/market-ticker.js';
 import { PayoffSvgComponent } from '../components/payoff-svg.js';
 import { OvernightBlockModalComponent } from '../components/overnight-block-modal.js';
 import { OptionChainModalComponent } from '../components/option-chain-modal.js';
+import { DataHealthStrip } from '../components/data-health-strip.js';
 import {
   maxLossProfit,
   breakevens,
@@ -37,6 +38,8 @@ const STRIKE_STEP = 50;
 
 /** How often every leg is re-quoted from the chain while the desk is open. */
 const REQUOTE_MS = 5000;
+// Once the market shuts the last traded price is fixed until the next open.
+const REQUOTE_CLOSED_MS = 60000;
 
 /** A price he typed himself carries this source and is never overwritten. */
 const OWN_PRICE = 'your own limit price';
@@ -125,6 +128,8 @@ export class StrategyBuilderPage {
 
     this.spot = null;
     this.spotFreshness = null;
+    // null until the data-health check answers: unknown, not open, not shut.
+    this.marketOpen = null;
     this.spotError = null;
 
     /** Contract size. Server-resolved only; 65 is never assumed and 75 never sent. */
@@ -200,8 +205,24 @@ export class StrategyBuilderPage {
     this.renderLayout();
     this.initSubComponents();
     this.startOvernightWatch();
+    this.startDataHealth();
     await this.loadInitialData();
     this.startLiveUpdates();
+  }
+
+  /**
+   * The strip that says whether these prices are live, behind, or missing.
+   * Started before the data loads, so the first thing on screen is an honest
+   * statement about the data rather than an empty page.
+   */
+  startDataHealth() {
+    const host = this.container.querySelector('#desk-data-health');
+    if (!host || this.dataHealth) return;
+    this.dataHealth = new DataHealthStrip(host, {
+      onHealth: (health) => this.onDataHealth(health),
+    });
+    // Deliberately not awaited: a slow health check must not hold up the desk.
+    this.dataHealth.init().catch(() => {});
   }
 
   /**
@@ -218,6 +239,31 @@ export class StrategyBuilderPage {
       this._requoteTimer = setInterval(() => this.requoteLegs(), this.requoteMs);
       if (this._requoteTimer && typeof this._requoteTimer.unref === 'function') this._requoteTimer.unref();
     }
+  }
+
+  /**
+   * After 15:30 the last traded prices stop moving, so asking for them every
+   * five seconds is pure noise. The interval follows the market rather than a
+   * fixed constant, and the leg table says which one is in force.
+   */
+  onDataHealth(health) {
+    // null when the check itself failed: an unknown clock is not a shut one,
+    // and the spot chip must not claim either way.
+    const open = health ? Boolean(health.market_open) : null;
+    if (open !== this.marketOpen) {
+      this.marketOpen = open;
+      this.renderSpot();
+    }
+    // Only a market known to be open earns the fast interval.
+    const wanted = open === true ? REQUOTE_MS : REQUOTE_CLOSED_MS;
+    if (wanted === this.requoteMs) return;
+    this.requoteMs = wanted;
+    if (this._requoteTimer) {
+      clearInterval(this._requoteTimer);
+      this._requoteTimer = null;
+      this.startLiveUpdates();
+    }
+    if (!this._legInputFocused()) this.renderLegs();
   }
 
   onSpotTick(spot, meta) {
@@ -288,6 +334,7 @@ export class StrategyBuilderPage {
             <button class="btn" id="btn-back-to-home" type="button" style="margin-left:10px">← Home</button>
           </div>
 
+          <div id="desk-data-health"></div>
           <div id="strategy-sticky-ticker"></div>
 
           <div class="cols cols-desk">
@@ -1055,9 +1102,15 @@ export class StrategyBuilderPage {
     host.innerHTML =
       `<span style="font-family:var(--m);font-size:11px;color:var(--fg-3)">NIFTY</span>` +
       `<b>${this.spot === null ? '—' : escapeHtml(num(this.spot, 2))}</b>` +
+      // "live" is a claim about the market, not about whether a number
+      // arrived. At 19:18 this said live over a closing price, while the
+      // health strip directly beneath it said the market was shut. The stamp
+      // still names when the price was read, which is the honest half.
       (this.spot === null
         ? `<span class="chip c-na">${escapeHtml(this.spotError || 'no live price')}</span>`
-        : `<span class="chip c-live">live${this.spotAt ? ` · ${escapeHtml(istTime(this.spotAt) || '')} IST` : ''}</span>`) +
+        : this.marketOpen === true
+          ? `<span class="chip c-live">live${this.spotAt ? ` · ${escapeHtml(istTime(this.spotAt) || '')} IST` : ''}</span>`
+          : `<span class="chip c-info">${this.marketOpen === false ? 'at the close' : 'last read'}${this.spotAt ? ` · ${escapeHtml(istTime(this.spotAt) || '')} IST` : ''}</span>`) +
       (this.lotSize === null
         ? `<span class="chip c-na">lot unconfirmed</span>`
         : `<span class="chip c-info">lot ${this.lotSize}</span>`);
@@ -1614,6 +1667,10 @@ export class StrategyBuilderPage {
     if (this.chainModal) {
       this.chainModal.destroy();
       this.chainModal = null;
+    }
+    if (this.dataHealth) {
+      this.dataHealth.destroy();
+      this.dataHealth = null;
     }
   }
 }

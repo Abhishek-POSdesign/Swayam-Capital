@@ -23,16 +23,21 @@ than starting a new document. That is the whole system.
 
 ## 1. IN FLIGHT RIGHT NOW
 
-### Where this stands, end of the 2026-09-08 session
+### Where this stands, end of the 2026-09-08 EVENING session
 
-Round 2 is **built and reviewed**. PRs #32 to #36 are all merged. Cloud Run is on
-`swayam-dashboard-00042-b7t`, which started clean on both workers with no errors.
+Round 2 is **built, reviewed and merged**, and **the mis-merge is fixed**. PR #37
+put the desk work on `main`; Cloud Run is on `swayam-dashboard-00043-8xq`, whose
+image digest was checked against the build for `main` at `1699157`. **Every
+visual change is live.**
+
+**A new fault was found and fixed the same evening: the desk was exhausting the
+FYERS request budget.** See §1a. Branch `feature/swayam-desk-live-ticks-018`.
 
 **His deadline: Home and the Strategy Desk right by Friday 2026-09-11, so paper
 trading starts Monday 2026-09-14.** Wednesday, Thursday and Friday are the
 working days. There is room; do not rush and do not skip verification.
 
-### The mis-merge. Read this before believing the site is up to date.
+### The mis-merge. RESOLVED 2026-09-08 by PR #37. Kept for the lesson.
 
 **PR #35 was merged into PR #34's branch, not into `main`.** It was opened with
 PR 1's branch as its base, and GitHub did not retarget it when PR 1 merged
@@ -46,14 +51,61 @@ type, the ritual tile, So Far Today's play button and collapse, chat thumbnails,
 one leg per row, the greeks in the left rail, the payoff axis and the resets, the
 seventeen presets, and the whole option chain panel.
 
-Branch `feature/swayam-desk-onto-main-017` merges that work onto `main` cleanly
-and is the pull request that fixes it. **Do not delete
-`feature/swayam-round2-pr2-the-desk-016` until that has merged.**
+Branch `feature/swayam-desk-onto-main-017` merged that work onto `main` as
+PR #37 at 18:18 IST. Verified: the desk commit `f7bd1ec` is an ancestor of
+`main`, the build for `1699157` produced image digest `e440efae…`, and live
+revision `swayam-dashboard-00043-8xq` runs exactly that digest at 100% of
+traffic. `feature/swayam-round2-pr2-the-desk-016` is now safe to delete.
 
 **The lesson, and it is new:** opening a pull request against another pull
 request's branch is not safe here. GitHub only retargets to `main` when the base
 branch is deleted on merge. Stack the work in one branch, or open the second
 pull request against `main` after the first has landed.
+
+### 1a. The FYERS request budget. FOUND AND FIXED 2026-09-08 evening.
+
+**Not in any earlier plan. Found by reading the live logs, not by being told.**
+
+Between 18:29 and 18:31 IST the live site logged **46 refusals from FYERS**
+("request limit reached") in ten minutes, **164 leg-price requests** in the same
+ten minutes, and **three 503s on `/api/nifty/spot`**. Leg prices went blank on
+the desk with nothing on screen explaining why.
+
+**The cause, in three parts.** The desk re-quotes every leg every 5 seconds. The
+shared chain cache lived 3 seconds, which is less than the poll, so it never
+survived from one round to the next and every leg on every round became a FYERS
+call. A far expiry cost two calls rather than one. And nothing anywhere backed
+off when FYERS refused, so it asked again 5 seconds later, indefinitely.
+
+**The fix.** `src/swayam/api/chain_feed.py`, built on the same leader/follower
+shape as the spot feed. A browser request now registers interest in an expiry
+and reads what the feed last fetched, with the age attached. The feed refreshes
+what is in demand on its own cadence, one call per expiry however many legs or
+browsers are watching, stands back when FYERS refuses, keeps the last real chain
+rather than blanking it, and slows to one read every five minutes after the
+close. A cold four-leg page load is single-flighted into one call.
+
+**Measured against the real backend and live FYERS, 2026-09-08 19:15 IST:**
+
+| | |
+|---|---|
+| 60 leg quotes from a cold start | **2 FYERS calls, 0 refusals** |
+| A full desk session: page load, preset, pricing, several minutes open | **2 FYERS calls, 0 refusals** |
+
+**And the half he actually asked for: he must be able to see it.**
+`GET /api/market/data-health` returns one honest state, `live`, `delayed`,
+`closing` or `unavailable`, taking the **worst** of the chain and the tick feed
+so nothing hides behind a healthy sibling. `web/src/components/data-health-strip.js`
+draws it at the top of Home and the desk **in every state, including the healthy
+one**, because a warning he has never seen before is one he will not trust the
+first time it matters. When something is wrong it also says what to do, and it
+names the token case specifically, because that one needs a person.
+
+**Two related lies were found and fixed while verifying this.** Home's NIFTY
+card and the desk's spot chip both said **LIVE** at 19:18 IST with the market
+shut, on the same screen as a strip saying CLOSED. Both now follow the market
+clock. The timestamp still names when the price was read, which was always the
+honest half.
 
 ### Tomorrow morning, and only with the market open
 
@@ -77,15 +129,22 @@ working until they have been run and the answer read.
 
 ### After market, any time. In this order.
 
-1. **Deploy the recorder.** It is a separate service at `cloud/recorder/` and
-   merging to `main` does not touch it. Until it is deployed, every trading day
-   is another day of option chain data lost forever. **Needs his explicit go.**
-2. **The after-hours blackout.** See §2.8 below. This is the one he reported
-   himself and it stops him working in the evening.
+1. ~~**Deploy the recorder.**~~ **DONE 2026-09-08 19:05 IST**, on his explicit
+   go. Revision `swayam-recorder-00002-lez` is ACTIVE and answers HTTP 200.
+   **Proven:** it starts, runs the new code, refuses correctly outside market
+   hours, reads the token, and FYERS returns 82 real option rows to its own
+   fetch path. **NOT yet proven:** that it writes to `gs://swayam-capital-options-data`
+   under its own identity. Only 09:15 IST tomorrow can show that. All three
+   permissions were verified present at resource level first: `run.invoker` on
+   the service, `storage.objectAdmin` on the bucket, `secretmanager.secretAccessor`
+   on the token. **Open question for the first file: spot and every Greek came
+   back as 0.0 in the local probe.** See §2.10.
+2. ~~**The after-hours blackout.**~~ **FIXED**, and verified against real data at
+   19:08 IST on a weekly expiry day. See §2.8.
 3. **The Trade Journal, all three faults in one pass.** See §2.2. From Monday
-   that page holds his paper record, so it is on the critical path.
-4. **Remove the deleted reward-to-risk check** still running server-side as an
-   advisory. See §2.9.
+   that page holds his paper record, so it is on the critical path. **This is
+   the next job.**
+4. ~~**Remove the deleted reward-to-risk check.**~~ **DONE.** See §2.9.
 5. **Close-out.** Delete merged branches, remove the leftover worktree
    `.claude/worktrees/swayam-capital-ui-build-f2a909`, record what is live.
 6. **The calendar backend.** `docs/CALENDAR_BUILD_BRIEF.md` PR 1. Independent of
@@ -181,7 +240,7 @@ Both pre-date all of this. Do not "fix" them by weakening assertions.
 
 ---
 
-### 2.8 The after-hours blackout, which he reported himself
+### 2.8 The after-hours blackout, which he reported himself — FIXED 2026-09-08
 
 **His words, 2026-09-08:** "when the market closes, I notice that I lose all the
 prices and everything. It should not happen. I should have the last traded price
@@ -199,16 +258,52 @@ after 15:30 on an expiry day the app still offers today's expiry, labelled
 is what an expired option is worth. 2026-09-08 was a weekly expiry, which is why
 he hit it that evening.
 
-**Fix:** drop an expiry once its day has passed, default to the next live one,
-and label prices as the close rather than as live.
+**Fixed.** An expiry is dropped once its day is over: before 15:30 on expiry
+day it stays, because it is the live front month he may well be trading; after
+15:30 it goes. The weekly and monthly badges move to whatever replaced it, which
+was a second bug caught only by running it against real data. Prices after the
+close are labelled `closing`, never `live`.
 
-### 2.9 The deleted reward-to-risk rule is still running
+**Verified 2026-09-08 19:08 IST**, against the real contract master, on a
+weekly expiry evening: the list now starts at 15 Sep (7d), `expired_today`
+names 08 Sep, and the weekly badge sits on 15 Sep.
+
+There was a **second cause of the same symptom**, not diagnosed here at the
+time: the FYERS budget exhaustion in §1a. Both are fixed.
+
+### 2.9 The deleted reward-to-risk rule is still running — FIXED 2026-09-08
 
 `api/routes/validation.py` still evaluates the reward-to-risk check as an
 advisory. That rule was deleted on 2026-09-07 and does not exist any more. Round
 2 was forbidden from touching that file's arithmetic, so the desk simply drops
-the line from what it prints. **Remove the check server-side**; a rule that no
-longer exists should not be computed.
+the line from what it prints.
+
+**Removed.** The check, its entry in the display-name map, and the now-unused
+`rr_implied` local in that function are gone. `rr_implied` itself stays
+everywhere else: it is a number he reads in the metric row, not a rule with a
+floor to pass, and his approved design lists it there.
+
+**Still to decide, not done on my own initiative:** `no_single_leg` is also
+evaluated in that file, and `CLAUDE.md` lists "no single-leg trades ever" among
+the rules he deleted. The rebuilt desk does not render it, so nothing wrong
+reaches his screen today. **Ask him before removing it.**
+
+### 2.10 The recorder records zeros where it should record numbers
+
+Found while proving the recorder on 2026-09-08. Its own fetch path returns 82
+real option rows with real close, volume and open interest, but
+`underlying_spot`, `iv`, `delta`, `gamma`, `theta`, `vega`, `change_in_oi` and
+`open/high/low` all came back **0.0**. The probe ran after the close, so some of
+it may be FYERS returning nothing out of hours, but `underlying_spot` is
+available at any time and should not be zero.
+
+**The README claims it calculates Greeks and tracks open-interest change.** If
+those columns are zero every minute, the recorded history is far less useful
+than it looks, and a calendar backtest is the thing it exists to feed.
+
+**Check the first real file after 09:15 tomorrow before trusting the recorder.**
+One object in `gs://swayam-capital-options-data` proves it writes; reading the
+columns proves it is worth writing.
 
 ## 3. THE BIG ONE, AFTER THE ABOVE
 
@@ -276,6 +371,13 @@ Kept short. Detail is in the git history and the pull requests.
 | 2026-09-08 | FYERS websocket library imports | Needed `setuptools<81` |
 | 2026-09-08 | Home and Strategy Desk rebuilt to the approved prototypes, LIVE | Verified in a browser against his live account, market open |
 | 2026-09-08 | The gap rule stopped blaming his data | Said "needs measured daily moves" when the backend had 20 sessions; now says "intraday" |
+| 2026-09-08 | The desk work reached `main` and the live site | Image digest of revision 00043-8xq matches the build for `main` at `1699157` |
+| 2026-09-08 | The desk stopped exhausting the FYERS budget | 60 leg quotes from cold: 2 FYERS calls, 0 refusals. It had been 46 refusals in 10 minutes |
+| 2026-09-08 | He can see whether prices are real, at all times | The strip reads CLOSED with the age, on both pages, in a browser against the live backend |
+| 2026-09-08 | The dead expiry stopped being offered after the close | Real contract master at 19:08 IST: list starts 15 Sep, `expired_today` names 08 Sep |
+| 2026-09-08 | Nothing calls a closing price "live" any more | Home badge and desk chip both read "at the close · 19:22 IST" with the market shut |
+| 2026-09-08 | The deleted reward-to-risk rule stopped being computed | The four-rule block renders exactly four rules from a live balance of ₹9,71,111 |
+| 2026-09-08 | Recorder deployed, first time since 3 September | Revision `swayam-recorder-00002-lez` ACTIVE, answers 200, reads the token, FYERS returns 82 rows |
 | 2026-09-07 | Release 1: lot 65, real margin, live capital, his risk rules | PR #23 |
 
 ---

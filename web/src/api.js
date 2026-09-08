@@ -82,6 +82,9 @@ export const api = {
   getOptionQuote: ({ strike, expiry, type, symbol = 'NSE:NIFTY50-INDEX' }) =>
     request(`/api/market/option/quote?strike=${strike}&expiry=${expiry}&type=${type}&symbol=${symbol}`),
   getExpiries: () => request('/api/market/expiries'),
+  // Whether the prices on screen are live, old, or missing, and why. Read on a
+  // slow timer by the data-health strip, so a broker outage is never silent.
+  getDataHealth: () => request('/api/market/data-health'),
   previewOrder: (payload) =>
     request('/api/execute/preview-order', {
       method: 'POST',

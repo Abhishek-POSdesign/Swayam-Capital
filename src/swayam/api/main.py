@@ -14,6 +14,7 @@ from typing import Any
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from swayam.api.routes import ai, execution, health, home, journal, lessons, macro, market, notebook, notifications, pinned, positions, readiness, session, strategy, tts, validation
+from swayam.api.chain_feed import chain_feed
 from swayam.api.spot_feed import SpotFeed
 from swayam.api.ws_manager import ws_manager
 from swayam.fyers_client import fyers_client
@@ -33,21 +34,29 @@ async def _broadcast_tick(frame: dict[str, Any]) -> None:
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Starts the one background task that pushes real ticks, and stops it cleanly.
+    """Starts the two background feeds that keep real prices flowing.
 
-    SWAYAM_DISABLE_SPOT_FEED=1 keeps it off, which the test suite sets so no
+    The spot feed pushes NIFTY ticks to the browsers. The chain feed keeps the
+    option chains the desk is watching fresh, at one FYERS call per expiry
+    however many legs or browsers are looking, so a browser poll never becomes
+    a broker call.
+
+    SWAYAM_DISABLE_SPOT_FEED=1 keeps both off, which the test suite sets so no
     test ever polls the live broker in the background.
     """
-    task = None
+    tasks: list[Any] = []
     if os.getenv("SWAYAM_DISABLE_SPOT_FEED") != "1":
         feed = SpotFeed(fyers_client.get_nifty_spot, _broadcast_tick)
         app.state.spot_feed = feed
-        task = asyncio.create_task(feed.run(), name="swayam-spot-feed")
+        tasks.append(asyncio.create_task(feed.run(), name="swayam-spot-feed"))
+        app.state.chain_feed = chain_feed
+        tasks.append(asyncio.create_task(chain_feed.run(), name="swayam-chain-feed"))
     try:
         yield
     finally:
-        if task is not None:
+        for task in tasks:
             task.cancel()
+        for task in tasks:
             with contextlib.suppress(asyncio.CancelledError):
                 await task
 
