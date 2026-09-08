@@ -107,7 +107,7 @@ WHAT I WANT NEXT
    what volatility is doing and whether an event is coming. Do not push me.
 5. The AI chapter comes after the plumbing. I want it in the plan, not started.
 
-My deadline is Friday 12 September for everything to be right. I am not fixing
+My deadline is Friday 11 September for everything to be right. I am not fixing
 the date I start paper trading; it starts when the live test passes.
 
 Ask me when you are unsure. I have said so explicitly and mid-build is fine.
