@@ -2,7 +2,9 @@
 node_modules/
 web/node_modules/
 web/dist/
-/data/
+/data/*
+!/data/nse_holidays_2026.json
+!/data/nifty50_constituents.json
 *.pyc
 __pycache__/
 .pytest_cache/

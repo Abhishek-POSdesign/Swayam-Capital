@@ -84,7 +84,7 @@ describe('Home — the rebuilt page', () => {
     page.renderSidebar();
 
     const text = container.querySelector('#home-nifty-sidebar').textContent;
-    expect(text).toContain('Volume today');
+    expect(text).toContain('Futures volume');
     expect(text).toContain('Advances / declines');
     expect(text).toContain('unavailable');
     expect(text).toContain('Bearish');
@@ -183,7 +183,7 @@ describe('Home — the rebuilt page', () => {
 
     expect(host.textContent).toContain('Breadth');
     expect(host.textContent).toContain('unavailable');
-    expect(host.textContent).toContain('no wired source');
+    expect(host.textContent).toContain('no constituent quotes');
     expect(host.textContent).toContain('23,779.15');
   });
 });

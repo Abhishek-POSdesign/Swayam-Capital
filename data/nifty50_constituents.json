@@ -1,0 +1,309 @@
+{
+  "index": "NIFTY 50",
+  "as_of": "2026-09-08",
+  "source": "https://archives.nseindia.com/content/indices/ind_nifty50list.csv, downloaded 2026-09-08",
+  "note": "Market breadth counts how many of these 50 are up against down on the day. NSE reconstitutes the index twice a year (effective the last trading day of March and September); refresh this file from the source above when it does. The as_of date is shown on screen so a stale list is visible rather than silent.",
+  "symbol_format": "FYERS equity symbol: NSE:<NSE symbol>-EQ",
+  "constituents": [
+    {
+      "symbol": "ADANIENT",
+      "fyers_symbol": "NSE:ADANIENT-EQ",
+      "company": "Adani Enterprises Ltd.",
+      "industry": "Metals & Mining"
+    },
+    {
+      "symbol": "ADANIPORTS",
+      "fyers_symbol": "NSE:ADANIPORTS-EQ",
+      "company": "Adani Ports and Special Economic Zone Ltd.",
+      "industry": "Services"
+    },
+    {
+      "symbol": "APOLLOHOSP",
+      "fyers_symbol": "NSE:APOLLOHOSP-EQ",
+      "company": "Apollo Hospitals Enterprise Ltd.",
+      "industry": "Healthcare"
+    },
+    {
+      "symbol": "ASIANPAINT",
+      "fyers_symbol": "NSE:ASIANPAINT-EQ",
+      "company": "Asian Paints Ltd.",
+      "industry": "Consumer Durables"
+    },
+    {
+      "symbol": "AXISBANK",
+      "fyers_symbol": "NSE:AXISBANK-EQ",
+      "company": "Axis Bank Ltd.",
+      "industry": "Financial Services"
+    },
+    {
+      "symbol": "BAJAJ-AUTO",
+      "fyers_symbol": "NSE:BAJAJ-AUTO-EQ",
+      "company": "Bajaj Auto Ltd.",
+      "industry": "Automobile and Auto Components"
+    },
+    {
+      "symbol": "BAJFINANCE",
+      "fyers_symbol": "NSE:BAJFINANCE-EQ",
+      "company": "Bajaj Finance Ltd.",
+      "industry": "Financial Services"
+    },
+    {
+      "symbol": "BAJAJFINSV",
+      "fyers_symbol": "NSE:BAJAJFINSV-EQ",
+      "company": "Bajaj Finserv Ltd.",
+      "industry": "Financial Services"
+    },
+    {
+      "symbol": "BEL",
+      "fyers_symbol": "NSE:BEL-EQ",
+      "company": "Bharat Electronics Ltd.",
+      "industry": "Capital Goods"
+    },
+    {
+      "symbol": "BHARTIARTL",
+      "fyers_symbol": "NSE:BHARTIARTL-EQ",
+      "company": "Bharti Airtel Ltd.",
+      "industry": "Telecommunication"
+    },
+    {
+      "symbol": "CIPLA",
+      "fyers_symbol": "NSE:CIPLA-EQ",
+      "company": "Cipla Ltd.",
+      "industry": "Healthcare"
+    },
+    {
+      "symbol": "COALINDIA",
+      "fyers_symbol": "NSE:COALINDIA-EQ",
+      "company": "Coal India Ltd.",
+      "industry": "Oil Gas & Consumable Fuels"
+    },
+    {
+      "symbol": "DRREDDY",
+      "fyers_symbol": "NSE:DRREDDY-EQ",
+      "company": "Dr. Reddy's Laboratories Ltd.",
+      "industry": "Healthcare"
+    },
+    {
+      "symbol": "EICHERMOT",
+      "fyers_symbol": "NSE:EICHERMOT-EQ",
+      "company": "Eicher Motors Ltd.",
+      "industry": "Automobile and Auto Components"
+    },
+    {
+      "symbol": "ETERNAL",
+      "fyers_symbol": "NSE:ETERNAL-EQ",
+      "company": "Eternal Ltd.",
+      "industry": "Consumer Services"
+    },
+    {
+      "symbol": "GRASIM",
+      "fyers_symbol": "NSE:GRASIM-EQ",
+      "company": "Grasim Industries Ltd.",
+      "industry": "Construction Materials"
+    },
+    {
+      "symbol": "HCLTECH",
+      "fyers_symbol": "NSE:HCLTECH-EQ",
+      "company": "HCL Technologies Ltd.",
+      "industry": "Information Technology"
+    },
+    {
+      "symbol": "HDFCBANK",
+      "fyers_symbol": "NSE:HDFCBANK-EQ",
+      "company": "HDFC Bank Ltd.",
+      "industry": "Financial Services"
+    },
+    {
+      "symbol": "HDFCLIFE",
+      "fyers_symbol": "NSE:HDFCLIFE-EQ",
+      "company": "HDFC Life Insurance Company Ltd.",
+      "industry": "Financial Services"
+    },
+    {
+      "symbol": "HINDALCO",
+      "fyers_symbol": "NSE:HINDALCO-EQ",
+      "company": "Hindalco Industries Ltd.",
+      "industry": "Metals & Mining"
+    },
+    {
+      "symbol": "HINDUNILVR",
+      "fyers_symbol": "NSE:HINDUNILVR-EQ",
+      "company": "Hindustan Unilever Ltd.",
+      "industry": "Fast Moving Consumer Goods"
+    },
+    {
+      "symbol": "ICICIBANK",
+      "fyers_symbol": "NSE:ICICIBANK-EQ",
+      "company": "ICICI Bank Ltd.",
+      "industry": "Financial Services"
+    },
+    {
+      "symbol": "ITC",
+      "fyers_symbol": "NSE:ITC-EQ",
+      "company": "ITC Ltd.",
+      "industry": "Fast Moving Consumer Goods"
+    },
+    {
+      "symbol": "INFY",
+      "fyers_symbol": "NSE:INFY-EQ",
+      "company": "Infosys Ltd.",
+      "industry": "Information Technology"
+    },
+    {
+      "symbol": "INDIGO",
+      "fyers_symbol": "NSE:INDIGO-EQ",
+      "company": "InterGlobe Aviation Ltd.",
+      "industry": "Services"
+    },
+    {
+      "symbol": "JSWSTEEL",
+      "fyers_symbol": "NSE:JSWSTEEL-EQ",
+      "company": "JSW Steel Ltd.",
+      "industry": "Metals & Mining"
+    },
+    {
+      "symbol": "JIOFIN",
+      "fyers_symbol": "NSE:JIOFIN-EQ",
+      "company": "Jio Financial Services Ltd.",
+      "industry": "Financial Services"
+    },
+    {
+      "symbol": "KOTAKBANK",
+      "fyers_symbol": "NSE:KOTAKBANK-EQ",
+      "company": "Kotak Mahindra Bank Ltd.",
+      "industry": "Financial Services"
+    },
+    {
+      "symbol": "LT",
+      "fyers_symbol": "NSE:LT-EQ",
+      "company": "Larsen & Toubro Ltd.",
+      "industry": "Construction"
+    },
+    {
+      "symbol": "M&M",
+      "fyers_symbol": "NSE:M&M-EQ",
+      "company": "Mahindra & Mahindra Ltd.",
+      "industry": "Automobile and Auto Components"
+    },
+    {
+      "symbol": "MARUTI",
+      "fyers_symbol": "NSE:MARUTI-EQ",
+      "company": "Maruti Suzuki India Ltd.",
+      "industry": "Automobile and Auto Components"
+    },
+    {
+      "symbol": "MAXHEALTH",
+      "fyers_symbol": "NSE:MAXHEALTH-EQ",
+      "company": "Max Healthcare Institute Ltd.",
+      "industry": "Healthcare"
+    },
+    {
+      "symbol": "NTPC",
+      "fyers_symbol": "NSE:NTPC-EQ",
+      "company": "NTPC Ltd.",
+      "industry": "Power"
+    },
+    {
+      "symbol": "NESTLEIND",
+      "fyers_symbol": "NSE:NESTLEIND-EQ",
+      "company": "Nestle India Ltd.",
+      "industry": "Fast Moving Consumer Goods"
+    },
+    {
+      "symbol": "ONGC",
+      "fyers_symbol": "NSE:ONGC-EQ",
+      "company": "Oil & Natural Gas Corporation Ltd.",
+      "industry": "Oil Gas & Consumable Fuels"
+    },
+    {
+      "symbol": "POWERGRID",
+      "fyers_symbol": "NSE:POWERGRID-EQ",
+      "company": "Power Grid Corporation of India Ltd.",
+      "industry": "Power"
+    },
+    {
+      "symbol": "RELIANCE",
+      "fyers_symbol": "NSE:RELIANCE-EQ",
+      "company": "Reliance Industries Ltd.",
+      "industry": "Oil Gas & Consumable Fuels"
+    },
+    {
+      "symbol": "SBILIFE",
+      "fyers_symbol": "NSE:SBILIFE-EQ",
+      "company": "SBI Life Insurance Company Ltd.",
+      "industry": "Financial Services"
+    },
+    {
+      "symbol": "SHRIRAMFIN",
+      "fyers_symbol": "NSE:SHRIRAMFIN-EQ",
+      "company": "Shriram Finance Ltd.",
+      "industry": "Financial Services"
+    },
+    {
+      "symbol": "SBIN",
+      "fyers_symbol": "NSE:SBIN-EQ",
+      "company": "State Bank of India",
+      "industry": "Financial Services"
+    },
+    {
+      "symbol": "SUNPHARMA",
+      "fyers_symbol": "NSE:SUNPHARMA-EQ",
+      "company": "Sun Pharmaceutical Industries Ltd.",
+      "industry": "Healthcare"
+    },
+    {
+      "symbol": "TCS",
+      "fyers_symbol": "NSE:TCS-EQ",
+      "company": "Tata Consultancy Services Ltd.",
+      "industry": "Information Technology"
+    },
+    {
+      "symbol": "TATACONSUM",
+      "fyers_symbol": "NSE:TATACONSUM-EQ",
+      "company": "Tata Consumer Products Ltd.",
+      "industry": "Fast Moving Consumer Goods"
+    },
+    {
+      "symbol": "TMPV",
+      "fyers_symbol": "NSE:TMPV-EQ",
+      "company": "Tata Motors Passenger Vehicles Ltd.",
+      "industry": "Automobile and Auto Components"
+    },
+    {
+      "symbol": "TATASTEEL",
+      "fyers_symbol": "NSE:TATASTEEL-EQ",
+      "company": "Tata Steel Ltd.",
+      "industry": "Metals & Mining"
+    },
+    {
+      "symbol": "TECHM",
+      "fyers_symbol": "NSE:TECHM-EQ",
+      "company": "Tech Mahindra Ltd.",
+      "industry": "Information Technology"
+    },
+    {
+      "symbol": "TITAN",
+      "fyers_symbol": "NSE:TITAN-EQ",
+      "company": "Titan Company Ltd.",
+      "industry": "Consumer Durables"
+    },
+    {
+      "symbol": "TRENT",
+      "fyers_symbol": "NSE:TRENT-EQ",
+      "company": "Trent Ltd.",
+      "industry": "Consumer Services"
+    },
+    {
+      "symbol": "ULTRACEMCO",
+      "fyers_symbol": "NSE:ULTRACEMCO-EQ",
+      "company": "UltraTech Cement Ltd.",
+      "industry": "Construction Materials"
+    },
+    {
+      "symbol": "WIPRO",
+      "fyers_symbol": "NSE:WIPRO-EQ",
+      "company": "Wipro Ltd.",
+      "industry": "Information Technology"
+    }
+  ]
+}

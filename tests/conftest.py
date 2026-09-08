@@ -2,8 +2,13 @@
 Pytest configuration for Swayam Capital test suite.
 """
 
+import os
 import pytest
 from unittest.mock import patch
+
+# The API's lifespan starts a background task that polls the live broker for
+# ticks. Never in tests.
+os.environ.setdefault("SWAYAM_DISABLE_SPOT_FEED", "1")
 
 
 @pytest.fixture(autouse=True)
@@ -49,7 +54,12 @@ def deterministic_capital(request):
         taken_at=datetime(2026, 9, 7, 20, 0, tzinfo=timezone.utc),
         trading_day=date(2026, 9, 7),
     )
-    with patch("swayam.api.routes.validation.get_capital", return_value=snapshot):
+    # validation.py imports the name directly; the AI persona, execution, close
+    # and rules paths call it through the module, so both are pinned.
+    with (
+        patch("swayam.api.routes.validation.get_capital", return_value=snapshot),
+        patch("swayam.services.capital.get_capital", return_value=snapshot),
+    ):
         yield
 
 
@@ -83,8 +93,9 @@ def guard_live_database(request):
     fake_marker = request.node.get_closest_marker("fake_db")
     if fake_marker:
         # `@pytest.mark.fake_db(seed={"swayam_config": [...]})` pre-loads rows the
-        # code under test reads back. Every write path reads `margin_base_inr`,
-        # so that row is seeded by default and a test may override it.
+        # code under test reads back. The `margin_base_inr` row is seeded so an
+        # older fixture that still expects the table to have it keeps working;
+        # no application code reads it any more.
         seed = dict(fake_marker.kwargs.get("seed") or {})
         seed.setdefault(
             "swayam_config",

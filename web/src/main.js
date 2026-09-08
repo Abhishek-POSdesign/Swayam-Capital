@@ -154,13 +154,15 @@ class SwayamApp {
       this.initStrategyView();
     }
 
-    // 3. Connect WebSocket for live NIFTY Spot ticks
+    // 3. Connect WebSocket for live NIFTY Spot ticks. The client publishes
+    // every tick to `spotFeed`, which Home and the Strategy Desk subscribe to,
+    // and falls back to a REST poll on its own if the socket goes silent. The
+    // separate 10-second poll that used to live here updated only the header
+    // pill; it is gone, so there is one stream and every panel follows it.
     this.wsClient = new SpotWebSocketClient((spot) => {
       updateHeaderSpot(spot);
-      if (this.builder) this.builder.setSpot(spot);
     });
     this.wsClient.connect();
-    this.pollSpot();
 
     // 4. Initialize AI Trading Partner Drawer & Persistent Launcher Orb
     await this.initAIDrawer();
@@ -384,9 +386,6 @@ class SwayamApp {
       this.rules = await api.getRules(forceReload);
       const ruleContainer = document.getElementById('rule-panel-container');
       if (ruleContainer) renderRulePanel(ruleContainer, this.rules);
-      if (this.builder && this.rules.margin_base_inr) {
-        this.builder.setMarginBase(this.rules.margin_base_inr);
-      }
     } catch (err) {
       console.error('Failed to load rules:', err);
     }
@@ -424,20 +423,6 @@ class SwayamApp {
         }
       };
     }
-  }
-
-  pollSpot() {
-    setInterval(async () => {
-      try {
-        const spotData = await api.getNiftySpot();
-        if (spotData && spotData.spot) {
-          updateHeaderSpot(spotData.spot);
-          if (this.builder) this.builder.setSpot(spotData.spot);
-        }
-      } catch {
-        // quiet fallback polling
-      }
-    }, 10000);
   }
 
   registerServiceWorker() {

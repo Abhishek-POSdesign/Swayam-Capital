@@ -2,9 +2,10 @@
 Health check and rules configuration endpoints for Swayam Capital.
 """
 
-from typing import Any
+from typing import Any, Optional
 from fastapi import APIRouter, HTTPException, Query
-from swayam.db import db
+from swayam.services import capital as capital_service
+from swayam.services.capital import CapitalUnavailable
 from swayam.vault_reader import vault_reader
 
 router = APIRouter()
@@ -27,29 +28,37 @@ def get_rules(force_reload: bool = Query(default=False)) -> dict[str, Any]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read rules from vault: {e}") from e
 
-    # Retrieve current margin base to compute live rupee caps for display
+    # The rupee caps are percentages of the LIVE FYERS balance. This used to
+    # read the stored margin base and fall back to a vault constant; both were
+    # invented numbers dressed as caps. Without the balance every rupee cap is
+    # null and `capital_unavailable_reason` says why.
+    capital_inr: Optional[float] = None
+    capital_reason: Optional[str] = None
     try:
-        margin_base_inr = db.get_margin_base_inr()
-    except Exception:
-        margin_base_inr = rules.margin_base_default_inr
+        capital_inr = capital_service.get_capital().risk_capital_inr
+    except CapitalUnavailable as exc:
+        capital_reason = str(exc)
+
+    def cap(pct: float) -> Optional[float]:
+        return round(pct * capital_inr, 2) if capital_inr is not None else None
 
     return {
         "per_trade_risk_pct": rules.per_trade_risk_pct,
-        "per_trade_risk_cap_inr": round(rules.per_trade_risk_pct * margin_base_inr, 2),
+        "per_trade_risk_cap_inr": cap(rules.per_trade_risk_pct),
         "realistic_risk_cap_pct": rules.realistic_risk_cap_pct,
-        "realistic_risk_cap_inr": round(rules.realistic_risk_cap_pct * margin_base_inr, 2),
+        "realistic_risk_cap_inr": cap(rules.realistic_risk_cap_pct),
         "realistic_stress_sigma": rules.realistic_stress_sigma,
         "realized_vol_window_days": rules.realized_vol_window_days,
         "rr_minimum": rules.rr_minimum,
         "rr_target": rules.rr_target,
         "daily_loss_cap_pct": rules.daily_loss_cap_pct,
-        "daily_loss_cap_inr": round(rules.daily_loss_cap_pct * margin_base_inr, 2),
+        "daily_loss_cap_inr": cap(rules.daily_loss_cap_pct),
         "weekly_loss_cap_pct": rules.weekly_loss_cap_pct,
-        "weekly_loss_cap_inr": round(rules.weekly_loss_cap_pct * margin_base_inr, 2),
+        "weekly_loss_cap_inr": cap(rules.weekly_loss_cap_pct),
         "blast_radius_pct": rules.blast_radius_pct,
-        "blast_radius_cap_inr": round(rules.blast_radius_pct * margin_base_inr, 2),
+        "blast_radius_cap_inr": cap(rules.blast_radius_pct),
         "overnight_hedge_cap_pct": rules.overnight_hedge_cap_pct,
-        "overnight_hedge_cap_inr": round(rules.overnight_hedge_cap_pct * margin_base_inr, 2),
+        "overnight_hedge_cap_inr": cap(rules.overnight_hedge_cap_pct),
         "margin_base_min_inr": rules.margin_base_min_inr,
         "margin_base_max_inr": rules.margin_base_max_inr,
         "margin_base_default_inr": rules.margin_base_default_inr,
@@ -59,5 +68,6 @@ def get_rules(force_reload: bool = Query(default=False)) -> dict[str, Any]:
         "sleep_reduced_size_factor": rules.sleep_reduced_size_factor,
         "alcohol_lockout_days": rules.alcohol_lockout_days,
         "reentry_ramp": rules.reentry_ramp,
-        "margin_base_inr": margin_base_inr,
+        "risk_capital_inr": capital_inr,
+        "capital_unavailable_reason": capital_reason,
     }

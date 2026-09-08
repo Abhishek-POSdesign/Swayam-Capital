@@ -22,6 +22,8 @@ from swayam.config import settings
 from swayam.db import db
 from swayam.fyers_client import FyersClientError, fyers_client
 from swayam.options_math.greeks import compute_position_greeks
+from swayam.services import capital as capital_service
+from swayam.services.capital import CapitalUnavailable
 from swayam.options_math.models import Direction, Leg, OptionType, Spread
 
 logger = logging.getLogger(__name__)
@@ -662,17 +664,21 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
 
     # Step C: Append exit report to Obsidian journal note
     if journal_path:
+        # The exit block states the result as a percentage of his capital. This
+        # used to read the stored margin base and then fall back to a constant
+        # in the vault; it is the live FYERS balance now, or the journal write
+        # refuses rather than divide by an invented number.
         try:
-            margin_base = db.get_margin_base_inr()
-        except Exception:
-            try:
-                from swayam.vault_reader import vault_reader
-                margin_base = vault_reader.load_rules().margin_base_default_inr
-            except Exception:
-                raise HTTPException(
-                    status_code=503,
-                    detail="Database and Method Rules unreachable to determine margin base for journal exit block.",
-                )
+            margin_base = capital_service.get_capital().risk_capital_inr
+        except CapitalUnavailable as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Position closed in the database, but the live account balance is "
+                    f"unavailable, so the journal exit block cannot state the result as a "
+                    f"percentage of capital. {exc}"
+                ),
+            ) from exc
 
         try:
             append_exit_block(

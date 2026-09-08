@@ -63,8 +63,32 @@ class TestPersonaStaticContent:
     def test_persona_contains_stop_widening_constraint(self):
         assert "widening" in self.persona.lower() or "widen" in self.persona.lower()
 
-    def test_persona_contains_red_verdict_constraint(self):
-        assert "red" in self.persona.lower() and "readiness" in self.persona.lower()
+    def test_persona_says_readiness_has_zero_power(self):
+        """The rule that told the AI never to override a red verdict is gone.
+
+        On 2026-09-08 line 73 still said "Never override a RED readiness
+        verdict" while line 418 said readiness has no power. Both must agree.
+        """
+        assert "Never override a RED readiness verdict" not in self.persona
+        low = " ".join(self.persona.lower().split())
+        assert "readiness" in low and "zero power" in low
+        assert "never tell him a readiness verdict limits him" in low
+
+    def test_persona_black_swan_is_five_percent_not_three(self):
+        assert "5% of the live balance" in self.persona
+        assert "3% cap" not in self.persona
+        assert "black-swan ceiling, 3%" not in self.persona
+
+    def test_persona_has_no_reward_to_risk_floor(self):
+        low = self.persona.lower()
+        assert "r:r minimum" not in low
+        assert "r:r target" not in low
+        assert "no reward-to-risk minimum" in low
+
+    def test_persona_caps_are_percentages_of_the_live_balance(self):
+        assert "live fyers balance" in self.persona.lower()
+        assert "margin_base_inr" not in self.persona
+        assert "swayam_config" not in self.persona
 
     def test_persona_contains_direction_certainty_constraint(self):
         assert "certainty" in self.persona.lower() or "certain" in self.persona.lower()
@@ -122,7 +146,6 @@ class TestContextAssembly:
             patch("swayam.ai.persona.trading_partner.fyers_client") as mock_fyers,
         ):
             mock_vault.load_rules.return_value = self._make_mock_rules()
-            mock_db.get_margin_base_inr.return_value = 850000.0
             mock_db.client.table.return_value.select.return_value.eq.return_value \
                 .order.return_value.limit.return_value.execute.return_value.data = []
             mock_db.client.table.return_value.select.return_value.eq.return_value \
@@ -134,16 +157,28 @@ class TestContextAssembly:
 
         assert "Method Rules" in context
         assert "1.0%" in context  # per-trade risk
-        assert "margin_base_inr" in snapshot or snapshot.get("margin_base_inr") == 850000.0
+        assert "risk_capital_inr" in snapshot
+        # The vault's R:R lines are not shown to the AI: that rule was deleted.
+        # (Only the rules section is checked: the context also carries his real
+        # journal entries, which may mention anything.)
+        rules_section = context.split("# Current Method Rules", 1)[1].split("\n# ", 1)[0]
+        assert "R:R minimum" not in rules_section
+        assert "R:R target" not in rules_section
+        assert "of margin base" not in rules_section
+        assert "of the live balance" in rules_section
 
-    def test_context_includes_margin_base(self):
+    def test_context_includes_live_capital_from_fyers(self):
+        """The caps the AI quotes come from the live balance, not the config table.
+
+        conftest pins get_capital to his real 2026-09-07 balance of 9,71,002.38,
+        so the 1% cap must read 9,710 and never the stale 8,500.
+        """
         with (
             patch("swayam.ai.persona.trading_partner.vault_reader") as mock_vault,
             patch("swayam.ai.persona.trading_partner.db") as mock_db,
             patch("swayam.ai.persona.trading_partner.fyers_client") as mock_fyers,
         ):
             mock_vault.load_rules.return_value = self._make_mock_rules()
-            mock_db.get_margin_base_inr.return_value = 850000.0
             mock_db.client.table.return_value.select.return_value.eq.return_value \
                 .order.return_value.limit.return_value.execute.return_value.data = []
             mock_db.client.table.return_value.select.return_value.eq.return_value \
@@ -153,8 +188,44 @@ class TestContextAssembly:
             from swayam.ai.persona.trading_partner import assemble_context
             context, snapshot = assemble_context()
 
-        assert "₹8,50,000" in context or "850,000" in context
-        assert snapshot["margin_base_inr"] == 850000.0
+        assert "# Live Capital" in context
+        assert "₹971,002" in context
+        assert "₹9,710" in context  # rule 1, 1%
+        assert "₹19,420" in context  # rule 2, 2%
+        assert "₹48,550" in context  # rule 3, 5%
+        assert "FYERS" in context
+        assert "8,500" not in context
+        assert "Margin Base" not in context
+        assert snapshot["risk_capital_inr"] == 971002.38
+        assert "margin_base_inr" not in snapshot
+
+    def test_context_says_balance_unavailable_and_never_falls_back(self):
+        """Broker down: the AI is told so, and no rupee cap appears at all."""
+        from swayam.services.capital import CapitalUnavailable
+        with (
+            patch("swayam.ai.persona.trading_partner.vault_reader") as mock_vault,
+            patch("swayam.ai.persona.trading_partner.db") as mock_db,
+            patch("swayam.ai.persona.trading_partner.fyers_client") as mock_fyers,
+            patch("swayam.services.capital.get_capital", side_effect=CapitalUnavailable("Could not reach the broker for funds")),
+        ):
+            mock_vault.load_rules.return_value = self._make_mock_rules()
+            mock_db.client.table.return_value.select.return_value.eq.return_value \
+                .order.return_value.limit.return_value.execute.return_value.data = []
+            mock_db.client.table.return_value.select.return_value.eq.return_value \
+                .execute.return_value.data = []
+            mock_fyers.get_nifty_spot.return_value = 24000.0
+
+            from swayam.ai.persona.trading_partner import assemble_context
+            context, snapshot = assemble_context()
+
+        capital_section = context.split("# Live Capital", 1)[1].split("\n# ", 1)[0]
+        assert "UNAVAILABLE" in capital_section
+        assert "Could not reach the broker" in capital_section
+        assert "8,50,000" not in capital_section and "850,000" not in capital_section
+        assert "₹" not in capital_section  # no rupee cap of any kind
+        assert snapshot["risk_capital_inr"] is None
+        # The stored config figure is never consulted, not even as a fallback.
+        assert not mock_db.get_margin_base_inr.called
 
     def test_context_handles_missing_nifty_spot_gracefully(self):
         """If FYERS is offline, context should still assemble without crashing."""
@@ -164,7 +235,6 @@ class TestContextAssembly:
             patch("swayam.ai.persona.trading_partner.fyers_client") as mock_fyers,
         ):
             mock_vault.load_rules.return_value = self._make_mock_rules()
-            mock_db.get_margin_base_inr.return_value = 850000.0
             mock_db.client.table.return_value.select.return_value.eq.return_value \
                 .order.return_value.limit.return_value.execute.return_value.data = []
             mock_db.client.table.return_value.select.return_value.eq.return_value \
@@ -186,7 +256,6 @@ class TestContextAssembly:
             patch("swayam.ai.persona.trading_partner.fyers_client") as mock_fyers,
         ):
             mock_vault.load_rules.return_value = self._make_mock_rules()
-            mock_db.get_margin_base_inr.return_value = 850000.0
             mock_db.client.table.return_value.select.return_value.eq.return_value \
                 .order.return_value.limit.return_value.execute.return_value.data = []
             mock_db.client.table.return_value.select.return_value.eq.return_value \
@@ -207,7 +276,6 @@ class TestContextAssembly:
             patch("swayam.ai.persona.trading_partner.fyers_client") as mock_fyers,
         ):
             mock_vault.load_rules.side_effect = Exception("vault not found")
-            mock_db.get_margin_base_inr.return_value = 850000.0
             mock_db.client.table.return_value.select.return_value.eq.return_value \
                 .order.return_value.limit.return_value.execute.return_value.data = []
             mock_db.client.table.return_value.select.return_value.eq.return_value \
@@ -230,7 +298,6 @@ class TestContextAssembly:
             patch("swayam.ai.persona.trading_partner.fyers_client") as mock_fyers,
         ):
             mock_vault.load_rules.return_value = self._make_mock_rules()
-            mock_db.get_margin_base_inr.return_value = 900000.0
             mock_db.client.table.return_value.select.return_value.eq.return_value \
                 .order.return_value.limit.return_value.execute.return_value.data = []
             mock_db.client.table.return_value.select.return_value.eq.return_value \
@@ -240,7 +307,7 @@ class TestContextAssembly:
             from swayam.ai.persona.trading_partner import assemble_context
             _, snapshot = assemble_context()
 
-        for key in ["rules_hash", "margin_base_inr", "nifty_spot", "readiness_verdict", "open_position_count", "realistic_vol_pct"]:
+        for key in ["rules_hash", "risk_capital_inr", "nifty_spot", "readiness_verdict", "open_position_count", "realistic_vol_pct"]:
             assert key in snapshot, f"Missing snapshot key: {key}"
 
     def test_context_includes_realistic_vol(self):
@@ -252,7 +319,6 @@ class TestContextAssembly:
             patch("swayam.ai.persona.trading_partner.compute_realized_vol") as mock_vol,
         ):
             mock_vault.load_rules.return_value = self._make_mock_rules()
-            mock_db.get_margin_base_inr.return_value = 850000.0
             mock_db.client.table.return_value.select.return_value.eq.return_value \
                 .order.return_value.limit.return_value.execute.return_value.data = []
             mock_db.client.table.return_value.select.return_value.eq.return_value \
@@ -277,7 +343,6 @@ class TestBuildFullSystemPrompt:
             patch("swayam.ai.persona.trading_partner.fyers_client") as mock_fyers,
         ):
             mock_vault.load_rules.side_effect = Exception("skip")
-            mock_db.get_margin_base_inr.side_effect = Exception("skip")
             mock_db.client.table.return_value.select.return_value.eq.return_value \
                 .order.return_value.limit.return_value.execute.return_value.data = []
             mock_db.client.table.return_value.select.return_value.eq.return_value \
@@ -300,7 +365,6 @@ class TestBuildFullSystemPrompt:
             patch("swayam.ai.persona.trading_partner.fyers_client") as mock_fyers,
         ):
             mock_vault.load_rules.side_effect = Exception("skip")
-            mock_db.get_margin_base_inr.side_effect = Exception("skip")
             mock_db.client.table.return_value.select.return_value.eq.return_value \
                 .order.return_value.limit.return_value.execute.return_value.data = []
             mock_db.client.table.return_value.select.return_value.eq.return_value \

@@ -71,6 +71,36 @@ graphic designer and will do the letterform work later.
 
 Do not start anything in section 2 until he says the pages are right.
 
+### Round 2, PR 1 built 2026-09-08 evening: "Real numbers, live prices, working rules"
+
+Steps 1 to 9 of the brief, on branch `feature/swayam-round2-pr1-real-numbers-015`.
+What was checked, and how, is in the pull request. In short:
+
+- **Verified on a local backend against the real FYERS account and the live
+  database, market closed (after 15:30 IST):** the AI context now carries the
+  live balance and the caps from it (`₹9,71,111`, rule 1 `₹9,711`), never the
+  config table; breadth `17 ▲ / 31 ▼ / 2 unchanged` from a real quote of all
+  50 constituents; futures volume `21,75,290` from `NSE:NIFTY26SEPFUT`; an iron
+  condor at 29 Sep loaded at real prices and all four rules answered, rule 2
+  as a carry test (`₹555` of `₹19,422`, "if you carry this overnight") and
+  rule 4 as pass/fail (`₹81,053` of `₹5,54,961`); the socket watchdog fell
+  back to a REST poll after 10 s of silence; 365 Python tests and 174 web
+  tests pass, the two known failures remain.
+- **Not verified, because they need the live site or an open market:** the
+  token being re-read from Secret Manager without a restart, the recorder
+  writing to the bucket, frames arriving over the socket during market hours,
+  twenty consecutive 200s from `/api/strategy/validate` on Cloud Run.
+- **Found while building, not in the brief:** the snapshot's put-call ratio
+  and max pain read `call_oi`/`put_oi` keys FYERS never sends, so every OI was
+  zero, the PCR was always the 1.0 constant and "max pain" was the lowest
+  strike in the chain (21,150 on his screen). Fixed to read FYERS' per-contract
+  rows. Also the quote endpoint fetched a 50-strike chain twice per leg with no
+  cache; a four-leg desk re-quoting every 5 s hit FYERS' request limit. A
+  3-second raw-chain cache now makes that at most two calls.
+- **Left alone, flagged:** `validation.py` still runs the deleted
+  reward-to-risk check as an advisory. Its arithmetic was off-limits this
+  round, so the desk drops that one line from the warnings it prints.
+
 ### State as of the end of the 2026-09-08 session
 
 - PRs #23 through #30 are all merged. `main` is at `cb2c75a`.

@@ -41,6 +41,7 @@ from typing import Literal, Optional, Sequence
 import requests
 
 from swayam.config import settings
+from swayam.services.fyers_token import get_access_token
 from swayam.services.contract_master import (
     ContractMasterUnavailable,
     get_lot_size,
@@ -162,7 +163,8 @@ def get_margin(
 
     if not legs:
         raise MarginUnavailable("No legs supplied.")
-    if not settings.fyers_access_token or not settings.fyers_app_id:
+    access_token = get_access_token()
+    if not access_token or not settings.fyers_app_id:
         raise MarginUnavailable("FYERS is not configured.")
 
     key = _cache_key(legs, product_type)
@@ -188,7 +190,7 @@ def get_margin(
         response = requests.post(
             MARGIN_URL,
             headers={
-                "Authorization": f"{settings.fyers_app_id}:{settings.fyers_access_token}",
+                "Authorization": f"{settings.fyers_app_id}:{access_token}",
                 "Content-Type": "application/json",
                 "Accept": "application/json",
                 "User-Agent": _BROWSER_UA,

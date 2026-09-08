@@ -3,7 +3,14 @@ NIFTY Market Snapshot Service for Swayam Capital.
 
 Computes comprehensive Cash and F&O derivatives market snapshots:
 - Cash pane: Spot, % changes, 20-day/50-day ranges, 20-DMA distance (ATR multiple),
-  ATR(20), 20-day realized volatility, rule-based sentiment, advance/decline, sector strip.
+  ATR(20), 20-day realized volatility, rule-based sentiment, advance/decline counted
+  from a real quote of all 50 constituents, front-month futures volume, sector strip.
+
+The rule this file is held to: every figure is measured from a FYERS response or
+it is None, and the page then says "unavailable". Eight invented constants used
+to live here and in market.py (a put-call ratio of 1.0, an ATR of 150, a
+realised volatility of 12%, a range position of 50%, a rollover of 68.5%, and
+others). They are gone. None means "not measured", never "assume something".
 - F&O pane: Weekly & Monthly expiries + DTE (calendar days + trading sessions),
   Weekly & Monthly PCR, Max Pain (weekly), Max Call/Put OI strikes, India VIX + % chg,
   FII Cash (₹ cr) vs FII F&O (contracts) strictly separated,
@@ -21,6 +28,9 @@ import math
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
+import json
+from pathlib import Path
+
 from swayam.config import settings
 from swayam.db import SupabaseDB
 from swayam.fyers_client import FyersClientError, fyers_client
@@ -33,51 +43,136 @@ SNAPSHOT_CACHE_TYPE = "nifty_snapshot"
 CACHE_TTL_MINUTES = 15
 
 
-# Sector tracking list with verified Friday close baseline changes for off-market hours
+# Sector indices quoted live. (This list used to carry a "prev_session_change"
+# constant per sector, invented and never read. Removed.)
 SECTORS = [
-    {"name": "BANK", "symbol": "NSE:NIFTYBANK-INDEX", "prev_session_change": 0.42},
-    {"name": "IT", "symbol": "NSE:NIFTYIT-INDEX", "prev_session_change": -0.65},
-    {"name": "AUTO", "symbol": "NSE:NIFTYAUTO-INDEX", "prev_session_change": 0.85},
-    {"name": "FMCG", "symbol": "NSE:NIFTYFMCG-INDEX", "prev_session_change": -0.22},
-    {"name": "METAL", "symbol": "NSE:NIFTYMETAL-INDEX", "prev_session_change": 1.15},
-    {"name": "PHARMA", "symbol": "NSE:NIFTYPHARMA-INDEX", "prev_session_change": 0.38},
-    {"name": "REALTY", "symbol": "NSE:NIFTYREALTY-INDEX", "prev_session_change": -0.54},
-    {"name": "ENERGY", "symbol": "NSE:NIFTYENERGY-INDEX", "prev_session_change": 0.25},
-    {"name": "INFRA", "symbol": "NSE:NIFTYINFRA-INDEX", "prev_session_change": 0.18},
-    {"name": "PSE", "symbol": "NSE:NIFTYPSE-INDEX", "prev_session_change": -0.35},
+    {"name": "BANK", "symbol": "NSE:NIFTYBANK-INDEX"},
+    {"name": "IT", "symbol": "NSE:NIFTYIT-INDEX"},
+    {"name": "AUTO", "symbol": "NSE:NIFTYAUTO-INDEX"},
+    {"name": "FMCG", "symbol": "NSE:NIFTYFMCG-INDEX"},
+    {"name": "METAL", "symbol": "NSE:NIFTYMETAL-INDEX"},
+    {"name": "PHARMA", "symbol": "NSE:NIFTYPHARMA-INDEX"},
+    {"name": "REALTY", "symbol": "NSE:NIFTYREALTY-INDEX"},
+    {"name": "ENERGY", "symbol": "NSE:NIFTYENERGY-INDEX"},
+    {"name": "INFRA", "symbol": "NSE:NIFTYINFRA-INDEX"},
+    {"name": "PSE", "symbol": "NSE:NIFTYPSE-INDEX"},
 ]
 
+CONSTITUENTS_FILE = Path(__file__).resolve().parent.parent.parent.parent / "data" / "nifty50_constituents.json"
 
-def calculate_max_pain(options_chain: list[dict[str, Any]]) -> float:
+
+def load_nifty50_constituents() -> dict[str, Any]:
+    """The NIFTY 50 list with its as_of date, or an empty list with the reason.
+
+    The list lives in data/nifty50_constituents.json, downloaded from NSE, so a
+    stale list is visible (the date is shown on screen) rather than silent.
+    """
+    try:
+        data = json.loads(CONSTITUENTS_FILE.read_text(encoding="utf-8"))
+        symbols = [c["fyers_symbol"] for c in data.get("constituents", []) if c.get("fyers_symbol")]
+        return {"symbols": symbols, "as_of": data.get("as_of"), "source": data.get("source"), "error": None}
+    except Exception as exc:  # noqa: BLE001 - reported, never guessed around
+        return {"symbols": [], "as_of": None, "source": None, "error": f"{CONSTITUENTS_FILE.name}: {exc}"}
+
+
+def compute_breadth(quotes: dict[str, dict[str, Any]], symbols: list[str]) -> dict[str, Any]:
+    """Counts how many constituents are up against down on the day.
+
+    A constituent counts only when the quote carries BOTH a last price and a
+    previous close. Advances + declines + unchanged equals `quoted`, and on a
+    normal session `quoted` equals `total` (50). If fewer were quoted the
+    counts are still real, and `quoted` says how many they cover.
+    """
+    advances = declines = unchanged = quoted = 0
+    for sym in symbols:
+        q = quotes.get(sym) or {}
+        lp = q.get("lp")
+        pc = q.get("prev_close_price")
+        if lp is None or pc is None:
+            continue
+        try:
+            last, prev = float(lp), float(pc)
+        except (TypeError, ValueError):
+            continue
+        if prev <= 0 or last <= 0:
+            continue
+        quoted += 1
+        if last > prev:
+            advances += 1
+        elif last < prev:
+            declines += 1
+        else:
+            unchanged += 1
+    if quoted == 0:
+        return {"advances": None, "declines": None, "unchanged": None, "quoted": 0, "total": len(symbols)}
+    return {"advances": advances, "declines": declines, "unchanged": unchanged, "quoted": quoted, "total": len(symbols)}
+
+
+def front_month_futures_symbol(monthly_expiry_iso: Optional[str]) -> Optional[str]:
+    """FYERS symbol for the NIFTY futures contract expiring on the given monthly expiry.
+
+    FYERS names index futures NSE:NIFTY<YY><MON>FUT, e.g. NSE:NIFTY26SEPFUT.
+    """
+    if not monthly_expiry_iso:
+        return None
+    try:
+        d = date.fromisoformat(monthly_expiry_iso)
+    except ValueError:
+        return None
+    return f"NSE:NIFTY{d:%y}{d:%b}FUT".upper()
+
+
+def open_interest_by_strike(options_chain: list[dict[str, Any]]) -> dict[float, dict[str, float]]:
+    """Call and put open interest per strike, from either chain shape.
+
+    FYERS' `optionsChain` is ONE ROW PER CONTRACT: `option_type` "CE" or "PE",
+    `strike_price`, `oi`. The older per-strike shape carries `call_oi` and
+    `put_oi` on one row. Until round 2 this file only read the second shape,
+    so against real FYERS data every open interest was zero, the put-call ratio
+    was always the 1.0 constant, and "max pain" was simply the lowest strike in
+    the chain (21,150 on his screen with NIFTY at 23,635).
+    """
+    by_strike: dict[float, dict[str, float]] = {}
+    for row in options_chain:
+        try:
+            strike = float(row.get("strike_price") or row.get("strike") or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if strike <= 0:
+            continue
+        slot = by_strike.setdefault(strike, {"call_oi": 0.0, "put_oi": 0.0})
+        opt = row.get("option_type")
+        if opt in ("CE", "PE"):
+            try:
+                oi = float(row.get("oi") or 0)
+            except (TypeError, ValueError):
+                oi = 0.0
+            slot["call_oi" if opt == "CE" else "put_oi"] += oi
+            continue
+        slot["call_oi"] += float(row.get("call_oi", row.get("call_open_interest", 0)) or 0)
+        slot["put_oi"] += float(row.get("put_oi", row.get("put_open_interest", 0)) or 0)
+    return by_strike
+
+
+def calculate_max_pain(options_chain: list[dict[str, Any]]) -> Optional[float]:
     """Calculates Max Pain strike from option chain.
 
     Max Pain is the strike at which option sellers/writers payout the least
-    if the underlying expires at that price.
+    if the underlying expires at that price. None when there is no chain or no
+    open interest at all: with every OI at zero every strike ties at zero
+    loss, and the answer would be whichever strike came first, not a
+    measurement.
     """
     if not options_chain:
-        return 0.0
+        return None
 
-    strikes = set()
-    chain_by_strike: dict[float, dict[str, float]] = {}
-
-    for row in options_chain:
-        strike = float(row.get("strike_price") or row.get("strike", 0.0))
-        if strike <= 0:
-            continue
-        strikes.add(strike)
-        if strike not in chain_by_strike:
-            chain_by_strike[strike] = {"call_oi": 0.0, "put_oi": 0.0}
-
-        # Accumulate Call OI
-        c_oi = float(row.get("call_oi", row.get("call_open_interest", 0)) or 0)
-        chain_by_strike[strike]["call_oi"] += c_oi
-
-        # Accumulate Put OI
-        p_oi = float(row.get("put_oi", row.get("put_open_interest", 0)) or 0)
-        chain_by_strike[strike]["put_oi"] += p_oi
+    chain_by_strike = open_interest_by_strike(options_chain)
+    strikes = set(chain_by_strike)
 
     if not strikes:
-        return 0.0
+        return None
+    if not any(v["call_oi"] > 0 or v["put_oi"] > 0 for v in chain_by_strike.values()):
+        return None
 
     sorted_strikes = sorted(list(strikes))
     min_loss = float("inf")
@@ -108,10 +203,12 @@ def compute_pcr_and_walls(options_chain: list[dict[str, Any]]) -> dict[str, Any]
     Also checks if walls touch boundary strikes (for 50-strike limit re-request check).
     """
     if not options_chain:
+        # No chain, no ratio. A put-call ratio of 1.0 is a market opinion, not
+        # a blank, and this used to return exactly that.
         return {
-            "pcr": 1.0,
-            "max_call_oi_strike": 0.0,
-            "max_put_oi_strike": 0.0,
+            "pcr": None,
+            "max_call_oi_strike": None,
+            "max_put_oi_strike": None,
             "total_call_oi": 0,
             "total_put_oi": 0,
             "boundary_touch": False,
@@ -126,13 +223,10 @@ def compute_pcr_and_walls(options_chain: list[dict[str, Any]]) -> dict[str, Any]
 
     valid_strikes = []
 
-    for row in options_chain:
-        strike = float(row.get("strike_price") or row.get("strike", 0.0))
-        if strike <= 0:
-            continue
+    for strike, ois in open_interest_by_strike(options_chain).items():
         valid_strikes.append(strike)
-        c_oi = int(row.get("call_oi", 0) or 0)
-        p_oi = int(row.get("put_oi", 0) or 0)
+        c_oi = int(ois["call_oi"])
+        p_oi = int(ois["put_oi"])
 
         total_call_oi += c_oi
         total_put_oi += p_oi
@@ -145,7 +239,7 @@ def compute_pcr_and_walls(options_chain: list[dict[str, Any]]) -> dict[str, Any]
             max_put_oi = p_oi
             max_put_strike = strike
 
-    pcr = round(total_put_oi / total_call_oi, 2) if total_call_oi > 0 else 1.0
+    pcr = round(total_put_oi / total_call_oi, 2) if total_call_oi > 0 else None
     valid_strikes.sort()
 
     boundary_touch = False
@@ -158,8 +252,8 @@ def compute_pcr_and_walls(options_chain: list[dict[str, Any]]) -> dict[str, Any]
 
     return {
         "pcr": pcr,
-        "max_call_oi_strike": max_call_strike,
-        "max_put_oi_strike": max_put_strike,
+        "max_call_oi_strike": max_call_strike if max_call_oi >= 0 else None,
+        "max_put_oi_strike": max_put_strike if max_put_oi >= 0 else None,
         "total_call_oi": total_call_oi,
         "total_put_oi": total_put_oi,
         "boundary_touch": boundary_touch,
@@ -213,29 +307,41 @@ def compute_technical_metrics(candles: list[list[Any]], current_spot: float) -> 
         tr = max(h - l, abs(h - prev_c), abs(l - prev_c))
         true_ranges.append(tr)
 
-    atr_20 = sum(true_ranges[-n20:]) / n20 if true_ranges else 150.0
+    # Each of the four below used to carry an invented fallback (ATR 150, a
+    # 20-DMA distance of 0.0, realised volatility 12.0%, a range position of
+    # 50%). Where the series is too short or flat to measure, the figure is
+    # None and the page says so.
+    recent_tr = true_ranges[-n20:]
+    atr_20: Optional[float] = (sum(recent_tr) / len(recent_tr)) if recent_tr else None
 
-    # Distance from 20-DMA as ATR multiple
-    dist_atr = round((current_spot - dma_20) / atr_20, 2) if atr_20 > 0 else 0.0
+    # Distance from 20-DMA as ATR multiple: needs a non-zero ATR to divide by.
+    dist_atr: Optional[float] = (
+        round((current_spot - dma_20) / atr_20, 2) if atr_20 is not None and atr_20 > 0 else None
+    )
 
-    # 20-day realized volatility: annualized stdev of log returns
+    # 20-day realized volatility: annualized stdev of log returns. Fewer than
+    # five returns is not enough to call a standard deviation a measurement.
     log_returns = [math.log(closes[i] / closes[i - 1]) for i in range(1, len(closes))]
+    realized_vol: Optional[float] = None
     if len(log_returns) >= 5:
         recent_rets = log_returns[-n20:]
         mean_ret = sum(recent_rets) / len(recent_rets)
         var = sum((r - mean_ret) ** 2 for r in recent_rets) / (len(recent_rets) - 1)
         stdev = math.sqrt(var)
         realized_vol = round(stdev * math.sqrt(252) * 100, 1)
-    else:
-        realized_vol = 12.0
 
-    # Current spot position marker in 20-day range (0% at low, 100% at high)
+    # Current spot position marker in 20-day range (0% at low, 100% at high).
+    # A flat range has no inside to sit in.
     range_span = high_20d - low_20d
-    spot_pos_pct = round(((current_spot - low_20d) / range_span) * 100, 1) if range_span > 0 else 50.0
-    spot_pos_pct = max(0.0, min(100.0, spot_pos_pct))
+    spot_pos_pct: Optional[float] = None
+    if range_span > 0:
+        spot_pos_pct = max(0.0, min(100.0, round(((current_spot - low_20d) / range_span) * 100, 1)))
 
-    # Rule-based sentiment
-    if dist_atr >= 1.0 and current_spot > dma_20:
+    # Rule-based sentiment, only once the distance it is based on is measured.
+    sentiment: Optional[str]
+    if dist_atr is None:
+        sentiment = None
+    elif dist_atr >= 1.0 and current_spot > dma_20:
         sentiment = "Bullish"
     elif dist_atr <= -1.0 and current_spot < dma_20:
         sentiment = "Bearish"
@@ -249,7 +355,7 @@ def compute_technical_metrics(candles: list[list[Any]], current_spot: float) -> 
     return {
         "dma_20": round(dma_20, 2),
         "distance_20_dma_atr": dist_atr,
-        "atr_20": round(atr_20, 2),
+        "atr_20": round(atr_20, 2) if atr_20 is not None else None,
         "realized_vol_20": realized_vol,
         "range_20d": {"low": round(low_20d, 2), "high": round(high_20d, 2)},
         "range_50d": {"low": round(low_50d, 2), "high": round(high_50d, 2)},
@@ -355,6 +461,35 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
             "direction": ("up" if s_chg >= 0 else "down") if s_chg is not None else None,
         })
 
+    # 3b. Market breadth: one FYERS call for all 50 constituents, counted up
+    # against down. Nothing has asked FYERS for this before; the row used to be
+    # hardcoded to None with "no wired source".
+    constituents = load_nifty50_constituents()
+    breadth: dict[str, Any] = {"advances": None, "declines": None, "unchanged": None, "quoted": 0, "total": 0}
+    breadth_error: Optional[str] = constituents["error"]
+    if constituents["symbols"]:
+        cq = fetch_live_quotes(constituents["symbols"])
+        breadth = compute_breadth(cq, constituents["symbols"])
+        if breadth["quoted"] == 0:
+            breadth_error = "FYERS returned no constituent quotes"
+
+    # 3c. Volume, from the front-month NIFTY futures contract. The index itself
+    # has no volume, so the page labels this row "Futures volume".
+    futures_symbol = front_month_futures_symbol(monthly_exp_str)
+    futures_volume: Optional[int] = None
+    futures_volume_error: Optional[str] = None
+    if futures_symbol:
+        fq = fetch_live_quotes([futures_symbol]).get(futures_symbol) or {}
+        raw_vol = fq.get("volume")
+        try:
+            futures_volume = int(raw_vol) if raw_vol is not None else None
+        except (TypeError, ValueError):
+            futures_volume = None
+        if futures_volume is None:
+            futures_volume_error = f"no volume in the FYERS quote for {futures_symbol}"
+    else:
+        futures_volume_error = "front-month futures contract could not be named"
+
     # 4. Fetch Historical Daily Candles for Range, DMA, ATR, Volatility
     candles = []
     try:
@@ -379,6 +514,8 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
     weekly_pcr = None
     monthly_pcr = None
     max_pain = None
+    total_call_oi: Optional[int] = None
+    total_put_oi: Optional[int] = None
     max_call_oi_k = None
     max_put_oi_k = None
 
@@ -400,6 +537,9 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
             max_call_oi_k = stats["max_call_oi_strike"] or max_call_oi_k
             max_put_oi_k = stats["max_put_oi_strike"] or max_put_oi_k
             max_pain = calculate_max_pain(weekly_chain) or max_pain
+            if stats["pcr"] is not None:
+                total_call_oi = stats["total_call_oi"]
+                total_put_oi = stats["total_put_oi"]
     except Exception as e:
         logger.warning("Could not fetch live option chain: %s", e)
 
@@ -434,6 +574,7 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
         "generated_at": now_utc.isoformat(),
         "cash_pane": {
             "spot": spot,
+            "prev_close": prev_close,
             "day_change_pct": day_chg_pct,
             "week_change_pct": tech.get("week_change_pct"),
             "month_change_pct": tech.get("month_change_pct"),
@@ -448,9 +589,23 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
             "metrics_freshness": metrics_state,
             "sentiment": tech["sentiment"],
             "sentiment_freshness": metrics_state,
-            "advances": None,
-            "declines": None,
-            "breadth_freshness": "UNAVAILABLE",
+            "advances": breadth["advances"],
+            "declines": breadth["declines"],
+            "unchanged": breadth["unchanged"],
+            "breadth_quoted": breadth["quoted"],
+            "breadth_total": breadth["total"],
+            "breadth_as_of": constituents["as_of"],
+            "breadth_source": constituents["source"],
+            "breadth_freshness": (
+                "UNAVAILABLE" if breadth["advances"] is None
+                else "LIVE" if breadth["quoted"] == breadth["total"]
+                else "PARTIAL"
+            ),
+            "breadth_unavailable_reason": breadth_error if breadth["advances"] is None else None,
+            "futures_symbol": futures_symbol,
+            "futures_volume": futures_volume,
+            "futures_volume_freshness": "LIVE" if futures_volume is not None else "UNAVAILABLE",
+            "futures_volume_unavailable_reason": futures_volume_error,
             "sector_rotation": sector_strip,
             "sector_freshness": primary_state if sectors_have_real else "UNAVAILABLE",
         },
@@ -462,6 +617,8 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
             "expiry_freshness": "CALCULATED",
             "weekly_pcr": weekly_pcr,
             "monthly_pcr": monthly_pcr,
+            "total_call_oi": total_call_oi,
+            "total_put_oi": total_put_oi,
             "pcr_freshness": "CALCULATED" if weekly_pcr is not None else "UNAVAILABLE",
             "max_pain": max_pain,
             "max_pain_freshness": "CALCULATED" if max_pain is not None else "UNAVAILABLE",
@@ -473,8 +630,11 @@ def get_nifty_snapshot_data(is_refresh: bool = False, db: Optional[SupabaseDB] =
             "vix_freshness": "LIVE" if vix_current is not None else "UNAVAILABLE",
             "institutional": institutional,
             "is_rollover_window": expiry_meta["is_rollover_window"],
-            "rollover_pct": 68.5 if expiry_meta["is_rollover_window"] else None,
-            "rollover_freshness": "PREVIOUS SESSION" if expiry_meta["is_rollover_window"] else None,
+            # Rollover has no wired source. This used to read 68.5% during the
+            # rollover window, a number nobody measured.
+            "rollover_pct": None,
+            "rollover_freshness": "UNAVAILABLE" if expiry_meta["is_rollover_window"] else None,
+            "rollover_unavailable_reason": "no source is wired for rollover" if expiry_meta["is_rollover_window"] else None,
         },
     }
 

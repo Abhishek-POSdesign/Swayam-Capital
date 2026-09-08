@@ -28,7 +28,6 @@ def _make_mock_rules():
 
 def _setup_db_mock(mock_db, readiness_data=None, positions_data=None, margin=850000.0):
     """Sets up a DB mock with configurable return values."""
-    mock_db.get_margin_base_inr.return_value = margin
 
     # Build a chainable mock for table().select().eq().order().limit().execute()
     readiness_execute = MagicMock()
@@ -75,7 +74,7 @@ class TestContextAssemblyDataSourcing:
 
         expected_sections = [
             "# Current Method Rules",
-            "# Current Margin Base",
+            "# Live Capital",
             "# NIFTY 50 Spot",
             "# Today's Readiness Check",
             "# Open Positions",
