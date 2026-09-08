@@ -693,10 +693,21 @@ Work through this yourself before opening each PR, and report honestly.
 7. **Confirm every new timer is cleared in `destroy()`.**
 8. **Run the test suite.** 327 passed and 2 failed before this work; the 2 are
    the known ones in §10.
-9. **Say plainly what you could not run.** If you have no FYERS token, no
-   Supabase credentials and no Google Cloud access, then steps 1, 3, 4, 5, 6, 7
-   and 19 cannot be verified live by you. Say so. Do not describe them as
-   working.
+9. **You are running on his machine, so verify live.** This build is happening
+   in a local session in the Swayam Capital repository, not in the cloud. The
+   `.env` carries the FYERS token and the Supabase credentials, and `gcloud` is
+   authenticated. **So steps 1, 3, 4, 5, 6, 7 and 19 CAN be checked against the
+   running system, and must be.** An earlier version of this file said you had
+   no credentials and could not verify; that was written for a cloud session and
+   is wrong here.
+
+   Two limits on that. **Reads only.** The dev environment points at the LIVE
+   database, so do not execute a paper trade to test something: that writes a
+   real row into his record, and a test row in his live trading history is the
+   exact damage this project exists to prevent. And the market is open Monday to
+   Friday, 09:15 to 15:30 IST; outside those hours FYERS returns last-traded
+   prices, which are real but not moving, so step 4 cannot be proven then.
+   **Say which checks you ran, at what time, and what came back.**
 
 ---
 
