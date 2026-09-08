@@ -97,72 +97,154 @@ def get_nifty_spot() -> dict[str, Any]:
         ) from e
 
 
+def _opt_float(value: Any) -> Optional[float]:
+    try:
+        return float(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _opt_int(value: Any) -> Optional[int]:
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_chain_rows(rows: list[dict[str, Any]], *, spot: Optional[float], tte_years: Optional[float]) -> list[StrikeRow]:
+    """Groups FYERS' per-contract rows by strike and solves IV from each traded price."""
+    from swayam.options_math.engine import IVSolveFailed, implied_volatility
+    from swayam.options_math.models import OptionType
+
+    by_strike: dict[float, dict[str, StrikeQuote]] = {}
+    for r in rows:
+        ot = r.get("option_type")
+        if ot not in ("CE", "PE"):
+            continue
+        k = _opt_float(r.get("strike_price", r.get("strike")))
+        if not k or k <= 0:
+            continue
+        lp = _opt_float(r.get("ltp"))
+        ltp = lp if lp and lp > 0 else None
+
+        iv: Optional[float] = None
+        if ltp and spot and tte_years and tte_years > 0:
+            try:
+                iv = round(
+                    float(implied_volatility(
+                        market_price=ltp, spot=spot, strike=k, tte_years=tte_years,
+                        option_type=OptionType.CALL if ot == "CE" else OptionType.PUT,
+                    )),
+                    4,
+                )
+            except (IVSolveFailed, ValueError, Exception):  # noqa: BLE001 - no trade-able IV, so null
+                iv = None
+
+        by_strike.setdefault(k, {})[ot] = StrikeQuote(
+            ltp=ltp,
+            ltp_change=_opt_float(r.get("ltpch")) if ltp else None,
+            ltp_change_pct=_opt_float(r.get("ltpchp")) if ltp else None,
+            iv=iv,
+            oi=_opt_int(r.get("oi")),
+            oi_change=_opt_int(r.get("oich")),
+            oi_change_pct=_opt_float(r.get("oichp")),
+            volume=_opt_int(r.get("volume")),
+            bid=_opt_float(r.get("bid")),
+            ask=_opt_float(r.get("ask")),
+            symbol=r.get("symbol"),
+        )
+
+    return [
+        StrikeRow(strike=k, ce=by_strike[k].get("CE", StrikeQuote()), pe=by_strike[k].get("PE", StrikeQuote()))
+        for k in sorted(by_strike)
+    ]
+
+
 @router.get("/api/option-chain", response_model=OptionChainResponse)
 def get_option_chain(
     expiry: str = Query(..., description="Expiration date in YYYY-MM-DD format"),
     strike_count: int = Query(default=20, ge=4, le=50, description="Strikes around ATM"),
 ) -> OptionChainResponse:
-    """Returns option chain snapshot with 5-second caching.
+    """The option chain for the expiry asked for, with everything FYERS sends.
+
+    Until round 2 this accepted `expiry`, used it only as a cache key, and
+    called FYERS without a timestamp, so it returned the nearest expiry every
+    time whatever was asked. A chain for the wrong expiry is worse than no
+    chain: the expiry is resolved to FYERS' epoch first and a date FYERS does
+    not list is refused.
+
+    Cached for 5 seconds on the RESOLVED expiry.
 
     Raises:
-        HTTPException(503): If FYERS is unavailable.
+        HTTPException(404): the expiry is not one FYERS lists.
+        HTTPException(503): FYERS is unavailable.
     """
-    cache_key = f"{expiry}_{strike_count}"
-    now = time.time()
+    from swayam.services.nifty_snapshot import calculate_max_pain, compute_pcr_and_walls
 
+    now = time.time()
+    try:
+        base_chain = fetch_chain_cached("NSE:NIFTY50-INDEX", strike_count)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Failed to fetch option chain from FYERS: {e}") from e
+
+    epoch = resolve_expiry_epoch(base_chain, expiry)
+    if epoch is None:
+        listed = [ed.get("date") for ed in base_chain.get("expiryData", []) or []]
+        raise HTTPException(
+            status_code=404,
+            detail=f"FYERS does not list an expiry on {expiry}. Listed (DD-MM-YYYY): {', '.join(str(d) for d in listed[:8])}",
+        )
+
+    cache_key = f"{epoch}_{strike_count}"
     if cache_key in _chain_cache:
         entry = _chain_cache[cache_key]
         if (now - entry["timestamp"]) < 5.0:
             return entry["data"]
 
     try:
-        raw_chain = fyers_client.get_option_chain(underlying="NSE:NIFTY50-INDEX", strike_count=strike_count)
+        raw_chain = fetch_chain_cached("NSE:NIFTY50-INDEX", strike_count, epoch)
         rows = raw_chain.get("optionsChain", []) or []
+        if not rows:
+            raise RuntimeError("FYERS returned an empty option chain.")
 
         # Real spot from the underlying row (option_type ""), else live spot; else fail loudly.
         spot: Optional[float] = None
         for r in rows:
             if not r.get("option_type"):
-                spot = float(r.get("ltp") or 0) or None
+                spot = _opt_float(r.get("ltp")) or None
                 break
         if spot is None:
             spot = float(fyers_client.get_nifty_spot())
-        if not rows:
-            raise RuntimeError("FYERS returned an empty option chain.")
 
-        # Group CE/PE by strike. IV is not provided by FYERS and not solved here (this endpoint
-        # is not the builder's per-leg path); it is left null rather than faked.
-        by_strike: dict[float, dict[str, StrikeQuote]] = {}
-        for r in rows:
-            ot = r.get("option_type")
-            if ot not in ("CE", "PE"):
-                continue
-            k = float(r.get("strike_price", r.get("strike", 0)) or 0)
-            lp = float(r.get("ltp", 0) or 0)
-            by_strike.setdefault(k, {})[ot] = StrikeQuote(
-                ltp=lp if lp > 0 else None,
-                iv=None,
-                oi=int(r.get("oi", 0) or 0),
-            )
+        try:
+            exp_date = datetime.strptime(expiry, "%Y-%m-%d").date()
+            days_to_expiry: Optional[int] = max((exp_date - date.today()).days, 0)
+            tte_years: Optional[float] = max(days_to_expiry, 0.5) / 365.0
+        except ValueError:
+            days_to_expiry, tte_years = None, None
 
-        strike_rows: list[StrikeRow] = []
-        for k in sorted(by_strike):
-            strike_rows.append(
-                StrikeRow(
-                    strike=k,
-                    ce=by_strike[k].get("CE", StrikeQuote()),
-                    pe=by_strike[k].get("PE", StrikeQuote()),
-                )
-            )
+        strike_rows = parse_chain_rows(rows, spot=spot, tte_years=tte_years)
+        stats = compute_pcr_and_walls(rows)
+        atm = min((r.strike for r in strike_rows), key=lambda k: abs(k - spot)) if strike_rows else None
 
         response = OptionChainResponse(
             underlying="NIFTY",
             expiry=expiry,
+            expiry_epoch=epoch,
             spot=spot,
+            days_to_expiry=days_to_expiry,
+            atm_strike=atm,
             strikes=strike_rows,
+            total_call_oi=stats["total_call_oi"] if stats["pcr"] is not None else None,
+            total_put_oi=stats["total_put_oi"] if stats["pcr"] is not None else None,
+            pcr=stats["pcr"],
+            max_pain=calculate_max_pain(rows),
+            as_of=datetime.now(timezone.utc).isoformat(),
         )
         _chain_cache[cache_key] = {"data": response, "timestamp": now}
         return response
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=503,

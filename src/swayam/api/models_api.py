@@ -334,10 +334,24 @@ class StrategyComputeResponse(BaseModel):
 
 
 class StrikeQuote(BaseModel):
-    """Quote for an option contract. Null fields mean 'not available' — never faked."""
+    """Quote for an option contract. Null fields mean 'not available' — never faked.
+
+    Everything FYERS sends per contract is carried, nullable: the endpoint used
+    to keep only ltp and oi and discard the rest. IV is solved from the traded
+    price with the same solver the leg quote uses, and is null where there is
+    no trade.
+    """
     ltp: Optional[float] = None
+    ltp_change: Optional[float] = None
+    ltp_change_pct: Optional[float] = None
     iv: Optional[float] = None
     oi: Optional[int] = None
+    oi_change: Optional[int] = None
+    oi_change_pct: Optional[float] = None
+    volume: Optional[int] = None
+    bid: Optional[float] = None
+    ask: Optional[float] = None
+    symbol: Optional[str] = None
 
 
 class StrikeRow(BaseModel):
@@ -348,11 +362,20 @@ class StrikeRow(BaseModel):
 
 
 class OptionChainResponse(BaseModel):
-    """Option chain snapshot."""
+    """Option chain snapshot for ONE expiry, the one asked for."""
     underlying: str
     expiry: str
+    expiry_epoch: Optional[str] = Field(default=None, description="FYERS' epoch for this expiry, proof the right one was fetched")
     spot: float
+    days_to_expiry: Optional[int] = None
+    atm_strike: Optional[float] = None
     strikes: list[StrikeRow]
+    total_call_oi: Optional[int] = None
+    total_put_oi: Optional[int] = None
+    pcr: Optional[float] = None
+    max_pain: Optional[float] = None
+    as_of: Optional[str] = None
+    source: str = "FYERS optionchain"
 
 
 class PositionResponse(BaseModel):

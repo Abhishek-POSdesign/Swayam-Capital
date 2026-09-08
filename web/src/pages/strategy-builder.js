@@ -21,6 +21,7 @@ import { api } from '../api.js';
 import { MarketTickerComponent } from '../components/market-ticker.js';
 import { PayoffSvgComponent } from '../components/payoff-svg.js';
 import { OvernightBlockModalComponent } from '../components/overnight-block-modal.js';
+import { OptionChainModalComponent } from '../components/option-chain-modal.js';
 import {
   maxLossProfit,
   breakevens,
@@ -40,6 +41,13 @@ const REQUOTE_MS = 5000;
 /** A price he typed himself carries this source and is never overwritten. */
 const OWN_PRICE = 'your own limit price';
 
+/** 1 to 20 lots as a dropdown: he asked for this rather than plus and minus buttons so no width goes on stepper chrome. */
+function lotOptions(current) {
+  const values = Array.from({ length: 20 }, (_, i) => i + 1);
+  if (current > 20 && !values.includes(current)) values.push(current);
+  return values.map((n) => `<option value="${n}"${n === current ? ' selected' : ''}>${n}</option>`).join('');
+}
+
 /** Removes the reward-to-risk minimum from an advisory line; that rule was deleted. */
 function stripDeletedRules(warning) {
   const text = String(warning || '');
@@ -49,22 +57,53 @@ function stripDeletedRules(warning) {
   return kept.length ? marker + kept.join(', ') : '';
 }
 
-/** Offsets from the at-the-money strike. Nothing here is a price. */
+/**
+ * Every structure that works on a single expiry, as offsets from the
+ * at-the-money strike: [side, offset in points, type, lots]. Nothing here is a
+ * price. Calendars and diagonals are deliberately absent: the desk has one
+ * expiry for all legs and a two-expiry payoff needs real multi-expiry
+ * valuation, which is the next job.
+ */
 const PRESETS = {
   'Bull Call Spread': [['B', 0, 'CE'], ['S', 200, 'CE']],
+  'Bear Call Spread': [['S', 0, 'CE'], ['B', 200, 'CE']],
+  'Bull Put Spread': [['S', 0, 'PE'], ['B', -200, 'PE']],
   'Bear Put Spread': [['B', 0, 'PE'], ['S', -200, 'PE']],
+  'Long Straddle': [['B', 0, 'CE'], ['B', 0, 'PE']],
   'Short Straddle': [['S', 0, 'CE'], ['S', 0, 'PE']],
-  'Iron Butterfly': [['S', 0, 'CE'], ['S', 0, 'PE'], ['B', 300, 'CE'], ['B', -300, 'PE']],
+  'Long Strangle': [['B', 200, 'CE'], ['B', -200, 'PE']],
+  'Short Strangle': [['S', 200, 'CE'], ['S', -200, 'PE']],
   'Iron Condor': [['S', 200, 'CE'], ['S', -200, 'PE'], ['B', 500, 'CE'], ['B', -500, 'PE']],
+  'Iron Butterfly': [['S', 0, 'CE'], ['S', 0, 'PE'], ['B', 300, 'CE'], ['B', -300, 'PE']],
+  'Call Butterfly': [['B', -200, 'CE'], ['S', 0, 'CE', 2], ['B', 200, 'CE']],
+  'Put Butterfly': [['B', 200, 'PE'], ['S', 0, 'PE', 2], ['B', -200, 'PE']],
+  'Call Ratio Back Spread': [['S', 0, 'CE'], ['B', 200, 'CE', 2]],
+  'Put Ratio Back Spread': [['S', 0, 'PE'], ['B', -200, 'PE', 2]],
+  'Jade Lizard': [['S', -200, 'PE'], ['S', 200, 'CE'], ['B', 400, 'CE']],
+  'Broken-Wing Condor Bullish': [['S', -200, 'PE'], ['B', -600, 'PE'], ['S', 200, 'CE'], ['B', 400, 'CE']],
+  'Broken-Wing Condor Bearish': [['S', 200, 'CE'], ['B', 600, 'CE'], ['S', -200, 'PE'], ['B', -400, 'PE']],
   'Naked Short Call': [['S', 100, 'CE']],
 };
 
+/** Payoff sparklines, 64 by 32, the zero line at y=17. */
 const SPARKS = {
   'Bull Call Spread': 'M4,26 L20,26 L44,8 L60,8',
+  'Bear Call Spread': 'M4,8 L20,8 L44,26 L60,26',
+  'Bull Put Spread': 'M4,26 L20,26 L44,8 L60,8',
   'Bear Put Spread': 'M4,8 L20,8 L44,26 L60,26',
-  'Short Straddle': 'M4,4 L32,26 L60,4',
-  'Iron Butterfly': 'M4,24 L18,24 L32,6 L46,24 L60,24',
+  'Long Straddle': 'M4,4 L32,28 L60,4',
+  'Short Straddle': 'M4,28 L32,4 L60,28',
+  'Long Strangle': 'M4,4 L22,26 L42,26 L60,4',
+  'Short Strangle': 'M4,28 L22,6 L42,6 L60,28',
   'Iron Condor': 'M4,24 L16,24 L26,8 L38,8 L48,24 L60,24',
+  'Iron Butterfly': 'M4,24 L18,24 L32,6 L46,24 L60,24',
+  'Call Butterfly': 'M4,22 L22,22 L32,5 L42,22 L60,22',
+  'Put Butterfly': 'M4,22 L22,22 L32,5 L42,22 L60,22',
+  'Call Ratio Back Spread': 'M4,14 L28,14 L38,26 L60,4',
+  'Put Ratio Back Spread': 'M4,4 L26,26 L36,14 L60,14',
+  'Jade Lizard': 'M4,28 L24,8 L40,8 L50,20 L60,20',
+  'Broken-Wing Condor Bullish': 'M4,30 L18,8 L40,8 L48,18 L60,18',
+  'Broken-Wing Condor Bearish': 'M4,18 L16,18 L24,8 L46,8 L60,30',
   'Naked Short Call': 'M4,8 L30,8 L60,28',
 };
 
@@ -138,6 +177,7 @@ export class StrategyBuilderPage {
     this.payoffChart = null;
     this.ticker = null;
     this.overnightModal = null;
+    this.chainModal = null;
     this.cronTimer = null;
     this.safetyWarning = null;
   }
@@ -243,7 +283,7 @@ export class StrategyBuilderPage {
       <div class="sw-desk">
         <div class="app" id="strategy-builder-layout">
           <div class="top">
-            <div class="brandmark"><span class="mark">स्व</span>Strategy Desk</div>
+            <h2 class="pagename">Strategy Desk</h2>
             <div class="spot" id="desk-spot"></div>
             <button class="btn" id="btn-back-to-home" type="button" style="margin-left:10px">← Home</button>
           </div>
@@ -272,6 +312,7 @@ export class StrategyBuilderPage {
                   <div id="leg-builder-mount"></div>
                   <div class="row" style="margin-top:11px">
                     <button class="btn" id="btn-add-leg" type="button">+ Add leg</button>
+                    <button class="btn" id="btn-open-chain" type="button" title="Open interest, change in open interest, put-call ratio and the chain itself; click a strike to add the leg">Option chain</button>
                     <button class="btn" id="btn-clear-legs" type="button">Clear</button>
                     <span style="margin-left:auto;font-family:var(--m);font-size:12px" id="net-cost"></span>
                   </div>
@@ -292,6 +333,15 @@ export class StrategyBuilderPage {
                 <h3>Strikewise IV <span class="r">edit to test a volatility change</span></h3>
                 <div class="cb"><div id="iv-mount"></div></div>
               </div>
+
+              <!-- The Greeks fill the vacant space at the bottom of the rail,
+                   four label-and-value pairs across two rows, no header. The
+                   rules stay at the bottom of the right column with the execute
+                   button, in one block: a verdict is never separated from the
+                   button it governs. Decided 2026-09-08; do not reopen. -->
+              <div class="card" id="greeks-card">
+                <div class="greeks" id="greeks-table"></div>
+              </div>
             </div>
 
             <div>
@@ -302,22 +352,17 @@ export class StrategyBuilderPage {
                 <div id="payoff-chart-mount"></div>
                 <div class="sliders">
                   <div class="sl">
-                    <label>NIFTY target <b id="target-text">—</b></label>
+                    <label>NIFTY target <button class="btn sm" id="target-reset" type="button" title="Back to the live spot">Reset</button> <b id="target-text">—</b></label>
                     <input type="range" id="target-range" min="0" max="1" step="5" value="0" disabled>
                     <div class="ends"><span id="target-min">—</span><span id="target-pct">—</span><span id="target-max">—</span></div>
                   </div>
                   <div class="sl">
-                    <label>Days to expiry <b id="dte-text">—</b></label>
+                    <label>Date <button class="btn sm" id="dte-reset" type="button" title="Back to today">Reset</button> <b id="dte-text">—</b></label>
                     <input type="range" id="dte-range" min="0" max="1" step="1" value="0" disabled>
-                    <div class="ends"><span>expiry day</span><span id="dte-date">—</span><span>today</span></div>
+                    <div class="ends"><span>today</span><span id="dte-date">—</span><span>expiry day</span></div>
                   </div>
                 </div>
                 <div class="why" id="payoff-why"></div>
-              </div>
-
-              <div class="card">
-                <h3>Greeks <span class="r">per position, at the target above</span></h3>
-                <div class="tw"><table class="g" id="greeks-table"></table></div>
               </div>
 
               <div class="card">
@@ -473,10 +518,20 @@ export class StrategyBuilderPage {
     on('carry-today', 'click', () => this.setCarry('today'));
 
     on('target-range', 'input', (e) => this.setTarget(Number(e.target.value)));
+    // The slider runs left = today, right = expiry day, so its value is the
+    // number of days elapsed and dteDays is what is left.
     on('dte-range', 'input', (e) => {
-      this.dteDays = Number(e.target.value);
+      this.dteDays = Math.max(0, (this.dteMax || 0) - Number(e.target.value));
       this.renderRight();
     });
+    on('target-reset', 'click', () => {
+      if (this.spot) this.setTarget(Math.round(this.spot / 5) * 5);
+    });
+    on('dte-reset', 'click', () => {
+      this.dteDays = this.dteMax || 0;
+      this.renderRight();
+    });
+    on('btn-open-chain', 'click', () => this.openChain());
 
     const legs = this.container.querySelector('#leg-builder-mount');
     if (legs && typeof legs.addEventListener === 'function') {
@@ -593,12 +648,12 @@ export class StrategyBuilderPage {
     }
     const atm = this.atmStrike();
     this.strategyName = name;
-    this.legs = shape.map(([bs, offset, type]) => ({
+    this.legs = shape.map(([bs, offset, type, lots]) => ({
       on: true,
       bs,
       strike: atm + offset,
       type,
-      lots: 1,
+      lots: lots || 1,
       price: null,
       priceSource: null,
     }));
@@ -684,6 +739,48 @@ export class StrategyBuilderPage {
     if (pe) pe.value = value;
     this.renderAll();
     if (reprice && this.legs.length) this.repriceLegs();
+  }
+
+  /** The option chain as a floating panel. Legs added from it are ordinary legs. */
+  openChain() {
+    if (!this.chainModal) {
+      const host = typeof document !== 'undefined' ? document.body : null;
+      this.chainModal = new OptionChainModalComponent(host, {
+        onAddLeg: (leg) => this.addLegFromChain(leg),
+        getExpiry: () => this.expiry,
+        getSpot: () => this.spot,
+        refreshMs: this.requoteMs,
+      });
+    }
+    this.chainModal.open();
+  }
+
+  /**
+   * A leg from the chain arrives with the real traded price on screen and the
+   * volatility implied from it. From here on it is a normal leg: re-quoted
+   * every 5 s, priced by the server's contract size, judged by the four rules.
+   */
+  addLegFromChain(leg) {
+    if (!leg || !this.expiry) return;
+    const now = leg.asOf || new Date().toISOString();
+    this.legs.push({
+      on: true,
+      bs: leg.bs === 'S' ? 'S' : 'B',
+      strike: leg.strike,
+      type: leg.type === 'PE' ? 'PE' : 'CE',
+      lots: 1,
+      price: typeof leg.price === 'number' ? leg.price : null,
+      priceSource: `option chain, read ${istTime(now) || ''} IST`.trim(),
+      priceAt: now,
+    });
+    if (typeof leg.iv === 'number' && leg.iv > 0) {
+      this.ivPctByStrike[leg.strike] = leg.iv * 100;
+      this.ivSource[leg.strike] = 'implied from the traded price';
+    }
+    this.baseLots = this.legs.map((l) => l.lots);
+    if (!this.strategyName) this.strategyName = 'Custom';
+    this.renderAll();
+    this.scheduleServerRefresh();
   }
 
   /** Scales every leg from its ORIGINAL lot count, so 3x back to 1x returns home. */
@@ -1014,7 +1111,7 @@ export class StrategyBuilderPage {
             <option${l.type === 'CE' ? ' selected' : ''}>CE</option>
             <option${l.type === 'PE' ? ' selected' : ''}>PE</option>
           </select>
-          <input value="${l.lots}" data-i="${i}" data-f="lots" inputmode="numeric" aria-label="Lots">
+          <select class="lots" data-i="${i}" data-f="lots" aria-label="Lots">${lotOptions(l.lots)}</select>
           <input value="${l.price === null ? '' : l.price.toFixed(2)}" data-i="${i}" data-f="price"
                  class="${l.priceSource === OWN_PRICE ? 'own' : ''}${flashFor(this._flash, `price-${i}-${l.strike}-${l.type}`, l.price)}"
                  inputmode="decimal" placeholder="—" title="${escapeHtml(l.priceSource || '')}" aria-label="Price">
@@ -1088,10 +1185,11 @@ export class StrategyBuilderPage {
       `</tbody></table>`;
   }
 
-  _met(k, value, sub, colour, raw) {
+  _met(k, value, sub, colour, raw, accent = false) {
     const flash = raw === undefined ? '' : flashFor(this._flash, `met-${k}`, raw);
+    const small = value !== null && String(value).length > 7 && !accent;
     return `<div class="met"><div class="k">${escapeHtml(k)}</div>
-      <div class="v${value !== null && String(value).length > 7 ? ' sm' : ''}${flash}"${colour ? ` style="color:${colour}"` : ''}>${value === null ? '<span class="na" style="font-size:14px">unavailable</span>' : escapeHtml(value)}</div>
+      <div class="v${small ? ' sm' : ''}${accent ? ' acc' : ''}${flash}"${colour ? ` style="color:${colour}"` : ''}>${value === null ? '<span class="na" style="font-size:14px">unavailable</span>' : escapeHtml(value)}</div>
       <div class="s">${escapeHtml(sub || '')}</div></div>`;
   }
 
@@ -1141,7 +1239,7 @@ export class StrategyBuilderPage {
 
     host.innerHTML =
       this._met('Margin needed', need === null ? null : inr(need), marginSub,
-        need === null ? 'var(--fg-3)' : fits === null ? 'var(--fg-2)' : fits ? 'var(--up)' : 'var(--down)') +
+        need === null ? 'var(--fg-3)' : fits === null ? null : fits ? 'var(--up)' : 'var(--down)', need, true) +
       this._met('Margin used', this.marginUsed === null ? null : inr(this.marginUsed),
         this.capital && typeof this.capital.deployable_margin_ceiling_inr === 'number'
           ? `of ${inr(this.capital.deployable_margin_ceiling_inr)} ceiling`
@@ -1150,7 +1248,7 @@ export class StrategyBuilderPage {
         maxProfit !== null && bal ? `${((maxProfit / bal) * 100).toFixed(2)}% of balance` : '',
         maxProfit === null ? null : maxProfit >= 0 ? 'var(--up)' : 'var(--down)', maxProfit) +
       this._met('Max loss', unlimited ? 'Unlimited' : maxLoss === null ? null : inr(maxLoss),
-        unlimited ? `no ceiling ${unlimitedUp ? 'above' : 'below'}` : maxLoss !== null && bal ? `${((maxLoss / bal) * 100).toFixed(2)}% of balance` : '', 'var(--down)', unlimited ? undefined : maxLoss) +
+        unlimited ? `no ceiling ${unlimitedUp ? 'above' : 'below'}` : maxLoss !== null && bal ? `${((maxLoss / bal) * 100).toFixed(2)}% of balance` : '', 'var(--down)', unlimited ? undefined : maxLoss, true) +
       this._met('Breakeven', bes.length ? bes.map((b) => num(b)).join(' / ') : mathRan ? 'none' : null,
         bes.length === 1 && this.spot
           ? `${bes[0] - this.spot > 0 ? '+' : ''}${Math.round(bes[0] - this.spot)} pts from spot`
@@ -1195,8 +1293,13 @@ export class StrategyBuilderPage {
       dte.min = '0';
       dte.max = String(this.dteMax);
       dte.disabled = false;
-      dte.value = String(this.dteDays);
-      text('dte-text', this.dteDays === 0 ? 'expiry day' : `${this.dteDays} day${this.dteDays > 1 ? 's' : ''}`);
+      dte.value = String(Math.max(0, this.dteMax - (this.dteDays || 0)));
+      const elapsed = Math.max(0, this.dteMax - (this.dteDays || 0));
+      text('dte-text', this.dteDays === 0
+        ? 'expiry day'
+        : elapsed === 0
+          ? `today · ${this.dteDays} day${this.dteDays > 1 ? 's' : ''} to expiry`
+          : `in ${elapsed} day${elapsed > 1 ? 's' : ''} · ${this.dteDays} left`);
       text('dte-date', (this.expiries.find((e) => e.date === this.expiry) || {}).label || this.expiry || '—');
     } else {
       text('dte-text', 'no expiry');
@@ -1228,7 +1331,7 @@ export class StrategyBuilderPage {
     const host = this.container.querySelector('#greeks-table');
     if (!host) return;
     if (!this.activeLegs().length) {
-      host.innerHTML = '<tbody><tr><td class="na">Add a leg.</td></tr></tbody>';
+      host.innerHTML = '<div class="na-row na">Greeks appear here once there is a position.</div>';
       return;
     }
     const g = netGreeks(this.legs, this.targetSpot || this.spot, (this.dteDays || 0) / 365, {
@@ -1237,18 +1340,16 @@ export class StrategyBuilderPage {
     });
     if (!g) {
       host.innerHTML =
-        '<tbody><tr><td class="na">Greeks unavailable: they need a measured volatility on every leg and a confirmed contract size.</td></tr></tbody>';
+        '<div class="na-row na">Greeks unavailable: they need a measured volatility on every leg and a confirmed contract size.</div>';
       return;
     }
-    const cell = (v, colour) =>
-      `<td class="n" style="text-align:left;font-size:16px;font-weight:600${colour ? `;color:${colour}` : ''}">${escapeHtml(v)}</td>`;
+    const pair = (k, v, colour) =>
+      `<div class="gk"><div class="k">${escapeHtml(k)}</div><div class="v"${colour ? ` style="color:${colour}"` : ''}>${escapeHtml(v)}</div></div>`;
     host.innerHTML =
-      `<thead><tr><th>Delta</th><th>Gamma</th><th>Theta / day</th><th>Vega / 1% IV</th></tr></thead><tbody><tr>` +
-      cell(g.delta.toFixed(1)) +
-      cell(g.gamma.toFixed(4)) +
-      cell(inr(g.theta), g.theta >= 0 ? 'var(--up)' : 'var(--down)') +
-      cell(inr(g.vega)) +
-      `</tr></tbody>`;
+      pair('Delta', g.delta.toFixed(1)) +
+      pair('Gamma', g.gamma.toFixed(4)) +
+      pair('Theta / day', inr(g.theta), g.theta >= 0 ? 'var(--up)' : 'var(--down)') +
+      pair('Vega / 1% IV', inr(g.vega));
   }
 
   _rule(state, k, value, sub) {
@@ -1509,6 +1610,10 @@ export class StrategyBuilderPage {
     if (this._unsubSpot) {
       this._unsubSpot();
       this._unsubSpot = null;
+    }
+    if (this.chainModal) {
+      this.chainModal.destroy();
+      this.chainModal = null;
     }
   }
 }

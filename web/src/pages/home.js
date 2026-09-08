@@ -133,7 +133,7 @@ export class HomePage {
       <div class="sw-desk">
         <div class="app">
           <div class="top">
-            <div class="brandmark"><span class="mark">स्व</span>Home <em>· so far today</em></div>
+            <h2 class="pagename">Home <em>· so far today</em></h2>
           </div>
 
           <div id="home-ticker"></div>
@@ -504,9 +504,9 @@ export class HomePage {
       </div>`;
   }
 
-  _money(k, formatted, sub, colour) {
+  _money(k, formatted, sub, colour, accent = false) {
     return `<div class="mn"><div class="k">${escapeHtml(k)}</div>
-      <div class="v"${colour ? ` style="color:${colour}"` : ''}>${formatted === null || formatted === undefined ? '<span class="na" style="font-size:14px">unavailable</span>' : escapeHtml(formatted)}</div>
+      <div class="v${accent ? ' acc' : ''}"${colour ? ` style="color:${colour}"` : ''}>${formatted === null || formatted === undefined ? '<span class="na" style="font-size:14px">unavailable</span>' : escapeHtml(formatted)}</div>
       <div class="s">${escapeHtml(sub || '')}</div></div>`;
   }
 
@@ -525,7 +525,7 @@ export class HomePage {
       <div class="card">
         <h3>Your money <span class="r">${escapeHtml(cap.source || 'source not stated')}${cap.taken_at ? `, broker read ${escapeHtml(istTime(cap.taken_at) || String(cap.taken_at))} IST` : ''} · ${escapeHtml(this._readStamp('capital'))}</span></h3>
         <div class="money">
-          ${this._money('Balance', inr(cap.risk_capital_inr), 'total')}
+          ${this._money('Balance', inr(cap.risk_capital_inr), 'total', null, true)}
           ${this._money('Free cash', inr(cap.free_cash_inr), 'unpledged')}
           ${this._money('Collateral', inr(cap.collateral_inr), 'pledged holdings')}
           ${this._money('Margin used', inr(used), this.marginUsedNote(), 'var(--fg-2)')}
@@ -577,7 +577,7 @@ export class HomePage {
     const gapCap = bal === null ? null : bal * 0.02;
     const cell = (cls, k, value, sub) =>
       `<div class="rl ${cls}"><div class="k">${escapeHtml(k)}</div>
-        <div class="v">${value === null ? '<span class="na" style="font-size:14px">unavailable</span>' : escapeHtml(value)}</div>
+        <div class="v acc">${value === null ? '<span class="na" style="font-size:14px">unavailable</span>' : escapeHtml(value)}</div>
         <div class="s">${escapeHtml(sub)}</div></div>`;
 
     host.innerHTML = `

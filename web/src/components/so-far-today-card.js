@@ -1,15 +1,30 @@
 /**
- * "So Far Today" Grounded Market Summary Card Component.
+ * "So Far Today", the grounded market summary he pays for.
  *
- * Implements strict cost gate:
- * - Never auto-fires on mount / page load
- * - Manual [Generate] / [Refresh] button
- * - 60-minute cache display
- * - Daily cap (8 calls) enforced with disabled state
- * - Cites real-time sources from Google Search Grounding
+ * The cost gate does not change, ever:
+ * - Never auto-fires on mount or page load. init() only reads the cache status.
+ * - Manual Generate / Refresh button.
+ * - 60-minute cache on the server, daily cap of 8 calls, enforced server-side
+ *   and reflected in the disabled state here.
+ *
+ * Round 2 added three things and changed nothing about the gate:
+ * - A play button that reads the summary aloud, the same one the chat uses.
+ * - A collapse control. Once he has generated it and expanded it once, it
+ *   starts collapsed for the rest of that day. The flag is stored against
+ *   today's IST date in localStorage, so a new day starts expanded again.
+ * - The card now sits on the desk's own tokens, so it no longer looks like a
+ *   foreign object among panels that have depth.
  */
 
 import { api } from '../api.js';
+import { createTTSButton } from './tts-player.js';
+import { escapeHtml } from '../utils/display.js';
+
+function istDateKey(now = new Date()) {
+  // YYYY-MM-DD in IST, so "today" is his trading day, not the browser's UTC day.
+  const ist = new Date(now.getTime() + (330 + now.getTimezoneOffset()) * 60000);
+  return `swayam_sft_expanded_${ist.getFullYear()}-${String(ist.getMonth() + 1).padStart(2, '0')}-${String(ist.getDate()).padStart(2, '0')}`;
+}
 
 export class SoFarTodayCardComponent {
   constructor(container, options = {}) {
@@ -26,12 +41,28 @@ export class SoFarTodayCardComponent {
       dailyCap: 8,
       capReached: false,
       errorMessage: null,
+      collapsed: false,
     };
   }
 
   async init() {
     this.render();
     await this.checkCacheStatus();
+  }
+
+  /** True once he has expanded today's summary at least once. */
+  _expandedOnceToday() {
+    try {
+      return localStorage.getItem(istDateKey()) === '1';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  _rememberExpandedToday() {
+    try {
+      localStorage.setItem(istDateKey(), '1');
+    } catch (_) {}
   }
 
   async checkCacheStatus() {
@@ -49,6 +80,8 @@ export class SoFarTodayCardComponent {
           dailyCap: res.daily_cap || 8,
           capReached: res.cap_reached || false,
           errorMessage: null,
+          // Generated and expanded earlier today: start folded for the rest of the day.
+          collapsed: this._expandedOnceToday(),
         };
         this.render();
       } else if (res) {
@@ -83,7 +116,10 @@ export class SoFarTodayCardComponent {
         dailyCap: res.daily_cap || 8,
         capReached: res.cap_reached || false,
         errorMessage: null,
+        collapsed: false,
       };
+      // He is reading it now. From the next load onward it starts collapsed.
+      this._rememberExpandedToday();
     } catch (err) {
       this.state.isLoading = false;
       const msg = err.message || 'Failed to generate session summary';
@@ -98,122 +134,109 @@ export class SoFarTodayCardComponent {
     this.render();
   }
 
-  render() {
-    const { isLoading, hasData, text, sources, ageMinutes, callCountToday, dailyCap, capReached, errorMessage } = this.state;
+  toggleCollapsed() {
+    this.state.collapsed = !this.state.collapsed;
+    if (!this.state.collapsed) this._rememberExpandedToday();
+    this.render();
+  }
 
-    // Relative age string
+  render() {
+    const { isLoading, hasData, text, sources, ageMinutes, callCountToday, dailyCap, capReached, errorMessage, collapsed } = this.state;
+
     let ageStr = 'Just now';
     if (ageMinutes === 1) ageStr = '1 min ago';
     else if (ageMinutes > 1) ageStr = `${ageMinutes} min ago`;
 
-    // Cap string
     const capInfo = `Calls today: ${callCountToday}/${dailyCap}`;
 
     let bodyHtml = '';
 
     if (isLoading) {
       bodyHtml = `
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 16px; gap: 12px;">
-          <div style="width: 28px; height: 28px; border: 3px solid var(--dl-track); border-top-color: var(--accent-amber); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-          <div style="font-size: 0.85rem; color: var(--dl-fg-2); font-family: var(--font-sans);">
-            Grounding Gemini with real-time Indian market search...
-          </div>
-        </div>
-      `;
+        <div class="sft-loading">
+          <div class="sft-spinner"></div>
+          <div>Grounding Gemini with real-time Indian market search...</div>
+        </div>`;
     } else if (hasData && text) {
-      // Split into paragraphs
-      const paragraphs = text.split('\n\n').filter(p => p.trim());
-      const formattedParas = paragraphs.map(p => {
-        // Highlight setup recommendation sentence if at the end
+      const paragraphs = text.split('\n\n').filter((p) => p.trim());
+      const formattedParas = paragraphs.map((p) => {
+        const safe = escapeHtml(p).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         if (p.includes('Bear Put Spread') || p.includes('Bull Call Spread') || p.toLowerCase().includes('setup:')) {
-          return `
-            <div style="background: var(--dl-card-2); border-left: 3px solid var(--accent-amber); padding: 10px 14px; border-radius: 0 6px 6px 0; margin-top: 10px; font-weight: 500; color: var(--dl-fg);">
-              ${p.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}
-            </div>
-          `;
+          return `<div class="sft-setup">${safe}</div>`;
         }
-        return `<p style="margin: 0 0 10px 0; line-height: 1.55; color: var(--dl-fg); font-size: 0.88rem;">${p.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</p>`;
+        return `<p>${safe}</p>`;
       }).join('');
 
       let sourcesHtml = '';
       if (sources && sources.length > 0) {
         sourcesHtml = `
-          <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--dl-line); display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
-            <span class="eyebrow" style="font-size: 0.68rem; color: var(--dl-fg-3);">SOURCES:</span>
-            ${sources.map(s => `
-              <a href="${s.url}" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--accent-sage); text-decoration: none; background: var(--dl-card-2); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--dl-line); display: inline-flex; align-items: center; gap: 4px; transition: border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent-sage)'" onmouseout="this.style.borderColor='var(--dl-line)'">
-                <span>↗</span> ${s.title.length > 32 ? s.title.slice(0, 30) + '...' : s.title}
-              </a>
-            `).join('')}
-          </div>
-        `;
+          <div class="sft-sources">
+            <span class="k">Sources</span>
+            ${sources.map((s) => {
+              const title = String(s.title || s.url || '');
+              return `<a href="${escapeHtml(s.url || '#')}" target="_blank" rel="noopener noreferrer">↗ ${escapeHtml(title.length > 32 ? `${title.slice(0, 30)}...` : title)}</a>`;
+            }).join('')}
+          </div>`;
       }
 
-      bodyHtml = `
-        <div style="display: flex; flex-direction: column;">
-          <div class="so-far-content" style="font-family: var(--font-sans);">
-            ${formattedParas}
-          </div>
-          ${sourcesHtml}
-        </div>
-      `;
+      bodyHtml = collapsed
+        ? ''
+        : `<div class="sft-content">${formattedParas}</div>${sourcesHtml}`;
     } else {
-      // Empty state
       bodyHtml = `
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; gap: 12px; text-align: center;">
-          <div style="font-size: 0.9rem; color: var(--dl-fg-2); max-width: 480px; line-height: 1.5;">
-            Click <strong>Generate</strong> to summarize today's market session so far (09:15 IST to now), including price ranges, VIX, leaders/laggards, and breaking macro news.
-          </div>
-          <button id="btn-generate-so-far" type="button" ${capReached ? 'disabled' : ''} style="background: var(--accent-amber); color: #111; font-weight: 600; padding: 8px 20px; border-radius: 6px; border: none; font-size: 0.85rem; cursor: ${capReached ? 'not-allowed' : 'pointer'}; opacity: ${capReached ? 0.6 : 1}; display: inline-flex; align-items: center; gap: 6px; transition: transform 0.1s ease;">
-            <span>⚡</span> ${capReached ? 'Daily cap reached' : 'Generate Summary'}
+        <div class="sft-empty">
+          <div>Click <strong>Generate</strong> to summarize today's market session so far (09:15 IST to now), including price ranges, VIX, leaders/laggards, and breaking macro news.</div>
+          <button id="btn-generate-so-far" class="btn pri" type="button" ${capReached ? 'disabled' : ''}>
+            ${capReached ? 'Daily cap reached' : '⚡ Generate Summary'}
           </button>
-        </div>
-      `;
+        </div>`;
     }
 
-    let errorBanner = '';
-    if (errorMessage) {
-      errorBanner = `
-        <div style="background: rgba(224, 102, 102, 0.12); border: 1px solid var(--accent-coral); color: var(--accent-coral); padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-          <span>${errorMessage}</span>
-        </div>
-      `;
-    }
+    const errorBanner = errorMessage
+      ? `<div class="sft-error">${escapeHtml(errorMessage)}</div>`
+      : '';
 
     this.container.innerHTML = `
-      <div class="tile so-far-today-tile span-12" style="background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: 10px; padding: 18px 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.12);">
-        <!-- Top Header Bar -->
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--dl-line); padding-bottom: 10px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 1.05rem;">☀</span>
-            <span class="eyebrow" style="color: var(--dl-fg); font-weight: 700; font-size: 0.82rem; letter-spacing: 0.06em;">SO FAR TODAY</span>
-            ${hasData ? `<span class="badge" style="background: var(--dl-card-2); color: var(--dl-fg-2); border: 1px solid var(--dl-line); font-size: 0.72rem; padding: 2px 8px; border-radius: 12px;">Generated ${ageStr}</span>` : ''}
-          </div>
-
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <span class="mono-nums" style="font-size: 0.72rem; color: var(--dl-fg-3);" title="Cost-gate: Maximum 8 grounded calls per trading day">${capInfo}</span>
+      <div class="card sft-card">
+        <h3>
+          <span>☀ SO FAR TODAY</span>
+          ${hasData ? `<span class="chip c-info">Generated ${escapeHtml(ageStr)}</span>` : ''}
+          <span class="r" style="display:inline-flex;align-items:center;gap:8px">
+            <span title="Cost-gate: Maximum 8 grounded calls per trading day">${escapeHtml(capInfo)}</span>
+            <span id="sft-tools" style="display:inline-flex;align-items:center;gap:4px"></span>
             ${hasData ? `
-              <button id="btn-refresh-so-far" type="button" ${isLoading || capReached ? 'disabled' : ''} style="background: var(--dl-card-2); border: 1px solid var(--dl-line); color: var(--dl-fg); padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: ${isLoading || capReached ? 'not-allowed' : 'pointer'}; opacity: ${isLoading || capReached ? 0.6 : 1}; display: inline-flex; align-items: center; gap: 5px;" title="${capReached ? 'Daily cap reached — resets 09:15 IST tomorrow' : 'Refresh session summary (counts towards daily cap)'}">
-                <span>🔄</span> ${capReached ? 'Cap reached' : 'Refresh'}
+              <button id="btn-refresh-so-far" class="btn" type="button" ${isLoading || capReached ? 'disabled' : ''}
+                title="${capReached ? 'Daily cap reached — resets 09:15 IST tomorrow' : 'Refresh session summary (counts towards daily cap)'}">
+                ${capReached ? 'Cap reached' : '🔄 Refresh'}
               </button>
+              <button id="btn-collapse-so-far" class="btn" type="button" aria-expanded="${!collapsed}"
+                title="${collapsed ? 'Show the summary' : 'Hide the summary'}">${collapsed ? 'Show' : 'Hide'}</button>
             ` : ''}
-          </div>
-        </div>
-
-        ${errorBanner}
-        ${bodyHtml}
+          </span>
+        </h3>
+        ${errorBanner || bodyHtml ? `<div class="cb">${errorBanner}${bodyHtml}</div>` : ''}
       </div>
     `;
 
-    // Attach listeners
     const genBtn = this.container.querySelector('#btn-generate-so-far');
-    if (genBtn) {
-      genBtn.addEventListener('click', () => this.generate(false));
-    }
+    if (genBtn) genBtn.addEventListener('click', () => this.generate(false));
 
     const refBtn = this.container.querySelector('#btn-refresh-so-far');
-    if (refBtn) {
-      refBtn.addEventListener('click', () => this.generate(true));
+    if (refBtn) refBtn.addEventListener('click', () => this.generate(true));
+
+    const collapseBtn = this.container.querySelector('#btn-collapse-so-far');
+    if (collapseBtn) collapseBtn.addEventListener('click', () => this.toggleCollapsed());
+
+    // The same read-aloud button the chat uses. It only speaks what is on screen.
+    if (hasData && text) {
+      const tools = this.container.querySelector('#sft-tools');
+      if (tools && typeof tools.appendChild === 'function') {
+        try {
+          tools.appendChild(createTTSButton(() => this.state.text));
+        } catch (_) {
+          // No audio in this environment; the summary is still readable.
+        }
+      }
     }
   }
 }

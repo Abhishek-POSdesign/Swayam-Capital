@@ -75,7 +75,23 @@ A browser that sends 75 is ignored.
 
 ---
 
-## 3. WHAT IS TRUE RIGHT NOW, verified 2026-09-08
+## 3. WHAT IS TRUE RIGHT NOW
+
+### Latest first: end of the 2026-09-08 evening session
+
+| | |
+|---|---|
+| Round 2 | **Built, reviewed, merged.** PRs #32 to #36. See `docs/PLAN.md` §1 |
+| Live revision | `swayam-dashboard-00042-b7t`, started clean on both workers |
+| **PR #35 did NOT reach `main`** | It was merged into PR #34's branch. **The live site carries PR 1 only; every visual change is missing.** Branch `feature/swayam-desk-onto-main-017` fixes it |
+| Prices after the close | **Real from FYERS.** Verified 17:44 IST: spot 23,635.1, all 26 option rows with a real last traded price, OI, change in OI and volume |
+| Why the screen still looked dead | **Our expiry list keeps an expiry after its day has passed.** `docs/PLAN.md` §2.8 |
+| The Trade Journal | **Three faults, none fixed.** A hardcoded Rs 5,00,000 margin base, a database write fired by opening the page, and analytics that do not exclude the 81 quarantined test rows. `docs/PLAN.md` §2.2 |
+| The deleted reward-to-risk rule | **Still evaluated server-side.** `docs/PLAN.md` §2.9 |
+| Recorder | **Still dead.** Revision `swayam-recorder-00001-baf` from 3 September has served a token from that day ever since. The fix is in `main`; the service needs its own deployment |
+| Next job after this | `docs/CALENDAR_BUILD_BRIEF.md`. Ten of his 21 trades are calendars |
+
+### Earlier the same day, verified 2026-09-08
 
 | | |
 |---|---|

@@ -17,7 +17,18 @@ const H = 380;
 const L = 64;
 const R = 18;
 const TOP = 16;
-const BOT = 34;
+const BOT = 44;
+
+/**
+ * The x-axis runs from 6% below spot to 6% above, snapped DOWN and UP to
+ * whole 50s so it reads in NIFTY strike shapes (23,400, not 23,441), and is
+ * labelled every 100 points. He confirmed 100. The labels sit on two
+ * staggered rows so ~28 of them fit without colliding. Nothing else about the
+ * graph, the drag or the maths changed.
+ */
+export function axisBounds(spot) {
+  return { lo: Math.floor((spot * 0.94) / 50) * 50, hi: Math.ceil((spot * 1.06) / 50) * 50 };
+}
 
 export class PayoffSvgComponent {
   constructor(container, options = {}) {
@@ -66,8 +77,7 @@ export class PayoffSvgComponent {
       if (!rect || !rect.width || !this.state.spot) return;
       const clientX = ev.touches && ev.touches[0] ? ev.touches[0].clientX : ev.clientX;
       const x = ((clientX - rect.left) / rect.width) * W;
-      const lo = this.state.spot * 0.94;
-      const hi = this.state.spot * 1.06;
+      const { lo, hi } = axisBounds(this.state.spot);
       const S = lo + ((x - L) / (W - L - R)) * (hi - lo);
       const clamped = Math.min(hi, Math.max(lo, Math.round(S / 5) * 5));
       if (this.options.onTargetChange) this.options.onTargetChange(clamped);
@@ -102,8 +112,7 @@ export class PayoffSvgComponent {
     }
 
     const opts = { lotSize, spot, ivFor };
-    const lo = spot * 0.94;
-    const hi = spot * 1.06;
+    const { lo, hi } = axisBounds(spot);
     const T = (dteDays || 0) / 365;
 
     const pts = [];
@@ -145,9 +154,12 @@ export class PayoffSvgComponent {
     }
     const base = Y(0);
     g += `<line x1="${L}" y1="${base.toFixed(1)}" x2="${W - R}" y2="${base.toFixed(1)}" stroke="var(--line-2)" stroke-width="1.5"/>`;
-    for (let i = 0; i <= 6; i++) {
-      const S = lo + ((hi - lo) * i) / 6;
-      g += `<text x="${X(S).toFixed(1)}" y="${H - 12}" text-anchor="middle" fill="var(--fg-3)" font-family="var(--m)" font-size="10.5">${num(S)}</text>`;
+    let tick = 0;
+    for (let S = lo; S <= hi; S += 100, tick++) {
+      const x = X(S).toFixed(1);
+      g += `<line x1="${x}" y1="${H - BOT}" x2="${x}" y2="${H - BOT + 4}" stroke="var(--line-2)" stroke-width="1"/>`;
+      const y = tick % 2 === 0 ? H - 24 : H - 10;
+      g += `<text x="${x}" y="${y}" text-anchor="middle" fill="var(--fg-3)" font-family="var(--m)" font-size="10">${num(S)}</text>`;
     }
 
     g += `<defs>
