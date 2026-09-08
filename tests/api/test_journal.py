@@ -38,6 +38,7 @@ SAMPLE_POSITIONS = [
         "entry_rationale": "Clear head-and-shoulders breakdown",
         "exit_rationale": "Hit 50% target",
         "journal_path": "02 - Projects/Trading/04 - Journal/2026-09-01-trade01.md",
+        "provenance": "live",
     },
     {
         "id": "pos-002",
@@ -66,8 +67,46 @@ SAMPLE_POSITIONS = [
         "entry_rationale": "Anticipated breakout",
         "exit_rationale": "Stopped out",
         "journal_path": "02 - Projects/Trading/04 - Journal/2026-09-02-trade01.md",
+        "provenance": "live",
     }
 ]
+
+
+# Not his trades. Written by a build test, marked with the one column that says
+# so. Nothing below may count them.
+SAMPLE_POSITIONS.append({
+    "id": "pos-test-001",
+    "opened_at": "2026-09-03T09:30:00Z",
+    "strategy_name": "Violating Spread",
+    "underlying": "NIFTY",
+    "legs": [{"strike": 25000, "option_type": "CE", "direction": "BUY", "quantity_lots": 1}],
+    "net_debit_credit_inr": -9750.0,
+    "max_loss_inr": 9750.0,
+    "max_profit_inr": 143276.0,
+    "status": "closed",
+    "charges_inr": 150.0,
+    "rules_followed": True,
+    "exit_reason": "Target Hit",
+    "provenance": "build_test",
+})
+
+# His trade, closed, but with no row in swayam_trade_history. Its result cannot
+# be read. It must be reported as unknown, never scored as zero rupees.
+SAMPLE_POSITIONS.append({
+    "id": "pos-unpriced",
+    "opened_at": "2026-09-04T09:30:00Z",
+    "strategy_name": "Iron Condor",
+    "underlying": "NIFTY",
+    "legs": [{"strike": 25000, "option_type": "CE", "direction": "SELL", "quantity_lots": 1}],
+    "net_debit_credit_inr": 2000.0,
+    "max_loss_inr": 5000.0,
+    "max_profit_inr": 2000.0,
+    "status": "closed",
+    "charges_inr": 200.0,
+    "rules_followed": True,
+    "exit_reason": "Time Exit",
+    "provenance": "live",
+})
 
 SAMPLE_HISTORY = [
     {
@@ -169,9 +208,18 @@ def test_get_journal_trades_returns_200_and_kpis(monkeypatch):
     data = res.json()
     assert "trades" in data
     assert "kpis" in data
-    assert len(data["trades"]) == 2
 
-    # Verify 7 KPIs
+    listed = {t["position_id"] for t in data["trades"]}
+    # The build-test row never appears, in any list, under any filter.
+    assert "pos-test-001" not in listed
+    # The unpriced trade IS listed, so he can see it exists and needs fixing.
+    assert listed == {"pos-001", "pos-002", "pos-unpriced"}
+
+    unpriced = next(t for t in data["trades"] if t["position_id"] == "pos-unpriced")
+    assert unpriced["net_pnl_inr"] is None, "a result nobody can read must not render as zero"
+    assert unpriced["outcome"] == "UNKNOWN"
+
+    # Only SQUARED-OFF trades reach his record. Two of the three qualify.
     kpis = data["kpis"]
     assert kpis["total_trades"] == 2
     assert kpis["wins_count"] == 1
@@ -180,6 +228,48 @@ def test_get_journal_trades_returns_200_and_kpis(monkeypatch):
     assert kpis["discipline_rate_pct"] == 50.0
     assert kpis["charges_drag_inr"] == 160.0
     assert kpis["cumulative_net_pnl_inr"] == 920.0  # 5000 - 4080 = 920
+
+    # What was left out, said out loud rather than silently dropped.
+    assert data["excluded_test_rows"] == 1
+    assert data["unpriced_closed_trades"] == 1
+
+
+def test_the_percentage_is_of_his_live_balance_not_a_hardcoded_five_lakh(monkeypatch):
+    """The margin base was 500000.0, a figure that was neither his nor chosen.
+
+    `conftest.deterministic_capital` pins his real 2026-09-07 balance, so the
+    expected figure below is computed from the same number the desk uses.
+    """
+    monkeypatch.setattr(db, "_client", MockDBClient())
+
+    data = client.get("/api/journal/trades?status=closed").json()
+
+    assert data["capital_base_inr"] == pytest.approx(971002.38)
+    assert "FYERS" in (data["capital_base_source"] or "")
+
+    expected = round(920.0 / 971002.38 * 100, 2)
+    assert data["kpis"]["cumulative_pnl_pct_of_capital"] == pytest.approx(expected)
+    # The old divisor would have given this instead.
+    assert data["kpis"]["cumulative_pnl_pct_of_capital"] != pytest.approx(
+        round(920.0 / 500000.0 * 100, 2)
+    )
+
+
+def test_an_empty_book_reports_nothing_rather_than_zero(monkeypatch):
+    """No trades means no win rate and no discipline rate, not 0% and 100%."""
+
+    class EmptyClient:
+        def table(self, name):
+            return MockQuery([])
+
+    monkeypatch.setattr(db, "_client", EmptyClient())
+
+    kpis = client.get("/api/journal/trades?status=closed").json()["kpis"]
+    assert kpis["total_trades"] == 0
+    assert kpis["win_rate_pct"] is None
+    assert kpis["discipline_rate_pct"] is None
+    assert kpis["avg_rr_actual"] is None
+    assert kpis["cumulative_pnl_pct_of_capital"] is None
 
 
 def test_get_journal_trade_detail_returns_single_trade(monkeypatch):
@@ -227,29 +317,28 @@ def test_journal_db_failure_raises_503(monkeypatch):
     assert "safety-critical service" in res.json()["detail"]
 
 
-def test_archive_test_trades(monkeypatch):
-    mock_positions = [
-        {"id": "p-old-1", "mode": "paper", "opened_at": "2026-09-01T09:15:00Z", "status": "closed"},
-        {"id": "p-old-2", "mode": "paper", "opened_at": "2026-09-02T10:00:00Z", "status": "closed"},
-        {"id": "p-new-1", "mode": "paper", "opened_at": "2026-09-08T09:30:00Z", "status": "closed"},
-    ]
-    class MockArchiveDBClient:
-        def __init__(self):
-            self.data = list(mock_positions)
+def test_the_retired_archive_endpoint_refuses_and_writes_nothing(monkeypatch):
+    """Opening the Trade Journal used to fire this at his live database.
+
+    The page no longer calls it, but a browser holding an old bundle still
+    will, so the endpoint must refuse rather than quietly archive rows by a
+    hardcoded date. There is one mark now, `provenance`, and it is filtered in
+    every query rather than applied by rewriting his rows.
+    """
+    written: list[tuple[str, dict]] = []
+
+    class RecordingQuery(MockQuery):
+        def update(self, values):
+            written.append(("update", dict(values)))
+            return super().update(values)
+
+    class RecordingClient:
         def table(self, name):
-            return MockQuery(self.data)
+            return RecordingQuery(SAMPLE_POSITIONS)
 
-    mock_db = MockArchiveDBClient()
-    monkeypatch.setattr(db, "_client", mock_db)
+    monkeypatch.setattr(db, "_client", RecordingClient())
 
-    # First call archives the 2 pre-launch trades
     res = client.post("/api/journal/archive-test-trades")
-    assert res.status_code == 200
-    data = res.json()
-    assert data["archived"] == 2
-    assert "Successfully archived 2" in data["message"]
-
-    # Second call is idempotent, 0 remaining
-    res2 = client.post("/api/journal/archive-test-trades")
-    assert res2.status_code == 200
-    assert res2.json()["archived"] == 0
+    assert res.status_code == 410
+    assert "provenance" in res.json()["detail"]
+    assert written == [], "a retired endpoint must not touch his record"

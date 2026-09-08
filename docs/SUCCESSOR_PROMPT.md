@@ -86,23 +86,30 @@ docs/PLAN.md as work lands; every superseded plan was deleted for exactly this
 reason.
 
 WHERE THINGS STAND
-Rounds 2 and 3 are merged, deployed and verified by image digest. The live
-revision is swayam-dashboard-00045-lg2. The desk no longer exhausts the FYERS
-request budget, there is a data-health strip on both pages that tells me whether
-my prices are real, and the recorder is finally deployed. Nothing is waiting on
-a merge.
+Rounds 2 and 3 are merged and deployed. The Trade Journal's four faults are
+fixed. The live revision is swayam-dashboard-00046-lg2 or later; check it rather
+than trusting this line. The desk no longer exhausts the FYERS request budget,
+there is a data-health strip on both pages, and the recorder is deployed but has
+never written an object.
+
+My trade journal folder in the vault was polluted with 26 fabricated trades
+written by test runs. They are deleted and the vault is now caged. Do not
+un-cage it.
 
 WHAT I WANT NEXT
 1. THE LIVE MARKET TEST. This is the gate to paper trading and it has never been
    run. docs/PLAN.md section 1 has the script: four things I do at the desk and
    six you read from the logs afterwards. Ask me to run my four when I am at the
-   screen, around 2 pm. Nothing from rounds 2 and 3 has been seen with a live
-   market, and nothing at all has been seen with a real open position, because I
+   screen, around 2 pm. Nothing has been seen with a live market since rounds 2
+   and 3, and nothing at all has been seen with a real open position, because I
    have never had one.
-2. Then the Trade Journal's four faults. docs/PLAN.md section 2.2. From my first
-   paper trade that page holds my record, so it is the last thing on the
-   critical path.
-3. Then backups, charges at execution, and a kill switch.
+2. Then the trade lifecycle. docs/PLAN.md section 2.11, in my own words. One
+   trade has a trade number; I add, remove and square off legs inside it; it
+   closes when every leg is closed or when I say so. The terminal cannot do any
+   of that today and I cannot trade options without managing them.
+3. Then charges at execution, backups, and a kill switch. Charges matter more
+   than they look: last year ₹92,408 of them turned a gross profit into a net
+   loss.
 4. Calendars are briefed and ready but they are my decision, and it depends on
    what volatility is doing and whether an event is coming. Do not push me.
 5. The AI chapter comes after the plumbing. I want it in the plan, not started.
@@ -157,7 +164,35 @@ a daily cap. Never on page load. Unguarded this was estimated at ₹4,000 a mont
 **On what he actually trades.** Ten of his twenty-one historical trades are
 calendars, and he says he uses them more than half the time and that they were
 profitable. The terminal cannot execute them. That is the largest gap between
-the tool and the trader, and he knows it.
+the tool and the trader, and he knows it. **His own framing of a calendar,
+2026-09-08: the far expiry is the hedge and the margin benefit, the near expiry
+is where the theta is earned.** He squares off before the near expiry — Monday
+before the close for a Tuesday expiry, or the Friday before if already well in
+profit or already in a loss.
+
+**On how a trade is shaped, which nobody had asked him.** A trade is a campaign,
+not a leg and not a fixed structure. It gets a number, legs are added and
+squared off inside it while it lives, each squared-off leg adds its own result,
+and it closes when every leg is closed or when he says so. His words: "In
+options, you have to manage the trade... if you don't manage, you won't
+survive." His historical sheet proves it — roughly a third of his trades carry
+adjustments, and several were closed in pieces across different days. `CLAUDE.md`
+has the full picture and the one conflict in his own documents that this
+resolves.
+
+**On the vault, and this is the one that cost him.** On 2026-09-08 his real trade
+journal folder held 26 fabricated notes, 22 of which had no database row at all.
+The database has been caged since that morning; the vault never was, and every
+writer fell back to his live path. **He has taken no trade of his own since
+31 March 2026**, which is how he told them apart, and he asked for them deleted.
+The cage is now in `journal_writer._default_vault_base()` and
+`conftest.cage_the_vault`. Never remove it, and check his journal folder is empty
+before and after running the suite.
+
+**On reading his vault rather than asking him.** Everything above came from
+`G:\My Drive\Second Brain - Projects\Trading\`. His Method files, his 21
+historical swing trades, his FY 2025-26 broker-verified record and his journey
+note answer most questions a session will want to ask him. Read them first.
 
 **On the deeper why.** He built a Second Brain in Obsidian, fed his daily life
 into it through his Atlas app, then injected four years of his own trading

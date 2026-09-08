@@ -81,6 +81,84 @@ can be lied to.
 
 ---
 
+## What he actually trades. Read this before designing anything he will use.
+
+Learned from his vault on 2026-09-08, by reading it rather than by asking him.
+He should not have to explain any of it again.
+
+**His profitable era is the model.** Oct 2022 to Apr 2023, 21 swing trades:
+**13 wins, 8 losses, 61.9%, net +₹73,676.** Every one of them a multi-leg
+structure named by its shape — iron condor, bull call spread, balanced calendar.
+Never a single leg. Held days to weeks; one ran a month. That is the era this
+terminal exists to restart. `00 - Reference/Historical Swing Trades/` in the vault.
+
+**Calendars are more than half of it.** Ten of the twenty-one. His own framing,
+given 2026-09-08: **the far expiry is the hedge and the margin benefit, the near
+expiry is where the theta is earned.** Everything is for the near expiry. He
+squares off before it: with a Tuesday expiry he closes Monday before the close,
+or the Friday before if he is already well in profit or already in a loss.
+
+**A trade is a CAMPAIGN, not a leg, and it changes while it is open.** His own
+sheet has "Initial Position Legs", then "Trade Adjustments" (1st, 2nd), then
+"Booked Orders / Exits" — often on different days. Trade-01 rolled a short put
+from 16,700 to 17,100 mid-life and was closed in two pieces three days apart.
+**His words, 2026-09-08:** "In options, you have to manage the trade... if you
+don't manage, you won't survive." Any journal or position model that assumes
+open-then-close-unchanged is wrong about him.
+
+**His rule for the record, given 2026-09-08.** One trade has one identity. Legs
+may be added, removed and squared off inside it, each squared-off leg adding its
+own profit or loss to that trade. The trade closes when every leg is closed or
+when he says it is closed. A genuinely new position is a new trade. Trades are
+classified intraday or swing/positional and still counted together.
+**Only a squared-off trade enters the record.**
+
+**Beware one conflict in his own documents.** `01 - Method/Exit Rules.md` §5 says
+he does not add to positions in Phase 1 and that every add is a new trade. His
+`MY TRADING RULES - ONE PAGE.md`, which is newer and overrides everything, says he
+must be free to exit and add legs to convert a straddle into a condor. Both are
+right about different things: **pyramiding size onto a bet he already holds is a
+new trade; reshaping a structure he already holds is the same trade continuing.**
+
+**Charges are what killed his last year, not strategy.** FY 2025-26, verified
+against the raw broker file: gross **+₹6,109**, charges **−₹92,408**, net
+**−₹86,299**, across 246 intraday contracts. His transaction-cost rule follows
+from that: expected gross must exceed about twice the round-trip charges. Treat
+anything that misstates costs as a first-order bug, not cosmetics.
+
+**The failure pattern to design against.** Not missing stops. One badly managed
+session every month or two that erased weeks of discipline. Trade-07, a calendar,
+planned stop −₹7,000, actual loss **−₹21,000**, three times the stop, after too
+many adjustments. Its own lesson line: taking a trade without a proper hedge
+leads to big losses.
+
+**Why he stopped and why he is back.** Four years, a losing first two, a
+break-even 2023-24 that he credits to Tom Hougaard's *Best Loser Wins*, then
+2025-26 back to losses on night shift and alcohol. Sober since April/May 2026,
+and this time without forcing it. He stopped trading in March 2026 by choice and
+set three conditions in order: sobriety, discipline, then trading. **He has taken
+no trade of his own since 31 March 2026.** Any trade row or note dated after that
+which he did not create himself is test data.
+`00 - Reference/Trading Journey - The Story So Far.md`.
+
+## The market he trades, as at September 2026. Verified, not remembered.
+
+- **NIFTY weekly options expire on TUESDAY**, moved from Thursday in September
+  2025. Monthly is the last Tuesday.
+- **The lot is 65**, cut from 75 in January 2026. Resolved server-side from the
+  FYERS contract master. Never hardcode either number.
+- **Securities transaction tax on options is 0.15% of premium on the sell side**
+  from 1 April 2026, up from 0.10%. `services/charges.py` already carries this,
+  versioned by effective date and computed in `Decimal`. It is the only correct
+  charge model in the repository.
+- **A calendar spread gets NO margin benefit on the day its near leg expires.**
+  This has applied to index derivatives since February 2025; the February 2026
+  circular extended it to single stocks. The requirement can roughly double on
+  that final day. His practice of closing the day before already avoids it, and
+  the terminal does not model it. Tell him before he puts on his first calendar.
+
+---
+
 ## Settled decisions, do not reopen
 
 - **The Sanskrit branding is decided.** The mark is `स्व` in sage green beside
@@ -133,6 +211,17 @@ can be lied to.
 - **The dev environment points at the LIVE database.** The test suite is caged
   (`tests/db_guard.py`) because there is no staging project. Do not weaken or
   remove that guard.
+- **The vault is caged too, and for the same reason.** On 2026-09-08 twenty-six
+  fabricated trade notes were found in his real journal folder,
+  `02 - Projects/Trading/04 - Journal/`. Twenty-two had no database row at all:
+  they were written by tests that mock the database, so `db_guard` never saw
+  them, while every writer in `journal_writer.py` fell back to his live vault
+  path. `journal_writer._default_vault_base()` now refuses during a test run and
+  `conftest.cage_the_vault` redirects writes to a temporary folder. **Do not
+  remove either.** `tests/test_vault_guard.py` proves both.
+- **Anything that writes into his vault must be caged before you run it.** The
+  vault is the thing this project exists to protect. Before running the suite,
+  check the journal folder is empty; after, check it still is.
 - **Update `docs/PLAN.md` as work lands. Do not write a new plan document.**
   Every superseded plan was deleted on 2026-09-08 for exactly this reason.
 - When he pastes an Antigravity "done" report, **inspect the real repo,
@@ -150,7 +239,7 @@ can be lied to.
 | `docs/PLAN.md` | The one plan. What happens next, in order |
 | `docs/UI_BUILD_BRIEF_ROUND_3.md` | His own sweep of the live pages. **Built and merged**, PR #39 |
 | `docs/UI_BUILD_BRIEF_ROUND_2.md` | Round 2. Built and merged. History |
-| `docs/CALENDAR_BUILD_BRIEF.md` | Multi-expiry valuation, so calendars work. Briefed and ready. **His decision whether he needs it** |
+| `docs/CALENDAR_BUILD_BRIEF.md` | Multi-expiry valuation, so calendars work. Briefed and ready. **His decision whether he needs it.** Section 0 has how he actually trades one |
 | `docs/UI_BUILD_BRIEF.md` | Round 1, finished and live on 2026-09-08. History |
 | `docs/reference/` | The two approved page prototypes, as working code |
 

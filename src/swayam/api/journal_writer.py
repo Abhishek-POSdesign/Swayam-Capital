@@ -16,10 +16,39 @@ class JournalWriteError(Exception):
     """Raised when writing the trade journal fails or attempts an unsafe overwrite."""
     pass
 
+def _default_vault_base() -> Path:
+    """The vault every write lands in when the caller names no other.
+
+    WHY THIS IS NOT SIMPLY `settings.vault_path`
+    --------------------------------------------
+    On 2026-09-08 twenty-six fabricated trade notes were found in Abhishek's
+    real trade journal folder, `02 - Projects/Trading/04 - Journal/`. Only four
+    of them had a matching row in the database; the other twenty-two existed
+    nowhere but his Second Brain. They were written by test runs.
+
+    `tests/db_guard.py` cages the database. Nothing caged the vault, and every
+    writer here fell back to the live path when no override was passed, so any
+    test that exercised `/api/execute` end to end wrote a real file into his
+    record. The vault is the thing this project exists to protect, so the cage
+    now covers it too.
+
+    Reads are untouched: the AI persona still reads his Method files from the
+    real vault. Only writes are gated, and only while a test is running.
+    """
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        raise JournalWriteError(
+            "BLOCKED: a test tried to write into the live Obsidian vault at "
+            f"{settings.vault_path}. Tests must pass an explicit `vault_path`, "
+            "or rely on the autouse `cage_the_vault` fixture in tests/conftest.py "
+            "which redirects writes to a temporary folder. Twenty-six fabricated "
+            "trades reached his real journal this way on 2026-09-08."
+        )
+    return settings.vault_path
+
 
 def get_journal_dir(vault_path: Optional[Path] = None) -> Path:
     """Returns the path to the 04 - Journal directory in the vault, ensuring it exists."""
-    base = vault_path or settings.vault_path
+    base = vault_path or _default_vault_base()
     journal_dir = base / "02 - Projects" / "Trading" / "04 - Journal"
     journal_dir.mkdir(parents=True, exist_ok=True)
     return journal_dir
@@ -233,7 +262,7 @@ def append_exit_block(
     Raises:
         JournalWriteError: If the file does not exist or write fails.
     """
-    base_vault = vault_path or settings.vault_path
+    base_vault = vault_path or _default_vault_base()
     target_path = base_vault / journal_rel_path
 
     if not target_path.exists():
@@ -350,7 +379,7 @@ def append_or_update_lesson_block(
     Returns:
         Path to updated file or None if note not found.
     """
-    base = vault_path or settings.vault_path
+    base = vault_path or _default_vault_base()
     target_path = base / journal_rel_path
     if not target_path.exists():
         return None

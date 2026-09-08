@@ -50,20 +50,23 @@ export class TradesTableComponent {
 
     const rowsHtml = this.trades.map((t) => {
       const isExpanded = this.expandedTradeId === t.position_id;
-      const netPnl = t.net_pnl_inr || 0;
-      const grossPnl = t.gross_pnl_inr || 0;
-      const charges = t.charges_inr || 0;
-      const formattedNetPnl = netPnl > 0 
-        ? `+₹${Math.round(netPnl).toLocaleString('en-IN')}` 
-        : netPnl < 0 
-        ? `-₹${Math.abs(Math.round(netPnl)).toLocaleString('en-IN')}` 
-        : `₹0`;
-      const formattedGrossPnl = grossPnl > 0 
-        ? `+₹${Math.round(grossPnl).toLocaleString('en-IN')}` 
-        : grossPnl < 0 
-        ? `-₹${Math.abs(Math.round(grossPnl)).toLocaleString('en-IN')}` 
-        : `₹0`;
-      const pnlColor = netPnl > 0 ? 'var(--accent-sage)' : netPnl < 0 ? 'var(--accent-coral)' : 'var(--dl-fg-2)';
+      // null, not zero. An open trade has no result yet, and a closed trade
+      // with no row in swayam_trade_history has a result nobody can read. Both
+      // used to render as a confident Rs 0 in his record.
+      const netPnl = typeof t.net_pnl_inr === 'number' ? t.net_pnl_inr : null;
+      const grossPnl = typeof t.gross_pnl_inr === 'number' ? t.gross_pnl_inr : null;
+      const charges = typeof t.charges_inr === 'number' ? t.charges_inr : null;
+      const scored = netPnl !== null;
+      const money = (v) => (v > 0
+        ? `+₹${Math.round(v).toLocaleString('en-IN')}`
+        : v < 0
+        ? `-₹${Math.abs(Math.round(v)).toLocaleString('en-IN')}`
+        : `₹0`);
+      const formattedNetPnl = scored ? money(netPnl) : '—';
+      const formattedGrossPnl = scored ? money(grossPnl) : '—';
+      const pnlColor = !scored
+        ? 'var(--dl-fg-3)'
+        : netPnl > 0 ? 'var(--accent-sage)' : netPnl < 0 ? 'var(--accent-coral)' : 'var(--dl-fg-2)';
       
       const openedDate = t.opened_at ? t.opened_at.substring(0, 10) : '—';
       const openedTime = t.opened_at && t.opened_at.length > 16 ? t.opened_at.substring(11, 16) : '';
@@ -106,7 +109,7 @@ export class TradesTableComponent {
             <div style="font-size: 0.68rem; color: var(--dl-fg-3);">${t.points_in_trade != null ? `${t.points_in_trade > 0 ? '+' : ''}${t.points_in_trade} pts` : '—'}</div>
           </td>
           <td style="padding: 10px 12px; font-family: var(--font-mono, monospace); font-size: 0.76rem; color: var(--dl-fg-3);">
-            ₹${Math.round(charges).toLocaleString('en-IN')}
+            ${charges !== null ? `₹${Math.round(charges).toLocaleString('en-IN')}` : '—'}
           </td>
           <td style="padding: 10px 12px; text-align: right; font-family: var(--font-mono, monospace); font-size: 0.82rem;">
             <div style="font-weight: 700; color: ${pnlColor};">

@@ -241,15 +241,20 @@ in green, and does the age beside it stay small.
 
 ### After the live test, in order
 
-1. **The Trade Journal, all four faults in one pass.** Section 2.2. From his
-   first paper trade that page holds his record, so it is the last thing on the
-   critical path. **This is the next job.**
-2. **Scheduled backups.** Section 2.6.
-3. **Charges at execution.** Section 2.3.
-4. **The kill switch.** Section 2.5.
-5. **The calendar backend.** Section 3, and `docs/CALENDAR_BUILD_BRIEF.md` PR 1.
+1. ~~The Trade Journal's four faults.~~ **DONE 2026-09-08 night.** Section 2.2,
+   and section 4 carries the proof.
+2. **The trade as a campaign: one trade, legs that change.** Section 2.11. He
+   specified this himself on 2026-09-08 night and it is the largest remaining
+   gap between the terminal and how he trades. **This is the next job.**
+3. **Charges at execution.** Section 2.3. **Moved up.** His FY 2025-26 was a
+   gross profit of ₹6,109 turned into a net loss of ₹86,299 by ₹92,408 of
+   charges. Costs are not a rounding error to him; they are the thing that
+   ended his last year.
+4. **Scheduled backups.** Section 2.6.
+5. **The kill switch.** Section 2.5.
+6. **The calendar backend.** Section 3, and `docs/CALENDAR_BUILD_BRIEF.md` PR 1.
    Independent of everything above and can start any time.
-6. **The AI chapter.** Section 3, after the above. He named it himself as
+7. **The AI chapter.** Section 3, after the above. He named it himself as
    something that must be in the plan.
 
 ### On calendars, his position as of 2026-09-08
@@ -285,41 +290,27 @@ the app into verification.
 Nothing is lost meanwhile. The outbox holds the note and the local drainer
 completes it, and his PC is on whenever he trades.
 
-### 2.2 The Trade Journal, and how a row is marked not-real — THE NEXT JOB
+### 2.2 The Trade Journal — DONE 2026-09-08 night
 
-From his first paper trade this page holds his record, so it is the last thing on
-the critical path. **Four faults, one pass.**
+All four faults fixed in one pass, plus two more found while fixing them, plus
+the rule he gave that night. Verified in a real browser against the real backend
+and his live database, in both themes, with no console errors.
 
-1. **A ninth invented constant.** `api/routes/journal.py` hardcodes a margin base
-   of `500000.0` in two places, used for `cumulative_pnl_pct_of_margin` and
-   `max_drawdown_pct_of_margin`, rendered by `web/src/components/kpi-strip.js`.
-   Take live capital from `services/capital.py`, as execution and positions do.
-2. **The page writes to the database when you open it.**
-   `web/src/pages/journal.js` fires `POST /api/journal/archive-test-trades` on
-   the first load of each browser session, gated only by `sessionStorage`.
-   Nothing is clicked. Make it explicit or remove it.
-3. **Analytics does not filter `provenance`.** More urgent than it was, because
-   round 3 put a win rate on his home page.
-4. **Two marks for one idea, which is his own question.** In his words: "I'm not
-   aware of how you are making a row. Know that it is not a real trade, and I am
-   never aware of it."
+| Fault | What it was | What it is now |
+|---|---|---|
+| The ninth invented constant | A hardcoded five-lakh "margin base" divided his cumulative result and his drawdown, in two places | Live capital from `services/capital.py`. Read live at 23:26 IST: ₹9,71,111 from FYERS. Nothing printed when it cannot be read |
+| A write fired by opening the page | `journal.js` posted to `archive-test-trades` on first load, nothing clicked | Gone. The endpoint answers 410 so a stale bundle cannot write either |
+| Analytics ignored `provenance` | It had **no filter of any kind** beyond dates, so all 81 build-test rows fed the curve, drawdown, expectancy and every per-strategy figure | Filters `provenance` and `status`. Live check: 0 series points, 0 strategies |
+| Two marks for one idea | `provenance` and a date-cutoff `status = 'archived'` that could disagree | One mark. The page says "81 rows excluded as build tests, not trades you took" |
+| **The silent zero**, found while fixing the above | Both endpoints read `realized_pnl_inr` and `unrealized_pnl_inr` off `swayam_positions`. **Neither column exists.** Every trade without a `swayam_trade_history` row scored a flat ₹0, and that table is empty today | A result nobody can read is unknown and counted separately, never zero |
+| **Zeros on an empty book** | 0.0% win rate, 100.0% discipline rate, ₹0 profit, 0.00% of margin | Every one a dash. The strip refuses those figures even if a stale server sends them |
 
-   There are **two** different marks and they can disagree. One is the
-   `provenance` column, which is the column built for this. The other is
-   `status = 'archived'`, applied by a hardcoded date cutoff of 2026-09-06.
+**His rule, given that night and now enforced:** "I only want the trade that is
+squared off to go in as a trade journal." A trade scores only when it is closed
+**and** its result can be read.
 
-   **Verified in his database 2026-09-08:** all 81 rows are
-   `mode=paper, status=archived, provenance=build_test`, and Home's record card
-   asks for `status=closed`, so it reads zero rows. **The sentence on his screen
-   saying they are excluded is true today.** But it is true by coincidence: it
-   works only because one row cannot be both archived and closed. Nothing
-   consults `provenance`. If a test ever leaves a row as `closed`, which is
-   exactly what used to happen when his count climbed 67 to 79 to 81, it lands in
-   the win rate on his home page with nothing to stop it.
-
-   **Fix:** one flag, `provenance`, filtered in the analytics query, and shown on
-   screen so he can always see which rows are excluded and why. Retire the
-   date-cutoff archive path.
+**What this did NOT do.** It did not change how a trade is modelled. That is
+section 2.11, and it is now the next job.
 
 ### 2.3 Charges applied at execution
 The versioned charge engine is real and the risk gate uses it. The execution
@@ -438,6 +429,63 @@ it waiting. He does not need to be awake for it.
 One object in `gs://swayam-capital-options-data` proves it writes; reading the
 columns proves it is worth writing.
 
+### 2.11 The trade as a campaign: one trade, legs that change — THE NEXT JOB
+
+**He specified this himself on 2026-09-08 night, unprompted, after being told
+what the terminal could and could not do. His words are the specification.**
+
+> "For swing trading we should give every trade a trade ID or trade number. In
+> that trade ID, I can add, delete, or add legs because it will happen. I cannot
+> prevent it. In options, you have to manage the trade... if you don't manage,
+> you won't survive."
+>
+> "Every leg that I square off will have its own profit/loss added, and every new
+> leg I add will be considered in the same trade. Once I close all the legs or I
+> say 'the trade is closed', then only the trade is closed. If I am opening a new
+> trade, I shall add that as a new trade."
+>
+> "There should be a classification: this is an intraday trade, this is an
+> options or swing trade."
+
+**What exists today.** `POST /api/execute` opens a whole structure and
+`POST /api/positions/{id}/close` closes every leg of it at once, refusing if any
+one leg cannot be priced. **There is no way to change a position after it is
+open.** No add, no remove, no roll, no partial close. That is the gap.
+
+**Why it matters more than it looks.** His own historical sheet proves the shape:
+Trade-01 rolled a short put from 16,700 to 17,100 mid-life and was closed in two
+pieces three days apart; Trade-07 carries two adjustments and six exits over two
+days. Roughly a third of his twenty-one trades were adjusted. A model that
+assumes open-then-close-unchanged cannot hold his record.
+
+**The design, in his terms.**
+
+1. **A trade has one identity and a human trade number**, per book, so he can say
+   "trade 14" and mean something. `swayam_positions` is already the campaign row;
+   it gains a number and a type.
+2. **A leg has its own life inside that trade**: when it was opened, at what
+   premium, and if it has been squared off, when and at what premium and for what
+   result. Adding a leg and squaring off a leg are recorded events, not edits.
+3. **The trade's result is the sum of its squared-off legs**, accumulated as they
+   close, so a partially closed trade shows what has actually been banked.
+4. **The trade closes when every leg is closed, or when he says so.** An explicit
+   close is his call and must be recorded as his call.
+5. **Every trade is classified** intraday or swing/positional. He will be swing
+   and positional at first and has said intraday will return. Both are counted
+   together in the record and separable in analytics.
+6. **Reshaping is not adding.** Rolling a leg or buying a wing on a structure he
+   already holds stays in the same trade. Putting more size behind a bet he
+   already holds is a NEW trade with its own number. This is the one distinction
+   the whole design turns on, and it is what reconciles `01 - Method/Exit Rules.md`
+   §5 with `MY TRADING RULES - ONE PAGE.md`. See `CLAUDE.md`.
+
+**Constraints.** A schema migration is needed, so it is numbered and reviewed,
+and the existing 81 quarantined rows must survive untouched. Nothing here may
+weaken the vault or database cages. **Plan it in plain English and get his
+approval before writing code**, as with everything else.
+
+---
+
 ## 3. THE BIG ONE, AFTER THE ABOVE
 
 ### Multi-expiry valuation, so calendars work — BRIEFED. `docs/CALENDAR_BUILD_BRIEF.md`
@@ -533,6 +581,12 @@ Kept short. Detail is in the git history and the pull requests.
 | 2026-09-08 | Nothing calls a closing price "live" any more | Home badge and desk chip both read "at the close · 19:22 IST" with the market shut |
 | 2026-09-08 | The deleted reward-to-risk rule stopped being computed | The four-rule block renders exactly four rules from a live balance of ₹9,71,111 |
 | 2026-09-08 | Recorder deployed, first time since 3 September | Revision `swayam-recorder-00002-lez` ACTIVE, answers 200, reads the token, FYERS returns 82 rows |
+| 2026-09-08 | **The vault can no longer be written by a test run** | 26 fabricated notes were in his real journal folder; 22 had no database row. Folder held 0 notes before a full suite run and 0 after |
+| 2026-09-08 | The 26 fabricated notes are gone from his Second Brain | Journal folder holds zero markdown files. The vault is under git, so they remain recoverable |
+| 2026-09-08 | The Trade Journal stopped inventing a margin base | Live backend at 23:26 IST returns his real ₹9,71,111 from FYERS, and `null` where it cannot compute |
+| 2026-09-08 | Opening the Trade Journal no longer writes to his database | The retired endpoint answers 410; position count 81 before and after |
+| 2026-09-08 | Test rows no longer reach his record | The page reads "81 rows excluded as build tests, not trades you took" |
+| 2026-09-08 | An empty book prints dashes, not a 0% win rate and 100% discipline | Verified in a real browser in both themes, no console errors |
 | 2026-09-07 | Release 1: lot 65, real margin, live capital, his risk rules | PR #23 |
 
 ---

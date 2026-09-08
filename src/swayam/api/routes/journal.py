@@ -20,8 +20,43 @@ from swayam.api.models_api import (
     JournalTradesResponse,
 )
 from swayam.db import db
+from swayam.services.capital import CapitalUnavailable, get_capital
 
 logger = logging.getLogger(__name__)
+
+# The one mark that says a row is not one of his trades. `provenance` is the
+# column built for this in migration 017. The old second mark was
+# `status = 'archived'`, applied by a hardcoded date cutoff of 2026-09-06, and
+# the two could disagree. His own question, 2026-09-08: "I'm not aware of how
+# you are making a row. Know that it is not a real trade, and I am never aware
+# of it." There is now one mark, it is filtered here, and the count of what it
+# excluded is returned so a screen can say so.
+LIVE_PROVENANCE = "live"
+
+
+def _capital_base() -> tuple[Optional[float], str]:
+    """His live balance, or the reason it cannot be read. Never a constant.
+
+    This used to be a hardcoded five-lakh figure in two places, neither his
+    balance nor a figure anyone chose. Execution and positions already read the
+    real account; the record now does too, and says `unavailable` when it
+    cannot rather than dividing by an invented number.
+    """
+    try:
+        snap = get_capital()
+        return snap.risk_capital_inr, snap.source
+    except CapitalUnavailable as exc:
+        return None, f"live capital unavailable: {exc}"
+    except Exception as exc:  # noqa: BLE001 - the reason matters more than the type
+        logger.warning("Could not read live capital for the journal: %s", exc)
+        return None, f"live capital unavailable: {exc}"
+
+
+def _pct(numerator: float, denominator: Optional[float]) -> Optional[float]:
+    """A percentage, or nothing at all when there is no honest denominator."""
+    if denominator is None or denominator <= 0:
+        return None
+    return round(numerator / denominator * 100, 2)
 
 router = APIRouter()
 
@@ -78,6 +113,12 @@ def get_journal_trades(
         client = db.client
         query = client.table("swayam_positions").select("*")
 
+        # Rows that are not his trades never reach this endpoint at all, in
+        # any mode, under any filter. This is the fix for the fault that
+        # mattered most: round 3 put a win rate on his home page, and nothing
+        # anywhere consulted `provenance` before computing it.
+        query = query.eq("provenance", LIVE_PROVENANCE)
+
         if status != "all":
             query = query.eq("status", status)
         else:
@@ -103,16 +144,15 @@ def get_journal_trades(
         res = query.execute()
         raw_positions = res.data or []
 
-        # Count unarchived pre-launch test paper trades for housekeeping banner
-        test_check = (
+        # What the one mark excluded, so the page can say so out loud rather
+        # than leaving him to wonder which rows are missing and why.
+        excluded_check = (
             client.table("swayam_positions")
             .select("id")
-            .eq("mode", "paper")
-            .lt("opened_at", "2026-09-06")
-            .neq("status", "archived")
+            .neq("provenance", LIVE_PROVENANCE)
             .execute()
         )
-        pre_launch_test_count = len(test_check.data or [])
+        excluded_test_rows = len(excluded_check.data or [])
     except Exception as exc:
         logger.error("Failed to query journal trades from Supabase: %s", exc)
         raise HTTPException(
@@ -145,6 +185,8 @@ def get_journal_trades(
 
     # 3. Post-process, compute KPIs, and apply Python-level filters
     processed_trades: list[JournalTradeItem] = []
+    scored_count = 0          # squared-off trades, the only ones the record counts
+    unpriced_closed = 0       # closed, but no history row, so the money is unknown
     total_gross_pnl = 0.0
     total_net_pnl = 0.0
     total_charges = 0.0
@@ -160,17 +202,32 @@ def get_journal_trades(
     for pos in raw_positions:
         pos_id = str(pos.get("id"))
         p_status = pos.get("status", "closed")
+        # `swayam_trade_history` is the only place a squared-off result lives.
+        # The old fallback read `realized_pnl_inr` and `unrealized_pnl_inr` off
+        # the position row; NEITHER COLUMN EXISTS on `swayam_positions`, so it
+        # silently booked zero for every trade without a history row. A trade
+        # whose result cannot be read is now unknown, never a flat nothing.
         hist_rec = history_by_pos_id.get(pos_id)
+        money_is_known = hist_rec is not None
         if hist_rec:
-            net_pnl = float(hist_rec.get("realized_pnl_inr", 0.0))
+            net_pnl = float(hist_rec.get("realized_pnl_inr") or 0.0)
             charges = float(hist_rec.get("total_charges_inr") or pos.get("charges_inr") or 0.0)
+            gross_pnl = net_pnl + charges
         else:
-            net_pnl = float(pos.get("realized_pnl_inr") or pos.get("unrealized_pnl_inr") or 0.0)
-            charges = float(pos.get("charges_inr") or 0.0)
-        gross_pnl = net_pnl + charges
+            net_pnl = 0.0
+            charges = 0.0
+            gross_pnl = 0.0
+
+        # His rule, given 2026-09-08: "I only want the trade that is squared off
+        # to go in as a trade journal." A trade counts towards the record when
+        # it is closed AND its result can be read. Everything else is listed but
+        # never scored.
+        is_squared_off = p_status == "closed" and money_is_known
 
         # Derive outcome
-        if net_pnl > 50.0:
+        if not is_squared_off:
+            trade_outcome = "UNKNOWN"
+        elif net_pnl > 50.0:
             trade_outcome = "WIN"
         elif net_pnl < -50.0:
             trade_outcome = "LOSS"
@@ -194,7 +251,11 @@ def get_journal_trades(
         max_loss = float(pos.get("max_loss_inr") or 0.0)
         max_profit = float(pos.get("max_profit_inr") or 0.0)
         rr_planned = round(max_profit / max_loss, 2) if max_loss > 0 else None
-        rr_actual = round(net_pnl / max_loss, 2) if (max_loss > 0 and net_pnl != 0) else None
+        rr_actual = (
+            round(net_pnl / max_loss, 2)
+            if (is_squared_off and max_loss > 0 and net_pnl != 0)
+            else None
+        )
 
         # Time in trade
         tit_mins = pos.get("time_in_trade_minutes")
@@ -212,34 +273,42 @@ def get_journal_trades(
         lesson_text = lesson_data.get("lesson_text") if lesson_data else None
         lesson_source = lesson_data.get("lesson_source") if lesson_data else None
 
-        # Stats accumulation
-        total_gross_pnl += gross_pnl
-        total_net_pnl += net_pnl
-        total_charges += charges
-
-        if trade_outcome == "WIN":
-            wins += 1
-        elif trade_outcome == "LOSS":
-            losses += 1
+        # Stats accumulation. Only a squared-off trade moves a single figure
+        # in his record. An open trade is a live position, not a result, and a
+        # closed one whose money cannot be read is a broken record rather than
+        # a flat zero.
+        if not is_squared_off:
+            if p_status == "closed":
+                unpriced_closed += 1
         else:
-            breakevens += 1
+            scored_count += 1
+            total_gross_pnl += gross_pnl
+            total_net_pnl += net_pnl
+            total_charges += charges
 
-        if is_followed:
-            rules_followed_count += 1
+            if trade_outcome == "WIN":
+                wins += 1
+            elif trade_outcome == "LOSS":
+                losses += 1
+            else:
+                breakevens += 1
 
-        if rr_actual is not None:
-            sum_rr_actual += rr_actual
-            rr_count += 1
+            if is_followed:
+                rules_followed_count += 1
 
-        # Outliers tracking
-        if max_win_item is None or net_pnl > max_win_item["pnl"]:
+            if rr_actual is not None:
+                sum_rr_actual += rr_actual
+                rr_count += 1
+
+        # Outliers tracking, over scored trades only
+        if is_squared_off and (max_win_item is None or net_pnl > max_win_item["pnl"]):
             max_win_item = {
                 "position_id": pos_id,
                 "strategy": pos.get("strategy_name", "Spread"),
                 "pnl": net_pnl,
                 "date": pos.get("opened_at", "")[:10],
             }
-        if max_loss_item is None or net_pnl < max_loss_item["pnl"]:
+        if is_squared_off and (max_loss_item is None or net_pnl < max_loss_item["pnl"]):
             max_loss_item = {
                 "position_id": pos_id,
                 "strategy": pos.get("strategy_name", "Spread"),
@@ -255,9 +324,9 @@ def get_journal_trades(
             underlying=pos.get("underlying", "NIFTY"),
             legs_summary=_format_legs_summary(pos.get("legs", [])),
             entry_debit_credit_inr=float(pos.get("net_debit_credit_inr") or 0.0),
-            gross_pnl_inr=round(gross_pnl, 2),
-            net_pnl_inr=round(net_pnl, 2),
-            charges_inr=round(charges, 2),
+            gross_pnl_inr=round(gross_pnl, 2) if is_squared_off else None,
+            net_pnl_inr=round(net_pnl, 2) if is_squared_off else None,
+            charges_inr=round(charges, 2) if is_squared_off else None,
             rr_planned=rr_planned,
             rr_actual=rr_actual,
             time_in_trade_str=_format_time_in_trade(tit_mins),
@@ -287,25 +356,38 @@ def get_journal_trades(
     if sort_by == "date_asc":
         processed_trades.sort(key=lambda t: t.opened_at)
     elif sort_by == "pnl_desc":
-        processed_trades.sort(key=lambda t: t.net_pnl_inr, reverse=True)
+        # An unscored trade has no result to sort by; it sinks to the bottom
+        # rather than being treated as a zero-rupee trade.
+        processed_trades.sort(
+            key=lambda t: (t.net_pnl_inr is not None, t.net_pnl_inr or 0.0), reverse=True
+        )
     elif sort_by == "pnl_asc":
-        processed_trades.sort(key=lambda t: t.net_pnl_inr)
+        processed_trades.sort(
+            key=lambda t: (t.net_pnl_inr is None, t.net_pnl_inr or 0.0)
+        )
     else:  # date_desc default
         processed_trades.sort(key=lambda t: t.opened_at, reverse=True)
 
     total_count = len(processed_trades)
     paginated_trades = processed_trades[offset : offset + limit]
 
-    # Compute KPI totals
-    win_rate = round((wins / total_count * 100), 1) if total_count > 0 else 0.0
-    avg_rr = round(sum_rr_actual / rr_count, 2) if rr_count > 0 else 0.0
-    disc_rate = round((rules_followed_count / total_count * 100), 1) if total_count > 0 else 100.0
-    charges_drag_pct = round((total_charges / total_gross_pnl * 100), 1) if total_gross_pnl > 0 else 0.0
-    margin_base = 500000.0  # default Rs 5,00,000 margin base
-    pnl_pct_margin = round((total_net_pnl / margin_base * 100), 2)
+    # Every rate below is out of the SQUARED-OFF trades, never out of every row
+    # that happened to match the filter. An empty book returns nothing at all
+    # rather than a 0% win rate and a 100% discipline rate, both of which read
+    # as real figures on his screen.
+    win_rate = round((wins / scored_count * 100), 1) if scored_count > 0 else None
+    avg_rr = round(sum_rr_actual / rr_count, 2) if rr_count > 0 else None
+    disc_rate = (
+        round((rules_followed_count / scored_count * 100), 1) if scored_count > 0 else None
+    )
+    charges_drag_pct = (
+        round((total_charges / total_gross_pnl * 100), 1) if total_gross_pnl > 0 else None
+    )
+    capital_base, capital_source = _capital_base()
+    pnl_pct_capital = _pct(total_net_pnl, capital_base) if scored_count > 0 else None
 
     kpis = JournalKPIs(
-        total_trades=total_count,
+        total_trades=scored_count,
         wins_count=wins,
         losses_count=losses,
         breakeven_count=breakevens,
@@ -313,7 +395,7 @@ def get_journal_trades(
         avg_rr_actual=avg_rr,
         cumulative_net_pnl_inr=round(total_net_pnl, 2),
         cumulative_gross_pnl_inr=round(total_gross_pnl, 2),
-        cumulative_pnl_pct_of_margin=pnl_pct_margin,
+        cumulative_pnl_pct_of_capital=pnl_pct_capital,
         discipline_rate_pct=disc_rate,
         charges_drag_inr=round(total_charges, 2),
         charges_drag_pct=charges_drag_pct,
@@ -325,40 +407,38 @@ def get_journal_trades(
         trades=paginated_trades,
         total_count=total_count,
         kpis=kpis,
-        pre_launch_test_trades_count=pre_launch_test_count,
+        excluded_test_rows=excluded_test_rows,
+        unpriced_closed_trades=unpriced_closed,
+        capital_base_inr=capital_base,
+        capital_base_source=capital_source,
     )
 
 
 @router.post("/api/journal/archive-test-trades", response_model=ArchiveTestTradesResponse)
 def archive_test_trades() -> ArchiveTestTradesResponse:
-    """Safely archives pre-launch test paper trades (opened_at < 2026-09-06) without deleting records."""
-    try:
-        client = db.client
-        # Query matching unarchived test trades
-        matching = (
-            client.table("swayam_positions")
-            .select("id")
-            .eq("mode", "paper")
-            .lt("opened_at", "2026-09-06")
-            .neq("status", "archived")
-            .execute()
-        )
-        records = matching.data or []
-        count = len(records)
+    """RETIRED 2026-09-08. Kept as a 410 so an old cached page cannot write.
 
-        if count > 0:
-            client.table("swayam_positions").update({"status": "archived"}).eq("mode", "paper").lt("opened_at", "2026-09-06").neq("status", "archived").execute()
+    This endpoint archived every paper position opened before a hardcoded date
+    of 2026-09-06, and the Trade Journal page fired it on first load with
+    nothing clicked. That was two faults at once: a database write triggered by
+    opening a page, and a SECOND mark for "this is not a real trade" that could
+    disagree with `provenance`.
 
-        return ArchiveTestTradesResponse(
-            archived=count,
-            message=f"Successfully archived {count} pre-launch test paper trade{'s' if count != 1 else ''}.",
-        )
-    except Exception as exc:
-        logger.error("Failed to archive pre-launch test trades: %s", exc)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to archive test trades: {exc}",
-        ) from exc
+    There is one mark now. `provenance` is filtered in every query in this file
+    and the count of what it excluded is returned, so the page can show him
+    which rows are left out and why. Nothing needs archiving by date.
+
+    A browser still holding the old bundle will call this. It must not write.
+    """
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "Archiving by date is retired. A row is excluded from the record by "
+            "its `provenance` column, which every journal query now filters, and "
+            "the number of excluded rows is reported with the trades. Reload the "
+            "page to pick up the current version."
+        ),
+    )
 
 
 @router.get("/api/journal/trade/{position_id}")
@@ -416,7 +496,16 @@ def get_journal_analytics(
 ) -> dict[str, Any]:
     """Returns edge analytics: cumulative P&L curve, P&L by strategy, by exit reason, and by trend."""
     try:
-        query = db.client.table("swayam_positions").select("*")
+        # This query had NO filter of any kind beyond the dates, so every one of
+        # the 81 build-test rows fed the cumulative curve, the drawdown, the
+        # expectancy and every per-strategy figure below it. Two filters now:
+        # his rows only, and squared-off trades only.
+        query = (
+            db.client.table("swayam_positions")
+            .select("*")
+            .eq("provenance", LIVE_PROVENANCE)
+            .eq("status", "closed")
+        )
         if from_date:
             query = query.gte("opened_at", from_date)
         if to_date:
@@ -467,13 +556,21 @@ def get_journal_analytics(
     running_max_pnl = 0.0
     max_drawdown = 0.0
 
+    scored_trades = 0
+    unpriced_closed = 0
+
     for t in sorted_trades:
         t_id = str(t.get("id"))
         hist_rec = history_by_pos_id.get(t_id)
-        if hist_rec:
-            net_pnl = float(hist_rec.get("realized_pnl_inr", 0.0))
-        else:
-            net_pnl = float(t.get("realized_pnl_inr") or t.get("unrealized_pnl_inr") or 0.0)
+        if hist_rec is None:
+            # Same silent zero as the trades endpoint had: the two column names
+            # this used to fall back to do not exist on swayam_positions, so
+            # every trade without a history row was scored as a flat nothing.
+            # It is left out and counted instead.
+            unpriced_closed += 1
+            continue
+        net_pnl = float(hist_rec.get("realized_pnl_inr") or 0.0)
+        scored_trades += 1
         cum_pnl += net_pnl
         trade_date = (t.get("opened_at") or "")[:10]
         series.append({"date": trade_date, "cumulative_pnl_inr": round(cum_pnl, 2)})
@@ -539,14 +636,16 @@ def get_journal_analytics(
     # Trend stats calculation
     trend_stats = {}
     for k, v in by_trend.items():
-        wr = round((v["wins"] / v["trades"] * 100), 1) if v["trades"] > 0 else 0.0
+        # A trend he has never traded has no win rate. It used to report 0.0%,
+        # which reads as "you lost every one of them".
+        wr = round((v["wins"] / v["trades"] * 100), 1) if v["trades"] > 0 else None
         trend_stats[k] = {"trades": v["trades"], "win_rate_pct": wr, "pnl_inr": round(v["pnl"], 2)}
 
     avg_duration_days = (
-        round(total_mins / valid_duration_count / 1440, 1) if valid_duration_count > 0 else 0.0
+        round(total_mins / valid_duration_count / 1440, 1) if valid_duration_count > 0 else None
     )
-    expectancy = round(cum_pnl / len(trades), 2) if trades else 0.0
-    margin_base = 500000.0
+    expectancy = round(cum_pnl / scored_trades, 2) if scored_trades else None
+    capital_base, capital_source = _capital_base()
 
     return {
         "cumulative_pnl_series": series,
@@ -554,9 +653,15 @@ def get_journal_analytics(
         "pnl_by_exit_reason": exit_list,
         "pnl_by_directional_view": list(by_direction.values()),
         "win_rate_by_trend": trend_stats,
-        "avg_duration_days": avg_duration_days,
-        "max_drawdown_inr": round(max_drawdown, 2),
-        "max_drawdown_pct_of_margin": round(max_drawdown / margin_base * 100, 2),
+        "avg_duration_days": avg_duration_days if scored_trades else None,
+        "max_drawdown_inr": round(max_drawdown, 2) if scored_trades else None,
+        "max_drawdown_pct_of_capital": (
+            _pct(max_drawdown, capital_base) if scored_trades else None
+        ),
         "expectancy_per_trade_inr": expectancy,
+        "scored_trades": scored_trades,
+        "unpriced_closed_trades": unpriced_closed,
+        "capital_base_inr": capital_base,
+        "capital_base_source": capital_source,
         "recent_lessons": recent_lessons,
     }

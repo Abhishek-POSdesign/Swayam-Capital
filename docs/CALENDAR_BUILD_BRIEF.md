@@ -30,6 +30,36 @@
 
 ---
 
+## 0b. HOW HE ACTUALLY TRADES A CALENDAR. His own words, 2026-09-08.
+
+He said this himself when asked, and it should never be asked again.
+
+**Why he puts one on.** "The calendar with far expiry is for the hedge and for
+the margin benefit, and the current expiry is to gain theta, so the near expiry.
+It is always for near expiry." The far leg is not a trade of its own. It is
+there to cap the short and to reduce the margin the broker demands.
+
+**When he gets out.** "My target is to square off the calendar before near
+expiry." He is not a morning trader. With a Tuesday expiry he closes **Monday
+before the close**, or **the Friday before** if he is already well in profit and
+can see it turning, or if he is already in a loss.
+
+**Two consequences for anyone building this.**
+
+1. Every figure that gates money is measured to the **near** expiry, which is
+   decision 1 below. His exit behaviour is the reason it is correct, not a
+   simplification.
+2. **A calendar spread gets NO margin benefit on the day its near leg expires.**
+   SEBI removed it for index derivatives from February 2025; the circular of
+   February 2026 extended the same rule to single stocks. The requirement can
+   roughly double on that last day. **His practice of closing the day before
+   already avoids this**, which is worth telling him rather than assuming he
+   knows. The terminal does not model it today. If a margin projection is ever
+   shown for a calendar held into its near expiry day, it must not show the
+   hedged figure.
+
+---
+
 ## 1. HIS DECISIONS. DO NOT RELITIGATE ANY OF THESE.
 
 Recorded verbatim in intent from the session of 2026-09-08.

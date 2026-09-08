@@ -53,20 +53,11 @@ export class JournalPage {
     this.mountComponents();
     this.setupEventListeners();
 
-    if (!sessionStorage.getItem('swayam_seed_archived')) {
-      try {
-        const res = await api.archiveTestTrades();
-        const count = res?.archived || 0;
-        if (count > 0) {
-          console.log(`[journal] archived ${count} seed trades`);
-        }
-        sessionStorage.setItem('swayam_seed_archived', 'true');
-      } catch (err) {
-        console.error('[journal] failed to auto-archive test data', err);
-        this._showArchiveErrorBanner();
-      }
-    }
-
+    // Opening this page used to fire POST /api/journal/archive-test-trades at
+    // his live database on the first load of every browser session, with
+    // nothing clicked. Reading a record must never write to it. The archive
+    // path is retired: a row is excluded by its `provenance` column, which the
+    // API filters, and the page says below how many were left out.
     await this.loadData();
   }
 
@@ -425,11 +416,10 @@ export class JournalPage {
         badge.textContent = `${tradesData.total_count} Trades`;
       }
 
-      // Housekeeping banner container cleared unless active error
-      const bannerContainer = this.container.querySelector('#journal-housekeeping-banner-container');
-      if (bannerContainer && sessionStorage.getItem('swayam_seed_archived')) {
-        bannerContainer.innerHTML = '';
-      }
+      // What this record leaves out, said out loud. His question, 2026-09-08:
+      // "I'm not aware of how you are making a row. Know that it is not a real
+      // trade, and I am never aware of it."
+      this._renderExclusions(tradesData);
 
       if (this.kpiStrip) {
         this.kpiStrip.update(tradesData.kpis);
@@ -481,28 +471,39 @@ export class JournalPage {
       // Update expectancy & trend breakdown
       const expChip = this.container.querySelector('#analytics-expectancy-chip');
       if (expChip) {
-        const exp = analyticsData.expectancy_per_trade_inr || 0;
-        const maxDd = analyticsData.max_drawdown_inr || 0;
-        expChip.innerHTML = `Expectancy: <strong style="color: ${exp >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)'};">${exp >= 0 ? '+' : ''}₹${exp.toLocaleString('en-IN')}</strong> / trade · Max DD: <strong style="color: var(--accent-coral);">-₹${Math.abs(maxDd).toLocaleString('en-IN')}</strong>`;
+        // An empty book has no expectancy and no drawdown. It used to print
+        // a confident +Rs 0 for both, which reads as a real result.
+        const exp = analyticsData.expectancy_per_trade_inr;
+        const maxDd = analyticsData.max_drawdown_inr;
+        const expCell = typeof exp === 'number'
+          ? `<strong style="color: ${exp >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)'};">${exp >= 0 ? '+' : ''}₹${exp.toLocaleString('en-IN')}</strong>`
+          : '<strong>—</strong>';
+        const ddCell = typeof maxDd === 'number'
+          ? `<strong style="color: var(--accent-coral);">-₹${Math.abs(maxDd).toLocaleString('en-IN')}</strong>`
+          : '<strong>—</strong>';
+        expChip.innerHTML = `Expectancy: ${expCell} / trade · Max DD: ${ddCell}`;
       }
 
       const trendDiv = this.container.querySelector('#trend-alignment-breakdown');
       if (trendDiv && analyticsData.win_rate_by_trend) {
         const tb = analyticsData.win_rate_by_trend;
-        const withTrend = tb['With'] || { trades: 0, win_rate_pct: 0, pnl_inr: 0 };
-        const againstTrend = tb['Against'] || { trades: 0, win_rate_pct: 0, pnl_inr: 0 };
+        const withTrend = tb['With'] || { trades: 0, win_rate_pct: null, pnl_inr: 0 };
+        const againstTrend = tb['Against'] || { trades: 0, win_rate_pct: null, pnl_inr: 0 };
+        // A trend he has never traded has no win rate. It used to print 0% WR,
+        // which reads as having lost every one of them.
+        const wr = (t) => (typeof t.win_rate_pct === 'number' ? `${t.win_rate_pct}%` : '—');
 
         trendDiv.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 4px; background: rgba(255,255,255,0.02); border: 1px solid var(--dl-line);">
             <span>With Trend</span>
             <span style="font-family: var(--font-mono); font-weight: 600; color: ${withTrend.pnl_inr >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)'};">
-              ${withTrend.win_rate_pct}% WR (${withTrend.trades}T) · ${withTrend.pnl_inr >= 0 ? '+' : ''}₹${Math.round(withTrend.pnl_inr).toLocaleString('en-IN')}
+              ${wr(withTrend)} WR (${withTrend.trades}T) · ${withTrend.pnl_inr >= 0 ? '+' : ''}₹${Math.round(withTrend.pnl_inr).toLocaleString('en-IN')}
             </span>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 4px; background: rgba(255,255,255,0.02); border: 1px solid var(--dl-line);">
             <span>Against Trend</span>
             <span style="font-family: var(--font-mono); font-weight: 600; color: ${againstTrend.pnl_inr >= 0 ? 'var(--accent-sage)' : 'var(--accent-coral)'};">
-              ${againstTrend.win_rate_pct}% WR (${againstTrend.trades}T) · ${againstTrend.pnl_inr >= 0 ? '+' : ''}₹${Math.round(againstTrend.pnl_inr).toLocaleString('en-IN')}
+              ${wr(againstTrend)} WR (${againstTrend.trades}T) · ${againstTrend.pnl_inr >= 0 ? '+' : ''}₹${Math.round(againstTrend.pnl_inr).toLocaleString('en-IN')}
             </span>
           </div>
         `;
@@ -515,59 +516,53 @@ export class JournalPage {
     }
   }
 
-  _showArchiveErrorBanner() {
-    const bannerContainer = this.container.querySelector('#journal-housekeeping-banner-container');
-    if (!bannerContainer) return;
-    bannerContainer.innerHTML = `
-      <div id="journal-test-trades-banner" style="
-        background: rgba(221, 129, 112, 0.12);
-        border: 1px solid var(--accent-coral);
+  /**
+   * What this page is NOT showing him, and why.
+   *
+   * Two kinds of row never reach his record. One is a row whose `provenance`
+   * is not `live` — a build test rather than a trade he took. The other is a
+   * closed trade with no row in `swayam_trade_history`, whose result cannot be
+   * read; that used to be scored as a flat zero rupees.
+   *
+   * Both are stated rather than silently dropped. Nothing renders when there
+   * is nothing to say.
+   */
+  _renderExclusions(tradesData) {
+    const host = this.container.querySelector('#journal-housekeeping-banner-container');
+    if (!host) return;
+
+    const excluded = Number(tradesData?.excluded_test_rows) || 0;
+    const unpriced = Number(tradesData?.unpriced_closed_trades) || 0;
+    const base = tradesData?.capital_base_inr;
+    const source = tradesData?.capital_base_source;
+
+    const lines = [];
+    if (excluded > 0) {
+      lines.push(`${excluded} row${excluded === 1 ? '' : 's'} excluded as build tests, not trades you took.`);
+    }
+    if (unpriced > 0) {
+      lines.push(`${unpriced} closed trade${unpriced === 1 ? '' : 's'} could not be valued and ${unpriced === 1 ? 'is' : 'are'} left out of every figure, not counted as zero.`);
+    }
+    if (typeof base !== 'number') {
+      lines.push(`Percentages of capital are unavailable: ${source || 'the live balance could not be read'}.`);
+    }
+
+    if (!lines.length) {
+      host.innerHTML = '';
+      return;
+    }
+
+    host.innerHTML = `
+      <div class="journal-exclusions" style="
+        border: 1px solid var(--dl-line);
         border-radius: var(--radius-card);
-        padding: 12px 18px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 12px;
+        padding: 10px 14px;
+        font-size: 0.78rem;
+        color: var(--dl-fg-2);
+        line-height: 1.5;
       ">
-        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.82rem; color: var(--dl-fg);">
-          <span style="font-size: 1.1rem;">⚠️</span>
-          <span>Could not auto-archive test data — manual archive available</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <button type="button" id="btn-retry-archive" style="
-            background: var(--accent-coral);
-            color: #101116;
-            font-weight: 600;
-            border: none;
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-size: 0.76rem;
-            cursor: pointer;
-          ">
-            Retry
-          </button>
-        </div>
+        ${lines.map((l) => `<div>${l}</div>`).join('')}
       </div>
     `;
-
-    bannerContainer.querySelector('#btn-retry-archive')?.addEventListener('click', async () => {
-      const btn = bannerContainer.querySelector('#btn-retry-archive');
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'Retrying...';
-      }
-      try {
-        await api.archiveTestTrades();
-        sessionStorage.setItem('swayam_seed_archived', 'true');
-        bannerContainer.innerHTML = '';
-        await this.loadData();
-      } catch (retryErr) {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = 'Retry';
-        }
-      }
-    });
   }
 }
