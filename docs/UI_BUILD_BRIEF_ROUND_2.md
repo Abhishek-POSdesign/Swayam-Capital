@@ -245,7 +245,7 @@ a normal trading day.
 
 ### Step 3 — Read the FYERS token at request time
 
-`src/swayam/fyers_client.py` and the recorder under `functions/`.
+`src/swayam/fyers_client.py` and the recorder at **`cloud/recorder/`** (`main.py`, `fyers_recorder.py`, `config.py`). It is NOT under `functions/`; that directory holds the backup and digest jobs.
 
 Fetch the `latest` version from Secret Manager on demand with a short
 in-process cache (60 s is fine). Keep `FYERS_ACCESS_TOKEN` from the environment
@@ -254,6 +254,17 @@ as the local-development path, so nothing changes for local work.
 This is one fix for two daily failures: the dashboard showing "no live price"
 all afternoon after an 08:30 token refresh, and the recorder failing every
 minute today.
+
+**Proof, if you want it.** `swayam-recorder` is still on revision
+`swayam-recorder-00001-baf`, created 2026-09-03 22:49 UTC and never redeployed.
+Its token is a `secretKeyRef` with key `latest`. The secret has had four
+versions since, the newest at 2026-09-08 08:31 UTC. The container resolved
+`latest` once, on 3 September, and has served that dead token ever since.
+
+**The recorder does not deploy from the `main` trigger.** `swayam-main-deploy`
+builds `swayam-dashboard` only. Say so in the pull request body: after this
+merges, `swayam-recorder` needs its own deployment from `cloud/recorder/`
+before it will record anything.
 
 **Verify:** refresh the token, wait one minute, and confirm the recorder writes
 an object into `gs://swayam-capital-options-data` with **no redeploy**. The
