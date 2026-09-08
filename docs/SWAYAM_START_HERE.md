@@ -1,6 +1,6 @@
 # SWAYAM CAPITAL — START HERE
 
-> Written 2026-09-08 by Claude Code (Opus 5). Supersedes
+> Written 2026-09-08, updated end of that day. Supersedes
 > `SWAYAM_START_HERE_2026-09-09.md`. Mirrored to the vault at
 > `00 - Developer Logs/SWAYAM_START_HERE.md`.
 >
@@ -92,12 +92,23 @@ A browser that sends 75 is ignored.
 | Google sign-in | **ON and verified 2026-09-08.** He signed in successfully. |
 | Site is public | **NO.** `allUsers` removed. Every path, on the custom domain AND the raw run.app URL, returns 302 to Google. The API answers "Invalid IAP credentials: empty token". |
 | `swayam-ai-compaction` | **RUNNING again** through IAP, audience set to the IAP client id. |
+| Home and Strategy Desk | **REBUILT AND LIVE** on revision `swayam-dashboard-00037-7cz`. Verified with the market open: live balance, live chain prices, correct payoff maths. |
+| Deploying | Cloud Build trigger `swayam-main-deploy` on `main`. **Merge one PR, wait for the green tick, then merge the next** — two at once races two deploys and the wrong one can win. |
 | Real-money trading | **Code-blocked by absence.** No order-placement code exists anywhere. |
 
 Migrations: 20 applied, 0 pending. Tests: 327 pass, 2 fail (both pre-date this
 work: `test_market` option chain, `test_notifications` dispatch).
 
 ---
+
+
+**THE ONE THING THAT WILL BITE HIM EVERY MORNING.** `FYERS_ACCESS_TOKEN`
+reaches Cloud Run as a `secretKeyRef` with key `latest`, and Google resolves
+`latest` **once, at container start**. So refreshing the token at 08:00 does
+NOT reach a container that started earlier, and the site shows
+"Live NIFTY price unavailable" all day with nothing explaining why. Until the
+app reads the secret at runtime (PLAN.md section 2.4), the only fix is to
+restart or redeploy the service after a refresh.
 
 ## 4. THE APPROVED DESIGNS. Build these; he has signed them off.
 

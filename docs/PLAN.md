@@ -23,43 +23,29 @@ than starting a new document. That is the whole system.
 
 ## 1. IN FLIGHT RIGHT NOW
 
-### State at the end of the 2026-09-08 session
+### His feedback on the new pages. This is the next session.
 
-- **PR #28 was NOT yet merged** when the session ended. It carries the UI build
-  brief, both prototypes, this plan, the rewritten `CLAUDE.md` and the
-  documentation clean-up. **It must be merged before the cloud session starts**,
-  or that session cannot read its own instructions.
-- PRs #23, #24, #25, #26 and #27 are all merged. `main` is current.
-- Nothing is left uncommitted.
+The rebuilt Home and Strategy Desk went live on 2026-09-08 and **he has used
+them with the market open**. His verdict: "the data is live, and the new
+website is live. I need some improvements."
 
-### The cloud session, and its prompt
+**The next session is his feedback session.** He walks through what is wrong
+and what he does not like on the two pages; that gets fixed first, before
+anything else in section 2. Do not start section 2 work until he says the
+pages are right.
 
-Abhishek starts an unattended cloud session on the `Swayam-Capital` repository
-to rebuild the two pages overnight. **This is the exact prompt**, kept here so
-it is not lost with a chat:
+Nothing is queued behind this that cannot wait a day.
 
-```
-Read docs/UI_BUILD_BRIEF.md in this repository and do exactly what it says.
+### State as of the end of the 2026-09-08 session
 
-It is written for you specifically: an unattended session with no human to
-ask. Follow it literally. The two reference prototypes in docs/reference/ are
-your specification.
-
-Do not merge anything. Open one pull request and stop.
-```
-
-It rebuilds `web/src/pages/home.js` and `web/src/pages/strategy-builder.js` to
-the prototypes in `docs/reference/`, on branch
-`feature/swayam-ui-rebuild-012`.
-
-**Deliberately NOT given Google Drive access.** It has no reason to touch the
-vault, and an unattended session with write access to four years of trading
-history is risk with no benefit.
-
-**First job next session: review its pull request before he merges.** The
-checklist is in section 5. He has been told not to merge it unverified.
-
----
+- PRs #23 through #30 are all merged. `main` is at `cb2c75a`.
+- Cloud Run revision `swayam-dashboard-00037-7cz`, deployed 09:04 UTC, is live
+  and carries both the new pages and today's FYERS token.
+- No branch is open. No commit is stranded. Nothing is uncommitted.
+- Verified live with the market open: balance ₹9,71,111 from FYERS, the four
+  caps derived from it, a bear put spread at the 29 Sep expiry pricing from
+  the real chain, max profit ₹8,570 and max loss ₹4,430 summing to the 200
+  point width times 65.
 
 ## 2. NEXT, IN ORDER
 
@@ -167,6 +153,8 @@ Kept short. Detail is in the git history and the pull requests.
 | 2026-09-08 | AI reads So Far Today | Section appears in a real assembled context |
 | 2026-09-08 | AI reads readiness | The query had never once run; Postgres 42703 is gone |
 | 2026-09-08 | FYERS websocket library imports | Needed `setuptools<81` |
+| 2026-09-08 | Home and Strategy Desk rebuilt to the approved prototypes, LIVE | Verified in a browser against his live account, market open |
+| 2026-09-08 | The gap rule stopped blaming his data | Said "needs measured daily moves" when the backend had 20 sessions; now says "intraday" |
 | 2026-09-07 | Release 1: lot 65, real margin, live capital, his risk rules | PR #23 |
 
 ---
@@ -213,6 +201,30 @@ them.
 rather than built alongside; So Far Today moves inside the AI chat and the AI
 must read it; the AI chat itself is not to be touched; and the design is his
 four rules first, big numbers, black and white, nothing invented.
+
+---
+
+## 4c. TWO TRAPS LEARNED 2026-09-08, BOTH SILENT
+
+**Merging two pull requests within seconds races two deploys, and the wrong
+one can win.** Both build jobs tried to deploy `swayam-dashboard`. The first
+changed the service; the second arrived holding a stale version number and
+Cloud Run aborted it with `ABORTED: Conflict for resource`. The refusal was
+correct. The problem was *which* one lost: the winner carried a documentation
+change and the loser carried the new pages, so the site restarted with a fresh
+token and the OLD interface. Re-running the trigger against `main` fixed it.
+
+**Tell him: merge one PR, wait for the green tick, then merge the next.**
+And a failed build is silent. Nothing told him; he found it by looking. Same
+shape as the recorder failing every minute for five days unnoticed.
+
+**The token still needs a restart to reach the live site.** `FYERS_ACCESS_TOKEN`
+is wired as `secretKeyRef` with key `latest`, and Google resolves "latest" ONCE
+at container start. His 08:31 refresh could not reach a container started at
+23:27 the night before. He only escaped it because merging triggered a deploy.
+On a day with no deploy his terminal shows no prices all afternoon and nothing
+explains why. **This is section 2.4 and it is the highest-value hour of work
+left.**
 
 ---
 
