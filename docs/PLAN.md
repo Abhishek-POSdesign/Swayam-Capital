@@ -107,6 +107,65 @@ shut, on the same screen as a strip saying CLOSED. Both now follow the market
 clock. The timestamp still names when the price was read, which was always the
 honest half.
 
+### 1b. Round 3, the UI brief. BUILT 2026-09-08 night, awaiting his merge.
+
+`docs/UI_BUILD_BRIEF_ROUND_3.md`, written from his own sweep of the live pages.
+Branch `feature/swayam-round3-home-and-chat-019`. **Note the brief itself was
+stranded** on `feature/swayam-desk-live-ticks-018` after PR #38 merged; this
+branch carries it, so merging this puts the brief on `main` too.
+
+What landed, all of it verified in a real browser against a backend started
+from this branch, in both themes:
+
+- **The dead background is gone.** Open positions left the half-width cell and
+  became a full-width collapsible line directly under the health strip. Your
+  record took that cell instead and now draws six real rows, so the cell fills
+  its own height and there is nothing for Events ahead to stretch around.
+- **Open positions colours from the money and nothing else** — grey flat, sage
+  in profit, coral in loss. Shut it still carries the count, the combined
+  profit or loss and the running-loss headroom. Open/shut is remembered in
+  `localStorage` under `swayam-home-positions-expanded`.
+- **Profit and loss comes from `/api/positions/live`**, valued against the
+  chain. `/api/positions` carries a stored figure that defaults to zero and it
+  is no longer trusted for money. A partial valuation is never summed into a
+  total that looks whole.
+- **Today's limits is no longer a card.** The four figures are a band inside
+  Your money, on their own ground with their own heading. **The margin ceiling
+  now appears exactly once** — it is rule 4, and it had been printed both as a
+  money tile and as a limit, which he counted. The intraday-entry paragraph
+  moved to the desk.
+- **Your record shows six figures, with a dash where nothing is known.** The
+  journal returns `0.0` for expectancy and `100.0` for discipline on an empty
+  book; neither is ever printed. `/api/journal/trades` gained a `mode` filter
+  so "Paper" means paper rather than every book summed.
+- **Events ahead shows `impact_brief`** — already written by the curator,
+  already in the response, previously discarded. It floats on hover, focus or
+  tap so the card keeps its size, which he asked for explicitly. Rows without
+  a brief get no marker.
+- **Both chats** lost the saturated bubble. Sage tint on his, no background at
+  all on the AI's.
+- **The lot multiplier is a stepper.** Floor of one, enforced on every path.
+- **`.why` rose from `--fg-3` to `--fg-2`.** Measured: 6.18:1 light, 7.84:1
+  dark, from roughly 3.0 and 4.3.
+
+**One thing beyond the brief, and it is rule 2.** The Sectors card was caught
+saying "LIVE · read 20:51 IST" beside a strip saying CLOSED — the third and
+fourth places this has happened. `nifty_snapshot.py` is untouched, as §8 of the
+brief requires, but no label on Home now says LIVE unless
+`/api/market/data-health` says the market is open.
+
+**Still open, and it is the backend half of §8, not this branch.** The Options
+card still reads "Days to weekly expiry 0d · 1 session" on the evening of an
+expiry day, because `weekly_expiry` in `nifty_snapshot.py` reads the raw
+metadata rather than the corrected endpoint. Confirmed live at 20:51 IST on
+2026-09-08. That is a value, not a label, and the frontend cannot correct it
+without inventing a number.
+
+**Nothing here has been seen with a real open position**, because he has never
+had one. He has agreed to take a dummy paper position with the market open.
+Until that happens, the strip's profit, loss, colour and headroom are verified
+only against injected data, not against his own trade.
+
 ### Tomorrow morning, and only with the market open
 
 None of these can be claimed before 09:15 IST. Do not describe any of them as
