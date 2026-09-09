@@ -183,7 +183,26 @@ had one. He has agreed to take a dummy paper position with the market open.
 Until that happens, the strip's profit, loss, colour and headroom are verified
 only against injected data, not against his own trade.
 
-### THE LIVE VERIFICATION. His next session at the desk. THIS IS THE GATE.
+### THE LIVE VERIFICATION — RUN 2026-09-09. Read this before re-running it.
+
+**He ran it. Most of it passed. The gate is no longer the blocker; the desk is.**
+
+| Reading | Result |
+|---|---|
+| Token refreshed and reached the live site | **PASSED.** No redeploy, no restart. First time ever proven in production |
+| The recorder wrote to its bucket | **PASSED.** `2026-09-09/nifty_chain.parquet`, its first object ever |
+| The desk held live prices for a whole session | **PASSED.** Data-health read LIVE with the age in single-digit seconds |
+| The rules answered every time | **PASSED.** Twenty of twenty on a scripted run, and on all three real trades |
+| A real open position, seen with real data | **PASSED, and it exposed most of section 2.12** |
+| Closing a trade | **PASSED on the third attempt.** It was impossible until migration 020 that morning, and there was no button until he did it from a terminal |
+| The AI answered his running-loss cap | **PASSED.** ₹9,705, named FYERS as the source |
+
+**What it cost to learn:** four separate faults in the exit path, a dead live
+profit-and-loss call, an execution key that only ever allowed one trade per
+browser, and a ghost position. All fixed on the day. Section 2.12.0 has the full
+audit of what his three trades did.
+
+### The original script, kept for the next time it is run.
 
 **Nothing below has ever been run against a live market since rounds 2 and 3
 landed.** Until it has, nothing here may be described as working. Read section 0
@@ -243,9 +262,11 @@ in green, and does the age beside it stay small.
 
 1. ~~The Trade Journal's four faults.~~ **DONE 2026-09-08 night.** Section 2.2,
    and section 4 carries the proof.
-2. **The trade as a campaign: one trade, legs that change.** Section 2.11. He
-   specified this himself on 2026-09-08 night and it is the largest remaining
-   gap between the terminal and how he trades. **This is the next job.**
+2. **THE TRADING DESK: execute, manage, exit. Section 2.12. THIS IS THE NEXT
+   JOB AND IT IS THE BIG ONE.** He took three paper trades on 2026-09-09 and
+   could not execute cleanly, could not see what he held, and could not exit
+   without a terminal. His decisions on how it should work are recorded there
+   verbatim. Section 2.11's campaign model is folded into it.
 3. ~~Charges at execution.~~ **DONE 2026-09-09, per leg.** Section 2.3.
 4. **Scheduled backups.** Section 2.6.
 5. **The kill switch.** Section 2.5.
@@ -449,7 +470,210 @@ it waiting. He does not need to be awake for it.
 One object in `gs://swayam-capital-options-data` proves it writes; reading the
 columns proves it is worth writing.
 
-### 2.11 The trade as a campaign: one trade, legs that change — THE NEXT JOB
+### 2.12 THE TRADING DESK. Execute, manage, exit. — THE NEXT JOB, AND THE BIG ONE
+
+**Written 2026-09-09 after he took his first three paper trades and could not
+execute, could not see, and could not exit without a terminal. His verdict, in
+his own words: "immature execution, immature exit, immature monitoring... From
+the trade point of view, everything is immature. Taking a position is more
+immature than buying a soda bottle."**
+
+This section replaces 2.11, which is folded into it: the campaign model is how a
+trade is stored, and this is how he works with it. Neither is any use alone.
+
+---
+
+#### 2.12.0 WHAT HIS THREE TRADES ACTUALLY DID. Audited on the backend, 2026-09-09.
+
+**The headline, and he should be shown it before anything else.**
+
+| Trade | Gross | Charges | Net |
+|---|---:|---:|---:|
+| Bull Call Spread | +₹74.75 | ₹174.65 | **−₹99.90** |
+| Iron Condor | +₹78.00 | ₹264.77 | **−₹186.77** |
+| Bull Put Spread | +₹42.25 | ₹146.02 | **−₹103.77** |
+| **All three** | **+₹195.00** | **₹585.44** | **−₹390.44** |
+
+**Every one of the three made a gross profit and every one lost money. Charges
+were 300% of gross.** That is his FY 2025-26 in miniature: a gross of +₹6,109
+turned into a net of −₹86,299 by ₹92,408 of costs. The terminal now measures it
+correctly, which is the single most valuable thing it did today.
+
+**What worked, verified against the database.**
+
+- Three executions, three positions, no double booking. The idempotency key held.
+- Contract size 65 on every leg of all three, resolved server-side.
+- Charges recorded per leg at entry and at exit on all three.
+- Three closes, three history rows, no duplicates.
+- The options maths is right. The condor's credit of ₹10,546.25 and its max loss
+  of ₹8,953.75 both reconcile exactly at 65 a lot.
+- **The vault cage did exactly its job.** Trades 2 and 3 refused to write a note
+  into the container and queued to the outbox with the correct reason.
+- The four rules evaluated and answered on every trade.
+
+**What was wrong, and he could not see any of it.**
+
+1. **`spot_at_entry` is never stored.** `execution.py` never puts it on the row,
+   so `points_in_trade` is always null and the vault note prints a spot of 0.
+2. **A close with a pending note queues NOTHING for the exit.** The exit block is
+   inside `if journal_path:`, so when the note has not landed yet the exit is
+   never written and never queued. **Two of his three trades are in that state
+   and their exits are lost from the vault** unless they are rebuilt.
+3. **Two entry notes are still pending in the outbox** and need the drainer.
+4. **`/api/readiness/today` returns 500 on the live site, every time.** His daily
+   check-in is broken there. It reads his Atlas daily log from the vault, and the
+   live site cannot see the vault. Same root cause as the note.
+5. **`/api/nifty/spot` 503'd repeatedly** early in his session.
+6. **Margin used is never stored on a position.** So rule 4, the deployable
+   margin ceiling, CAN NEVER BE TESTED against what he is actually using. The
+   desk says so honestly: "margin already used is unknown, so the ceiling cannot
+   be tested". That is a rule that does not work.
+7. **Home never refreshes positions.** Its timer reloads the snapshot and the
+   daily strip only, so a trade taken on the desk does not appear until a full
+   page reload. He reported exactly this.
+8. **Fills use the last traded price.** He has decided this changes: buy at the
+   ask, sell at the bid.
+
+**The systemic finding underneath several of these: THE LIVE SITE CANNOT SEE HIS
+VAULT, AND FEATURES THAT NEED IT EITHER 500 OR DEGRADE SILENTLY.** The trade note
+was one. Readiness is another. The AI persona reading his Method files is a
+third. This gets its own decision in section 2.13.
+
+---
+
+#### 2.12.1 HIS DECISIONS. Given 2026-09-09. Do not relitigate.
+
+**Where management lives.** The Strategy Desk, in a dedicated area BELOW the
+payoff graph and the execution block. Not Home. His words:
+
+> "at the strategy desk itself, the bottom area below the payoff graph and
+> execution should be dedicated to open position, close position for the day,
+> and everything for the positions... After the payoff graph area, open
+> position. If anything is closed, it must be visible there. The leg is closed.
+> Majorly, whatever happens today and what is open, either today or the past
+> position, should be in that area."
+
+And how it must feel, which is not decoration to him:
+
+> "Full width. Big numbers. Bold. Clearly visible with required colors. Easily
+> manageable. No cheap cross button or rather dustbin button. No cheap round
+> circle for reset, a proper reset button. I must feel good while managing it."
+
+**Home shows, Home does not manage.** He wants the position visible on Home and
+managed on the desk. The Exit button added to Home on 2026-09-09 therefore moves
+to the desk. Home keeps a read-only line.
+
+**Where the Home strip belongs.** Below the black daily check-in strip and above
+"Your money". In the main column, not up by the header.
+
+**The execution ticket, simple but complete.** His list, verbatim in intent:
+
+- market or limit, and a swap between them
+- an editable price, and an editable limit price
+- a proper reset button for the price
+- editable lots
+- margin needed, shown
+- control over which leg goes first
+- **execute all legs together, or one leg at a time**
+- NO bid and ask ladder. NO market depth.
+
+**Fills become realistic: buy at the ask, sell at the bid.** He chose this over
+the traded price knowing it makes his results look worse. Charges already proved
+what a hidden cost does to him; the spread is the other one.
+
+**Order of work: execute, then manage, then exit.** "Obviously, the execution is
+the first thing: to take a trade, first thing we execute, then we manage, then
+we exit. Need everything, but the execution comes at number one."
+
+---
+
+#### 2.12.2 WHAT TO BUILD, IN ORDER
+
+**PR 1 — The execution ticket.**
+
+A modal that opens on Execute and shows what is about to happen, before anything
+is sent. Per leg: buy or sell, strike, type, lots (editable), order type (market
+or limit, switchable), price (editable, with a reset that restores the live
+price). Ordering he controls, so he decides which leg goes first, defaulting to
+buys before sells because that is what earns the hedged margin. Below the legs:
+net debit or credit, margin needed against his ceiling, the four rules, and two
+buttons — **Execute all** and **Execute one by one**, the second walking the legs
+in order and reporting after each.
+
+Backend: `/api/execute/multi-leg` already takes ordered legs. It needs to accept
+a per-leg order type and price, to record `spot_at_entry`, and to record the
+margin the preview computed so rule 4 can finally be tested.
+
+**PR 2 — Realistic fills.**
+
+The chain already returns bid and ask. A buy fills at the ask, a sell at the bid,
+and the leg records both the fill and the last traded price so the journal can
+show what the spread cost. Where a side is missing the leg says `unavailable` and
+is not filled at a guess. **His two closed trades were filled at the traded price
+and must be marked in the record as not comparable with anything after this.**
+
+**PR 3 — The position area on the desk.**
+
+Full width, below the payoff. Three groups: open now, closed today, earlier. For
+each open position: strategy, legs, entry, live price, live profit and loss in
+big bold figures with colour taken from the money, its own maximum loss, and how
+it sits against rule 1. Per leg: **exit this leg** and **reverse this leg**. At
+the position level: **add a leg** and **exit everything**. A real dustbin for
+delete and a real reset button, both proper controls rather than icons.
+
+This is where 2.11's campaign model becomes necessary: exiting one leg of four
+leaves a trade that is neither open nor closed, and the schema has to hold that.
+**Build the campaign model as part of this pull request, not before it.**
+
+**PR 4 — Home, corrected.**
+
+The open-positions strip moves below the daily check-in and above "Your money",
+becomes read-only, and refreshes on the timer so a trade appears without a
+reload. The Exit button leaves Home.
+
+**PR 5 — The option chain, tested rather than built.**
+
+It already exists: `OptionChainModalComponent` is wired to `addLegFromChain` and
+the desk has an "Option chain" button beside "Add leg". Nobody has ever used it
+against a live market. Test it, fix what it gets wrong, and make picking a strike
+from the chain the natural way to build a structure.
+
+---
+
+#### 2.12.3 WHAT MUST NOT BREAK
+
+1. The payoff graph, its drag, and both sliders. He has said this twice.
+2. Charges per leg, at entry and at exit, from `services/charges.py`.
+3. The vault cage and the database guard.
+4. One click, one trade. One close, one result.
+5. Nothing may say LIVE unless `/api/market/data-health` says the market is open.
+6. No purple. The accent is sage.
+7. Every figure real or `unavailable`. No placeholder, ever.
+
+---
+
+### 2.13 The live site cannot see his vault. Decide what that means.
+
+Found while auditing 2026-09-09. Three separate features need his Obsidian vault
+at request time, and the Cloud Run container cannot reach it:
+
+| Feature | What happens today |
+|---|---|
+| Trade notes | Refused and queued to the outbox, drained from his PC. **Correct** |
+| `/api/readiness/today` | **HTTP 500 every time.** His daily check-in is broken on the live site |
+| The AI reading his Method files | Reads a build-time snapshot baked into the image, not his live vault |
+
+The note path is already solved properly. The other two are not, and the
+readiness 500 is a visible broken feature he uses daily.
+
+**Options, and this is his call.** Mirror the small set of files the app needs
+into the database and read them from there; or finish the Google Drive OAuth path
+in section 2.1; or accept that these features are PC-only and say so on screen
+rather than returning 500. **Do not guess. Ask him.**
+
+---
+
+### 2.11 The trade as a campaign: one trade, legs that change — FOLDED INTO 2.12
 
 **He specified this himself on 2026-09-08 night, unprompted, after being told
 what the terminal could and could not do. His words are the specification.**

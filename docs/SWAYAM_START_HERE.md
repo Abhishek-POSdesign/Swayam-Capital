@@ -70,7 +70,21 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: the 2026-09-09 CLOSE-OUT
+### Latest first: HE TRADED. 2026-09-09, the live market test.
+
+**The gate is passed. He took three paper trades, closed all three, and the
+terminal recorded them honestly. What it exposed is now the whole next job.**
+
+| | |
+|---|---|
+| **All three trades made a gross profit and all three LOST money** | Gross +₹195, charges ₹585, net −₹390. **Charges were 300% of gross.** His FY 2025-26 in miniature, measured correctly for the first time |
+| Passed | Token reached the live site with no redeploy, first time proven. The recorder wrote its first object ever. Live prices held all session. Rules answered every time. Charges recorded per leg on every trade. No double booking, no duplicate result rows |
+| **Fixed on the day, four separate blockers** | The close wrote two columns that did not exist. A ghost position survived on Home. Live profit and loss had never worked once. The execution key allowed only ONE trade per browser, ever |
+| **THE NEXT JOB** | `docs/PLAN.md` §2.12. His verdict: "immature execution, immature exit, immature monitoring". Management moves to the Strategy Desk below the payoff, fills become realistic, and there is a proper execution ticket. **His decisions are recorded there verbatim; do not relitigate them** |
+| **Open for HIM to decide** | `docs/PLAN.md` §2.13. The live site cannot see his vault. Notes handle it correctly; `/api/readiness/today` returns 500 every time and his daily check-in is broken there |
+| Needs the drainer | Two entry notes are pending in the outbox. Two closed trades have no exit block in the vault, because a close with a pending note queues nothing |
+
+### Earlier: the 2026-09-09 CLOSE-OUT
 
 | | |
 |---|---|
