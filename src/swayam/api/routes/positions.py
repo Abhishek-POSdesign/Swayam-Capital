@@ -901,7 +901,37 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
             p["status"] = "closed"
             p.update(pos_update_payload)
 
-    # Step C: Append exit report to Obsidian journal note
+    # Step C: Append exit report to Obsidian journal note.
+    #
+    # A CLOSE WITH NO NOTE YET USED TO QUEUE NOTHING AT ALL. The whole block was
+    # guarded on `journal_path`, so when the entry note was still sitting in the
+    # outbox — which is every trade taken on the live site, because the container
+    # cannot see his vault — the exit was never written AND never queued. Two of
+    # his three trades on 2026-09-09 ended in exactly that state, with a result
+    # in the database and no exit in his record.
+    #
+    # The exit is queued regardless now. The drainer writes the entry note first
+    # and appends the exit straight after, so the note is complete whenever it
+    # lands.
+    if not journal_path:
+        queue_journal_note(
+            position_id=position_id,
+            payload={
+                "closed_at": closed_at.isoformat(),
+                "close_reason": req.close_reason,
+                "notes": req.notes,
+                "exit_legs": closed_legs,
+                "gross_pnl_inr": gross_pnl_inr,
+                "charges_inr": total_charges_inr,
+                "net_pnl_inr": realized_pnl_inr,
+                "max_loss_inr": max_loss,
+                "holding_days": holding_days,
+                "awaiting_entry_note": True,
+            },
+            kind="close",
+            error="the entry note had not landed yet, so there was nothing to append to",
+        )
+
     if journal_path:
         # The exit block states the result as a percentage of his capital. This
         # used to read the stored margin base and then fall back to a constant
