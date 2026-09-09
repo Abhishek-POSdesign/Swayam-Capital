@@ -496,6 +496,10 @@ class JournalTradeItem(BaseModel):
     lesson_id: Optional[str] = None
     lesson_text: Optional[str] = None
     lesson_source: Optional[str] = None
+    # traded_price: filled at the last trade, before PR 2. bid_ask: a buy at
+    # the ask, a sell at the bid. The two are not comparable and the page
+    # says so on every row.
+    fill_basis: Optional[str] = None
 
 
 class JournalKPIs(BaseModel):

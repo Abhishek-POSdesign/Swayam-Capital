@@ -191,3 +191,28 @@ def test_append_exit_block_raises_on_missing_file(tmp_path: Path):
             holding_days=0,
             vault_path=tmp_path,
         )
+
+
+def test_a_leg_closed_through_the_book_shows_the_side_it_hit_and_the_traded_price(tmp_path):
+    from datetime import datetime, timezone
+    from swayam.api.journal_writer import append_exit_block, write_new_trade_journal
+    rel = write_new_trade_journal(
+        position_id="x", spread_data={"strategy_name": "Bull Call Spread", "underlying": "NIFTY", "legs": [
+            {"strike": 23550, "option_type": "CE", "direction": "buy", "quantity_lots": 1, "entry_premium": 293.35, "order_type": "MARKET"},
+        ], "payoff_curve": {"max_loss_inr": 6945, "max_profit_inr": 6055, "rr_implied": 0.87, "net_debit_credit_inr": -6945, "breakevens": [23657]},
+           "greeks": {}, "fill_basis": "bid_ask"},
+        validation_data={"checks": []}, current_spot=23635.1, margin_base_inr=971111.0, vault_path=tmp_path,
+        opened_at="2026-09-09T08:33:51+00:00",
+    )
+    append_exit_block(
+        journal_rel_path=rel, closed_at=datetime(2026, 9, 9, 8, 34, 26, tzinfo=timezone.utc), close_reason="manual",
+        notes=None, exit_legs=[{"strike": 23550.0, "option_type": "CE", "direction": "buy", "exit_premium": 291.50,
+                                "exit_side_hit": "bid", "exit_ltp": 291.75, "exit_fill_basis": "bid_ask",
+                                "gross_pnl_inr": -120.25, "charges_inr": 96.25, "net_pnl_inr": -216.50}],
+        gross_pnl_inr=-120.25, charges_inr=130.46, net_pnl_inr=-250.71, max_loss_inr=6945.0, margin_base_inr=971111.0,
+        holding_days=0, vault_path=tmp_path,
+    )
+    text = (tmp_path / rel).read_text(encoding="utf-8")
+    assert "**Exit fills**: sold at the bid, bought back at the ask" in text
+    assert "| Side | Exit fill | Traded |" in text
+    assert "| 1 | 23,550 | CE | SELL | bid | ₹291.50 | ₹291.75 |" in text

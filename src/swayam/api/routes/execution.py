@@ -43,7 +43,15 @@ from swayam.services.execution_safety import (
     mark_journal_status,
     queue_journal_note,
 )
-from swayam.services.fills import FILL_BASIS, Fill, FillRefused, LegQuote, quote_leg, resolve_fill
+from swayam.services.fills import (
+    FILL_BASIS,
+    Fill,
+    FillRefused,
+    LegQuote,
+    quote_leg,
+    resolve_fill,
+    spread_cost_inr,
+)
 from swayam.api.models_api import (
     AddLegRequest,
     ExecuteRequest,
@@ -207,7 +215,14 @@ def _fill_record(seq: int, leg: LegRequest, fill: Fill, lot_size: int, leg_dict:
         "ask_at_fill": fill.ask_at_fill,
         "filled_at": fill.filled_at,
         "how": fill.how,
+        "side_hit": fill.side_hit,
         "entry_charges_inr": leg_dict.get("entry_charges_inr"),
+        # What crossing the spread cost against the traded price. Negative is
+        # a cost. His words: charges proved what a hidden cost does; the
+        # spread is the other one.
+        "spread_cost_inr": spread_cost_inr(
+            leg.direction, fill.price, fill.ltp_at_fill, leg.quantity_lots * lot_size
+        ),
     }
 
 
@@ -503,11 +518,15 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
         leg["bid_at_fill"] = fill.bid_at_fill
         leg["ask_at_fill"] = fill.ask_at_fill
         leg["filled_at"] = fill.filled_at
+        leg["side_hit"] = fill.side_hit
+        leg["spread_cost_inr"] = spread_cost_inr(leg["direction"], fill.price, fill.ltp_at_fill, contracts)
         _charge_entry(leg, contracts, trade_day)
         entry_charges_total += float(leg["entry_charges_inr"])
         legs_dict.append(leg)
         fills_out.append(_fill_record(seq, leg_req, fill, int(resolved.lot_size), leg))
     entry_charges_total = round(entry_charges_total, 2)
+    spread_costs = [f["spread_cost_inr"] for f in fills_out]
+    spread_cost_total = round(sum(spread_costs), 2) if all(c is not None for c in spread_costs) else None
 
     # The broker's margin for the basket, stored so rule 4 can be tested from
     # now on. Unavailable is stored as unavailable, and the trade still happens:
@@ -727,6 +746,8 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
         "max_profit_inr": curve.max_profit_inr,
         "breakevens": list(curve.breakevens),
         "entry_charges_inr": entry_charges_total,
+        "spread_cost_inr": spread_cost_total,
+        "fill_basis": FILL_BASIS,
         "margin_required_inr": margin["margin_required_inr"],
         "margin_source": margin["margin_source"],
     }
@@ -838,6 +859,8 @@ def _add_leg_inner(position_id: str, req: AddLegRequest, idem_key: Optional[str]
     leg["bid_at_fill"] = fill.bid_at_fill
     leg["ask_at_fill"] = fill.ask_at_fill
     leg["filled_at"] = fill.filled_at
+    leg["side_hit"] = fill.side_hit
+    leg["spread_cost_inr"] = spread_cost_inr(leg["direction"], fill.price, fill.ltp_at_fill, contracts)
     leg["added_at"] = added_at
     _charge_entry(leg, contracts, date.today())
 

@@ -8,20 +8,29 @@ browser sent. A limit of ₹1 on a ₹100 option would have "filled". That is a
 fabricated fill, and it falls under his first rule: every number is real from
 FYERS or it says unavailable.
 
-A fill now needs a market to fill against:
+A fill now needs a market to fill against, and it fills the way an exchange
+fills. His words, 2026-09-09 evening: "bid and ask matter more because sellers
+need buyers and buyers need sellers... I want to keep it as close as I can to
+reality."
 
-  * MARKET fills at the SERVER'S live quote at the moment of sending, never at
-    a price the browser read a few seconds earlier.
-  * LIMIT fills at his price only if the market is at or through it. If it is
-    not, nothing fills and the answer says where the market is. There are no
-    resting orders in this app, so none are pretended.
-  * No quote, no fill. After the close the chain carries a closing price, and
-    a fill at a closing price is a fill nobody could have got.
+  * MARKET: a buy pays the best ASK, a sell receives the best BID, read from
+    the SERVER'S live chain at the moment of sending. The last traded price is
+    history and is kept on the leg only so the record can show what the
+    spread cost.
+  * LIMIT: fills at his price OR BETTER, which is what the exchange does. A
+    buy limit at or above the ask fills at the ask; a sell limit at or below
+    the bid fills at the bid. A limit away from the market does not fill, and
+    the answer says where the market is. There are no resting orders in this
+    app, so none are pretended.
+  * No quote, no fill. After the close the chain carries a closing book, and a
+    fill against it is a fill nobody could have got.
 
-PR 1 (docs/PLAN.md 2.12.2) fills at the traded price and says so on the leg.
-PR 2 flips `FILL_BASIS` to bid_ask: a buy at the ask, a sell at the bid. The
-comparison lives in `_market_price_for`, and nowhere else, so the change is one
-function.
+The same rule runs in reverse for an exit: a leg he bought is sold back at the
+bid, a leg he sold is bought back at the ask. `exit_side_of` says which.
+
+PR 1 (docs/PLAN.md 2.12.2) filled at the traded price. PR 2 is this file.
+Positions opened under PR 1 carry `fill_basis = "traded_price"` and are not
+comparable with anything filled here.
 """
 
 from __future__ import annotations
@@ -33,8 +42,7 @@ from typing import Any, Literal, Optional
 
 logger = logging.getLogger(__name__)
 
-# What every leg is filled at in this release. PR 2 changes this to "bid_ask".
-FILL_BASIS: Literal["traded_price", "bid_ask"] = "traded_price"
+FILL_BASIS: Literal["traded_price", "bid_ask"] = "bid_ask"
 
 
 class FillRefused(Exception):
@@ -61,8 +69,10 @@ class LegQuote:
 
     @property
     def tradeable(self) -> bool:
-        """A price a fill may be measured against. A closing price is not one."""
-        return self.ltp is not None and self.ltp > 0 and self.state in ("live", "delayed")
+        """A book a fill may be measured against. A closing book is not one."""
+        return self.state in ("live", "delayed") and (
+            (self.bid is not None and self.bid > 0) or (self.ask is not None and self.ask > 0)
+        )
 
 
 @dataclass(frozen=True)
@@ -76,13 +86,31 @@ class Fill:
     ask_at_fill: Optional[float]
     filled_at: str
     how: str
+    side_hit: str = ""  # "ask" or "bid": which side of the book this fill took
+
+
+def exit_side_of(entry_direction: str) -> str:
+    """The direction that closes a leg: a bought leg is sold, a sold leg is bought."""
+    return "sell" if entry_direction.lower() in ("buy", "long") else "buy"
+
+
+def spread_cost_inr(direction: str, fill_price: float, ltp: Optional[float], units: int) -> Optional[float]:
+    """What crossing the spread cost against the last traded price. Negative is a cost.
+
+    A buy at the ask above the traded price costs; a sell at the bid below the
+    traded price costs. None when no traded price was published.
+    """
+    if ltp is None:
+        return None
+    diff = (ltp - fill_price) if direction.lower() == "buy" else (fill_price - ltp)
+    return round(diff * units, 2)
 
 
 def quote_leg(*, strike: float, expiry: str, option_type: str, underlying: str = "NIFTY") -> LegQuote:
     """The live quote for one contract, from the shared chain feed.
 
     Goes through the same route the desk uses for its leg prices, so a fill is
-    measured against exactly the number he was looking at, read again at the
+    measured against exactly the book he was looking at, read again at the
     moment of sending.
     """
     from swayam.api.routes.market import get_option_quote
@@ -99,6 +127,11 @@ def quote_leg(*, strike: float, expiry: str, option_type: str, underlying: str =
     except Exception as exc:  # the route raises HTTPException on a bad type only
         logger.warning("quote_leg failed for %s %s %s: %s", strike, option_type, expiry, exc)
         return LegQuote(None, None, None, None, "unavailable", False, None, note=str(exc))
+    return quote_from_dict(q)
+
+
+def quote_from_dict(q: dict[str, Any]) -> LegQuote:
+    """A LegQuote from the quote route's answer, or from a chain row shaped like one."""
 
     def _f(v: Any) -> Optional[float]:
         try:
@@ -111,23 +144,18 @@ def quote_leg(*, strike: float, expiry: str, option_type: str, underlying: str =
         bid=_f(q.get("bid")),
         ask=_f(q.get("ask")),
         spot=_f(q.get("spot")),
-        state=str(q.get("freshness") or "unavailable"),
+        state=str(q.get("freshness") or q.get("state") or "unavailable"),
         market_open=bool(q.get("market_open")),
         as_of=q.get("as_of"),
         note=q.get("note"),
     )
 
 
-def _market_price_for(direction: str, quote: LegQuote) -> Optional[float]:
-    """The price this side would actually get right now.
-
-    PR 1: the traded price, both sides. PR 2 (realistic fills): a buy pays the
-    ask and a sell receives the bid, and where that side is missing the leg
-    is unavailable rather than filled at a guess.
-    """
-    if FILL_BASIS == "bid_ask":
-        return quote.ask if direction == "buy" else quote.bid
-    return quote.ltp
+def _book_side_for(direction: str, quote: LegQuote) -> tuple[Optional[float], str]:
+    """The price this side would actually get right now, and which side of the book it is."""
+    if direction.lower() == "buy":
+        return quote.ask, "ask"
+    return quote.bid, "bid"
 
 
 def resolve_fill(
@@ -141,7 +169,7 @@ def resolve_fill(
     """Decides the fill for one leg, or refuses with a reason he can act on.
 
     Raises:
-        FillRefused: no tradeable quote, or a limit the market is not at.
+        FillRefused: no tradeable book, a missing side, or a limit the market is not at.
     """
     direction = direction.lower()
     order_type = (order_type or "MARKET").upper()
@@ -154,25 +182,24 @@ def resolve_fill(
     if not quote.tradeable:
         if quote.state == "closing" or (quote.ltp and not quote.market_open):
             raise FillRefused(
-                f"{leg_label}: the market is closed, so nothing can fill. The last price "
-                f"was a closing price and a fill at it is one nobody could have got. "
+                f"{leg_label}: the market is closed, so nothing can fill. The last book "
+                f"was the closing book and a fill against it is one nobody could have got. "
                 f"Keep the structure on the desk and send it in your window.",
                 leg=leg_label,
                 market=quote.ltp,
             )
         raise FillRefused(
-            f"{leg_label}: no live price, so it cannot be filled. "
+            f"{leg_label}: no live bid or ask, so it cannot be filled. "
             + (quote.note or "Check the data-health strip; if it names the token, refresh it.")
             + " Nothing was sent.",
             leg=leg_label,
         )
 
-    market = _market_price_for(direction, quote)
+    market, side = _book_side_for(direction, quote)
     if market is None:
-        side = "ask" if direction == "buy" else "bid"
         raise FillRefused(
             f"{leg_label}: the {side} is not published right now, so a {direction} cannot be "
-            f"filled honestly. Try again in a few seconds, or switch this leg to a limit.",
+            f"filled honestly. Try again in a few seconds.",
             leg=leg_label,
             market=quote.ltp,
         )
@@ -184,6 +211,7 @@ def resolve_fill(
         bid_at_fill=quote.bid,
         ask_at_fill=quote.ask,
         filled_at=now,
+        side_hit=side,
     )
 
     if order_type == "MARKET":
@@ -191,7 +219,8 @@ def resolve_fill(
             price=round(market, 2),
             order_type="MARKET",
             limit_price=None,
-            how=f"market, at the {'ask' if FILL_BASIS == 'bid_ask' and direction == 'buy' else 'bid' if FILL_BASIS == 'bid_ask' else 'traded price'} {market:.2f}",
+            how=f"market, at the {side} {market:.2f}"
+                + (f", traded {quote.ltp:.2f}" if quote.ltp is not None else ""),
             **common,
         )
 
@@ -206,19 +235,24 @@ def resolve_fill(
     marketable = limit_price >= market if direction == "buy" else limit_price <= market
     if not marketable:
         raise FillRefused(
-            f"{leg_label}: a {direction} limit of {limit_price:.2f} would not fill now; the market "
+            f"{leg_label}: a {direction} limit of {limit_price:.2f} would not fill now; the {side} "
             f"is {market:.2f}. Move the price, press Reset, or switch this leg to market. "
             f"Nothing was sent.",
             leg=leg_label,
             market=market,
         )
 
-    # A limit at or through the market fills at the LIMIT, which is what a
-    # broker does, and never better than he asked for.
+    # His price OR BETTER, as the exchange does it: a buy limit above the ask
+    # pays the ask, a sell limit below the bid receives the bid.
+    price = market
+    better = abs(price - limit_price) >= 0.005
     return Fill(
-        price=round(float(limit_price), 2),
+        price=round(float(price), 2),
         order_type="LIMIT",
         limit_price=round(float(limit_price), 2),
-        how=f"limit {limit_price:.2f}, market was {market:.2f}",
+        how=(
+            f"limit {limit_price:.2f}, filled at the {side} {price:.2f}"
+            + (" which is better" if better else "")
+        ),
         **common,
     )

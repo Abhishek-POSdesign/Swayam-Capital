@@ -100,10 +100,15 @@ export class TradesTableComponent {
             <div style="font-size: 0.7rem; color: var(--dl-fg-3); margin-top: 1px; max-width: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
               ${t.legs_summary || 'NIFTY options'}
             </div>
+            ${t.fill_basis === 'traded_price'
+              ? '<div class="fill-basis" style="font-size: 0.64rem; margin-top: 2px; color: var(--accent-amber, #b8860b); font-family: var(--font-mono, monospace); letter-spacing: .04em; text-transform: uppercase;">filled at the traded price · not comparable</div>'
+              : t.fill_basis === 'bid_ask'
+                ? '<div class="fill-basis" style="font-size: 0.64rem; margin-top: 2px; color: var(--dl-fg-3); font-family: var(--font-mono, monospace); letter-spacing: .04em; text-transform: uppercase;">filled at the bid and ask</div>'
+                : ''}
           </td>
           <td style="padding: 10px 12px; font-size: 0.75rem;">
-            <div style="color: var(--dl-fg-2); font-weight: 500;">${t.setup_technical || 'Method Setup'}</div>
-            <div style="color: var(--dl-fg-3); font-size: 0.68rem;">${t.setup_location || 'Key Level'}</div>
+            <div style="color: var(--dl-fg-2); font-weight: 500;">${t.setup_technical || '—'}</div>
+            <div style="color: var(--dl-fg-3); font-size: 0.68rem;">${t.setup_location || '—'}</div>
           </td>
           <td style="padding: 10px 12px;">
             <span style="display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.68rem; font-weight: 600; text-transform: uppercase; background: ${dirBg}; color: ${dirColor};">

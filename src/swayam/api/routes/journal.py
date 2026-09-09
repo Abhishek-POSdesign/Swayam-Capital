@@ -323,6 +323,7 @@ def get_journal_trades(
             strategy_name=pos.get("strategy_name", "Spread"),
             underlying=pos.get("underlying", "NIFTY"),
             legs_summary=_format_legs_summary(pos.get("legs", [])),
+            fill_basis=pos.get("fill_basis"),
             entry_debit_credit_inr=float(pos.get("net_debit_credit_inr") or 0.0),
             gross_pnl_inr=round(gross_pnl, 2) if is_squared_off else None,
             net_pnl_inr=round(net_pnl, 2) if is_squared_off else None,

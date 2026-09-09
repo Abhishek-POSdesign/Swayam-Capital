@@ -289,14 +289,21 @@ def test_a_failed_exit_note_no_longer_fails_a_close_that_already_happened(client
     assert data["realized_pnl_inr"] == 7349.70, "the result is still recorded in full"
 
 
-def test_close_position_fetches_ltp_when_exit_legs_omitted(client):
-    """When exit_legs is omitted, close_position fetches LTPs from FYERS option chain."""
+def test_close_position_fills_against_the_book_when_exit_legs_omitted(client):
+    """When exit_legs is omitted the close reads the FYERS chain and fills each
+    leg against the BOOK: a bought leg sold at the bid, a sold leg bought back
+    at the ask. It used to value every exit at the last traded price. PR 2,
+    2026-09-09, his correction: keep it as close to reality as possible.
+
+    The book here has no spread, so the result equals the traded-price result
+    the older version of this test asserted; the side each leg hit is checked.
+    """
     open_pos = _make_open_position()
     mock_chain = {
         "underlyingValue": 24800.0,
         "optionsChain": [
-            {"strike_price": 24850.0, "put_ltp": 250.0, "put_iv": 0.16},
-            {"strike_price": 24100.0, "put_ltp": 30.0, "put_iv": 0.18},
+            {"strike_price": 24850.0, "put_ltp": 250.0, "put_iv": 0.16, "put_bid": 250.0, "put_ask": 250.0},
+            {"strike_price": 24100.0, "put_ltp": 30.0, "put_iv": 0.18, "put_bid": 30.0, "put_ask": 30.0},
         ],
     }
 
@@ -304,6 +311,7 @@ def test_close_position_fetches_ltp_when_exit_legs_omitted(client):
         patch("swayam.api.routes.positions.db") as mock_db,
         patch("swayam.api.routes.positions.fyers_client") as mock_fyers,
         patch("swayam.api.routes.positions.append_exit_block") as mock_journal,
+        patch("swayam.api.routes.positions._market_is_open_now", return_value=True),
     ):
         # No prior result, and no note-path row. Both lookups are new in
         # 2026-09-09's close path and a blanket mock would otherwise answer
@@ -323,10 +331,12 @@ def test_close_position_fetches_ltp_when_exit_legs_omitted(client):
             json={"close_reason": "time_exit"},
         )
 
-    assert resp.status_code == 200
+    assert resp.status_code == 200, resp.text
     data = resp.json()
     assert data["status"] == "closed"
     assert data["realized_pnl_inr"] == 7349.70
+    sides = {l["direction"]: l["exit_side_hit"] for l in data["exit_legs"]}
+    assert sides == {"buy": "bid", "sell": "ask"}
     # Twice: the expiry is resolved to a FYERS epoch, then the chain is
     # read. It used to send the word NIFTY as a symbol and never worked.
     assert mock_fyers.get_option_chain.call_count == 2

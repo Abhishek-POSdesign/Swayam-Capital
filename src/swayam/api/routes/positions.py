@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from swayam.api.journal_writer import append_exit_block
 from swayam.services.execution_safety import mark_journal_status, queue_journal_note
+from swayam.services.fills import FillRefused, LegQuote, exit_side_of, resolve_fill, spread_cost_inr
 from swayam.services.charges import (
     ChargeScheduleUnavailable,
     charge_for_leg,
@@ -226,15 +227,22 @@ def _build_chain_lookup(raw_chain: dict[str, Any]) -> tuple[float, dict[tuple[fl
         strike = float(item.get("strike_price") or item.get("strike") or 0.0)
 
         # Dual CE/PE format (FYERS standard optionsChain item)
+        # The bid and the ask travel with the last trade. An exit is filled
+        # against the book (a bought leg sold at the bid, a sold leg bought
+        # back at the ask), never at the last trade. PR 2, 2026-09-09.
         if "call_ltp" in item or "call_symbol" in item:
             lookup[(strike, "CE")] = {
                 "ltp": _num(item.get("call_ltp")),
                 "iv": _num(item.get("call_iv")),
+                "bid": _num(item.get("call_bid")),
+                "ask": _num(item.get("call_ask")),
             }
         if "put_ltp" in item or "put_symbol" in item:
             lookup[(strike, "PE")] = {
                 "ltp": _num(item.get("put_ltp")),
                 "iv": _num(item.get("put_iv")),
+                "bid": _num(item.get("put_bid")),
+                "ask": _num(item.get("put_ask")),
             }
 
         # Nested CE/PE format (models_api StrikeRow item)
@@ -242,11 +250,15 @@ def _build_chain_lookup(raw_chain: dict[str, Any]) -> tuple[float, dict[tuple[fl
             lookup[(strike, "CE")] = {
                 "ltp": _num(item["ce"].get("ltp")),
                 "iv": _num(item["ce"].get("iv")),
+                "bid": _num(item["ce"].get("bid")),
+                "ask": _num(item["ce"].get("ask")),
             }
         if "pe" in item and isinstance(item["pe"], dict):
             lookup[(strike, "PE")] = {
                 "ltp": _num(item["pe"].get("ltp")),
                 "iv": _num(item["pe"].get("iv")),
+                "bid": _num(item["pe"].get("bid")),
+                "ask": _num(item["pe"].get("ask")),
             }
 
         # Single contract item
@@ -254,9 +266,27 @@ def _build_chain_lookup(raw_chain: dict[str, Any]) -> tuple[float, dict[tuple[fl
             lookup[(strike, str(item["option_type"]).upper())] = {
                 "ltp": _num(item.get("ltp")),
                 "iv": _num(item.get("iv")),
+                "bid": _num(item.get("bid")),
+                "ask": _num(item.get("ask")),
             }
 
     return spot, lookup
+
+
+def _market_is_open_now() -> bool:
+    """Whether NIFTY options are trading right now, in IST.
+
+    A close is a fill, and a fill against the closing book is one nobody could
+    have got. The same clock the quote route uses: weekday, 09:15 to 15:30,
+    and not an NSE holiday.
+    """
+    from datetime import time as _dtime, timedelta as _td
+    from swayam.services.expiry import is_trading_day
+
+    now_ist = datetime.now(timezone.utc) + _td(hours=5, minutes=30)
+    if not is_trading_day(now_ist.date()):
+        return False
+    return _dtime(9, 15) <= now_ist.time() <= _dtime(15, 30)
 
 
 # ---------------------------------------------------------------------------
@@ -703,6 +733,8 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
     total_entry_charges = 0.0
     total_exit_charges = 0.0
     closed_legs: list[dict[str, Any]] = []
+    market_open = _market_is_open_now() if not req.exit_legs else True
+    refused: list[dict[str, Any]] = []
 
     for leg in legs:
         strike = float(leg.get("strike", 0.0))
@@ -724,25 +756,46 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
         is_buy = direction in ("buy", "long")
 
         exit_prem: Optional[float] = None
+        exit_how = "supplied"
+        exit_side_hit = ""
+        exit_ltp: Optional[float] = None
+        exit_basis = "supplied"
+        exit_direction = exit_side_of(direction)
+        leg_label = f"{exit_direction.upper()} {strike:,.0f} {opt_type}"
 
         if req.exit_legs:
+            # An explicit price is his instruction, from a terminal or a
+            # script. Recorded as supplied, never dressed up as a market fill.
             for el in req.exit_legs:
                 if abs(float(el.strike) - strike) < 0.01 and el.option_type.upper() == opt_type:
                     exit_prem = float(el.exit_premium)
                     break
+            if exit_prem is None:
+                refused.append({"leg": leg_label, "reason": f"{leg_label}: no exit price was supplied for this leg."})
+                continue
         else:
-            quote = chain_lookup.get((strike, opt_type))
-            if quote and quote.get("ltp") is not None:
-                exit_prem = float(quote["ltp"])
-
-        if exit_prem is None:
-            raise HTTPException(
-                status_code=503,
-                detail=(
-                    f"Cannot close position: Missing exit premium for {strike} {opt_type}. "
-                    "Supply exit_legs explicitly or check FYERS option chain."
-                ),
+            # THE EXIT FILLS THE WAY THE ENTRY DOES, REVERSED. A bought leg is
+            # sold at the bid, a sold leg is bought back at the ask, from the
+            # book right now, and only while the market is open. It used to
+            # value every exit at the last traded price at any hour.
+            q = chain_lookup.get((strike, opt_type)) or {}
+            quote = LegQuote(
+                ltp=q.get("ltp"), bid=q.get("bid"), ask=q.get("ask"), spot=spot_at_exit,
+                state="live" if market_open else "closing", market_open=market_open, as_of=None,
             )
+            try:
+                fill = resolve_fill(
+                    direction=exit_direction, order_type="MARKET", limit_price=None,
+                    quote=quote, leg_label=leg_label,
+                )
+            except FillRefused as exc:
+                refused.append({"leg": leg_label, "reason": str(exc), "market": exc.market})
+                continue
+            exit_prem = fill.price
+            exit_how = fill.how
+            exit_side_hit = fill.side_hit
+            exit_ltp = fill.ltp_at_fill
+            exit_basis = fill.basis
 
         entry_prem = float(leg.get("entry_premium", 0.0) or 0.0)
         leg_pnl = ((exit_prem - entry_prem) * contracts) if is_buy else ((entry_prem - exit_prem) * contracts)
@@ -810,6 +863,12 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
             "lot_size": lot_size,
             "entry_premium": entry_prem,
             "exit_premium": exit_prem,
+            "exit_order_type": "MARKET" if not req.exit_legs else "SUPPLIED",
+            "exit_fill_basis": exit_basis,
+            "exit_side_hit": exit_side_hit,
+            "exit_ltp": exit_ltp,
+            "exit_how": exit_how,
+            "exit_spread_cost_inr": spread_cost_inr(exit_direction, exit_prem, exit_ltp, contracts),
             # Per leg, the three figures he asked for.
             "gross_pnl_inr": round(leg_pnl, 2),
             "entry_charges_inr": round(entry_cost_inr, 2),
@@ -819,6 +878,24 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
             "entry_charges_source": entry_charges_source,
             "charges_schedule_version": exit_cost.schedule_version,
         })
+
+    # One leg that cannot be filled refuses the whole close. Nothing is written,
+    # the position stays open, and every leg is named with what to do. The
+    # commonest reason is the bell: after 15:30 nothing can fill, and the
+    # answer says so rather than valuing his exit at a price nobody could get.
+    if refused:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": (
+                    "Not closed. "
+                    + ("One leg" if len(refused) == 1 else f"{len(refused)} legs")
+                    + " could not be filled honestly; every leg is listed below with what to do. "
+                    + ("The market is closed; close it in your window." if not market_open else "")
+                ).strip(),
+                "refused_legs": refused,
+            },
+        )
 
     # 3. Compute Realized P&L and Estimated Charges
     # The trade's three figures, each the sum of its legs': cumulative gross,
