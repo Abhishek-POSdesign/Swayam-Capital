@@ -22,6 +22,7 @@ import { MarketTickerComponent } from '../components/market-ticker.js';
 import { PayoffSvgComponent } from '../components/payoff-svg.js';
 import { OvernightBlockModalComponent } from '../components/overnight-block-modal.js';
 import { OptionChainModalComponent } from '../components/option-chain-modal.js';
+import { ExecutionTicket } from '../components/execution-ticket.js';
 import { DataHealthStrip } from '../components/data-health-strip.js';
 import {
   maxLossProfit,
@@ -183,6 +184,12 @@ export class StrategyBuilderPage {
     this.ticker = null;
     this.overnightModal = null;
     this.chainModal = null;
+    /** The execution ticket. Opens on Execute; nothing is sent until a button on it is pressed. */
+    this.ticket = null;
+    this._ticketPreviewTimer = null;
+    this.lastTrade = null;
+    this.dataState = null;
+    this.marginUsedNote = '';
     this.cronTimer = null;
     this.safetyWarning = null;
   }
@@ -252,6 +259,7 @@ export class StrategyBuilderPage {
   onDataHealth(health) {
     // null when the check itself failed: an unknown clock is not a shut one,
     // and the spot chip must not claim either way.
+    this.dataState = health && health.state ? String(health.state) : null;
     const open = health ? Boolean(health.market_open) : null;
     if (open !== this.marketOpen) {
       this.marketOpen = open;
@@ -313,6 +321,7 @@ export class StrategyBuilderPage {
       this._requoting = false;
     }
     this.pricesReadAt = new Date().toISOString();
+    if (this.ticket && this.ticket.isOpen) this.ticket.update(this.activeLegs(), this.ticketContext());
 
     if (changed) {
       if (!this._legInputFocused()) this.renderLegs();
@@ -442,6 +451,7 @@ export class StrategyBuilderPage {
         </div>
 
         <div id="overnight-modal-container"></div>
+        <div id="execution-ticket-mount"></div>
       </div>
     `;
 
@@ -450,6 +460,21 @@ export class StrategyBuilderPage {
   }
 
   initSubComponents() {
+    const ticketHost = this.container.querySelector('#execution-ticket-mount');
+    if (ticketHost && !this.ticket) {
+      this.ticket = new ExecutionTicket(ticketHost, {
+        onSend: (legs, mode) => this.sendTicket(legs, mode),
+        onSendNext: (leg, seq) => this.sendNextLeg(leg, seq),
+        onChange: (legs) => this.previewTicket(legs),
+        onFinish: () => this.afterTicket(),
+        // The four rules exactly as the desk drew them a moment ago.
+        rulesHtml: () => {
+          const h = this.container.querySelector('#rule-validation-mount');
+          return h ? h.innerHTML : '';
+        },
+      });
+    }
+
     const tickerHost = this.container.querySelector('#strategy-sticky-ticker');
     if (tickerHost) {
       this.ticker = new MarketTickerComponent(tickerHost);
@@ -678,16 +703,23 @@ export class StrategyBuilderPage {
     try {
       const res = await api.getPositions('open');
       this.positions = Array.isArray(res) ? res : (res && res.positions) || [];
+      // The broker margin each open position took, stored on the row since
+      // migration 021. One position without it makes the whole figure
+      // unavailable: a partial sum would be a smaller number that looks whole.
       let total = 0;
-      let sawOne = false;
+      let missing = 0;
       for (const p of this.positions) {
-        if (typeof p.margin_used_inr === 'number') { total += p.margin_used_inr; sawOne = true; }
-        else if (typeof p.margin_blocked_inr === 'number') { total += p.margin_blocked_inr; sawOne = true; }
+        if (typeof p.margin_required_inr === 'number') total += p.margin_required_inr;
+        else missing += 1;
       }
-      this.marginUsed = this.positions.length === 0 ? 0 : sawOne ? total : null;
+      this.marginUsed = this.positions.length === 0 ? 0 : missing === 0 ? total : null;
+      this.marginUsedNote = missing
+        ? `${missing} open position${missing === 1 ? ' has' : 's have'} no stored margin (opened before it was recorded)`
+        : '';
     } catch (_) {
       this.positions = null;
       this.marginUsed = null;
+      this.marginUsedNote = 'positions unread';
     }
     this.renderMetrics();
   }
@@ -757,6 +789,9 @@ export class StrategyBuilderPage {
         leg.price = q.ltp;
         leg.priceSource = q.source || 'chain';
         leg.priceAt = q.as_of || new Date().toISOString();
+        // Shown on the ticket beside the traded price. PR 2 fills at them.
+        leg.bid = typeof q.bid === 'number' && q.bid > 0 ? q.bid : null;
+        leg.ask = typeof q.ask === 'number' && q.ask > 0 ? q.ask : null;
       } else if (opts.keepStale && leg.price !== null && q && q.error) {
         // The chain could not be READ this time round. The price already on
         // the row was a real traded price a few seconds ago; blanking it would
@@ -1137,7 +1172,7 @@ export class StrategyBuilderPage {
       { label: 'Overnight gap cap', value: typeof cap.risk_capital_inr === 'number' ? inr(cap.risk_capital_inr * 0.02) : null, note: '2%' },
       { label: 'Black swan cap', value: inr(cap.black_swan_fuse_inr), note: '5%' },
       { label: 'Margin ceiling', value: inr(cap.deployable_margin_ceiling_inr), note: cap.ceiling_unavailable_reason || '2x cash equivalent' },
-      { label: 'Margin used', value: inr(this.marginUsed), note: this.marginUsed === null ? 'positions unread' : '' },
+      { label: 'Margin used', value: inr(this.marginUsed), note: this.marginUsed === null ? (this.marginUsedNote || 'positions unread') : '' },
     ];
   }
 
@@ -1602,7 +1637,8 @@ export class StrategyBuilderPage {
       return this._rule('idle', '4 · Margin ceiling', inr(ceiling), `ceiling · ${reason}`);
     }
     if (used === null) {
-      return this._rule('idle', '4 · Margin ceiling', inr(need), `needed · margin already used is unknown, so the ceiling of ${inr(ceiling)} cannot be tested`);
+      const why = this.marginUsedNote ? ` (${this.marginUsedNote})` : '';
+      return this._rule('idle', '4 · Margin ceiling', inr(need), `needed · margin already used is unknown${why}, so the ceiling of ${inr(ceiling)} cannot be tested`);
     }
     const total = need + used;
     const fits = total <= ceiling;
@@ -1663,32 +1699,102 @@ export class StrategyBuilderPage {
 
     const btn = this.container.querySelector('#btn-execute');
     if (btn && typeof btn.addEventListener === 'function') {
-      btn.addEventListener('click', () => this.executePaperTrade());
+      btn.addEventListener('click', () => this.openTicket());
     }
   }
 
-  async executePaperTrade() {
-    const legs = this.legsPayload();
-    if (!legs.length) return;
-    this.executeNote = 'Sending…';
+  // ------------------------------------------------------- the execution ticket
+
+  /**
+   * Execute opens the ticket. Nothing is sent from here; the ticket sends
+   * through sendTicket() when he presses a button on it. docs/PLAN.md 2.12 PR 1.
+   */
+  openTicket() {
+    if (!this.ticket || !this.expiry || !this.fullyPriced()) return;
+    this.executeNote = null;
+    this.ticket.open(this.activeLegs(), this.ticketContext());
+    this.previewTicket(this.ticket.payload());
+  }
+
+  /** What the ticket needs from the desk: expiry, contract size, spot, margin, rules. */
+  ticketContext() {
+    const exp = this.expiries.find((e) => e.date === this.expiry) || {};
+    return {
+      strategyName: this.strategyName || 'Custom',
+      expiry: this.expiry,
+      expiryLabel: exp.label || this.expiry,
+      lotSize: this.lotSize,
+      spot: this.spot,
+      spotAt: this.spotAt,
+      capital: this.capital,
+      marginUsed: this.marginUsed,
+      marginUsedNote: this.marginUsedNote,
+      dataState: this.dataState || (this.marketOpen === true ? 'live' : this.marketOpen === false ? 'closing' : null),
+    };
+  }
+
+  /**
+   * The broker's margin and the charges for the legs AS THE TICKET HAS THEM,
+   * in his order and at his lots. Debounced, because every lot step and every
+   * re-order would otherwise be a call.
+   */
+  previewTicket(legs) {
+    if (!this.ticket || !this.ticket.isOpen || !legs || !legs.length) return;
+    if (typeof setTimeout !== 'function') return;
+    if (this._ticketPreviewTimer) clearTimeout(this._ticketPreviewTimer);
+    this._ticketPreviewTimer = setTimeout(async () => {
+      this._ticketPreviewTimer = null;
+      try {
+        const preview = await api.previewOrder({ underlying: 'NIFTY', current_spot: this.spot, legs, leg_order: 'as_sent' });
+        if (this.ticket && this.ticket.isOpen) this.ticket.update(this.activeLegs(), { ...this.ticketContext(), preview });
+      } catch (err) {
+        if (this.ticket && this.ticket.isOpen) {
+          this.ticket.update(this.activeLegs(), {
+            ...this.ticketContext(),
+            preview: { margin_unavailable_reason: (err && err.message) || String(err) },
+          });
+        }
+      }
+    }, 300);
+  }
+
+  /**
+   * The send. Legs go in HIS order; the server fills each at its own live
+   * quote and refuses the whole ticket, naming every leg, if one cannot fill.
+   * `mode` is "all" or "one_by_one"; one by one opens the trade with the first
+   * leg and sendNextLeg() adds each later one to the same trade.
+   */
+  async sendTicket(legs, mode) {
+    const res = await api.executeMultiLeg({
+      strategy_name: this.strategyName || 'Custom',
+      underlying: 'NIFTY',
+      current_spot: this.spot,
+      session_id: this.sessionId,
+      mode: 'paper',
+      leg_order: 'as_sent',
+      execution_mode: mode,
+      planned_exit_date: this.plannedExitDate(),
+      legs,
+    });
+    this.lastTrade = res;
+    this.executeNote = res && res.position_id
+      ? `Paper trade ${String(res.position_id).slice(0, 8)} opened${res.journal_status === 'pending' ? '; the note is queued for your vault' : ''}.`
+      : 'Sent. The server did not return a position id.';
+    await this.refreshPositions();
     this.renderExecute();
-    try {
-      const res = await api.executeMultiLeg({
-        strategy_name: this.strategyName || 'Custom',
-        underlying: 'NIFTY',
-        current_spot: this.spot,
-        order_type: 'LIMIT',
-        session_id: this.sessionId,
-        mode: 'paper',
-        legs: legs.map((l) => ({ ...l, order_type: 'LIMIT' })),
-      });
-      this.executeNote = res && res.position_id
-        ? `Paper position ${String(res.position_id).slice(0, 8)} opened and journalled.`
-        : 'Sent. The server did not return a position id.';
-      await this.refreshPositions();
-    } catch (err) {
-      this.executeNote = `Not executed: ${(err && err.message) || err}`;
-    }
+    return res;
+  }
+
+  /** One by one: the next leg joins the trade the first leg opened. */
+  async sendNextLeg(leg, seq) {
+    const id = this.lastTrade && this.lastTrade.position_id;
+    if (!id) throw new Error('There is no open trade to add this leg to. Send the first leg again.');
+    const res = await api.addLegToPosition(id, { leg, current_spot: this.spot }, `add-leg-${id}-${seq}`);
+    await this.refreshPositions();
+    return res;
+  }
+
+  afterTicket() {
     this.renderExecute();
   }
 
@@ -1712,6 +1818,14 @@ export class StrategyBuilderPage {
     if (this.chainModal) {
       this.chainModal.destroy();
       this.chainModal = null;
+    }
+    if (this._ticketPreviewTimer) {
+      clearTimeout(this._ticketPreviewTimer);
+      this._ticketPreviewTimer = null;
+    }
+    if (this.ticket) {
+      this.ticket.destroy();
+      this.ticket = null;
     }
     if (this.dataHealth) {
       this.dataHealth.destroy();

@@ -96,6 +96,8 @@ execution, immature exit, immature monitoring. Taking a position is more immatur
 than buying a soda bottle.
 
 WHAT I WANT YOU TO BUILD. docs/PLAN.md section 2.12. In this order.
+(Item 1 was built on 9 September evening as PR #49. If it is merged, start at
+item 2 and read what PR 1 recorded in 2.12.2 first. If it is not, ask me.)
 1. The execution ticket. I press Execute and I see what is about to be sent
    before it goes: every leg, market or limit with a switch, an editable price
    with a proper reset button, editable lots, the margin needed, my four rules,
@@ -115,6 +117,10 @@ WHAT I WANT YOU TO BUILD. docs/PLAN.md section 2.12. In this order.
    market. Test it and fix what it gets wrong rather than rebuilding it.
 
 MY DECISIONS ARE RECORDED IN 2.12.1 WORD FOR WORD. Do not relitigate them.
+Three more were taken on 9 September evening and are recorded there too: every
+exit, one leg or all, goes through the same ticket with market or limit per
+leg; one by one is a real add-a-leg on the same trade; the single-leg rule is
+gone. The journey I approved is a clickable prototype linked from 2.12.1.
 
 THE OPEN DECISION I HAVE MADE, section 2.13. The live site cannot see my vault,
 so my daily check-in returns an error there and the AI reads a frozen copy of my

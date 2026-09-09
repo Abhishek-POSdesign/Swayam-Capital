@@ -25,7 +25,13 @@ async function request(endpoint, options = {}) {
       } catch {
         errorData = { detail: response.statusText };
       }
-      throw new Error(errorData.detail?.error || errorData.detail || `Request failed with status ${response.status}`);
+      const err = new Error(errorData.detail?.error || errorData.detail || `Request failed with status ${response.status}`);
+      // The structured detail travels with the error. The execution ticket
+      // reads `refused_legs` from it to show every leg that could not fill,
+      // rather than only the first sentence.
+      err.status = response.status;
+      err.detail = errorData.detail;
+      throw err;
     }
     return await response.json();
   } catch (err) {
@@ -129,6 +135,10 @@ export const api = {
     }),
   executeMultiLeg: (payload, ticketId = 'default-multi') =>
     submitTrade('/api/execute/multi-leg', payload, ticketId),
+  // "Execute one by one": the first leg opens the trade, every later leg joins
+  // it here. Same execution key rule, so a retry cannot add a leg twice.
+  addLegToPosition: (positionId, payload, ticketId = 'add-leg') =>
+    submitTrade(`/api/positions/${positionId}/legs`, payload, ticketId),
   detectNakedShorts: (atTime = '15:20') =>
     request(`/api/positions/naked-shorts?at_time=${encodeURIComponent(atTime)}`),
   getSessionContextSummary: (sessionId) =>

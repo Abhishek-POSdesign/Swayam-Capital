@@ -341,6 +341,17 @@ def get_positions(status: str = Query(default="open")) -> list[PositionResponse]
                 opened_at=str(p.get("opened_at")),
                 unrealized_pnl_inr=float(p.get("unrealized_pnl_inr", 0.0)),
                 journal_path=p.get("journal_path"),
+                # Stored from migration 021 on. None for anything older, and the
+                # desk turns one None into "margin used unavailable" rather than
+                # a smaller figure that looks whole.
+                margin_required_inr=(
+                    float(p["margin_required_inr"]) if p.get("margin_required_inr") is not None else None
+                ),
+                margin_source=p.get("margin_source"),
+                fill_basis=p.get("fill_basis"),
+                spot_at_entry=(
+                    float(p["spot_at_entry"]) if p.get("spot_at_entry") is not None else None
+                ),
             )
         )
 

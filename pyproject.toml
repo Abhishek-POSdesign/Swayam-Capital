@@ -48,6 +48,7 @@ markers = [
     "fake_db: run this test against an in-memory database so it may exercise a write path",
     "live_db: UNGUARDED live database access. Writes land in Abhishek's real record. Do not use.",
     "real_vault: UNGUARDED writes into his live Obsidian vault. Twenty-six fake trades reached it this way. Do not use.",
+    "real_fills: uses the real fill path (live chain quote) instead of the market-at-his-price stand-in",
 ]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

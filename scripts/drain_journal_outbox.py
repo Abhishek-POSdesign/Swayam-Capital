@@ -29,6 +29,8 @@ rows done; it never alters a position's own numbers.
 
 from __future__ import annotations
 
+from typing import Optional
+
 import argparse
 import sys
 from datetime import datetime, timezone
@@ -41,7 +43,8 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(ROOT_DIR / ".env")
 
-from swayam.api.journal_writer import (  # noqa: E402
+from swayam.api.journal_writer import (
+    append_leg_block,  # noqa: E402
     append_exit_block,
     write_new_trade_journal,
 )
@@ -151,6 +154,33 @@ def cmd_drain(dry_run: bool) -> int:
         # side finally stopped returning an error on a trade that had already
         # been recorded. Without this branch such a row would sit in the outbox
         # for ever and his note would never get its result.
+        # A LEG ADDED to an open trade. The note's path is resolved now rather
+        # than at queue time, because the entry note may have been sitting in
+        # this same queue ahead of it.
+        if row["kind"] == "add_leg":
+            if dry_run:
+                print(f"  would append {label}")
+                skipped += 1
+                continue
+            try:
+                note_path = _resolve_note_path(pid)
+                if not note_path:
+                    raise RuntimeError("the entry note has not been written yet; run again after it lands")
+                target = append_leg_block(
+                    journal_rel_path=note_path,
+                    added_at=payload["added_at"],
+                    leg=payload["leg"],
+                    structure_after=payload.get("structure_after") or {},
+                )
+                _mark_done(row["id"], note_path)
+                _mark_position(pid, "written")
+                print(f"  appended     {target}")
+                written += 1
+            except Exception as exc:
+                _mark_attempt(row, str(exc))
+                print(f"  FAILED       {label}: {exc}")
+            continue
+
         if row["kind"] == "close":
             if dry_run:
                 print(f"  would append {label}")
@@ -193,6 +223,10 @@ def cmd_drain(dry_run: bool) -> int:
                 validation_data=payload["validation_data"],
                 current_spot=payload["current_spot"],
                 margin_base_inr=payload["margin_base_inr"],
+                # The trade's own opening time. Without it the note stamped the
+                # moment the drainer ran, which for trades 02 and 03 of
+                # 2026-09-09 was 16:57, after the close.
+                opened_at=payload.get("opened_at"),
             )
             db.client.table("swayam_journal_entries").insert(
                 {
@@ -250,6 +284,32 @@ def _mark_position(position_id: str, status: str) -> None:
     db.client.table("swayam_positions").update({"journal_status": status}).eq(
         "id", position_id
     ).execute()
+
+
+def _resolve_note_path(position_id: str) -> Optional[str]:
+    """The trade's note, from the row or the journal index. None if neither has it."""
+    try:
+        rows = (
+            db.client.table("swayam_positions").select("journal_path").eq("id", position_id).execute().data
+            or []
+        )
+        if rows and rows[0].get("journal_path"):
+            return rows[0]["journal_path"]
+        entries = (
+            db.client.table("swayam_journal_entries")
+            .select("md_path")
+            .eq("position_id", position_id)
+            .eq("entry_type", "entry")
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if entries and entries[0].get("md_path"):
+            return entries[0]["md_path"]
+    except Exception as exc:
+        print(f"  could not resolve the note for {position_id[:8]}: {exc}")
+    return None
 
 
 def _append_exit_if_already_closed(position_id: str, rel_path: str) -> None:

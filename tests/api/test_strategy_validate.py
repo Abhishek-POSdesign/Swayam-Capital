@@ -67,7 +67,10 @@ def test_validate_compliant_spread_passes() -> None:
     assert len(data["checks"]) >= 4
 
 
-def test_validate_single_leg_fails_no_single_leg_rule() -> None:
+def test_validate_single_leg_is_not_scored_against_a_deleted_rule() -> None:
+    """The "no single-leg trades ever" rule was deleted on 2026-09-08 and removed
+    from the validator on 2026-09-09. A single leg is allowed intraday and must
+    not be scored, warned about, or printed into his journal."""
     payload = {
         "strategy_name": "Naked Call",
         "underlying": "NIFTY",
@@ -92,7 +95,8 @@ def test_validate_single_leg_fails_no_single_leg_rule() -> None:
     assert data["passed"] is True  # entry is never blocked; the check is advisory
 
     rule_checks = {c["rule"]: c["verdict"] for c in data["checks"]}
-    assert rule_checks["no_single_leg"] == "FAIL"
+    assert "no_single_leg" not in rule_checks
+    assert "single-leg" not in " ".join(data.get("warnings") or [])
 
 
 def test_validate_excessive_loss_fails_blast_radius() -> None:

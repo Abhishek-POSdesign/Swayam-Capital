@@ -78,7 +78,6 @@ router = APIRouter()
 RULE_DISPLAY_NAMES = {
     "realistic_risk": "the 1% running-loss rule",
     "blast_radius": "the 5% black-swan rule",
-    "no_single_leg": "the single-leg check",
     "hedged_structure": "the hedge check",
     "absolute_max_loss": "the worst case at expiry",
     "deployable_margin_ceiling": "the deployable margin ceiling",
@@ -236,18 +235,12 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
     # `rr_implied` itself stays: it is a number he reads in the metric row, not
     # a rule with a floor to pass.
 
-    # --- Check 4: no single leg ------------------------------------------
-    passed_multileg = len(req.legs) >= 2
-    checks.append(
-        ValidationCheck(
-            rule="no_single_leg",
-            verdict="PASS" if passed_multileg else "FAIL",
-            blocking=False,
-            actual=float(len(req.legs)),
-            floor=2.0,
-            note=f"{len(req.legs)} leg(s); a hedged structure needs at least two",
-        )
-    )
+    # --- "No single-leg trades ever" was DELETED with his rules of 2026-09-08 --
+    # It kept being evaluated here as an advisory, the desk hid the line, and it
+    # still reached his vault: notes 02 and 03 of 2026-09-09 print "No Single
+    # Leg: 4.00 >= 2.00" as a passed rule. Removed on his instruction,
+    # 2026-09-09. A single leg is allowed intraday; carrying it overnight is
+    # what the hedge check and the gap test below refuse.
 
     # --- Check 5: real hedge geometry ------------------------------------
     geometry = check_hedge_geometry(

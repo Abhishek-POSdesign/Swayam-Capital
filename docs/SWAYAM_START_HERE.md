@@ -70,7 +70,21 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: THE HANDOVER POINT, 2026-09-09 evening
+### Latest first: PR 1 OF THE TRADING DESK IS BUILT, 2026-09-09 evening
+
+| | |
+|---|---|
+| **The execution ticket** | Built, PR #49, **awaiting his merge**. `docs/PLAN.md` §2.12.2 PR 1 has what landed and how it was verified |
+| **⚠️ MIGRATION 021 MUST BE RUN BEFORE THE FIRST SEND** | `.\.venv\Scripts\python.exe scripts\apply_migration.py up`. Without it the execute path writes three columns that do not exist and every send is refused with a database error. `tests/test_written_columns_exist.py` demands it |
+| **Fills are honest** | `services/fills.py`. Market at the server's live quote, limit only if the market is at or through it, no quote no fill, a closing price is not a fill. **After the close nothing can be sent**, and the ticket says so up front |
+| His decisions added tonight | Every exit gets the same ticket, market or limit per leg. One by one is a real add-a-leg on the same trade. The single-leg rule is removed. §2.12.1 |
+| The journey he approved | https://claude.ai/code/artifact/20a3dadd-5456-416b-b713-620680ec7f9d |
+| Branches | One, `main`, plus the PR branch. The four leftovers from PRs 45 to 48 were deleted after proving each merged |
+| Outbox | Empty. He drained it. Three notes in the folder, three trades |
+| Tests | Python **455 pass, 1 fail** (the long-standing notifications case); JavaScript **216 pass, 0 fail** across 31 files including the real bundle. Vault folder 3 notes before and after |
+| **Not yet seen with a real send** | The market was shut. His first send through the ticket, in his window, is the proof |
+
+### Earlier: THE HANDOVER POINT, 2026-09-09 evening
 
 **Everything below is merged and deployed. The next session builds section 2.12
 of `docs/PLAN.md` and nothing else until he says otherwise.**
@@ -290,8 +304,8 @@ His decisions, do not relitigate:
    token dies every 7 days. **Ask him; do not guess. And never upload a logo on
    the branding page** — the console states that forces verification. Nothing is
    lost meanwhile: the outbox holds the note and the local drainer completes it.
-7. **Charges at execution.** `ESTIMATED_CHARGE_PER_LEG_INR` (₹150) is still used
-   on close. The real versioned charge engine exists and the risk gate uses it.
+7. ~~Charges at execution.~~ **DONE 2026-09-09, per leg.** `docs/PLAN.md` §2.3.
+   The flat ₹150 is deleted and a source-level guard fails if it returns.
 8. **Kill switch.** None exists.
 9. **Scheduled backups.** `scripts/backup_supabase.py --gcs` works and the
    restore drill passed on 19 tables and 600 rows. It has run **once, by hand**.
