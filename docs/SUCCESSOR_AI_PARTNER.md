@@ -75,6 +75,14 @@ would not have to keep explaining myself to every agent who helps me. It is not
 structured well enough for that yet. The AI partner is the interface to it, and
 its first job is to know my story so I never have to tell it again.
 
+TWO THINGS I CORRECTED ON 2026-09-10, SO YOU DO NOT REPEAT AN OLD ASSUMPTION.
+My own past trades are NOT backtesting material. They were not structured well
+enough. My history is for reflection and knowledge, so read it to understand me,
+never to test anything. And any data work starts from 2022, not 2018, because
+the market before and after Corona are different markets.
+
+I keep ONE CHAT PER PURPOSE. docs/CHAT_PROMPTS.md lists them all.
+
 WHAT I EXPECT FROM THIS CHAT. Talk with me. I will talk a great deal and you
 structure what I say and read it back. Do not answer a half-formed thought with
 a build plan. We are designing what this thing is before anything is built.

@@ -15,6 +15,22 @@ intend to restart trading real money through. Read before you act. There is no
 hurry and I would rather you take twenty minutes reading than give me a fast
 answer built on a guess.
 
+THIS IS THE MAIN CHAT: the terminal itself, the desk, the ticket, positions,
+the journal, the recorder, live testing. I KEEP ONE CHAT PER PURPOSE. If we
+drift into the backtester or into designing the AI partner, stop me and say so.
+docs/CHAT_PROMPTS.md lists every chat and the prompt that belongs to it.
+
+TWO THINGS I CORRECTED ON 2026-09-10 NIGHT, so no session repeats an old plan.
+My own past trades are NOT backtesting material; they were not structured well
+enough, and my history is for reflection and knowledge only. And any data work
+starts from 2022, not 2018, because the market before and after Corona are
+different markets. docs/PLAN.md 2.16.0 and 2.16.2.
+
+MY OWN TRADING ARCHIVE, which nobody had written down before, is at
+E:\Project E\Trading\Bazaar. Everything I ever saved, including the swing
+journal spreadsheet and four strategies I wrote with rules. My own word for it
+is broken: some current, some years old, some spreadsheets lost.
+
 WHO I AM AND HOW TO WORK WITH ME
 I am Abhishek. I am not a developer. Write plain English, never hand me code to
 approve, and when something is a judgement call give me your recommendation
