@@ -833,3 +833,71 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   color: var(--accent-coral, #dd8170);
 }
 .posexit:disabled { opacity: 0.55; cursor: default; }
+
+/* ---------- the execution ticket: what is about to be sent, before it goes ----
+   docs/PLAN.md 2.12 PR 1. Opens on Execute; nothing is sent until a button on
+   it is pressed. Per leg: order, side, contract, lots, market or limit, price
+   with a proper Reset, and what the fill would be right now. ---------------- */
+.xt-backdrop { position: fixed; inset: 0; z-index: 950; background: rgba(6, 8, 8, .55); display: flex; align-items: flex-start; justify-content: center; padding: 28px 14px; overflow: auto; }
+.xt { background: var(--panel); border: 1px solid var(--line-2); border-radius: 11px; width: min(1000px, 100%); box-shadow: 0 24px 60px rgba(0, 0, 0, .35); color: var(--fg); font-family: var(--f); }
+.xt .xt-h { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.xt .xt-h h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.xt .xt-h .sub { color: var(--fg-3); font-size: 12px; margin-top: 2px; }
+.xt .xt-h .r { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.xt .xt-legs { padding: 6px 10px; }
+.xt .xt-row { display: grid; grid-template-columns: 44px 70px 150px 92px 128px 236px 1fr; gap: 8px; align-items: center; padding: 8px 6px; border-top: 1px solid var(--line); }
+.xt .xt-row.h { border-top: none; padding-bottom: 2px; }
+.xt .xt-row.h span { font-family: var(--m); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-3); font-weight: 600; }
+.xt .seq { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.xt .seq b { font-family: var(--m); font-size: 12px; }
+.xt .seq button { border: 1px solid var(--line); background: var(--panel-2); color: var(--fg-2); border-radius: 3px; cursor: pointer; font-size: 9px; line-height: 1; padding: 2px 6px; }
+.xt .seq button:hover:not(:disabled) { color: var(--fg); border-color: var(--line-2); }
+.xt .seq button:disabled { opacity: .35; cursor: default; }
+.xt .contract { font-family: var(--m); font-size: 12.5px; font-weight: 600; }
+.xt .contract small { display: block; color: var(--fg-3); font-weight: 500; font-size: 10.5px; }
+.xt .bs { font-family: var(--m); font-size: 11px; font-weight: 700; border-radius: 4px; padding: 5px 8px; display: inline-block; min-width: 54px; text-align: center; }
+.xt .bs.B { background: var(--up-bg); color: var(--up); }
+.xt .bs.S { background: var(--down-bg); color: var(--down); }
+.xt .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; background: var(--panel-2); }
+.xt .stepper button { border: none; background: none; color: var(--fg-2); cursor: pointer; padding: 5px 8px; font-size: 14px; line-height: 1; font-family: var(--m); }
+.xt .stepper button:disabled { color: var(--fg-3); opacity: .55; cursor: default; }
+.xt .stepper input { border: none; background: none; width: 34px; text-align: center; padding: 5px 0; font-weight: 600; font-family: var(--m); font-size: 12.5px; color: var(--fg); }
+.xt .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; margin: 0; }
+.xt .seg button { border: none; background: var(--panel-2); color: var(--fg-3); font-family: var(--m); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; padding: 6px 9px; cursor: pointer; }
+.xt .seg button[aria-pressed='true'] { background: var(--fg); color: var(--bg); }
+.xt .price { display: flex; gap: 6px; align-items: center; }
+.xt .price input { width: 84px; font-family: var(--m); font-size: 12.5px; background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 5px; padding: 6px 7px; font-variant-numeric: tabular-nums; }
+.xt .price input:disabled { color: var(--fg-2); }
+.xt .price .quote { font-family: var(--m); font-size: 10.5px; color: var(--fg-3); line-height: 1.25; }
+.xt .price .quote b { color: var(--fg-2); font-weight: 600; }
+.xt .fillnote { font-family: var(--m); font-size: 10.5px; line-height: 1.25; }
+.xt .fillnote.ok { color: var(--up); }
+.xt .fillnote.no { color: var(--down); }
+.xt .xt-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line); background: var(--panel-2); }
+.xt .kv { display: grid; grid-template-columns: 1fr auto; gap: 5px 14px; font-size: 12.5px; align-content: start; }
+.xt .kv span { color: var(--fg-2); }
+.xt .kv b { font-family: var(--m); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.xt .kv b.up { color: var(--up); } .xt .kv b.down { color: var(--down); }
+.xt .xt-rules { grid-template-columns: 1fr 1fr; }
+.xt .xt-rules .rl { padding: 9px 12px; }
+.xt .xt-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--line); }
+.xt .xt-actions .why { font-family: var(--m); font-size: 11px; color: var(--fg-3); margin-left: auto; max-width: 52ch; text-align: right; }
+.xt .xt-refused { margin: 10px 16px 0; padding: 10px 14px; border: 1px solid var(--down); border-radius: 8px; background: var(--down-bg); color: var(--fg); font-size: 12.5px; }
+.xt .xt-refused ul { margin: 6px 0 0; padding-left: 18px; }
+.xt .xt-refused li { margin: 2px 0; }
+.xt .xt-fills { padding: 6px 16px; }
+.xt .fills { list-style: none; margin: 0; padding: 0; }
+.xt .fills li { display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); align-items: baseline; }
+.xt .fills li:first-child { border-top: none; }
+.xt .fills .st { font-family: var(--m); font-size: 10px; font-weight: 700; color: var(--up); }
+.xt .fills .st.wait { color: var(--fg-3); }
+.xt .fills small { color: var(--fg-3); font-family: var(--m); font-size: 11px; display: block; }
+.xt .fills .num { font-family: var(--m); font-variant-numeric: tabular-nums; font-size: 14px; }
+.xt .xt-note { font-size: 12.5px; color: var(--fg-2); align-self: end; }
+.xt .na { color: var(--fg-3); font-style: italic; font-weight: 500; }
+@media (max-width: 860px) {
+  .xt .xt-foot { grid-template-columns: 1fr; }
+  .xt .xt-row { grid-template-columns: 44px 70px 1fr; }
+  .xt .xt-row.h { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .xt-backdrop { transition: none; } }

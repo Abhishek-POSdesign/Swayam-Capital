@@ -606,6 +606,19 @@ to the desk. Home keeps a read-only line.
 - **execute all legs together, or one leg at a time**
 - NO bid and ask ladder. NO market depth.
 
+**Exits get the same ticket. His addition, 2026-09-09 evening**, after walking the
+clickable journey: "exiting a single leg or exiting all legs should have a
+limit/market price option." So every exit, one leg or every leg, goes through an
+exit ticket with market or limit per leg, an editable price and a proper Reset,
+exactly as the entry does. PR 3 builds it. The journey prototype shows it:
+https://claude.ai/code/artifact/20a3dadd-5456-416b-b713-620680ec7f9d
+
+**Two decisions taken with the journey, 2026-09-09 evening.** "Execute one by
+one" is built on a real add-a-leg operation, so the second leg joins the trade
+the first leg opened; that is the first brick of the campaign model. And the
+deleted "no single-leg trades ever" rule is removed from the backend, because
+it was still being evaluated and was printing into his journal notes.
+
 **Fills become realistic: buy at the ask, sell at the bid.** He chose this over
 the traded price knowing it makes his results look worse. Charges already proved
 what a hidden cost does to him; the spread is the other one.
@@ -618,7 +631,43 @@ we exit. Need everything, but the execution comes at number one."
 
 #### 2.12.2 WHAT TO BUILD, IN ORDER
 
-**PR 1 — The execution ticket.**
+**PR 1 — The execution ticket. BUILT 2026-09-09 evening, PR #49, awaiting his merge.**
+
+What landed, verified in a real browser against the real backend and live FYERS
+at 17:58 IST with the market shut:
+
+- Execute opens the ticket; nothing is sent until a button on it is pressed.
+  Per leg: order with up and down, side, contract, lots stepper, Market or
+  Limit, an editable price with a proper Reset, the traded price and the bid
+  and ask beside it, and what the fill would be right now.
+- **Fills are honest, server-side.** `services/fills.py`: a market leg fills at
+  the SERVER'S live quote at the moment of sending, a limit fills only if the
+  market is at or through it, no quote means no fill, and a closing price is
+  not a fill. One leg that cannot fill refuses the whole ticket with HTTP 422
+  and names every leg with what to do. Proven against the real backend after
+  the close: both legs refused, nothing written. Before this a limit of ₹1 on
+  a ₹100 option would have "filled".
+- **His order is his.** `leg_order = "as_sent"`; the server no longer re-sorts.
+- **`spot_at_entry` and the broker margin are stored on the row**, migration
+  021. Rule 4 can be tested from the next trade on. The desk's "margin used"
+  now sums the stored figure and says "unavailable" with the reason when an
+  older position has none.
+- **Execute one by one** opens the trade with the first leg and adds each later
+  leg to the SAME trade through `POST /api/positions/{id}/legs`, with its own
+  fill, its own charges, the structure recomputed, and an Adjustments block on
+  the note. Stopping between legs is allowed.
+- The note records when the TRADE opened, in IST, not when the note was written.
+  Trades 02 and 03 of 2026-09-09 say 16:57 because that is when the drainer ran.
+- "0.00% of margin base" on an unread balance now prints unavailable.
+- The deleted single-leg rule is gone from the validator.
+- Eight dead components deleted, two of which still carried their own leg
+  arithmetic.
+
+**Not yet seen with a real send.** The market was shut when it was built. The
+first real send through the ticket is his, in his window. What to watch is in
+the PR handoff.
+
+The original brief, kept:
 
 A modal that opens on Execute and shows what is about to happen, before anything
 is sent. Per leg: buy or sell, strike, type, lots (editable), order type (market
@@ -649,6 +698,17 @@ big bold figures with colour taken from the money, its own maximum loss, and how
 it sits against rule 1. Per leg: **exit this leg** and **reverse this leg**. At
 the position level: **add a leg** and **exit everything**. A real dustbin for
 delete and a real reset button, both proper controls rather than icons.
+
+**Every exit goes through an exit ticket, his decision of 2026-09-09 evening:**
+one leg or all legs, market or limit per leg, an editable price, a proper Reset,
+the exit charges per leg, and gross, charges both ways and net before he presses.
+The close reason is one of the four the record allows. The fill rule is the
+entry rule reversed, from the same `services/fills.py`.
+
+**The record for a partial exit.** `swayam_trade_history` holds one result per
+trade, which is right: only a squared-off trade enters the record. A leg exited
+on its own books its result on the position's legs, and the trade's result is
+the sum when the last leg closes or when he says the trade is closed.
 
 This is where 2.11's campaign model becomes necessary: exiting one leg of four
 leaves a trade that is neither open nor closed, and the schema has to hold that.
@@ -877,6 +937,13 @@ Kept short. Detail is in the git history and the pull requests.
 | 2026-09-08 | Test rows no longer reach his record | The page reads "81 rows excluded as build tests, not trades you took" |
 | 2026-09-08 | An empty book prints dashes, not a 0% win rate and 100% discipline | Verified in a real browser in both themes, no console errors |
 | 2026-09-07 | Release 1: lot 65, real margin, live capital, his risk rules | PR #23 |
+| 2026-09-09 | **The execution ticket.** He sees every leg, price, lot and the order before anything is sent | Real browser, real backend, 17:58 IST: four legs, real closing prices with bid and ask, chip reads AT THE CLOSE, no console errors. PR #49 |
+| 2026-09-09 | A paper fill needs a market to fill against | Real backend after the close: 422, both legs named, nothing written. A limit away from the market is refused with the market price named |
+| 2026-09-09 | The server stopped re-sorting his legs | `leg_order = "as_sent"`; sequence stored on every leg |
+| 2026-09-09 | Spot at entry and broker margin are stored on the row | Migration 021; `tests/test_written_columns_exist.py` passes with it |
+| 2026-09-09 | A leg can join an open trade | `POST /api/positions/{id}/legs`, same key rule, structure recomputed, Adjustments block on the note |
+| 2026-09-09 | The note records when the trade opened, not when the note was written | Trades 02 and 03 said 16:57; a test pins the IST stamp to the row's `opened_at` |
+| 2026-09-09 | The deleted single-leg rule stopped being evaluated | It had reached his vault as a passed check in notes 02 and 03 |
 
 ---
 

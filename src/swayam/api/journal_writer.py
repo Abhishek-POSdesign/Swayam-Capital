@@ -141,8 +141,15 @@ def write_new_trade_journal(
     vault_path: Optional[Path] = None,
     filename_override: Optional[str] = None,
     notice: Optional[str] = None,
+    opened_at: Optional[str] = None,
 ) -> str:
     """Writes a new trade journal markdown note to Obsidian Second Brain.
+
+    `opened_at` is when the TRADE opened, as recorded on the position. The
+    note used to stamp "Time opened" with the moment the note was written,
+    so trades 02 and 03 of 2026-09-09 say they opened at 16:57, after the
+    close, because that is when the drainer ran. A fabricated timestamp in his
+    record. When it is absent the note says so rather than pretending.
 
     `filename_override` writes to an exact filename instead of the next number
     in the day's sequence. It exists so a note that was recorded in the database
@@ -197,18 +204,58 @@ def write_new_trade_journal(
     breakevens = payoff.get("breakevens", [])
     expiry_date = legs[0].get("expiry_date", date_str) if legs else date_str
 
-    max_loss_pct = (max_loss_inr / margin_base_inr * 100.0) if margin_base_inr > 0 else 0.0
+    # A percentage of nothing is not 0.00%, it is unknown. Trade 01's rebuilt
+    # note printed "0.00% of margin base" because the rebuild passed no balance.
+    max_loss_pct_text = (
+        f"{max_loss_inr / margin_base_inr * 100.0:.2f}% of margin base"
+        if margin_base_inr and margin_base_inr > 0
+        else "% of margin base unavailable, no balance was read"
+    )
+    opened_text = _ist_stamp(opened_at) if opened_at else f"{now.isoformat()} (the note's time; the trade's was not recorded)"
+    margin_required = spread_data.get("margin_required_inr")
+    margin_line = (
+        f"- **Margin the broker needed**: ₹{float(margin_required):,.0f}\n"
+        if margin_required is not None
+        else "- **Margin the broker needed**: unavailable at entry\n"
+    )
+    fill_basis = spread_data.get("fill_basis")
+    fill_line = (
+        "- **Fills**: buy at the ask, sell at the bid\n" if fill_basis == "bid_ask"
+        else "- **Fills**: at the traded price. Not comparable with trades filled at the bid and ask.\n" if fill_basis == "traded_price"
+        else ""
+    )
+    # Legs booked through the execution ticket carry how they were filled.
+    # Older legs do not, and the older table shape is kept for them.
+    ticketed = any(leg.get("order_type") or leg.get("ltp_at_fill") is not None for leg in legs)
 
     # Build legs table rows
     leg_rows = []
     for idx, leg in enumerate(legs, start=1):
-        leg_rows.append(
-            f"| {idx} | {leg.get('strike'):,.0f} | {leg.get('option_type')} | "
-            f"{leg.get('direction', '').upper()} | {leg.get('quantity_lots', 1)} | "
-            f"₹{float(leg.get('entry_premium', 0.0)):,.2f} | "
-            f"{_charge_cell(leg.get('entry_charges_inr'))} |"
-        )
+        if ticketed:
+            ltp = leg.get("ltp_at_fill")
+            leg_rows.append(
+                f"| {idx} | {leg.get('strike'):,.0f} | {leg.get('option_type')} | "
+                f"{leg.get('direction', '').upper()} | {leg.get('quantity_lots', 1)} | "
+                f"{str(leg.get('order_type') or '—').lower()} | "
+                f"₹{float(leg.get('entry_premium', 0.0)):,.2f} | "
+                f"{('₹' + format(float(ltp), ',.2f')) if ltp is not None else '—'} | "
+                f"{_charge_cell(leg.get('entry_charges_inr'))} |"
+            )
+        else:
+            leg_rows.append(
+                f"| {idx} | {leg.get('strike'):,.0f} | {leg.get('option_type')} | "
+                f"{leg.get('direction', '').upper()} | {leg.get('quantity_lots', 1)} | "
+                f"₹{float(leg.get('entry_premium', 0.0)):,.2f} | "
+                f"{_charge_cell(leg.get('entry_charges_inr'))} |"
+            )
     legs_table = "\n".join(leg_rows)
+    legs_header = (
+        "| # | Strike | Type | Direction | Lots | Order | Fill | Traded | Charges |\n"
+        "|:---:|---:|:---:|:---:|:---:|:---:|---:|---:|---:|"
+        if ticketed
+        else "| # | Strike | Type | Direction | Lots | Entry Premium | Charges |\n"
+        "|:---:|---:|:---:|:---:|:---:|---:|---:|"
+    )
 
     # Build validation checks bullets
     val_bullets = []
@@ -241,20 +288,19 @@ mode: paper
 
 ## Entry (paper trade)
 
-- **Time opened**: {now.isoformat()}
+- **Time opened**: {opened_text}
 - **NIFTY spot at entry**: {current_spot:,.2f}
 - **Underlying**: {underlying}
 - **Expiry**: {expiry_date}
-
+{margin_line}{fill_line}
 ### Legs
 
-| # | Strike | Type | Direction | Lots | Entry Premium | Charges |
-|:---:|---:|:---:|:---:|:---:|---:|---:|
+{legs_header}
 {legs_table}
 
 ### Risk / Reward
 
-- **Max loss**: ₹{max_loss_inr:,.0f} ({max_loss_pct:.2f}% of margin base)
+- **Max loss**: ₹{max_loss_inr:,.0f} ({max_loss_pct_text})
 - **Max profit**: ₹{max_profit_inr:,.0f}
 - **R:R implied**: {rr_implied:.2f}
 - **Net debit/credit**: ₹{net_debit_credit:,.0f}
@@ -301,6 +347,74 @@ mode: paper
 
     rel_path = f"02 - Projects/Trading/04 - Journal/{filename}"
     return rel_path
+
+
+def _ist_stamp(iso: str) -> str:
+    """An ISO timestamp as he reads it: IST, to the second."""
+    try:
+        from datetime import timedelta
+        dt = datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        ist = dt.astimezone(timezone(timedelta(hours=5, minutes=30)))
+        return f"{ist:%Y-%m-%d %H:%M:%S} IST"
+    except Exception:
+        return str(iso)
+
+
+def append_leg_block(
+    journal_rel_path: str,
+    added_at: str,
+    leg: dict[str, Any],
+    structure_after: dict[str, Any],
+    vault_path: Optional[Path] = None,
+) -> Path:
+    """Records a leg added to an open trade, under an Adjustments heading.
+
+    His own sheet has "Initial Position Legs", then "Trade Adjustments", then
+    "Booked Orders / Exits". This is the middle one. The block sits between
+    the entry and the exit so the note reads in the order the trade happened.
+    """
+    base_vault = _require_reachable_vault(vault_path or _default_vault_base())
+    target_path = base_vault / journal_rel_path
+    if not target_path.exists():
+        raise JournalWriteError(f"Target journal file does not exist: {target_path}")
+    content = target_path.read_text(encoding="utf-8")
+
+    ltp = leg.get("ltp_at_fill")
+    row = (
+        f"| {leg.get('sequence', '—')} | {float(leg.get('strike', 0)):,.0f} | {leg.get('option_type')} | "
+        f"{str(leg.get('direction', '')).upper()} | {leg.get('quantity_lots', 1)} | "
+        f"{str(leg.get('order_type') or '—').lower()} | ₹{float(leg.get('entry_premium', 0.0)):,.2f} | "
+        f"{('₹' + format(float(ltp), ',.2f')) if ltp is not None else '—'} | "
+        f"{_charge_cell(leg.get('entry_charges_inr'))} |"
+    )
+    bes = structure_after.get("breakevens") or []
+    be_text = ", ".join(f"{float(b):,.0f}" for b in bes) if bes else "none"
+    margin = structure_after.get("margin_required_inr")
+    block = f"""### Leg added — {_ist_stamp(added_at)}
+
+| # | Strike | Type | Direction | Lots | Order | Fill | Traded | Charges |
+|:---:|---:|:---:|:---:|:---:|:---:|---:|---:|---:|
+{row}
+
+The trade now holds {structure_after.get('legs_count', '—')} legs. Net debit/credit ₹{float(structure_after.get('net_debit_credit_inr') or 0):,.0f}, max loss ₹{float(structure_after.get('max_loss_inr') or 0):,.0f}, max profit ₹{float(structure_after.get('max_profit_inr') or 0):,.0f}, breakeven(s) {be_text}, broker margin {('₹' + format(float(margin), ',.0f')) if margin is not None else 'unavailable'}.
+
+"""
+    heading = "## Adjustments"
+    exit_idx = content.find("\n## Exit")
+    if exit_idx == -1:
+        content = content.rstrip() + "\n\n---\n\n" + (heading + "\n\n" if heading not in content else "") + block
+    elif heading in content:
+        content = content[:exit_idx] + "\n" + block + content[exit_idx:].lstrip("\n")
+    else:
+        content = content[:exit_idx] + "\n" + heading + "\n\n" + block + "---\n" + content[exit_idx:].lstrip("\n")
+
+    try:
+        target_path.write_text(content, encoding="utf-8")
+    except Exception as e:
+        raise JournalWriteError(f"Failed to append leg block to {target_path}: {e}") from e
+    return target_path
 
 
 def append_exit_block(
@@ -396,7 +510,10 @@ def append_exit_block(
 
     # Risk metrics
     pct_of_risk = (net_pnl_inr / max_loss_inr * 100.0) if max_loss_inr > 0 else 0.0
-    pct_of_margin = (net_pnl_inr / margin_base_inr * 100.0) if margin_base_inr > 0 else 0.0
+    pct_of_margin_text = (
+        f"{net_pnl_inr / margin_base_inr * 100.0:.2f}%" if margin_base_inr and margin_base_inr > 0
+        else "unavailable, no balance was read"
+    )
 
     notes_text = notes.strip() if notes and notes.strip() else "(none)"
 
@@ -418,7 +535,7 @@ def append_exit_block(
 - **Charges, entry and exit, summed from the legs**: ₹{charges_inr:,.2f}
 - **NET realized P&L**: ₹{net_pnl_inr:,.0f}
 - **% of max risk**: {pct_of_risk:.1f}%
-- **% of margin base**: {pct_of_margin:.2f}%
+- **% of margin base**: {pct_of_margin_text}
 
 ### Post-trade reflection (fill in manually)
 

@@ -9,7 +9,6 @@ import { AIChatPanel } from './components/ai-chat.js';
 import { AIFloatingLauncher } from './components/ai-launcher.js';
 import { initHeader, updateHeaderSpot } from './components/header.js';
 import { renderRulePanel } from './components/rule-panel.js';
-import { StrategyBuilder } from './components/strategy-builder.js';
 import { SpotWebSocketClient } from './modules/ws-client.js';
 import { HomePage } from './pages/home.js';
 import { AISettingsDrawer } from './components/ai-settings-drawer.js';

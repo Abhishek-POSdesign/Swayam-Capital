@@ -27,7 +27,20 @@ class LegRequest(BaseModel):
             "every contract-scaled figure came to be 15.4% too large."
         ),
     )
-    order_type: str = Field(default="LIMIT", description="Per-leg order type: LIMIT or MARKET (chosen at the execution ticket; maps to FYERS multi-leg legs in Phase 2)")
+    order_type: str = Field(
+        default="MARKET",
+        description=(
+            "Per-leg order type, MARKET or LIMIT, chosen on the execution ticket. "
+            "MARKET fills at the server's live quote at the moment of sending. "
+            "LIMIT fills at limit_price only if the market is at or through it; "
+            "otherwise nothing fills and the answer says where the market is."
+        ),
+    )
+    limit_price: Optional[float] = Field(
+        default=None,
+        gt=0.0,
+        description="His price for a LIMIT leg. Ignored for MARKET. Falls back to entry_premium when absent.",
+    )
 
     @field_validator("option_type")
     @classmethod
@@ -86,6 +99,18 @@ class ExecuteRequest(StrategyComputeRequest):
     mode: str = Field(default="paper", description="Execution mode: 'paper' or 'real'")
     order_type: str = Field(default="LIMIT", description="Order type: 'LIMIT' or 'MARKET'")
     session_id: Optional[str] = Field(default=None, description="Active AI session ID to link to trade")
+    leg_order: str = Field(
+        default="buys_first",
+        description=(
+            "buys_first: the server re-orders the legs so every buy fills before "
+            "any sell, which earns the hedged margin. as_sent: the legs fill in "
+            "exactly the order given, which is the order he chose on the ticket."
+        ),
+    )
+    execution_mode: str = Field(
+        default="all",
+        description="all: every leg in one send. one_by_one: this request opens the trade with its first leg; later legs are added with POST /api/positions/{id}/legs.",
+    )
     idempotency_key: Optional[str] = Field(
         default=None,
         max_length=100,
@@ -115,11 +140,29 @@ class PreviewLegItem(BaseModel):
     order_type: str = Field(default="LIMIT", description="LIMIT or MARKET")
 
 
+class AddLegRequest(BaseModel):
+    """One leg added to a trade that is already open.
+
+    "Execute one by one" opens the trade with its first leg and adds each later
+    leg here, so the trade keeps one identity while its shape changes. That is
+    the campaign model from docs/PLAN.md 2.11, in his words: legs are added and
+    squared off inside the trade, and it closes when every leg is closed or
+    when he says so.
+    """
+    leg: LegRequest
+    current_spot: float = Field(..., gt=0.0, description="Spot the browser had; the server records its own where it can")
+    idempotency_key: Optional[str] = Field(default=None, max_length=100)
+
+
 class MultiLegPreviewRequest(BaseModel):
     """Request payload to simulate and order legs for margin safety."""
     underlying: str = Field(default="NIFTY", description="Underlying symbol")
     current_spot: float = Field(..., gt=0.0, description="Current spot price")
     legs: list[PreviewLegItem] = Field(..., min_length=1, description="Strategy legs to order")
+    leg_order: str = Field(
+        default="buys_first",
+        description="buys_first re-orders so every buy precedes every sell; as_sent keeps the order given, which is his order on the ticket.",
+    )
 
 
 class OrderedLegStep(BaseModel):
@@ -139,6 +182,10 @@ class OrderedLegStep(BaseModel):
             "margin is not a real number. It used to be a hardcoded constant."
         ),
     )
+    entry_charges_inr: Optional[float] = Field(
+        default=None,
+        description="What buying or selling this leg costs, from the versioned charge schedule. Null if the schedule cannot be read.",
+    )
     action_note: str
 
 
@@ -155,6 +202,9 @@ class MultiLegPreviewResponse(BaseModel):
     buy_count: int
     sell_count: int
     total_debit_credit_inr: float
+    entry_charges_total_inr: Optional[float] = Field(
+        default=None, description="The legs' entry charges summed. Null if any leg could not be charged."
+    )
 
     margin_required_inr: Optional[float] = Field(
         default=None, description="Broker margin for the basket as ordered. Null means unavailable."
@@ -393,6 +443,13 @@ class PositionResponse(BaseModel):
     opened_at: str
     unrealized_pnl_inr: Optional[float] = 0.0
     journal_path: Optional[str] = None
+    # The broker margin this position took when it opened. None for a position
+    # opened before migration 021, and None makes the desk's "margin used"
+    # unavailable rather than a smaller figure that looks whole.
+    margin_required_inr: Optional[float] = None
+    margin_source: Optional[str] = None
+    fill_basis: Optional[str] = None
+    spot_at_entry: Optional[float] = None
 
 
 # ---------------------------------------------------------------------------

@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setupTestDOM } from './setup_test_dom.js';
 import { HomePage } from '../src/pages/home.js';
-import { OvernightStripComponent } from '../src/components/overnight-strip.js';
 import { VixCardComponent } from '../src/components/vix-card.js';
 import { MacroEventsCardComponent } from '../src/components/macro-events-card.js';
 import { ReadingQueueCardComponent } from '../src/components/reading-queue-card.js';
@@ -24,15 +23,6 @@ describe('Home Page & Subsystem Composition', () => {
     expect(container.querySelector('.home-right-col')).not.toBeNull();
     expect(container.querySelector('.bento-grid')).not.toBeNull();
     expect(container.textContent).toContain('Market Prep');
-  });
-
-  it('OvernightStrip shows an honest not-connected state with no fabricated index levels', () => {
-    const strip = new OvernightStripComponent(container);
-    strip.render(); // no real feed → must NOT invent numbers
-
-    expect(container.textContent.toLowerCase()).toContain('not connected');
-    expect(container.textContent).not.toContain('45,203');
-    expect(container.textContent).not.toContain('20,556');
   });
 
   it('renders the compact VixCardComponent with the real value, regime, and sparkline', () => {

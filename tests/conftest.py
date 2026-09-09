@@ -71,6 +71,48 @@ def deterministic_capital(request):
         yield
 
 
+@pytest.fixture(autouse=True)
+def market_at_his_price(request):
+    """Stands in a market that is exactly at the price each leg asks for.
+
+    Since the execution ticket (2026-09-09) every leg is filled against the
+    server's LIVE quote: market at the quote, limit only if the market is at or
+    through it, no quote no fill. Left unmocked, every execute test would call
+    the live chain and refuse after hours.
+
+    The stand-in returns a fill AT the requested premium, both sides, with no
+    spread, so an older test that sends a premium gets that premium back. It
+    is the honest minimum: a fill at the price asked, from a market that was
+    exactly there. Tests of the fill logic itself use services/fills.py
+    directly, or opt out with @pytest.mark.real_fills and patch quote_leg.
+    """
+    if request.node.get_closest_marker("real_fills"):
+        yield
+        return
+
+    from datetime import datetime, timezone
+    from swayam.services.fills import FILL_BASIS, Fill, LegQuote
+
+    def fake_fill(leg, underlying):
+        price = float(leg.limit_price if leg.limit_price is not None else leg.entry_premium)
+        quote = LegQuote(ltp=price, bid=price, ask=price, spot=None, state="live", market_open=True, as_of=None)
+        fill = Fill(
+            price=round(price, 2),
+            basis=FILL_BASIS,
+            order_type=(leg.order_type or "MARKET").upper(),
+            limit_price=round(price, 2) if (leg.order_type or "").upper() == "LIMIT" else None,
+            ltp_at_fill=price,
+            bid_at_fill=price,
+            ask_at_fill=price,
+            filled_at=datetime.now(timezone.utc).isoformat(),
+            how="test market, exactly at the price asked",
+        )
+        return fill, quote
+
+    with patch("swayam.api.routes.execution._fill_for", side_effect=fake_fill):
+        yield
+
+
 # ---------------------------------------------------------------------------
 # The live-database write guard.
 #
