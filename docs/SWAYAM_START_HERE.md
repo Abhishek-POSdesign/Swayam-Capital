@@ -70,7 +70,21 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: HE TRADED. 2026-09-09, the live market test.
+### Latest first: THE HANDOVER POINT, 2026-09-09 evening
+
+**Everything below is merged and deployed. The next session builds section 2.12
+of `docs/PLAN.md` and nothing else until he says otherwise.**
+
+| | |
+|---|---|
+| **The next job** | `docs/PLAN.md` §2.12, THE TRADING DESK. Execution ticket, then position management on the desk, then exit. His decisions are recorded verbatim. **Do not relitigate them and do not re-plan** |
+| **His verdict on what exists** | "immature execution, immature exit, immature monitoring... Taking a position is more immature than buying a soda bottle" |
+| **The Drive bridge** | `docs/PLAN.md` §2.13. The Drive API is ENABLED and the client libraries are installed; the only blocker is the OAuth consent screen, which sits with Google and cannot be dated. **He chose a bridge that does not wait for it**: a small mirror table so the live site can read his Method files and his daily log |
+| **The recorder, measured** | Its first file holds 10,332 rows. Close, volume and open interest are real. **Twelve columns are entirely zero**, including the underlying spot and every Greek. §2.10 |
+| Needs him to run the drainer | Two entry notes pending. The drainer now completes a note whose trade has already closed |
+| Tests | Python **435 pass, 1 fail**; JavaScript **220 pass, 0 fail**. The one failure is the long-standing `test_notifications` dispatch case |
+
+### Earlier the same day: HE TRADED. The live market test.
 
 **The gate is passed. He took three paper trades, closed all three, and the
 terminal recorded them honestly. What it exposed is now the whole next job.**

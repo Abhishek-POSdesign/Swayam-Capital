@@ -1,3 +1,13 @@
+> # WHAT IT ACTUALLY WRITES, MEASURED 2026-09-09
+>
+> Its first real file holds **10,332 rows** and **twelve columns are entirely
+> zero, every row**: open, high, low, settle_price, turnover_inr, change_in_oi,
+> underlying_spot, iv, delta, gamma, theta and vega.
+>
+> **Real: close, volume and open_interest. Nothing else.** Everything below
+> about Greeks and open-interest change describes an intention, not behaviour.
+> See docs/PLAN.md section 2.10.
+
 # 📼 Swayam Live Options Recorder Architecture
 
 ## 1. Purpose & Motivation

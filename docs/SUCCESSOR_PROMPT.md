@@ -1,8 +1,8 @@
 # THE PROMPT TO PASTE INTO A NEW CHAT
 
-> Written 2026-09-08 late evening, by the session that finished rounds 2 and 3,
-> for whoever picks this up next. Written at his explicit request, so he never
-> has to spend an hour explaining the same things again.
+> Rewritten 2026-09-09 evening, by the session that watched him take his first
+> three real paper trades. Written at his explicit request, so he never has to
+> spend an hour explaining the same things again.
 >
 > **Copy everything inside the fence and paste it as the first message.**
 > Nothing else needs to be said.
@@ -44,9 +44,8 @@ any manual step flagged in bold up front. Never work on main. Feature branch,
 pull request, I click Merge, because the pull request is my only revert button.
 Merge one pull request, wait for the green tick, then merge the next.
 
-Only one session may write to the working folder at a time. I sometimes run a
-second session for UI work. If both of you need to write at once, one of you
-takes a separate clone. Ask me which.
+Only one session may write to the working folder at a time. If two are needed at
+once, one takes a separate clone. Ask me which.
 
 WHERE EVERYTHING LIVES. Do not ask me any of this.
 - Code: D:\Claude\POS\Trading-Platform\Swayam Capital
@@ -63,62 +62,83 @@ WHERE EVERYTHING LIVES. Do not ask me any of this.
 - Cloud: GCP swayam-capital. Live site is Cloud Run swayam-dashboard in
   asia-southeast1, mapped to swayam.abhisheksikka.com, behind Google sign-in.
 - There is NO staging database. Everything runs against live. The test suite is
-  caged by tests/db_guard.py. Do not weaken or remove that guard.
+  caged by tests/db_guard.py for the database and by conftest.cage_the_vault for
+  my vault. Do not weaken or remove either guard.
 
 READ THESE, IN THIS ORDER, ALL THE WAY THROUGH
-Do not skim them and do not stop after the first. Between them they answer every
-question you are about to ask me, and re-asking me is the thing I am most tired
-of.
 1. docs/SWAYAM_START_HERE.md   — where everything is, what is verified true, and
                                  what is not done. Section 3 is the live status.
-2. docs/PLAN.md                — THE ONE PLAN. Section 0 is my hours. Section 1
-                                 is the live market test, which is the gate, and
-                                 it is already sized for my 90 minutes.
-3. CLAUDE.md                   — how to work in this repository.
-Only if you need them: docs/CALENDAR_BUILD_BRIEF.md for the calendar work when I
-say so, docs/UI_BUILD_BRIEF_ROUND_3.md for what was just built, and
-02 - Projects/Trading/MY TRADING RULES - ONE PAGE.md in my vault, which overrides
-every document including this prompt.
+2. docs/PLAN.md                — THE ONE PLAN. Section 0 is my hours. Section
+                                 2.12 is your job. Section 2.12.0 is the audit
+                                 of my first three real trades.
+3. CLAUDE.md                   — how to work here, and what I actually trade.
+4. G:\My Drive\Second Brain\00 - Developer Logs\SESSION_LOG_2026-09-09.md
+                               — what the last two sessions found and fixed, and
+                                 why the code looks the way it does.
 
 DO NOT re-audit the codebase, do not write a new plan document, and do not
 propose an architecture. All of that is done and written down. Update
 docs/PLAN.md as work lands; every superseded plan was deleted for exactly this
 reason.
 
-WHERE THINGS STAND
-Everything is merged and deployed. Check the live revision and its image digest
-rather than trusting any number written in a document. The repository has
-exactly one branch, main, and no open pull requests.
+WHERE THINGS STAND, 9 September 2026
+I have taken three real paper trades. The live market test is PASSED and is no
+longer the gate. Everything is merged and deployed; the repository has one
+branch, main, and no open pull requests.
 
-On the night of 8/9 September four separate faults were found that would have
-stopped or corrupted my first paper trade, including one that meant I could not
-close a trade at all. All are fixed and migration 020 is applied. The full story
-is in my vault at 00 - Developer Logs/SESSION_LOG_2026-09-09.md. Read it.
+All three of my trades made a GROSS PROFIT and all three LOST MONEY. Gross +195,
+charges 585, net -390. Charges were 300% of gross. That is my last financial
+year in miniature and it is the most useful thing this terminal has ever shown
+me. Do not let anyone weaken the charge engine.
 
-My trade journal folder in the vault was polluted with 26 fabricated trades
-written by test runs. They are deleted and the vault is now caged. Do not
-un-cage it.
+What those trades exposed is now the whole next job. My words: immature
+execution, immature exit, immature monitoring. Taking a position is more immature
+than buying a soda bottle.
 
-WHAT I WANT NEXT
-1. THE LIVE MARKET TEST. This is the gate to paper trading and it has never been
-   run. docs/PLAN.md section 1 has the script: four things I do at the desk and
-   six you read from the logs afterwards. Ask me to run my four when I am at the
-   screen, around 2 pm. Nothing has been seen with a live market since rounds 2
-   and 3, and nothing at all has been seen with a real open position, because I
-   have never had one.
-2. Then the trade lifecycle. docs/PLAN.md section 2.11, in my own words. One
-   trade has a trade number; I add, remove and square off legs inside it; it
-   closes when every leg is closed or when I say so. The terminal cannot do any
-   of that today and I cannot trade options without managing them.
-3. Then charges at execution, backups, and a kill switch. Charges matter more
-   than they look: last year ₹92,408 of them turned a gross profit into a net
-   loss.
-4. Calendars are briefed and ready but they are my decision, and it depends on
-   what volatility is doing and whether an event is coming. Do not push me.
-5. The AI chapter comes after the plumbing. I want it in the plan, not started.
+WHAT I WANT YOU TO BUILD. docs/PLAN.md section 2.12. In this order.
+1. The execution ticket. I press Execute and I see what is about to be sent
+   before it goes: every leg, market or limit with a switch, an editable price
+   with a proper reset button, editable lots, the margin needed, my four rules,
+   control over which leg goes first, and a choice of sending all legs together
+   or one at a time. No bid-ask ladder. No market depth.
+2. Realistic fills. I buy at the ask and sell at the bid. My results will look
+   worse and be truer. My two earlier trades were filled at the traded price and
+   must be marked as not comparable.
+3. The position area on the Strategy Desk, full width, BELOW the payoff graph.
+   Open now, closed today, earlier. Big bold numbers, colour from the money.
+   Exit one leg, reverse one leg, add a leg, exit everything. A real dustbin and
+   a real reset button. I must feel good while managing it.
+4. Home shows, Home does not manage. Move the open-positions strip below my
+   daily check-in and above Your money, make it refresh without a reload, and
+   take the Exit button off it.
+5. The option chain already adds legs and has never been used with a live
+   market. Test it and fix what it gets wrong rather than rebuilding it.
 
-My deadline is Friday 11 September for everything to be right. I am not fixing
-the date I start paper trading; it starts when the live test passes.
+MY DECISIONS ARE RECORDED IN 2.12.1 WORD FOR WORD. Do not relitigate them.
+
+THE OPEN DECISION I HAVE MADE, section 2.13. The live site cannot see my vault,
+so my daily check-in returns an error there and the AI reads a frozen copy of my
+Method files. The Drive API is enabled and the libraries are installed; the only
+blocker is Google's consent screen and I cannot date it. Build the bridge that
+does not wait for Google: mirror the few files the app needs into the database.
+
+AFTER THAT, in order: the recorder's twelve zero columns (2.10), scheduled
+backups (2.6), the kill switch (2.5), then calendars (section 3) when I say so,
+then the AI chapter.
+
+THINGS THAT WILL BITE YOU, ALL LEARNED THE HARD WAY
+- A path nobody has ever run has never been tested, whatever the tests say.
+  Three audits and a green suite all missed that closing a trade was impossible,
+  because nobody had ever closed one.
+- Check that the columns you write actually exist. tests/test_written_columns_exist.py
+  does this; keep it passing.
+- A note is not a trade, at both ends. A vault write that can fail goes to the
+  outbox and my action still succeeds.
+- Fix a rule where the rule lives, not where the symptom showed.
+- node --check is not verification. Load the real page in a real browser, in
+  both themes.
+- git fetch and check whether the branch's pull request is already merged before
+  pushing more work. I merge mid-session to review.
 
 Ask me when you are unsure. I have said so explicitly and mid-build is fine.
 ```
@@ -129,6 +149,42 @@ Ask me when you are unsure. I have said so explicitly and mid-build is fine.
 
 Things learned by talking to him that are not obvious from the code, and that he
 should not have to say again.
+
+**On what he saw the day he first traded, 2026-09-09.** He took three paper
+trades and every one exposed something. Read `docs/PLAN.md` §2.12.0 before
+touching the desk, because it lists what those trades did on the backend that he
+could not see. The short version: all three made a gross profit and all three
+lost money to charges, his daily check-in returns 500 on the live site, rule 4
+can never be tested because margin used is never stored, and the spot at entry
+is never saved.
+
+**On how he judges a screen.** He does not say "there is a bug". He says
+"immature", "cheap", "I must feel good while managing it". Those are real
+requirements to him, not decoration. A cross where a dustbin belongs and a small
+round icon where a button belongs are both things he has named. Build controls
+that look like controls.
+
+**On what stopped him trading, twice in one afternoon.** The execution key was
+minted once per browser and never released, so his first trade worked and every
+later one was refused. He could not tell that from the screen and had no way out.
+When something refuses him, the message must say what he can DO, not only what
+went wrong.
+
+**On the charge engine, and why it must not be weakened.** It is the only
+correct money maths in the repository: per leg, per side, versioned by date, in
+exact decimals. It showed him in one afternoon what took a year and ₹86,299 to
+learn last time. If a future change makes charges an estimate again, it has
+undone the most valuable thing the terminal does.
+
+**On the vault, twice bitten.** Tests wrote 26 fabricated trades into his real
+journal folder on 2026-09-08. The live site wrote a real trade note into a
+container folder and reported success on 2026-09-09. Both are now caged and both
+cages have tests. Never remove either, and never let a vault write "succeed"
+into somewhere that is not his vault.
+
+**On asking him.** He answers fast and precisely when the question is real and
+the options are concrete. He gets impatient with plans, explanations and
+re-litigation. When he says "fix it", he means stop writing and start typing.
 
 **On his hours.** He has corrected the morning assumption at least twice. Two
 separate plans were written for a 09:15 start before it landed. The recorder is
