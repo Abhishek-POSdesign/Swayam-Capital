@@ -61,9 +61,56 @@ def _default_vault_base() -> Path:
     return settings.vault_path
 
 
+def _greek(greeks: dict, key: str, spec: str, *, prefix: str = "", suffix: str = "") -> str:
+    """A Greek, or an em dash. Never a zero he never measured.
+
+    A missing Greek used to render as 0.0000, which on a real trade note reads
+    as a measured neutral position. A note rebuilt from the database has no
+    Greeks stored, and that must say so.
+    """
+    value = greeks.get(key)
+    if value is None:
+        return "—"
+    return f"{prefix}{float(value):{spec}}{suffix}"
+
+
+def _require_reachable_vault(base: Path) -> Path:
+    """His vault, or a refusal. NEVER a folder invented inside a container.
+
+    WHAT WENT WRONG, 2026-09-09, on his first ever paper trade.
+    ---------------------------------------------------------
+    `VAULT_PATH` is unset on Cloud Run, so `config.py` falls back to the Windows
+    path for his G: drive. On Linux that is not a drive at all: it is
+    a RELATIVE folder whose name happens to contain a colon and backslashes.
+    `get_journal_dir` then called `mkdir(parents=True, exist_ok=True)`, which
+    cheerfully created it inside the container. The write succeeded, the row was
+    marked `journal_status = 'written'`, and the note died with the container.
+
+    His trade note for 2026-09-09 was reported as written and was never in his
+    vault. That is a false claim on his record, which is the one thing this
+    project exists to prevent.
+
+    The outbox already exists for exactly this case: a note that cannot be
+    written is queued and the drainer completes it from his PC, where the vault
+    is real. It was never reached because nothing ever failed.
+
+    So the base must ALREADY EXIST as a directory. We create the journal folder
+    inside a real vault; we never create the vault.
+    """
+    if not base.is_dir():
+        raise JournalWriteError(
+            f"The vault is not reachable at {base}, so this note cannot be "
+            "written. On Cloud Run that is expected: the container cannot see "
+            "his G: drive. Queue the note in swayam_journal_outbox and let "
+            "scripts/drain_journal_outbox.py complete it from his PC. It must "
+            "NEVER be written into the container, which is what used to happen."
+        )
+    return base
+
+
 def get_journal_dir(vault_path: Optional[Path] = None) -> Path:
     """Returns the path to the 04 - Journal directory in the vault, ensuring it exists."""
-    base = vault_path or _default_vault_base()
+    base = _require_reachable_vault(vault_path or _default_vault_base())
     journal_dir = base / "02 - Projects" / "Trading" / "04 - Journal"
     journal_dir.mkdir(parents=True, exist_ok=True)
     return journal_dir
@@ -92,8 +139,18 @@ def write_new_trade_journal(
     current_spot: float,
     margin_base_inr: float,
     vault_path: Optional[Path] = None,
+    filename_override: Optional[str] = None,
+    notice: Optional[str] = None,
 ) -> str:
     """Writes a new trade journal markdown note to Obsidian Second Brain.
+
+    `filename_override` writes to an exact filename instead of the next number
+    in the day's sequence. It exists so a note that was recorded in the database
+    but never reached the vault can be rebuilt under the name the database
+    already points at, rather than under a new one that nothing references.
+
+    `notice` puts a line at the top of the note. Used to say, on the face of the
+    note, that it was rebuilt and what could not be recovered.
 
     Args:
         position_id: Unique UUID or string identifying the position.
@@ -113,9 +170,14 @@ def write_new_trade_journal(
     journal_dir = get_journal_dir(vault_path)
     now = datetime.now()
     date_str = now.strftime("%Y-%m-%d")
-    seq_str = determine_next_trade_sequence(journal_dir, date_str)
-
-    filename = f"{date_str}-trade{seq_str}.md"
+    if filename_override:
+        filename = filename_override
+        stem = filename_override.rsplit(".", 1)[0]
+        seq_str = stem.rsplit("trade", 1)[-1] if "trade" in stem else "01"
+        date_str = stem.split("-trade")[0] if "-trade" in stem else date_str
+    else:
+        seq_str = determine_next_trade_sequence(journal_dir, date_str)
+        filename = f"{date_str}-trade{seq_str}.md"
     target_path = journal_dir / filename
 
     if target_path.exists():
@@ -126,6 +188,7 @@ def write_new_trade_journal(
     legs = spread_data.get("legs", [])
     payoff = spread_data.get("payoff_curve", {})
     greeks = spread_data.get("greeks", {})
+    notice_block = f"\n> **{notice}**\n" if notice else ""
 
     max_loss_inr = float(payoff.get("max_loss_inr", 0.0))
     max_profit_inr = float(payoff.get("max_profit_inr", 0.0))
@@ -174,6 +237,7 @@ mode: paper
 ---
 
 # {date_str} — Trade #{seq_str} — {strategy_name}
+{notice_block}
 
 ## Entry (paper trade)
 
@@ -198,10 +262,10 @@ mode: paper
 
 ### Greeks at entry
 
-- Net Delta: {float(greeks.get('net_delta', 0.0)):.4f}
-- Net Theta: ₹{float(greeks.get('net_theta_per_day', 0.0)):.0f}/day
-- Net Vega: ₹{float(greeks.get('net_vega', 0.0)):.0f} per 1% IV
-- Net Gamma: {float(greeks.get('net_gamma', 0.0)):.6f}
+- Net Delta: {_greek(greeks, 'net_delta', '.4f')}
+- Net Theta: {_greek(greeks, 'net_theta_per_day', '.0f', prefix='₹', suffix='/day')}
+- Net Vega: {_greek(greeks, 'net_vega', '.0f', prefix='₹', suffix=' per 1% IV')}
+- Net Gamma: {_greek(greeks, 'net_gamma', '.6f')}
 
 ### Method rule validation
 
@@ -278,7 +342,7 @@ def append_exit_block(
     Raises:
         JournalWriteError: If the file does not exist or write fails.
     """
-    base_vault = vault_path or _default_vault_base()
+    base_vault = _require_reachable_vault(vault_path or _default_vault_base())
     target_path = base_vault / journal_rel_path
 
     if not target_path.exists():
@@ -400,7 +464,7 @@ def append_or_update_lesson_block(
     Returns:
         Path to updated file or None if note not found.
     """
-    base = vault_path or _default_vault_base()
+    base = _require_reachable_vault(vault_path or _default_vault_base())
     target_path = base / journal_rel_path
     if not target_path.exists():
         return None

@@ -79,3 +79,51 @@ def test_the_cage_refuses_rather_than_falling_back(request):
     message = str(excinfo.value)
     assert "BLOCKED" in message
     assert str(settings.vault_path) in message
+
+
+def test_an_unreachable_vault_is_refused_not_invented(tmp_path):
+    """His first ever paper trade's note was reported written and never existed.
+
+    VAULT_PATH is unset on Cloud Run, so config falls back to the Windows path
+    for his G: drive. On Linux that is a RELATIVE folder whose name merely
+    contains a colon and backslashes. `mkdir(parents=True)` created it inside
+    the container, the write succeeded, the row was marked
+    `journal_status = 'written'`, and the note died with the container.
+
+    The outbox exists for exactly this case. It was never reached because
+    nothing ever failed.
+    """
+    missing = tmp_path / "not-a-vault"
+    assert not missing.exists()
+
+    with pytest.raises(JournalWriteError) as excinfo:
+        write_new_trade_journal(
+            position_id="unreachable-vault",
+            spread_data=_spread(),
+            validation_data=_validation(),
+            current_spot=23557.05,
+            margin_base_inr=970538.0,
+            vault_path=missing,
+        )
+
+    assert "not reachable" in str(excinfo.value)
+    assert "outbox" in str(excinfo.value)
+    assert not missing.exists(), "it invented a vault instead of refusing"
+
+
+def test_a_real_vault_still_gets_its_journal_folder_created(tmp_path):
+    """We create the journal folder inside a real vault. We never create the vault."""
+    vault = tmp_path / "vault"
+    vault.mkdir()
+
+    rel = write_new_trade_journal(
+        position_id="real-vault",
+        spread_data=_spread(),
+        validation_data=_validation(),
+        current_spot=23557.05,
+        margin_base_inr=970538.0,
+        vault_path=vault,
+    )
+
+    assert (vault / rel).exists()
+    assert (vault / "02 - Projects" / "Trading" / "04 - Journal").is_dir()
