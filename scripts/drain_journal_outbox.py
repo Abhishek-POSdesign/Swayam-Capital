@@ -207,6 +207,12 @@ def cmd_drain(dry_run: bool) -> int:
             _mark_position(pid, "written")
             print(f"  wrote        {rel_path}")
             written += 1
+
+            # If the trade is ALREADY CLOSED, finish the note now rather than
+            # leaving it saying "Exit: to be filled at close" for ever. Two of
+            # his trades on 2026-09-09 were opened on the live site, queued
+            # here, and closed before this ever ran.
+            _append_exit_if_already_closed(pid, rel_path)
         except Exception as exc:
             _mark_attempt(row, str(exc))
             print(f"  FAILED       {label}: {exc}")
@@ -244,6 +250,60 @@ def _mark_position(position_id: str, status: str) -> None:
     db.client.table("swayam_positions").update({"journal_status": status}).eq(
         "id", position_id
     ).execute()
+
+
+def _append_exit_if_already_closed(position_id: str, rel_path: str) -> None:
+    """Completes a note for a trade that closed before its entry note landed.
+
+    Everything needed is already recorded: the result and the per-leg breakdown
+    live in swayam_trade_history, the risk lives on the position. Nothing here
+    is invented; a figure that cannot be read stops the append rather than
+    guessing at it.
+    """
+    try:
+        pos_rows = (
+            db.client.table("swayam_positions").select("*").eq("id", position_id).execute().data
+            or []
+        )
+        if not pos_rows or pos_rows[0].get("status") != "closed":
+            return
+        pos = pos_rows[0]
+
+        hist_rows = (
+            db.client.table("swayam_trade_history")
+            .select("*")
+            .eq("position_id", position_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not hist_rows:
+            print(f"  NO EXIT      {position_id[:8]}: closed, but no result row to append")
+            return
+        hist = hist_rows[0]
+
+        from swayam.services import capital as capital_service
+
+        margin_base = capital_service.get_capital().risk_capital_inr
+
+        gross = float(hist.get("realized_pnl_inr") or 0.0) + float(hist.get("total_charges_inr") or 0.0)
+        append_exit_block(
+            journal_rel_path=rel_path,
+            closed_at=datetime.fromisoformat(str(hist["closed_at"]).replace("Z", "+00:00")),
+            close_reason=hist.get("close_reason") or "manual",
+            notes=pos.get("exit_rationale"),
+            exit_legs=hist.get("exit_legs") or [],
+            gross_pnl_inr=gross,
+            charges_inr=float(hist.get("total_charges_inr") or 0.0),
+            net_pnl_inr=float(hist.get("realized_pnl_inr") or 0.0),
+            max_loss_inr=float(pos.get("max_loss_inr") or 0.0),
+            margin_base_inr=margin_base,
+            holding_days=int(hist.get("holding_days") or 0),
+        )
+        print(f"  completed    {rel_path} with its exit")
+    except Exception as exc:  # noqa: BLE001
+        print(f"  NO EXIT      {position_id[:8]}: could not append the exit: {exc}")
 
 
 def main() -> int:
