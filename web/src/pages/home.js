@@ -163,7 +163,10 @@ export class HomePage {
   }
 
   async refreshLive() {
-    await Promise.all([this.loadSnapshot(), this.loadDaily()]);
+    // Positions used to be read once, at page load, so a trade taken on the
+    // desk did not appear here until a full reload. He reported exactly that
+    // on 2026-09-09. They now ride the same timer as the snapshot.
+    await Promise.all([this.loadSnapshot(), this.loadDaily(), this.loadPositions()]);
     this.renderTicker();
   }
 
@@ -234,7 +237,6 @@ export class HomePage {
           </div>
 
           <div id="home-data-health"></div>
-          <div id="home-positions"></div>
           <div id="home-ticker"></div>
           <div id="home-ritual"></div>
           <div id="home-pwa-prompt-container"></div>
@@ -245,6 +247,11 @@ export class HomePage {
             <main class="home-right-col">
               <h1 class="sr-only">Market Prep</h1>
               <div class="bento-grid">
+                <!-- His decision, 2026-09-09, asked for twice: the open-positions
+                     line sits below the black daily check-in strip and above
+                     "Your money", in the main column, not up by the header.
+                     Home shows the position; the desk manages it. -->
+                <div class="span-12" id="home-positions"></div>
                 <div class="span-12" id="home-money"></div>
                 <div class="span-6" id="home-record"></div>
                 <div class="span-6" id="home-events"></div>
@@ -867,8 +874,6 @@ export class HomePage {
           ? '<span class="na">unavailable</span>'
           : `<b class="${pnl < 0 ? 'dn' : 'up'}">${escapeHtml(inr(pnl))}</b>`}</td>
         <td class="n">${pct === null ? DASH : escapeHtml(`${pct.toFixed(1)}%`)}</td>
-        <td class="n"><button type="button" class="posexit" data-exit="${escapeHtml(String(p.id))}"
-          title="Square off every leg at the traded price">Exit</button></td>
       </tr>`;
     }).join('');
 
@@ -878,12 +883,12 @@ export class HomePage {
 
     const note = this.livePositionsError
       ? `<div class="why">Profit and loss could not be valued against the live chain. ${escapeHtml(this.livePositionsError)}</div>`
-      : `<div class="why">Profit and loss is valued leg by leg against the FYERS chain, read ${escapeHtml(this._readStamp('livePositions'))}. The last column is that figure against the position's own maximum loss.</div>`;
+      : `<div class="why">Profit and loss is valued leg by leg against the FYERS chain, read ${escapeHtml(this._readStamp('livePositions'))}. The last column is that figure against the position's own maximum loss. Home shows the position; it is managed on the Strategy Desk.</div>`;
 
     return `<div class="tw"><table class="g"><thead><tr>
         <th>Strategy</th><th style="text-align:right">Opened</th><th style="text-align:right">To expiry</th>
         <th style="text-align:right">Max loss</th><th style="text-align:right">Unrealised</th>
-        <th style="text-align:right">Of risk</th><th></th></tr></thead>
+        <th style="text-align:right">Of risk</th></tr></thead>
       <tbody>${rows}</tbody></table></div>${notice}${note}`;
   }
 
@@ -907,53 +912,14 @@ export class HomePage {
 
     const btn = host.querySelector('#home-positions-toggle');
     if (btn) btn.addEventListener('click', () => this.togglePositions());
-    this.bindExitButtons(host);
   }
 
   /**
-   * Squaring off from the page he actually looks at.
-   *
-   * There was NO way to close a position anywhere in the app until 2026-09-09.
-   * `ActiveTradesComponent` carries an exit flow and is imported by main.js,
-   * but it is never instantiated and no page has a mount point for it. He
-   * opened his first ever position and had to close it from a terminal.
-   *
-   * It asks first, because closing is not undoable, and it says what happened
-   * in money rather than just succeeding quietly.
+   * The Exit button that lived here from 2026-09-09 afternoon to 2026-09-09
+   * evening moved to the Strategy Desk. His words: "Home shows, Home does not
+   * manage." Squaring off happens where the payoff, the rules and the exit
+   * ticket are, not from a line on Home.
    */
-  bindExitButtons(host) {
-    host.querySelectorAll('.posexit').forEach((btn) => {
-      btn.addEventListener('click', async (ev) => {
-        ev.stopPropagation();
-        const id = btn.getAttribute('data-exit');
-        if (!id) return;
-
-        const row = this.positions.find((p) => String(p.id) === id) || {};
-        const name = row.strategy_name || 'this position';
-        if (!window.confirm(`Square off ${name}? Every leg is closed at the traded price. This cannot be undone.`)) return;
-
-        btn.disabled = true;
-        const original = btn.textContent;
-        btn.textContent = 'Closing…';
-        try {
-          const res = await api.closePosition(id, {
-            close_reason: 'manual',
-            notes: 'Squared off from Home.',
-          });
-          const net = typeof res.realized_pnl_inr === 'number' ? inr(res.realized_pnl_inr) : DASH;
-          const charges = typeof res.total_charges_inr === 'number' ? inr(res.total_charges_inr) : DASH;
-          this.positionsNotice = `Closed. Net ${net} after ${charges} of charges.`;
-          await this.loadPositions();
-        } catch (err) {
-          btn.disabled = false;
-          btn.textContent = original;
-          this.positionsNotice = `Not closed: ${(err && err.message) || err}`;
-          this.renderPositions();
-        }
-      });
-    });
-  }
-
   togglePositions() {
     this.positionsExpanded = !this.positionsExpanded;
     writePositionsExpanded(this.positionsExpanded);

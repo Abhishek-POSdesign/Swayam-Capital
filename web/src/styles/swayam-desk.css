@@ -712,8 +712,10 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   font-style: normal; color: var(--fg-3); font-family: var(--m); font-size: 10.5px;
   margin-left: 6px;
 }
-/* The strip is chrome at the top of the page, not a card to lift off it. */
+/* The strip sits in the main column between the daily check-in and Your money,
+   and reads as one line rather than a card to lift off the page. */
 .sw-desk .posstrip:hover { transform: none; box-shadow: var(--edge), var(--shadow); }
+.sw-desk .bento-grid .posstrip { margin-bottom: 0; }
 @media (max-width: 720px) {
   .sw-desk .posstrip .posline { flex-wrap: wrap; }
   .sw-desk .posstrip .posline > .r { margin-left: 0; padding-left: 22px; width: 100%; }

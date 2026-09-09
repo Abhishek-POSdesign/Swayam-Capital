@@ -450,3 +450,47 @@ describe('So Far Today inside the AI panel', () => {
     expect(html).toContain('Go to Strategy Builder');
   });
 });
+
+describe('Home shows, Home does not manage', () => {
+  let container;
+  beforeEach(() => {
+    setupTestDOM();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  it('puts the open-positions line below the daily check-in strip and above Your money', () => {
+    const page = new HomePage(container);
+    page.render();
+    const html = container.innerHTML;
+    expect(html.indexOf('id="home-ritual"')).toBeLessThan(html.indexOf('id="home-positions"'));
+    expect(html.indexOf('id="home-positions"')).toBeLessThan(html.indexOf('id="home-money"'));
+    // In the main column, not up by the header.
+    expect(html.indexOf('home-nifty-sidebar')).toBeLessThan(html.indexOf('id="home-positions"'));
+  });
+
+  it('carries no Exit button; squaring off belongs to the desk', () => {
+    const page = new HomePage(container);
+    page.render();
+    page.positions = [{ id: 'p1', strategy_name: 'Iron Condor', legs: [1, 2, 3, 4], max_loss_inr: 8953.75, opened_at: '2026-09-09T08:37:12+00:00' }];
+    page.livePositions = [{ position_id: 'p1', unrealized_pnl_inr: 510.25, unrealized_pnl_pct_of_risk: 5.7, days_remaining_to_expiry: 20 }];
+    page.positionsExpanded = true;
+    page.renderPositions();
+    const strip = container.querySelector('#home-positions').innerHTML;
+    expect(strip).toContain('Iron Condor');
+    expect(strip).not.toContain('posexit');
+    expect(strip).not.toContain('>Exit<');
+    expect(strip).toContain('managed on the Strategy Desk');
+  });
+
+  it('re-reads positions on the live timer, so a trade appears without a reload', async () => {
+    const page = new HomePage(container);
+    page.render();
+    const calls = { positions: 0 };
+    page.loadSnapshot = async () => {};
+    page.loadDaily = async () => {};
+    page.loadPositions = async () => { calls.positions += 1; };
+    await page.refreshLive();
+    expect(calls.positions).toBe(1);
+  });
+});
