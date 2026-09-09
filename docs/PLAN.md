@@ -13,6 +13,9 @@
 
 ## HOW TO USE THIS FILE
 
+**`docs/ROADMAP.md` sits above this file.** It is the direction, in his words;
+this is the work. Every item here belongs to one of its four horizons.
+
 One list, in priority order. When something is finished, move it to section 4
 with the date and the proof. When something new is decided, add it here rather
 than starting a new document. That is the whole system.

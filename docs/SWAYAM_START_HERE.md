@@ -10,6 +10,11 @@
 
 ## 0. THE PROMPT HE PASTES INTO A NEW CHAT
 
+**Before this file: `docs/ROADMAP.md`. Plan starts there.** His end goal and
+the four horizons, with gates that are proven on the running system and no
+dates. Every piece of work below belongs to one horizon; name it before
+building. Editing the roadmap needs his explicit approval.
+
 **It lives in `docs/SUCCESSOR_PROMPT.md`**, in full, ready to copy. It is kept
 there rather than here so it can be maintained properly and so he never has to
 reconstruct it from memory.

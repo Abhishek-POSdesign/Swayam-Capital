@@ -1,6 +1,8 @@
 # Swayam Capital — orientation for any agent
 
-**Read `docs/SWAYAM_START_HERE.md` before anything else.** It has every
+**Read `docs/ROADMAP.md` first. Plan starts there.** It is the direction, in
+his words, four horizons with gates and no dates, and it may only be edited
+with his explicit approval. **Then `docs/SWAYAM_START_HERE.md`.** It has every
 location, what is verified true right now, and what is not done. Then read
 `docs/PLAN.md`, the only plan file. There is no third document to hunt for.
 
