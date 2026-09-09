@@ -81,10 +81,21 @@ propose an architecture. All of that is done and written down. Update
 docs/PLAN.md as work lands; every superseded plan was deleted for exactly this
 reason.
 
-WHERE THINGS STAND, 9 September 2026
+WHERE THINGS STAND, 9 September 2026, night
 I have taken three real paper trades. The live market test is PASSED and is no
 longer the gate. Everything is merged and deployed; the repository has one
-branch, main, and no open pull requests.
+branch, main, and no open pull requests. On the evening of 9 September the
+execution ticket (PR #49), a retry fix (#50), the Home strip move (#51) and
+realistic fills at the bid and ask (#52) were built, merged and deployed. The
+first send through the ticket with a live market has NOT happened yet; it is
+scheduled for my window on 10 September, docs/PLAN.md 2.12.4. Read the vault
+session log 00 - Developer Logs/SESSION_LOG_2026-09-09_evening.md too.
+
+REAL-MONEY ORDERS. I asked, it was researched, the answer is in docs/PLAN.md
+2.14. For now orders go through the FYERS terminal and everything else lives
+here. The next thing after the position area is the READ-ONLY bridge that
+mirrors my real positions and fills from FYERS into this terminal. Sending
+real orders from this app is a later, separate plan. Do not start it.
 
 All three of my trades made a GROSS PROFIT and all three LOST MONEY. Gross +195,
 charges 585, net -390. Charges were 300% of gross. That is my last financial
@@ -130,9 +141,9 @@ Method files. The Drive API is enabled and the libraries are installed; the only
 blocker is Google's consent screen and I cannot date it. Build the bridge that
 does not wait for Google: mirror the few files the app needs into the database.
 
-AFTER THAT, in order: the recorder's twelve zero columns (2.10), scheduled
-backups (2.6), the kill switch (2.5), then calendars (section 3) when I say so,
-then the AI chapter.
+AFTER THAT, in order: the read-only broker bridge (2.14), the recorder's
+twelve zero columns (2.10), scheduled backups (2.6), the kill switch (2.5),
+then calendars (section 3) when I say so, then the AI chapter.
 
 THINGS THAT WILL BITE YOU, ALL LEARNED THE HARD WAY
 - A path nobody has ever run has never been tested, whatever the tests say.
