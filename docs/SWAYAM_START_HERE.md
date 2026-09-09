@@ -70,7 +70,18 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: PR 2, REALISTIC FILLS, 2026-09-09 night
+### Latest first: THE HANDOVER, 2026-09-09 night, before the first live send
+
+| | |
+|---|---|
+| **All four of tonight's PRs are merged and deployed** | #49 the ticket, #50 the retry loophole, #51 Home, #52 realistic fills. Live site built from `ae692a4`. The marking script was run: his three trades say traded_price |
+| **Tomorrow's test** | `docs/PLAN.md` §2.12.4, in his window, cheapest proof first. Nothing has ever been sent through the ticket with a live book |
+| **Real-money orders from this terminal** | Researched and answered in `docs/PLAN.md` §2.14. Orders stay with the broker for now; the read-only bridge that mirrors his real book into this terminal is the next thing after PR 3. Sending from this app is a later, separate plan from his PC on a static IP |
+| **The next build** | PR 3, the position area with the exit ticket, market or limit per leg. His journey prototype shows it |
+| What the vault session log holds | `00 - Developer Logs/SESSION_LOG_2026-09-09_evening.md`: what was built, what was found, what is unproven |
+| Tests | Python 467 pass, 1 long-standing fail. JavaScript 222 pass. Vault folder 3 notes before and after |
+
+### Earlier: PR 2, REALISTIC FILLS, 2026-09-09 night
 
 | | |
 |---|---|
@@ -290,12 +301,14 @@ His decisions, do not relitigate:
    headroom, the desk's margin-used figure feeding rule 4, and the Trade Journal
    row are all verified only against injected data. `docs/PLAN.md` §1 is the
    script, sized for his 90 minutes.
-2. **The trade lifecycle he specified on 2026-09-08 night, which is the next
-   job.** Today a position can only be opened whole and closed whole: there is
-   no add a leg, no remove a leg, no roll and no partial close. He manages his
-   trades and always has — roughly a third of his twenty-one historical trades
-   were adjusted mid-life. `docs/PLAN.md` §2.11 carries his own words.
+2. **Managing a trade from the screen.** A leg can now be ADDED to an open
+   trade (PR #49, one by one), but a leg cannot be exited or reversed on its
+   own, and the whole trade can only be closed from a terminal until PR 3
+   brings the position area and the exit ticket. `docs/PLAN.md` §2.12.2 PR 3.
    (The Trade Journal's four faults are DONE. `docs/PLAN.md` §2.2.)
+2a. **A real send through the ticket.** Never done with a live book. Tomorrow.
+2b. **Real-money orders.** Not built, and by decision not next. `docs/PLAN.md`
+   §2.14 has the research and the order of work.
 3. **The recorder writing to its bucket**, and whether its Greeks and spot
    columns are real or zeros. `docs/PLAN.md` §2.10.
 4. **Calendars.** Briefed and ready, `docs/CALENDAR_BUILD_BRIEF.md`. Ten of his

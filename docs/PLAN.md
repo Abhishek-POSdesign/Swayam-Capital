@@ -262,8 +262,11 @@ in green, and does the age beside it stay small.
 
 1. ~~The Trade Journal's four faults.~~ **DONE 2026-09-08 night.** Section 2.2,
    and section 4 carries the proof.
-2. **THE TRADING DESK: execute, manage, exit. Section 2.12. THIS IS THE NEXT
-   JOB AND IT IS THE BIG ONE.** He took three paper trades on 2026-09-09 and
+2. **THE TRADING DESK: execute, manage, exit. Section 2.12.** PRs 1, 2 and 4
+   MERGED 2026-09-09. **PR 3, the position area with the exit ticket, is the
+   next build**, then PR 5, the option chain tested live. Then §2.13, the
+   vault bridge, then **§2.14's read-only broker bridge**, which is his
+   decision of 2026-09-09 night on real-money orders. He took three paper trades on 2026-09-09 and
    could not execute cleanly, could not see what he held, and could not exit
    without a terminal. His decisions on how it should work are recorded there
    verbatim. Section 2.11's campaign model is folded into it.
@@ -631,7 +634,7 @@ we exit. Need everything, but the execution comes at number one."
 
 #### 2.12.2 WHAT TO BUILD, IN ORDER
 
-**PR 1 — The execution ticket. BUILT 2026-09-09 evening, PR #49, awaiting his merge.**
+**PR 1 — The execution ticket. MERGED 2026-09-09 18:03 IST, PR #49. Hardened by PR #50 the same evening.**
 
 What landed, verified in a real browser against the real backend and live FYERS
 at 17:58 IST with the market shut:
@@ -682,7 +685,7 @@ Backend: `/api/execute/multi-leg` already takes ordered legs. It needs to accept
 a per-leg order type and price, to record `spot_at_entry`, and to record the
 margin the preview computed so rule 4 can finally be tested.
 
-**PR 2 — Realistic fills. BUILT 2026-09-09 night, PR #52, awaiting his merge.**
+**PR 2 — Realistic fills. MERGED 2026-09-09 19:46 IST, PR #52. He ran the marking script at 19:50: 3 rows marked.**
 
 **His correction, given the same evening, now the rule:** "Traded price means the
 last traded price, and bid and ask mean the price that is open in the market...
@@ -742,7 +745,7 @@ This is where 2.11's campaign model becomes necessary: exiting one leg of four
 leaves a trade that is neither open nor closed, and the schema has to hold that.
 **Build the campaign model as part of this pull request, not before it.**
 
-**PR 4 — Home, corrected.**
+**PR 4 — Home, corrected. DONE 2026-09-09, PR #51.** The strip moved below the daily check-in and above Your money, the Exit button left Home, positions refresh on the 15-second timer. The original brief, kept:
 
 The open-positions strip moves below the daily check-in and above "Your money",
 becomes read-only, and refreshes on the timer so a trade appears without a
@@ -826,6 +829,104 @@ and the one the outbox currently covers from his PC.
 **Where this sits in the order.** After section 2.12. It is not blocking a trade;
 it is blocking his daily check-in and the AI knowing his current rules. Tell him
 that plainly rather than letting it drift.
+
+---
+
+### 2.12.4 TOMORROW'S LIVE TEST, 2026-09-10, and the loopholes only the market can close
+
+Written the night before, with the market shut. Everything in PRs #49 to #52
+is proven by test and in a browser against the real backend, but **no order has
+ever been sent through the ticket with a live book.** In his window, in this
+order, cheapest proof first:
+
+1. **Refresh the token, open the desk, load a two-leg spread.** Press Execute.
+   The chip must read LIVE. Each buy row shows the ask in the price box and
+   "market · at the ask"; each sell the bid.
+2. **Execute all legs.** Watch for: every fill at the side named, the spread
+   cost per leg and in total, the spot at entry, the margin stored. Then Back
+   to the desk: the metric row's margin used is a real figure and rule 4 tests
+   against the ceiling. Home shows the position within 15 seconds.
+3. **Execute one by one** on a second small structure. Send leg 1, read its
+   fill, send leg 2. Stop after two if he likes. The trade must keep ONE id.
+4. **A limit away from the market**, then Reset, then a limit through the
+   market: the fill must be at the market, "better".
+5. **Close** from a terminal with no prices supplied (PR 3 brings the exit
+   ticket): it must fill against the book and record the side each leg hit.
+6. **Read back afterwards, none of his time:** the Cloud Run logs for any 422
+   or 503 on `/api/execute/multi-leg` and `/api/positions/*/legs`; FYERS
+   refusals on `/api/market/data-health`; the note in the vault after the
+   drainer runs, with Fill and Traded side by side.
+
+**What could still be wrong, and how it would show.**
+
+- The live chain's bid or ask missing for a strike (thin book): the ticket
+  says "no ask published", the send refuses. Not a bug; note which strikes.
+- A refusal with the key already claimed: the ticket returns him to the legs
+  with every refused leg named. A second press must NOT open a second trade.
+- One by one with the spot moving between legs: leg 2 keys on the leg, not the
+  spot. If it ever says "already been used for a different trade", that is a
+  bug in the hash and must be reported with the exact legs.
+- Margin used after the first real position: if it reads unavailable with a
+  reason naming a position with no stored margin, that position predates 021.
+- The desk's own 5-second re-quote can move a market leg's price on the ticket
+  while he reads it. That is honest; the server fills at its own read anyway.
+
+### 2.14 REAL-MONEY ORDERS FROM THIS TERMINAL. His question of 2026-09-09 night, researched.
+
+**His question.** Can this terminal send real orders as well as the broker's
+terminal does, with a minimum probability of error, or should orders stay with
+the broker while everything else lives here?
+
+**What was checked, not assumed.**
+
+| Fact | Source | What it means here |
+|---|---|---|
+| Since **1 April 2026** FYERS accepts API orders only from **one whitelisted static IP per App ID**; "orders from any other source are automatically rejected". Data and read-only calls need no static IP | [FYERS, SEBI's new algo rules](https://fyers.in/community/blogs-gdppin8d/post/sebi-s-new-algo-trading-rules-kick-in-on-april-1-here-is-what-changes-Yew3vdG4CgoXk1q) | The live site runs on Cloud Run in Singapore with no fixed IP. Sending orders from it needs Cloud NAT, about ₹4,000 a month, or the order path runs on his PC with a static IP from his ISP |
+| Zerodha says the same: unregistered IP, order rejected; positions, orderbook and WebSocket data stay open from any IP | [Kite Connect forum](https://kite.trade/forum/discussion/15912/preparing-to-comply-with-sebis-retail-algo-rules-static-ip-ratelimits-order-types) | Industry-wide, not a FYERS quirk |
+| **10 orders per second** per client is the ceiling; above it needs exchange registration | same two sources | Not a constraint for swing trades |
+| FYERS has **no all-or-none multi-leg order**. The multi-order basket sends separate orders "executed at the same time"; each leg can fill, reject or partially fill on its own | [FYERS community](https://fyers.in/community/api-algo-trading-bihtdkgq/post/how-does-one-place-spread-multileg-option-orders-via-the-api-EaxgShpc9dlRAsW) | A condor can end up half built with a naked short if one leg rejects. The broker terminal has the same risk but shows the order book instantly and lets him fix it by hand |
+| FYERS's order rate limit is **undisclosed**; users report "Request limit reached" after four orders | [FYERS community](https://fyers.in/community/questions-5gz5j8db/post/apiv3---place-order---limit-reached-after-placing-4-orders-8rvYI8IfHFgKfXJ) | The desk already exhausted the data budget once, on 2026-09-08. An order refused for rate limit mid-structure is leg risk |
+| FYERS API v3 offers order, position and trade WebSockets, plus orderbook, tradebook and positions endpoints; 1 lakh requests a day | [FYERS API v3](https://fyers.in/community/blogs-gdppin8d/post/unveiling-fyers-api-version-3-v3-0-0-a-comprehensive-update-to-enhance-NUuYJmm6gt9toPm), [order WebSocket](https://support.fyers.in/portal/en/kb/articles/what-functionalities-does-the-order-websocket-in-api-v3-offer) | Everything needed to READ his real book into this terminal exists today and needs no static IP |
+| NIFTY freeze quantity 1,800 units, 1,755 at lot 65, so 27 lots per order | [Angel One](https://www.angelone.in/news/market-updates/nse-announces-revised-quantity-freeze-limits-for-index-derivatives-from-march-2-2026) | A guardrail the terminal does not have and the broker enforces |
+| Market orders are refused for illiquid option contracts | [Zerodha](https://support.zerodha.com/category/trading-and-markets/trading-faqs/f-otrading/articles/market-orders-monthly-options) | Another broker-side guardrail this app lacks |
+| His own token: generated pre-dawn, rejected by 13:30 on 2026-09-08 | this repo, START_HERE | A dead token mid-trade means he cannot exit from this terminal. The broker terminal does not have that failure |
+
+**What this terminal has today for real money: nothing.** No order-placement
+code, no order-status socket, no reconciliation against the broker's book, no
+kill switch (§2.5), no freeze-quantity or lot cap, no handling of a rejected or
+partially filled leg. Its paper execution has three trades behind it, all on
+one afternoon, and the ticket has never sent with a live book.
+
+**The honest answer.** It is buildable, and not as well as the broker terminal
+in the next weeks. The API call is the easy part. The hard parts are the ones
+around it, and each is a real-money failure mode: a leg that rejects while its
+partner fills, a token that dies with a position open, a rate limit that lands
+between leg two and leg three, a retry that doubles an order, a cloud container
+with no fixed IP that the broker will refuse outright. A broker terminal has
+years of operations behind each of those. This app has one day.
+
+**Recommendation, and the order to do it in.**
+
+1. **Orders through the broker terminal. Everything else here.** Exactly as he
+   described: plan, build, measure and record in Swayam; place and close at
+   FYERS, open in parallel. Paper trades keep going through the ticket, because
+   the ticket is the training ground and it is where the discipline lives.
+2. **Build the read-only bridge, next after PR 3.** Read his real positions,
+   orderbook and tradebook from FYERS, which needs no static IP, and mirror
+   them into a REAL book beside the paper book: real positions in the position
+   area with the same big numbers, real fills journaled with real charges,
+   the four rules run against what he actually holds, the record toggling
+   paper and real as his design already says. When the mirror matches the
+   broker to the paisa for some weeks, the terminal has earned trust.
+3. **Only then consider "send to broker",** and only from his PC on a static
+   IP, one leg at a time with a confirmation each, the order WebSocket feeding
+   the position area, the kill switch built first, a lot cap and the freeze
+   quantity enforced, and every exit still possible from the broker terminal
+   in parallel. That is a separate plan with its own weeks of testing, and he
+   should decide it after the mirror has run, not before.
+
+**His decision on this is open.** He said he is ready for weeks of testing if
+the answer is yes. The answer is: yes to the bridge now, not yet to sending.
 
 ---
 
