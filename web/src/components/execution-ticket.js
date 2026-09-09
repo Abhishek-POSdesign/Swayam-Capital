@@ -30,20 +30,33 @@ const px = (v) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(2) : 
 const legName = (l) => `${num(l.strike)} ${l.type}`;
 
 /**
+ * The side of the book this leg would hit: a buy pays the ask, a sell gets
+ * the bid. The traded price is history and is only shown for comparison.
+ */
+export function bookPrice(leg) {
+  const v = leg.bs === 'B' ? leg.ask : leg.bid;
+  return typeof v === 'number' && v > 0 ? v : null;
+}
+
+/**
  * What one leg would fill at right now. Mirrors services/fills.py on the
- * server: this is a preview, the server decides. In PR 1 the market is the
- * traded price; PR 2 moves a buy to the ask and a sell to the bid.
+ * server: this is a preview, the server decides. A market leg fills at the
+ * book; a limit fills at his price or better, as the exchange does, or not
+ * at all.
  */
 export function previewFill(leg, state) {
-  const market = typeof leg.price === 'number' ? leg.price : null;
-  if (market === null) return { ok: false, price: null, how: 'no live price, so this leg cannot fill' };
-  if (state.mode === 'MARKET') return { ok: true, price: market, how: `market · at ${px(market)}` };
+  const side = leg.bs === 'B' ? 'ask' : 'bid';
+  const market = bookPrice(leg);
+  if (market === null) {
+    return { ok: false, price: null, how: typeof leg.price === 'number' ? `no ${side} published, so this leg cannot fill` : 'no live price, so this leg cannot fill' };
+  }
+  if (state.mode === 'MARKET') return { ok: true, price: market, how: `market · at the ${side} ${px(market)}` };
   const limit = state.limit;
   if (typeof limit !== 'number' || !(limit > 0)) return { ok: false, price: null, how: 'type a limit price, or press Reset' };
   const marketable = leg.bs === 'B' ? limit >= market : limit <= market;
-  return marketable
-    ? { ok: true, price: limit, how: `limit ${px(limit)} · fills, market is ${px(market)}` }
-    : { ok: false, price: null, how: `would not fill now · market is ${px(market)}` };
+  if (!marketable) return { ok: false, price: null, how: `would not fill now · ${side} is ${px(market)}` };
+  const better = Math.abs(market - limit) >= 0.005;
+  return { ok: true, price: market, how: better ? `limit ${px(limit)} · fills at the ${side} ${px(market)}, better` : `limit ${px(limit)} · fills at the ${side}` };
 }
 
 export class ExecutionTicket {
@@ -79,7 +92,7 @@ export class ExecutionTicket {
     this.legs = legs.map((l) => ({ ...l }));
     this.legs.forEach((l) => {
       const key = this._key(l);
-      if (!this.state.has(key)) this.state.set(key, { mode: 'MARKET', limit: l.price, lots: l.lots });
+      if (!this.state.has(key)) this.state.set(key, { mode: 'MARKET', limit: bookPrice(l) ?? l.price, lots: l.lots });
     });
     // Buys first by default, because that earns the hedged margin. He can move them.
     this.legs.sort((a, b) => (a.bs === b.bs ? 0 : a.bs === 'B' ? -1 : 1));
@@ -158,19 +171,28 @@ export class ExecutionTicket {
     return null;
   }
 
+  /**
+   * The net at the prices on the ticket: the book for a market leg, his
+   * limit for a limit leg. Stated even when a limit is away from the market,
+   * because it is a real figure at the prices he typed; the fill column says
+   * which legs would not fill now. Unavailable only when a leg has no price.
+   */
   totals() {
     const lot = this.ctx.lotSize;
     let net = 0;
-    let priced = true;
+    let priced = typeof lot === 'number';
+    let hypothetical = false;
     const blocked = [];
     this.legs.forEach((l) => {
       const st = this._st(l);
       const f = previewFill(l, st);
-      if (!f.ok) { blocked.push(`${l.bs === 'B' ? 'BUY' : 'SELL'} ${legName(l)}`); priced = false; return; }
-      if (typeof lot !== 'number') { priced = false; return; }
-      net += (l.bs === 'S' ? 1 : -1) * f.price * st.lots * lot;
+      if (!f.ok) blocked.push(`${l.bs === 'B' ? 'BUY' : 'SELL'} ${legName(l)}`);
+      const price = f.ok ? f.price : (st.mode === 'LIMIT' && typeof st.limit === 'number' && st.limit > 0 ? st.limit : null);
+      if (price === null) { priced = false; return; }
+      if (!f.ok) hypothetical = true;
+      net += (l.bs === 'S' ? 1 : -1) * price * st.lots * lot;
     });
-    return { net: priced ? net : null, blocked };
+    return { net: priced ? net : null, blocked, hypothetical };
   }
 
   // ------------------------------------------------------------ actions
@@ -185,7 +207,7 @@ export class ExecutionTicket {
   setMode(index, mode) {
     const st = this._st(this.legs[index]);
     st.mode = mode === 'LIMIT' ? 'LIMIT' : 'MARKET';
-    if (st.mode === 'LIMIT' && typeof st.limit !== 'number') st.limit = this.legs[index].price;
+    if (st.mode === 'LIMIT' && typeof st.limit !== 'number') st.limit = bookPrice(this.legs[index]) ?? this.legs[index].price;
     this._changed();
   }
 
@@ -198,7 +220,7 @@ export class ExecutionTicket {
 
   resetPrice(index) {
     const st = this._st(this.legs[index]);
-    st.limit = this.legs[index].price;
+    st.limit = bookPrice(this.legs[index]) ?? this.legs[index].price;
     this._changed();
   }
 
@@ -337,7 +359,7 @@ export class ExecutionTicket {
         </div>
         <div class="price">
           <input type="number" step="0.05" inputmode="decimal" data-limit="${i}" aria-label="Price"
-                 value="${st.mode === 'LIMIT' ? (typeof st.limit === 'number' ? st.limit.toFixed(2) : '') : px(l.price)}"
+                 value="${st.mode === 'LIMIT' ? (typeof st.limit === 'number' ? st.limit.toFixed(2) : '') : px(bookPrice(l))}"
                  ${st.mode === 'MARKET' ? 'disabled' : ''}>
           <button class="btn sm" type="button" data-xt="reset" data-i="${i}" ${st.mode === 'MARKET' ? 'disabled' : ''} title="Put the live quote back">Reset</button>
           <div class="quote">${typeof l.price === 'number' ? `traded <b>${px(l.price)}</b>${own ? '<br>his price' : ''}` : '<span class="na">no price</span>'}${typeof l.bid === 'number' || typeof l.ask === 'number' ? `<br>bid <b>${px(l.bid)}</b> · ask <b>${px(l.ask)}</b>` : ''}</div>
@@ -366,8 +388,8 @@ export class ExecutionTicket {
       </div>
       <div class="xt-foot">
         <div class="kv">
-          <span>Net ${t.net === null ? 'debit or credit' : t.net >= 0 ? 'credit' : 'debit'} at these prices</span>
-          <b class="${t.net === null ? 'na' : t.net >= 0 ? 'up' : 'down'}">${t.net === null ? 'unavailable' : escapeHtml(inr(Math.abs(t.net)))}</b>
+          <span>Net ${t.net === null ? 'debit or credit' : t.net >= 0 ? 'credit' : 'debit'} at these prices${t.hypothetical ? ', if every leg fills' : ''}</span>
+          <b class="${t.net === null ? 'na' : t.net >= 0 ? 'up' : 'down'}">${t.net === null ? 'unavailable, a leg has no price' : escapeHtml(inr(Math.abs(t.net)))}</b>
           <span>Charges to get in, per leg, summed</span>
           <b>${charges === null ? '<span class="na">unavailable</span>' : escapeHtml(inr(charges))}</b>
           <span>Margin the broker needs for this basket</span>
@@ -386,14 +408,14 @@ export class ExecutionTicket {
           ? escapeHtml(shut)
           : t.blocked.length
             ? escapeHtml(`${t.blocked.join(', ')} would not fill at that price. Move it, press Reset, or switch it to market.`)
-            : 'buys go first by default, that is what earns the hedged margin · one press, one trade · the server fills at its own live quote'}</span>
+            : 'buys go first by default, that is what earns the hedged margin · one press, one trade · a buy pays the ask, a sell gets the bid'}</span>
       </div>`;
   }
 
   _fillLine(f, i) {
     const side = String(f.direction || '').toUpperCase();
     return `<li><span class="st">FILLED</span><div><span class="bs ${side === 'BUY' ? 'B' : 'S'}">${side}</span> &nbsp;<b>${escapeHtml(num(f.strike))} ${escapeHtml(f.option_type || '')}</b> · ${f.quantity_lots} lot${f.quantity_lots > 1 ? 's' : ''}
-      <small>${escapeHtml(f.how || '')}${typeof f.entry_charges_inr === 'number' ? ` · charges ${escapeHtml(inr(f.entry_charges_inr))}` : ''}</small></div><b class="num">${px(f.fill_price)}</b></li>`;
+      <small>${escapeHtml(f.how || '')}${typeof f.spread_cost_inr === 'number' ? ` · spread ${f.spread_cost_inr < 0 ? 'cost' : 'gain'} ${escapeHtml(inr(Math.abs(f.spread_cost_inr)))}` : ''}${typeof f.entry_charges_inr === 'number' ? ` · charges ${escapeHtml(inr(f.entry_charges_inr))}` : ''}</small></div><b class="num">${px(f.fill_price)}</b></li>`;
   }
 
   _progress(sendingText) {
@@ -425,12 +447,13 @@ export class ExecutionTicket {
         : r.journal_status === 'failed' ? 'The note could not be written or queued. Write it by hand.' : '';
     return this._header(
       r.stopped ? `Stopped. Trade #${id} is open with ${this.fills.length} leg${this.fills.length === 1 ? '' : 's'}.` : `Filled. Trade #${id} is open.`,
-      'Every leg was filled at the server’s live quote at the moment of sending. Here is what actually happened.',
+      'Every buy was filled at the ask and every sell at the bid, read from the live book at the moment of sending. Here is what actually happened.',
     ) +
       `<div class="xt-fills"><ul class="fills">${this.fills.map((f, i) => this._fillLine(f, i)).join('')}</ul></div>
       <div class="xt-foot">
         <div class="kv">
           <span>Net ${net === null ? 'debit or credit' : net >= 0 ? 'credit received' : 'debit paid'}</span><b class="${net === null ? 'na' : net >= 0 ? 'up' : 'down'}">${net === null ? 'unavailable' : escapeHtml(inr(Math.abs(net)))}</b>
+          <span>Spread cost against the traded price</span><b class="${typeof r.spread_cost_inr === 'number' && r.spread_cost_inr < 0 ? 'down' : ''}">${typeof r.spread_cost_inr === 'number' ? escapeHtml((r.spread_cost_inr < 0 ? '−' : '') + inr(Math.abs(r.spread_cost_inr))) : '<span class="na">unavailable</span>'}</b>
           <span>Charges to get in, recorded on each leg</span><b>${typeof r.entry_charges_inr === 'number' ? escapeHtml(inr(r.entry_charges_inr)) : '<span class="na">unavailable</span>'}</b>
           <span>Spot at entry, stored on the row</span><b>${typeof r.spot_at_entry === 'number' ? escapeHtml(num(r.spot_at_entry, 2)) : '<span class="na">unavailable</span>'}</b>
           <span>Margin the broker needed, stored so rule 4 can be tested</span><b>${typeof r.margin_required_inr === 'number' ? escapeHtml(inr(r.margin_required_inr)) : `<span class="na">${escapeHtml(r.margin_source || 'unavailable')}</span>`}</b>

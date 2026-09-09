@@ -484,7 +484,9 @@ def append_exit_block(
             )
             content = f"---{frontmatter.rstrip()}{extra_fm}\n---{parts[2]}"
 
-    # 2. Build Exit Legs Table
+    # 2. Build Exit Legs Table. A leg closed through the book carries the side
+    # it hit and the traded price beside it; older legs keep the older shape.
+    booked = any(l.get("exit_side_hit") or l.get("exit_ltp") is not None for l in exit_legs)
     leg_rows = []
     for idx, leg in enumerate(exit_legs, start=1):
         strike = leg.get("strike", 0.0)
@@ -499,14 +501,37 @@ def append_exit_block(
             exit_dir = leg.get("exit_direction", "CLOSE").upper()
 
         prem = float(leg.get("exit_premium", 0.0))
-        leg_rows.append(
-            f"| {idx} | {strike:,.0f} | {opt_type} | {exit_dir} | ₹{prem:,.2f} | "
-            f"{_charge_cell(leg.get('gross_pnl_inr'), signed=True)} | "
-            f"{_charge_cell(leg.get('charges_inr'))} | "
-            f"{_charge_cell(leg.get('net_pnl_inr'), signed=True)} |"
-        )
+        if booked:
+            traded = leg.get("exit_ltp")
+            leg_rows.append(
+                f"| {idx} | {strike:,.0f} | {opt_type} | {exit_dir} | "
+                f"{str(leg.get('exit_side_hit') or leg.get('exit_fill_basis') or '—')} | ₹{prem:,.2f} | "
+                f"{('₹' + format(float(traded), ',.2f')) if traded is not None else '—'} | "
+                f"{_charge_cell(leg.get('gross_pnl_inr'), signed=True)} | "
+                f"{_charge_cell(leg.get('charges_inr'))} | "
+                f"{_charge_cell(leg.get('net_pnl_inr'), signed=True)} |"
+            )
+        else:
+            leg_rows.append(
+                f"| {idx} | {strike:,.0f} | {opt_type} | {exit_dir} | ₹{prem:,.2f} | "
+                f"{_charge_cell(leg.get('gross_pnl_inr'), signed=True)} | "
+                f"{_charge_cell(leg.get('charges_inr'))} | "
+                f"{_charge_cell(leg.get('net_pnl_inr'), signed=True)} |"
+            )
 
     exit_legs_table = "\n".join(leg_rows) if leg_rows else "| 1 | — | — | CLOSE | — | — | — | — |"
+    exit_legs_header = (
+        "| # | Strike | Type | Direction | Side | Exit fill | Traded | Gross | Charges | Net |\n"
+        "|:---:|---:|:---:|:---:|:---:|---:|---:|---:|---:|---:|"
+        if booked
+        else "| # | Strike | Type | Direction | Exit Premium | Gross | Charges | Net |\n"
+        "|:---:|---:|:---:|:---:|---:|---:|---:|---:|"
+    )
+    fills_line = (
+        "- **Exit fills**: sold at the bid, bought back at the ask\n"
+        if booked and any(str(l.get("exit_fill_basis")) == "bid_ask" for l in exit_legs)
+        else ""
+    )
 
     # Risk metrics
     pct_of_risk = (net_pnl_inr / max_loss_inr * 100.0) if max_loss_inr > 0 else 0.0
@@ -522,11 +547,10 @@ def append_exit_block(
 - **Time closed**: {closed_at_iso} ({holding_days} days held)
 - **Close reason**: {close_reason}
 - **Notes**: {notes_text}
-
+{fills_line}
 ### Exit legs
 
-| # | Strike | Type | Direction | Exit Premium | Gross | Charges | Net |
-|:---:|---:|:---:|:---:|---:|---:|---:|---:|
+{exit_legs_header}
 {exit_legs_table}
 
 ### Realized P&L

@@ -682,7 +682,35 @@ Backend: `/api/execute/multi-leg` already takes ordered legs. It needs to accept
 a per-leg order type and price, to record `spot_at_entry`, and to record the
 margin the preview computed so rule 4 can finally be tested.
 
-**PR 2 — Realistic fills.**
+**PR 2 — Realistic fills. BUILT 2026-09-09 night, PR #52, awaiting his merge.**
+
+**His correction, given the same evening, now the rule:** "Traded price means the
+last traded price, and bid and ask mean the price that is open in the market...
+If I place a limit order, the price must execute at my limit order or better
+than my limit order. That's what happens in the real platform." So:
+
+- A market buy pays the ask, a market sell receives the bid, from the server's
+  live book at the moment of sending. The traded price is history and is kept
+  on the leg only so the record shows what the spread cost.
+- A limit fills at his price **or better**, as the exchange does: a buy limit at
+  or above the ask pays the ask, a sell limit at or below the bid receives the
+  bid. Away from the market, no fill, and the answer says where the book is.
+- **The exit is the same rule reversed.** A bought leg is sold at the bid, a sold
+  leg bought back at the ask, and the close carries the side it hit, the traded
+  price beside it, and the spread cost per leg. **After the bell the close
+  refuses**, names every leg, and says to close it in the window. An explicit
+  exit price from a terminal is recorded as supplied, never dressed as a fill.
+- Every fill records `spread_cost_inr` against the traded price; the ticket shows
+  it per leg and in total, and the note prints Fill and Traded side by side.
+- The ticket's price box shows the ask for a buy and the bid for a sell, and the
+  net at his prices is stated even when a limit is away from the market, marked
+  "if every leg fills". It used to say unavailable, which he questioned.
+- `fill_basis` on every position: `bid_ask` from here on. **His trades before
+  this are marked `traded_price` by `scripts/mark_traded_price_fills.py`, which
+  he runs**, because a one-off change to his real rows is a script, not a
+  migration. The Trade Journal shows the basis on every row.
+
+The original brief, kept:
 
 The chain already returns bid and ask. A buy fills at the ask, a sell at the bid,
 and the leg records both the fill and the last traded price so the journal can
@@ -946,6 +974,8 @@ Kept short. Detail is in the git history and the pull requests.
 | 2026-09-09 | The deleted single-leg rule stopped being evaluated | It had reached his vault as a passed check in notes 02 and 03 |
 | 2026-09-09 | A retry after a lost response cannot trade twice when the market has ticked | The key and the server hash ignore the spot and a market leg's price; a limit price stays. Proven: same key, spot moved, price moved, one position. PR #50 |
 | 2026-09-09 | The path nobody had run: one by one, then close, then the note | `tests/api/test_ticket_end_to_end.py`: first leg opens, second joins, real close values both, one result row, note complete in order |
+| 2026-09-09 | Fills are the exchange's: a buy pays the ask, a sell gets the bid, a limit fills at his price or better | `services/fills.py`; the close is the same rule reversed and refuses after the bell. PR #52 |
+| 2026-09-09 | The spread cost is visible, per leg, on the ticket and in the note | Recorded on every fill against the traded price |
 
 ---
 

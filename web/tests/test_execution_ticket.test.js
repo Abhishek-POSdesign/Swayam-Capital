@@ -32,20 +32,24 @@ function ticket(options = {}) {
   return { t, host };
 }
 
-describe('the fill preview mirrors the server rule', () => {
-  it('a market leg fills at the price on screen', () => {
-    expect(previewFill({ bs: 'B', price: 82.2 }, { mode: 'MARKET' })).toEqual({ ok: true, price: 82.2, how: 'market · at 82.20' });
+describe('the fill preview mirrors the exchange', () => {
+  it('a market buy pays the ask, a market sell gets the bid', () => {
+    expect(previewFill({ bs: 'B', price: 82.2, bid: 81.9, ask: 82.45 }, { mode: 'MARKET' })).toEqual({ ok: true, price: 82.45, how: 'market · at the ask 82.45' });
+    expect(previewFill({ bs: 'S', price: 185, bid: 184.75, ask: 185.3 }, { mode: 'MARKET' })).toEqual({ ok: true, price: 184.75, how: 'market · at the bid 184.75' });
   });
-  it('a buy limit below the market does not fill, and says where the market is', () => {
-    const f = previewFill({ bs: 'B', price: 82.2 }, { mode: 'LIMIT', limit: 80 });
+  it('a buy limit below the ask does not fill, and says where the ask is', () => {
+    const f = previewFill({ bs: 'B', price: 82.2, bid: 81.9, ask: 82.45 }, { mode: 'LIMIT', limit: 80 });
     expect(f.ok).toBe(false);
     expect(f.how).toContain('would not fill now');
-    expect(f.how).toContain('82.20');
+    expect(f.how).toContain('ask is 82.45');
   });
-  it('a sell limit below the market fills at the limit', () => {
-    expect(previewFill({ bs: 'S', price: 185 }, { mode: 'LIMIT', limit: 184.5 }).price).toBe(184.5);
+  it('a limit through the market fills at the market, which is better than his limit', () => {
+    const f = previewFill({ bs: 'S', price: 185, bid: 184.75, ask: 185.3 }, { mode: 'LIMIT', limit: 184 });
+    expect(f.price).toBe(184.75);
+    expect(f.how).toContain('better');
   });
-  it('a leg with no price cannot fill', () => {
+  it('a leg with a traded price but no book cannot fill', () => {
+    expect(previewFill({ bs: 'B', price: 82.2 }, { mode: 'MARKET' }).ok).toBe(false);
     expect(previewFill({ bs: 'B', price: null }, { mode: 'MARKET' }).ok).toBe(false);
   });
 });
@@ -88,6 +92,10 @@ describe('the execution ticket', () => {
     expect(host.innerHTML).toContain('data-xt="send-all" disabled');
     expect(host.innerHTML).toContain('data-xt="send-one" disabled');
     expect(host.innerHTML).toContain('Move it, press Reset, or switch it to market');
+    // The net at his prices is still a real figure, and says it is conditional.
+    expect(t.totals().net).not.toBeNull();
+    expect(t.totals().hypothetical).toBe(true);
+    expect(host.innerHTML).toContain('if every leg fills');
   });
 
   it('Reset puts the live quote back and the buttons return', () => {
@@ -97,7 +105,7 @@ describe('the execution ticket', () => {
     t.setMode(i, 'LIMIT');
     t.setLimit(i, '80');
     t.resetPrice(i);
-    expect(t._st(t.legs[i]).limit).toBe(82.2);
+    expect(t._st(t.legs[i]).limit).toBe(82.45); // the ask, what a buy would pay
     expect(t.totals().blocked).toEqual([]);
     expect(host.innerHTML).not.toContain('data-xt="send-all" disabled');
   });
@@ -108,18 +116,19 @@ describe('the execution ticket', () => {
     const i = t.legs.findIndex((l) => l.bs === 'S' && l.strike === 23700);
     t.setMode(i, 'LIMIT');
     t.setLimit(i, '184.5');
-    const fresh = condor().map((l) => ({ ...l, price: l.price + 1 }));
+    const fresh = condor().map((l) => ({ ...l, price: l.price + 1, bid: l.bid + 1, ask: l.ask + 1 }));
     t.update(fresh, ctx());
     expect(t._st(t.legs[i]).limit).toBe(184.5); // his
-    expect(t.legs[i].price).toBe(186); // the market moved under it
-    expect(t.legs.find((l) => l.bs === 'B' && l.strike === 24000).price).toBe(83.2);
+    expect(t.legs[i].bid).toBe(185.75); // the market moved under it
+    expect(t.legs.find((l) => l.bs === 'B' && l.strike === 24000).ask).toBe(83.45);
   });
 
   it('lots step with a floor of one and change the net', () => {
     const { t } = ticket();
     t.open(condor(), ctx());
     const before = t.totals().net;
-    expect(before).toBeCloseTo((185 + 122.25 - 82.2 - 62.8) * 65, 2);
+    // Sells at the bid, buys at the ask: the real credit, not the traded one.
+    expect(before).toBeCloseTo((184.75 + 122.0 - 82.45 - 63.05) * 65, 2);
     t.stepLots(0, -1);
     expect(t._st(t.legs[0]).lots).toBe(1);
     t.stepLots(0, 1);
@@ -203,12 +212,13 @@ describe('the execution ticket', () => {
     expect(host.innerHTML).toContain('Stopped. Trade #a41c9f2e is open with 2 legs');
   });
 
-  it('never opens when a leg has no price', () => {
+  it('a leg with no book blocks the send and the net', () => {
     const { t } = ticket();
     const legs = condor();
-    legs[0].price = null;
+    legs[0].price = null; legs[0].bid = null; legs[0].ask = null;
     t.open(legs, ctx());
     expect(t.totals().blocked).toContain('SELL 23,700 CE');
+    expect(t.totals().net).toBeNull();
   });
 });
 

@@ -96,16 +96,18 @@ execution, immature exit, immature monitoring. Taking a position is more immatur
 than buying a soda bottle.
 
 WHAT I WANT YOU TO BUILD. docs/PLAN.md section 2.12. In this order.
-(Item 1 was built on 9 September evening as PR #49. If it is merged, start at
-item 2 and read what PR 1 recorded in 2.12.2 first. If it is not, ask me.)
+(Items 1, 2 and 4 were built on 9 September as PRs #49 to #52. If PR #52 is
+merged, start at item 3 and read what 2.12.2 records for PRs 1 and 2 first.
+If it is not, ask me.)
 1. The execution ticket. I press Execute and I see what is about to be sent
    before it goes: every leg, market or limit with a switch, an editable price
    with a proper reset button, editable lots, the margin needed, my four rules,
    control over which leg goes first, and a choice of sending all legs together
    or one at a time. No bid-ask ladder. No market depth.
-2. Realistic fills. I buy at the ask and sell at the bid. My results will look
-   worse and be truer. My two earlier trades were filled at the traded price and
-   must be marked as not comparable.
+2. Realistic fills. I buy at the ask and sell at the bid, and a limit fills at
+   my price or better, as on Kite or FYERS. My results will look worse and be
+   truer. My trades from before this were filled at the traded price and are
+   marked as not comparable.
 3. The position area on the Strategy Desk, full width, BELOW the payoff graph.
    Open now, closed today, earlier. Big bold numbers, colour from the money.
    Exit one leg, reverse one leg, add a leg, exit everything. A real dustbin and

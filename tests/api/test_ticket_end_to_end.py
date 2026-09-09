@@ -43,10 +43,20 @@ def _first(**overrides):
     return body
 
 
-def _chain_at(prices: dict[tuple[float, str], float]):
-    """A chain lookup for the close path: {(strike, type): ltp}."""
-    rows = [{"strike_price": k[0], "option_type": k[1], "ltp": v} for k, v in prices.items()]
+def _chain_at(prices: dict[tuple[float, str], float], spread: float = 0.0):
+    """A chain for the close path: {(strike, type): traded}, with a book `spread` wide around it."""
+    rows = [
+        {"strike_price": k[0], "option_type": k[1], "ltp": v, "bid": round(v - spread / 2, 2), "ask": round(v + spread / 2, 2)}
+        for k, v in prices.items()
+    ]
     return {"underlyingValue": 23640.0, "optionsChain": rows}
+
+
+@pytest.fixture(autouse=True)
+def market_open_for_the_close():
+    """The close is a fill and refuses after the bell; these tests run at any hour."""
+    with patch("swayam.api.routes.positions._market_is_open_now", return_value=True):
+        yield
 
 
 # ---------------------------------------------------------------- the whole life of one trade
@@ -87,8 +97,11 @@ def test_one_by_one_then_close_writes_one_complete_note(fake_db, tmp_path):
         result = closed.json()
         assert result["status"] == "closed"
         assert len(result["exit_legs"]) == 2, "the added leg must be closed with the first"
-        # His real trade 01 numbers: gross +74.75 at these prices.
+        # His real trade 01 numbers: gross +74.75 at these prices, with no spread in the test book.
         assert result["gross_pnl_inr"] == pytest.approx(74.75, abs=0.01)
+        for leg in result["exit_legs"]:
+            assert leg["exit_fill_basis"] == "bid_ask"
+            assert leg["exit_side_hit"] == ("bid" if leg["direction"] == "buy" else "ask")
         assert result["total_charges_inr"] > 0
         assert result["realized_pnl_inr"] == pytest.approx(74.75 - result["total_charges_inr"], abs=0.01)
 
@@ -157,3 +170,67 @@ def test_adding_the_same_leg_again_after_a_tick_adds_it_once(fake_db):
     assert client.post(f"/api/positions/{pid}/legs", json=b).status_code == 200
     row = next(r for r in fake_db.rows["swayam_positions"] if r["id"] == pid)
     assert len(row["legs"]) == 2
+
+
+# ---------------------------------------------------------------- the exit crosses the book, honestly
+
+def _seeded(pid="33333333-3333-3333-3333-333333333333"):
+    return {
+        "id": pid, "strategy_name": "Bull Call Spread", "underlying": "NIFTY", "expiry_date": EXPIRY,
+        "legs": [
+            {"strike": 23550.0, "option_type": "CE", "direction": "buy", "quantity_lots": 1, "entry_premium": 293.35,
+             "expiry_date": EXPIRY, "lot_size": 65, "entry_charges_inr": 34.21},
+            {"strike": 23750.0, "option_type": "CE", "direction": "sell", "quantity_lots": 1, "entry_premium": 186.50,
+             "expiry_date": EXPIRY, "lot_size": 65, "entry_charges_inr": 48.16},
+        ],
+        "net_debit_credit_inr": -6945.25, "max_loss_inr": 6945.25, "max_profit_inr": 6054.75, "breakeven_points": [23656.85],
+        "risk_at_entry_inr": 6945.25, "status": "open", "mode": "paper", "opened_at": "2026-09-09T08:33:51+00:00",
+        "charges_inr": 82.37, "journal_path": None, "fill_basis": "bid_ask",
+    }
+
+
+@pytest.mark.fake_db(seed={"swayam_positions": [_seeded()]})
+def test_a_bought_leg_is_sold_at_the_bid_and_a_sold_leg_bought_back_at_the_ask(fake_db):
+    pid = _seeded()["id"]
+    # Traded 291.75 and 183.75 (his trade 01's exit), with a 50-paise book around each.
+    with patch("swayam.api.routes.positions._get_cached_option_chain",
+               return_value=_chain_at({(23550.0, "CE"): 291.75, (23750.0, "CE"): 183.75}, spread=0.50)):
+        res = client.post(f"/api/positions/{pid}/close", json={"close_reason": "manual"})
+    assert res.status_code == 200, res.text
+    legs = {l["direction"]: l for l in res.json()["exit_legs"]}
+    assert legs["buy"]["exit_premium"] == 291.50, "sold back at the bid"
+    assert legs["sell"]["exit_premium"] == 184.00, "bought back at the ask"
+    assert legs["buy"]["exit_ltp"] == 291.75 and legs["sell"]["exit_ltp"] == 183.75
+    assert legs["buy"]["exit_spread_cost_inr"] == -16.25 and legs["sell"]["exit_spread_cost_inr"] == -16.25
+    # Gross is worse than at the traded price by exactly the spread crossed, both legs.
+    assert res.json()["gross_pnl_inr"] == pytest.approx(74.75 - 32.50, abs=0.01)
+
+
+@pytest.mark.fake_db(seed={"swayam_positions": [_seeded("44444444-4444-4444-4444-444444444444")]})
+def test_after_the_bell_the_close_refuses_and_says_what_to_do(fake_db):
+    pid = "44444444-4444-4444-4444-444444444444"
+    with patch("swayam.api.routes.positions._market_is_open_now", return_value=False), \
+         patch("swayam.api.routes.positions._get_cached_option_chain",
+               return_value=_chain_at({(23550.0, "CE"): 291.75, (23750.0, "CE"): 183.75}, spread=0.50)):
+        res = client.post(f"/api/positions/{pid}/close", json={"close_reason": "manual"})
+    assert res.status_code == 422, res.text
+    detail = res.json()["detail"]
+    assert "close it in your window" in detail["error"]
+    assert len(detail["refused_legs"]) == 2
+    assert fake_db.inserted_into("swayam_trade_history") == []
+    row = next(r for r in fake_db.rows["swayam_positions"] if r["id"] == pid)
+    assert row["status"] == "open"
+
+
+@pytest.mark.fake_db(seed={"swayam_positions": [_seeded("55555555-5555-5555-5555-555555555555")]})
+def test_an_explicit_exit_price_is_his_instruction_and_is_recorded_as_supplied(fake_db):
+    pid = "55555555-5555-5555-5555-555555555555"
+    with patch("swayam.api.routes.positions._market_is_open_now", return_value=False):
+        res = client.post(f"/api/positions/{pid}/close", json={
+            "close_reason": "manual",
+            "exit_legs": [{"strike": 23550.0, "option_type": "CE", "exit_premium": 291.75},
+                          {"strike": 23750.0, "option_type": "CE", "exit_premium": 183.75}],
+        })
+    assert res.status_code == 200, res.text
+    assert all(l["exit_fill_basis"] == "supplied" for l in res.json()["exit_legs"])
+    assert res.json()["gross_pnl_inr"] == pytest.approx(74.75, abs=0.01)

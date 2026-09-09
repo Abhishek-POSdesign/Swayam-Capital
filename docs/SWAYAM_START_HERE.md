@@ -70,7 +70,18 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: PR 1 OF THE TRADING DESK IS BUILT, 2026-09-09 evening
+### Latest first: PR 2, REALISTIC FILLS, 2026-09-09 night
+
+| | |
+|---|---|
+| **PR 2, fills at the bid and ask** | Built, PR #52, **awaiting his merge**. `docs/PLAN.md` §2.12.2 PR 2 |
+| **His correction that shaped it** | A market buy pays the ask, a market sell gets the bid; a limit fills at his price **or better**, as on Kite or FYERS. PR 1 had a marketable limit fill exactly at the limit; that was wrong and is gone |
+| **⚠️ One script for him to run, after merge** | `.\.venv\Scripts\python.exe scripts\mark_traded_price_fills.py --apply`. Marks his trades from before PR 2 as filled at the traded price, not comparable. Dry run without `--apply` shows the rows first; on 2026-09-09 night it listed his three |
+| **The close now fills the same way and refuses after the bell** | A bought leg sold at the bid, a sold leg bought back at the ask. After 15:30 nothing can fill, entry or exit, and the answer says to do it in the window |
+| PR 1 and the hardening | Merged, PRs #49, #50, #51. Migration 021 applied by him at 18:19 IST |
+| **Not yet seen with a real send** | His first send through the ticket, in his window, is the proof. Everything else is proven by test and in a browser with the market shut |
+
+### Earlier: PR 1 OF THE TRADING DESK IS BUILT, 2026-09-09 evening
 
 | | |
 |---|---|

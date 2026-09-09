@@ -58,25 +58,47 @@ def _quote(ltp=100.0, bid=99.5, ask=100.5, state="live", open_=True):
     return LegQuote(ltp=ltp, bid=bid, ask=ask, spot=23635.1, state=state, market_open=open_, as_of=None)
 
 
-def test_a_market_leg_fills_at_the_servers_quote_not_the_browsers_price():
-    fill = resolve_fill(direction="buy", order_type="MARKET", limit_price=None, quote=_quote(), leg_label="BUY 24,000 CE")
-    assert fill.price == 100.0
-    assert fill.order_type == "MARKET"
-    assert fill.basis == "traded_price"
+def test_a_market_buy_pays_the_ask_and_a_market_sell_gets_the_bid():
+    buy = resolve_fill(direction="buy", order_type="MARKET", limit_price=None, quote=_quote(), leg_label="BUY 24,000 CE")
+    assert buy.price == 100.5 and buy.side_hit == "ask"
+    assert buy.basis == "bid_ask"
+    assert buy.ltp_at_fill == 100.0, "the traded price is kept so the record can show the spread cost"
+    sell = resolve_fill(direction="sell", order_type="MARKET", limit_price=None, quote=_quote(), leg_label="SELL 23,700 CE")
+    assert sell.price == 99.5 and sell.side_hit == "bid"
+
+
+def test_the_spread_cost_is_what_crossing_the_book_cost_against_the_trade():
+    from swayam.services.fills import spread_cost_inr
+    assert spread_cost_inr("buy", 100.5, 100.0, 65) == -32.5
+    assert spread_cost_inr("sell", 99.5, 100.0, 65) == -32.5
+    assert spread_cost_inr("buy", 100.5, None, 65) is None
 
 
 def test_a_limit_away_from_the_market_does_not_fill_and_says_where_the_market_is():
     with pytest.raises(FillRefused) as exc:
         resolve_fill(direction="buy", order_type="LIMIT", limit_price=95.0, quote=_quote(), leg_label="BUY 24,000 CE")
     assert "would not fill now" in str(exc.value)
-    assert "100.00" in str(exc.value)
+    assert "ask is 100.50" in str(exc.value)
     assert "Nothing was sent" in str(exc.value)
 
 
-def test_a_limit_through_the_market_fills_at_the_limit_never_better():
-    fill = resolve_fill(direction="sell", order_type="LIMIT", limit_price=98.0, quote=_quote(), leg_label="SELL 23,700 CE")
-    assert fill.price == 98.0
-    assert fill.limit_price == 98.0
+def test_a_limit_through_the_market_fills_at_his_price_or_better_as_the_exchange_does():
+    """His correction, 2026-09-09 evening: a limit executes at my limit or better."""
+    sell = resolve_fill(direction="sell", order_type="LIMIT", limit_price=98.0, quote=_quote(), leg_label="SELL 23,700 CE")
+    assert sell.price == 99.5, "a sell limit below the bid receives the bid"
+    assert sell.limit_price == 98.0
+    assert "better" in sell.how
+    buy = resolve_fill(direction="buy", order_type="LIMIT", limit_price=100.5, quote=_quote(), leg_label="BUY 24,000 CE")
+    assert buy.price == 100.5 and "better" not in buy.how
+
+
+def test_a_missing_side_of_the_book_refuses_that_side_only():
+    with pytest.raises(FillRefused) as exc:
+        resolve_fill(direction="buy", order_type="MARKET", limit_price=None,
+                     quote=_quote(ask=None), leg_label="BUY 24,000 CE")
+    assert "the ask is not published" in str(exc.value)
+    sell = resolve_fill(direction="sell", order_type="MARKET", limit_price=None, quote=_quote(ask=None), leg_label="SELL 24,000 CE")
+    assert sell.price == 99.5
 
 
 def test_a_closing_price_is_not_a_fill():
@@ -91,7 +113,7 @@ def test_no_quote_means_no_fill():
         resolve_fill(direction="buy", order_type="MARKET", limit_price=None,
                      quote=LegQuote(None, None, None, None, "unavailable", True, None, note="chain unreadable"),
                      leg_label="BUY 24,000 CE")
-    assert "no live price" in str(exc.value)
+    assert "no live bid or ask" in str(exc.value)
 
 
 def test_a_limit_order_with_no_price_is_refused_with_what_to_do():
@@ -129,10 +151,11 @@ def test_the_row_records_the_spot_and_how_each_leg_was_filled(fake_db):
     row = fake_db.inserted_into("swayam_positions")[0]
     # Never stored before this. The note printed a spot of 0 on every trade.
     assert row["spot_at_entry"] == 23635.10
-    assert row["fill_basis"] == "traded_price"
+    assert row["fill_basis"] == "bid_ask"
     for leg in row["legs"]:
         assert leg["order_type"] == "MARKET"
-        assert leg["fill_basis"] == "traded_price"
+        assert leg["fill_basis"] == "bid_ask"
+        assert leg["spread_cost_inr"] == 0.0, "the test market has no spread"
         assert leg["ltp_at_fill"] == leg["entry_premium"]
         assert leg["filled_at"]
         assert leg["entry_charges_inr"] > 0
@@ -172,8 +195,12 @@ def test_a_market_leg_is_filled_at_the_servers_price_even_if_the_browser_sent_an
         body = _condor(legs=[_leg("buy", 23800, "PE", 120.0), _leg("sell", 23600, "PE", 60.0)])
         res = client.post("/api/execute/multi-leg", json=body)
     assert res.status_code == 200, res.text
-    for leg in fake_db.inserted_into("swayam_positions")[0]["legs"]:
-        assert leg["entry_premium"] == 100.0, "the fill is the server's quote, not the browser's memory of it"
+    legs = fake_db.inserted_into("swayam_positions")[0]["legs"]
+    by_dir = {l["direction"]: l for l in legs}
+    assert by_dir["buy"]["entry_premium"] == 100.5, "a buy pays the ask, whatever the browser remembered"
+    assert by_dir["sell"]["entry_premium"] == 99.5, "a sell gets the bid"
+    assert by_dir["buy"]["spread_cost_inr"] == -32.5 and by_dir["sell"]["spread_cost_inr"] == -32.5
+    assert res.json()["spread_cost_inr"] == -65.0
 
 
 @pytest.mark.fake_db
@@ -304,7 +331,7 @@ def test_the_note_records_when_the_trade_opened_not_when_the_note_was_written(tm
     text = (tmp_path / rel).read_text(encoding="utf-8")
     assert "**Time opened**: 2026-09-09 14:07:12 IST" in text
     assert "**Margin the broker needed**: ₹71,204" in text
-    assert "at the traded price" in text
+    assert "at the traded price. Not comparable" in text
     assert "| Order | Fill | Traded | Charges |" in text
     assert "| market | ₹82.45 | ₹82.20 | ₹26.58 |" in text
 
