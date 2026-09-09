@@ -1262,34 +1262,128 @@ The sources overlap by design:
 
 ---
 
-#### 2.15.8 What to build, in order, when he opens this work
+#### 2.15.8 THE DATA IS DOWNLOADED AND CHECKED — DONE 2026-09-10, PR #56
 
-1. **`scripts/load_bhavcopy_to_postgres.py`** — free, no signup, could start
-   tomorrow. Fills `swayam_options_contracts` and `swayam_options_eod` from
-   `data/bhavcopy/` and from NSE for any date range, back through 2022 so his 21
-   trades are covered. Caged tests, `db_guard` respected.
-2. **`scripts/load_nifty_history.py`** — free. Fills `swayam_underlying_bars`
-   from FYERS, 100 days a request at 1 minute, back to January 2018.
-3. **`scripts/load_expired_options.py`** — free. Walks the expiry-dates endpoint,
-   then the contracts for each expiry, then the candles, into
-   `swayam_options_intraday` with `source = 'fyers_expired'`. **Calls the REST
-   endpoints with `requests`; does not upgrade `fyers-apiv3`.** Resumable, with a
-   manifest of what was fetched, because it is roughly 130 expiries times a few
-   hundred contracts and it will be interrupted.
-4. **The recorder loader** into the same table with `source = 'recorder'`.
-5. **The three-way reconciliation of §2.15.7**, before any backtest is run.
-6. **Then the backtester**, whose first job is the 21 historical trades.
-   `ROADMAP.md` §3 milestone 2: it is not trusted until it reproduces what those
-   trades actually did.
+**Everything in this section is on disk and verified. Nothing was bought.**
 
-**Rate limits are the practical constraint, not money.** FYERS' data API limits
-are not published per endpoint; the loader must back off on refusal exactly as
-`src/swayam/api/chain_feed.py` already does, and it must never run during his
-window, because it shares the token with the live terminal.
+| What | Rows | Span | Size |
+|---|---|---|---|
+| NIFTY minute bars | 804,379 | 2018-01-01 to 2026-09-09 | 17.5 MB |
+| NIFTY daily bars | 4,141 | 2010-01-04 to 2026-09-09 | 0.1 MB |
+| NSE daily option rows | 4,569,843 | 2018-01-01 to 2026-09-09 | 73 MB |
+| Minute option bars | 59,292,184 | expiries 2024-02-01 to 2026-09-08 | 540 MB |
+
+The last of those took 90 minutes and 8,576 FYERS requests, with **zero
+refusals and zero errors**. Files live in `data/history/`, which git ignores.
+Rebuild any of it with the three scripts named below.
+
+**THE TWO SOURCES CHECK EACH OTHER, AND THEY AGREE.** FYERS' minute candles and
+NSE's official daily file come from different systems and were downloaded
+separately. Squashing a day's minutes into one bar reproduces NSE's row across
+**167,717 contract-days**: the open agrees 99.20% of the time, the high 98.43%,
+the low 97.96%. `scripts/reconcile_option_history.py`.
+
+**THE CLOSE DOES NOT AGREE, AND THAT IS THE MOST IMPORTANT THING WE LEARNED.**
+Only 14.94% of closes match. NSE's derivatives closing price is the
+volume-weighted average of the last half hour, not a trade. Proved rather than
+assumed: computing that half-hour average from our own minute bars cuts the
+median gap from ₹2.45 to ₹0.17 and quadruples the exact matches. The same holds
+on the index, where the official close and the 15:29 level sit a median of 7.7
+points apart.
+
+> **So a backtest may never fill at a daily closing price.** It is a statistic,
+> not a price anyone could deal at, and on a four-leg structure the error is
+> taken four times. Fills come from the minute bars or, before February 2024,
+> from a day's traded range with the limitation stated on the result.
+
+**Other things measured, all of which a backtester must respect:**
+
+- **Only 31% of daily option rows actually traded.** The rest carry an
+  exchange-derived close for a contract nobody dealt in. Filling there invents
+  liquidity that never existed.
+- **The lot size changed four times**: 25, 50 and 75 during 2024; 25, 65 and 75
+  in 2025; 65 now; 50 through his 2022-23 era. The legacy file carries none, so
+  it is NULL rather than guessed. Using today's 65 on his old trades overstates
+  everything by a fifth.
+- **642 NIFTY bars sit outside market hours.** Diwali Muhurat evening sessions.
+  Real, but not ordinary days.
+- **406 NIFTY bars in 2019 and 2021 have a high below their low**, all with zero
+  volume. A defect in FYERS' archive. Left exactly as it came; silently
+  repairing another system's data is not a habit worth starting.
+
+**The scripts, all read-only against his records:**
+
+| Script | What it does |
+|---|---|
+| `scripts/load_nifty_history.py` | The chart. `--verify` reports completeness and the close problem |
+| `scripts/load_nse_options_eod.py` | Daily options from NSE, both file formats. `--verify` |
+| `scripts/load_expired_options.py` | Minute options from FYERS. `--plan` sizes the job first |
+| `scripts/reconcile_option_history.py` | The two sources against each other |
+| `scripts/check_historical_trades.py` | His 21 trades, and whether the data covers them |
+| `scripts/recover_trade_expiries.py` | The expiries his notes never recorded |
+
+**Care that is in the code and should stay there.** Every write is atomic
+through a temporary file and a rename. A manifest records each unit as it
+completes so a killed run resumes. Bulk downloads refuse to start inside his
+window, because they spend the same FYERS budget the desk uses to quote his
+legs. And `swayam/research/contracts.py` parses a contract name against an
+expiry that is already known, after a lazy pattern read `NIFTY2690823450CE` as
+strike 823,450, chose sixty-two contracts nobody had traded, and reported a
+clean zero rows with no error at all.
 
 ---
 
-#### 2.15.9 Sources
+#### 2.15.9 HIS 21 TRADES: readable, covered, and flawed — DONE 2026-09-10
+
+**The data covers them.** Every strike in all 21 trades is present on the day he
+opened it.
+
+**The expiries his notes never recorded are recovered, 69 of 72 legs, 96%.**
+Not one note carries an expiry, which for a calendar is the whole trade:
+Trade-07 sells the 18700 call and buys the 18700 call, separated only by a date
+nobody wrote down. The premium he recorded is the evidence. Each leg is matched
+against every expiry's traded range at that strike on that day, and where more
+than one fits, the structure settles it. Trade-07 resolves to: sells 2023-01-12,
+buys 2023-01-25. **All ten calendars resolve.**
+
+**THIRTEEN OF THE 21 NOTES WOULD MISLEAD A BACKTESTER.** Reported, never
+corrected; they are his records.
+
+- Seven have an exit date contradicting their own last booked order.
+- Trade-07's exit date is eleven months BEFORE its entry date.
+- Trade-08's booked orders are dated October for a trade that ran in January.
+- Trade-16 has the literal word `None` where its exit prices belong.
+- Trade-21 has no opening legs at all.
+- Five have no exit date.
+
+Two legs match no expiry at any price, and both look like the note rather than
+the data. Trade-09 records selling the 18100 call at ₹29.27 when every listed
+expiry traded between ₹64 and ₹559. Trade-15 records selling the 17450 call at
+₹34.65 when the range was ₹136 to ₹682.
+
+**The source is `Swing Trades Journal.xlsx`, extracted by Antigravity. It is NOT
+in the vault.** Without it the notes cannot be re-derived. Ask him where it is.
+
+**What his own record actually says**, computed from those notes:
+
+| | |
+|---|---|
+| 21 trades, 13 wins | 61.9%, net **+₹73,676** |
+| Average win / loss | ₹9,192 / ₹5,728 |
+| Median win / loss | ₹8,169 / ₹3,700 |
+| Winners held / losers held | median 7 days / median 6.5 days |
+
+**He did not cut losses faster than he ran winners.** He held both about the same
+time. And three of eight losers broke the stop written down before entry:
+Trade-07 planned ₹7,000 and lost ₹21,000; Trade-10 planned ₹5,250 and lost
+₹7,239; Trade-21 planned ₹4,750 and lost ₹5,800. **Those three overshoots cost
+₹17,039, which is 23% of everything he made in the era.**
+
+> That is why the backtester's first measure is not profit. See §2.16.
+
+---
+
+#### 2.15.10 Sources
 
 - **Tested directly against his live FYERS account, 2026-09-09 night:** the
   expired-contract endpoints and their depth, the ordinary history API's refusal
@@ -1311,6 +1405,324 @@ window, because it shares the token with the live terminal.
 - TrueData pricing: `truedata.in/price`.
 - NSE UDiFF bhavcopy: implemented in `src/swayam/bhavcopy.py`; columns read off
   `data/bhavcopy/2026-09-01.csv`.
+
+---
+
+### 2.16 THE BACKTESTER. His words, 2026-09-10. Do not relitigate.
+
+**Written from what he said when asked directly. Everything in quotation marks
+is his. This section is the specification; the data it stands on is §2.15.**
+
+---
+
+#### 2.16.0 The single most important correction he made
+
+**He is NOT a time-based trader and this is not an algo.**
+
+> "I'm not looking for a time-based strategy. Time only matters to me because I
+> can only trade in the afternoon due to my night shift. For the rest, I am a
+> price-action and technical-based trader, mostly a price-action-based trader."
+
+So "enter at 2 pm every day" is the wrong shape entirely. The question the
+backtester answers is closer to: **when the market looks like THIS, and he is
+looking at it in his window, what happens next, and which structure pays best
+for it?** It is a research tool he drives, not a robot that trades.
+
+> "I want to know what kind of price action forms in what kind of market cycle,
+> because the market has different cycles... around the afternoon, that is the
+> time when the positional trader enters and the intraday trader exits, and what
+> kind of formation happens."
+
+---
+
+#### 2.16.1 The four charts he actually reads, in his words
+
+| Chart | What he uses it for |
+|---|---|
+| **Weekly** | Important for the wider view |
+| **Daily** | **The most important.** Where the market is heading, and where the major support and resistance are |
+| **Hourly** | The movement, the pattern, the direction over the next few days, the possible reversal area, the entry area |
+| **15-minute** | The intraday trend, and the actual entries |
+
+All four are built from the one minute file we hold, back to January 2018.
+
+---
+
+#### 2.16.2 His market cycles, roughly, pending their own session
+
+**His rough definition, given 2026-09-10, and he asked for a dedicated session
+to give these proper words. Treat this as a sketch, not a specification.**
+
+- **Trending**, and within that **aggressive** or **basic**.
+  - Bullish or bearish. "Bearish is mostly aggressive, and mostly short-term."
+  - "The Indian market is mostly in a bull run on the long-term chart, but in the
+    short term it becomes bearish and aggressively bearish."
+- **Sideways**, and within that:
+  - **Squeezing** — "which is going to blast someday".
+  - **Expanding** — in both directions.
+
+> "As for the current situation, I can say it is squeezing... We will have to do
+> a session to give words to all of this. That will be a particular session."
+
+**When that session happens it can be evidence-based rather than theoretical.**
+Once he defines a cycle roughly, all eight and a half years can be labelled, and
+we can count how often each appears, how long each lasts, and what tended to
+follow. A definition that catches nothing will show itself before anything is
+built on it. **That session is the gate to building any of the rest of this.**
+
+---
+
+#### 2.16.3 The structure follows from TWO different questions, not one
+
+**This changed the design.** He picks a structure down one of two paths, and the
+system needs both, not a single "choose a strategy" step.
+
+| Path | Trades | What decides it |
+|---|---|---|
+| **Directional** | bull call spread, bull condor, bear condor, bear put spread | "I make the view: the setup, the direction of the market, and the formations" |
+| **Volatility** | iron condor, iron butterfly, calendar | "It is not about the direction. It is about the volatility" |
+
+His own volatility rules, as he stated them:
+
+- **An event is coming and volatility can increase → calendar.**
+- **Volatility is too high now and going to squeeze, market mostly sideways →
+  iron condor or butterfly.**
+
+> "But again, these are the past things. I will start a clean slate after
+> brainstorming and understanding the structure."
+
+So these are his starting hypotheses, not fixed rules. The backtester's job is
+to test them, not to enshrine them.
+
+---
+
+#### 2.16.4 Adjustments, which is where his money actually went
+
+**His rule is more precise than he may realise, and it is testable.**
+
+> "Adjustment mostly means we have to make sure what the premium left is in any
+> leg. If there is not much premium left in any leg, then we must adjust them to
+> control the risk. If we reach a place where we can 100% hedge our position,
+> these are the adjustments. I would not like to make many adjustments, but
+> adjustments would be as per the market scenario changes."
+
+Two triggers, both measurable:
+
+1. **Premium exhaustion.** A leg sold for ₹40 now worth ₹4 has given 90% of what
+   it will ever give and is carrying risk for nothing. That threshold is a
+   number and the right value can be found from the data.
+2. **A fully hedged position becomes reachable.**
+
+And one condition: **the scenario changed** — sideways becoming trending,
+squeezing, volatility rising or crashing. That depends on §2.16.2 existing first.
+
+**Test the un-adjusted structure first.** Holding a structure untouched gives a
+clean read of whether the entry had an edge at all. Adjustments are the second
+layer, tested against that baseline, because otherwise a good adjustment rule
+can hide a bad entry and neither can be seen.
+
+---
+
+#### 2.16.5 WHAT "IT WORKED" MEANS. Not profit first.
+
+**He said his risk and reward was what let him survive, and that he took small
+quick losses. His own record agrees with the first half and contradicts the
+second.** Numbers in §2.15.9.
+
+- Winners held a median of **7 days**. Losers held a median of **6.5 days**. He
+  did not cut losses faster than he ran winners.
+- **Three of eight losers broke the stop written down before entry**, costing
+  **₹17,039 more than his own plan allowed — 23% of everything he made.**
+
+> **So the first measure a backtest reports is: did this trade stay inside the
+> plan it was given?** A strategy that makes money while regularly breaking its
+> own stop cannot be sized up, because the day it breaks badly it takes the year
+> with it. That is Trade-07 in swing form, and the intraday year of FY 2025-26 is
+> the same pattern at higher frequency.
+
+Every result therefore reports, in this order:
+
+1. **Discipline.** How often the trade stayed inside its planned stop, and by how
+   much it overshot when it did not.
+2. **Charges.** Gross against net, per leg, from `services/charges.py`. FY
+   2025-26 was gross **+₹6,109** and net **−₹86,299** on ₹92,408 of charges. A
+   backtest that ignores costs would have called that year fine.
+3. **The spread**, and clearly marked as modelled rather than measured for any
+   period before the recorder existed.
+4. **Then** profit, win rate, expectancy and the worst run.
+
+---
+
+#### 2.16.6 What to build, in order
+
+Nothing here starts before §2.16.2's session.
+
+1. **The cycle labeller.** His definitions applied to eight years, with counts,
+   durations and what followed. This is also how his definitions get tested.
+2. **The formation detector**, from his own list, on the timeframes in §2.16.1.
+3. **The replay engine.** One structure, one past day, priced from the minute
+   bars at the minute he would have acted. Never from a daily close (§2.15.8).
+4. **The measurement**, in the order of §2.16.5.
+5. **Validation.** See §2.16.7, which proposes an amendment to the roadmap.
+6. **Only then, the scenario sweep**: the same idea run many ways and ranked.
+
+---
+
+#### 2.16.7 A PROPOSED AMENDMENT TO `ROADMAP.md` §3. NEEDS HIS APPROVAL.
+
+**The roadmap says the backtester is not trusted until it reproduces his 21
+historical swing trades. That test is weaker than it looks, and there is a
+better one available.**
+
+The 21 trades run October 2022 to April 2023, before the minute data begins, so
+they can only be replayed day by day. Thirteen of the notes carry errors and the
+spreadsheet behind them is missing (§2.15.9).
+
+**His intraday year, April 2025 to March 2026, is fully inside the minute data.**
+It is reconciled against raw FYERS statements in the vault at
+`00 - Reference/Historical Trade Journal/`, and its accounting is verified:
+gross **+₹6,109**, charges **−₹92,408**, net **−₹86,299** across 246 contracts.
+
+**Recommendation:** validate the engine against the intraday year first, because
+the data is complete and the accounting is broker-verified, then use the 21 swing
+trades as a second check at daily resolution. Both, in that order, rather than
+the swing trades alone.
+
+**Do not edit `ROADMAP.md` for this without asking him.** Propose and wait.
+
+---
+
+### 2.17 THE AI AS A TRADING PARTNER. His job description, 2026-09-10.
+
+**He asked for this to be written down so he never has to explain it again.
+Everything in quotation marks is his own words. This is the specification for
+what the AI in this terminal is FOR.**
+
+---
+
+#### 2.17.1 What he does NOT want, said plainly
+
+> "I'm not looking for a shortcut, as in AI to print some strategies for me or
+> something like that. No... I don't want AI to draw strategies and tell me,
+> 'Okay, use it, you will have profit.' I'm not looking for that."
+
+**An AI that hands him strategies is worthless to him, for a concrete reason: he
+would have no way to tell a good one from a confident one.** Do not build a
+strategy generator. Do not build a signal service. Do not put a "recommended
+trade" anywhere on his screen.
+
+---
+
+#### 2.17.2 What he DOES want
+
+> "I need AI as my trading partner who will sit with me and do the backtesting.
+> If I'm doing something wrong, which is logically wrong, tell me, 'No,
+> Abhishek, this is not the way to do this.' When AI is wrong, then I correct it.
+> 'No, this is not how humans behave or work.' Then we finalize, and we mitigate
+> the things that don't work. We give names to the structures of our findings."
+
+> "I just want AI so that I don't have to look at books, read articles to find or
+> understand structures, nuance, market knowledge, and definitions. I can have
+> on-the-spot answers and on-the-spot help as a colleague, as a mentor, as a
+> buddy, as a trading partner."
+
+Four jobs, in his order:
+
+1. **Sit with him and do the backtesting.** An active participant, not a report.
+2. **Tell him when his logic does not hold**, in those words, to his face.
+3. **Be corrected by him** when it is wrong about how humans actually behave.
+   He explicitly wants the correction to run both ways.
+4. **Replace the books.** Structures, nuance, definitions, market knowledge, on
+   the spot, so his 60 to 90 minutes are not spent reading.
+
+And then, together: **name the structures of their findings.** The naming is
+part of the work, not decoration.
+
+---
+
+#### 2.17.3 THE LINE THAT KEEPS IT HONEST. Added by this session; he agreed.
+
+**The AI must never be the one reporting whether something worked.**
+
+It proposes, explains, argues and objects. **The measuring is done by the engine
+on the real data, and the number comes back from something neither of them
+chose.** An AI asked to evaluate its own idea will find a way to like it. That is
+not dishonesty, it is what these systems do, and the only defence is to take the
+scoring away from it entirely.
+
+His vault already says the equivalent for tuning, in `Self-Improving Agent
+Integration.md`: one variable at a time, a written hypothesis, human approved,
+never auto-applied. **§2.17 is the same discipline applied to research.**
+
+So:
+
+| Who | Does |
+|---|---|
+| **The AI** | Proposes, explains, defines, objects, names, drafts the hypothesis |
+| **The engine** | Measures, on real data, with charges and honest fills |
+| **Him** | Decides, corrects the AI on human behaviour, approves what is kept |
+
+---
+
+#### 2.17.4 What it has to know, and where that knowledge lives
+
+He intends to make it a market expert by feeding it knowledge:
+
+> "I will have an AI which I have to make the market expert by giving it all the
+> knowledge of the market, feeding it all the knowledge, and then I will format
+> names, structures, conditions, and strategies."
+
+The knowledge has three layers and they must not be mixed:
+
+1. **General market knowledge** — what a calendar is, what vega does, how an
+   Indian expiry settles. Not his, not private, and the AI mostly has it.
+2. **His own record** — the 21 swing trades, the intraday year, his charges, his
+   rules. This is in the vault and it is the part that makes the AI his rather
+   than anyone's.
+3. **The findings they agree together** — named structures, conditions that were
+   tested, what was mitigated because it did not work. **This layer does not
+   exist yet and it is the real product of the partnership.**
+
+Layer 3 is written by him and the AI together, and it is what a later session,
+or a later version of the terminal, reads first.
+
+---
+
+#### 2.17.5 What must not change
+
+- **The cost rule stands.** AI-heavy work is a manual button, a 60-minute cache
+  and a daily cap. Never on page load. Left unguarded this was estimated at
+  ₹4,000 a month.
+- **Method files are constitution.** Hand-edited only, never auto-applied.
+- **No autonomous execution, ever**, at this horizon. `ROADMAP.md` §0: he is in
+  the loop for every decision about money, always.
+- **A number the AI states must be traceable to the database, FYERS or the
+  engine, or it says `unavailable`.** The no-fake-data rule applies to it more
+  than to anything else, because prose hides a fabricated figure better than a
+  screen does.
+
+---
+
+#### 2.17.6 Why this matters more than it looks
+
+He built the Second Brain so he would not have to keep explaining himself:
+
+> "That is the reason I built this second brain, so that I will not have to
+> explain this many a time, but it is not structured very well right now so that
+> every agent who is helping me can understand what happened."
+
+**That is the actual brief.** The AI partner is the interface to a Second Brain
+that already holds four years of his trading and the story of why the losing
+years looked the way they did. Its first job is to know that story so he never
+has to tell it again.
+
+Relevant, and he should not have to repeat it either: he stopped drinking about
+a year ago, has had no craving for over a hundred days, and attributes the
+losses of his intraday era to that rather than to his method. His words:
+
+> "My reason for my losses was nothing but me... It's been almost 1 year that I
+> quit alcohol... I am more confident that the things that dragged me down
+> previously are now under control."
 
 ---
 

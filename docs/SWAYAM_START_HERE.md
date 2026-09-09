@@ -75,7 +75,32 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: THE BACKTESTING FOUNDATION, 2026-09-09 into the small hours
+### Latest first: THE WORK IS SPLIT IN TWO, 2026-09-10
+
+**He asked for two chats rather than one, so a long conversation cannot mix
+them.** Each has its own prompt to paste. `docs/SUCCESSOR_PROMPT.md` is still the
+general one for ordinary work on the terminal.
+
+| Chat | Prompt to paste | Its specification |
+|---|---|---|
+| **The backtester** | `docs/SUCCESSOR_BACKTESTER.md` | `docs/PLAN.md` §2.16, data in §2.15 |
+| **The AI partner** | `docs/SUCCESSOR_AI_PARTNER.md` | `docs/PLAN.md` §2.17 |
+
+**The vocabulary work belongs to the backtesting chat**, because a definition
+that cannot be measured is only words.
+
+| | |
+|---|---|
+| **The data is downloaded and checked** | 804,379 NIFTY minute bars from 2018, 4,569,843 daily option rows from 2018, 59,292,184 minute option bars from Feb 2024. Free. `data/history/`, git-ignored. `docs/PLAN.md` §2.15.8 |
+| **Two sources agree** | FYERS minute candles and NSE's daily file reproduce each other's open, high and low on 98 to 99% of 167,717 contract-days |
+| **⚠️ THE DAILY CLOSE IS NOT A TRADEABLE PRICE** | It is a half-hour weighted average, proved not assumed. A backtest fills from minute bars, never a daily close. The index close and its 15:29 level differ by a median of 7.7 points |
+| **His 21 trades are readable, and flawed** | Expiries recovered for 69 of 72 legs. **13 of the 21 notes carry errors**, and `Swing Trades Journal.xlsx` is not in the vault. §2.15.9 |
+| **What his record actually says** | 13 wins of 21, net **+₹73,676**. He held winners a median of 7 days and losers 6.5. Three of eight losers broke his own written stop, costing **₹17,039, 23% of the era's profit** |
+| **Open, needs his approval** | §2.16.7 proposes validating the engine on his intraday year first, since its data is complete and its accounting is broker-verified. That changes `ROADMAP.md` §3 |
+| **Still open** | `ROADMAP.md` §2's rows for the recorder and backtesting are stale and may not be edited without him. The recorder still captures the afternoon only (§2.10) |
+
+
+### Earlier: THE BACKTESTING FOUNDATION, 2026-09-09 into the small hours
 
 **Nothing in this section touches the execution ticket, positions, the journal
 writer, fills, the strategy builder or any migration. His live send is
