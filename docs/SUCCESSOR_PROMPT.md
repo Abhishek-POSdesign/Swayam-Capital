@@ -66,6 +66,9 @@ WHERE EVERYTHING LIVES. Do not ask me any of this.
   my vault. Do not weaken or remove either guard.
 
 READ THESE, IN THIS ORDER, ALL THE WAY THROUGH
+0. docs/ROADMAP.md             — PLAN STARTS HERE. My end goal and the four
+                                 horizons with their gates, in my words. Edit
+                                 it only with my explicit approval.
 1. docs/SWAYAM_START_HERE.md   — where everything is, what is verified true, and
                                  what is not done. Section 3 is the live status.
 2. docs/PLAN.md                — THE ONE PLAN. Section 0 is my hours. Section
