@@ -1,8 +1,12 @@
 # THE PROMPT FOR THE BACKTESTING CHAT
 
-> Rewritten 2026-09-10 night after he corrected the premise. **He does NOT want
-> his own trade history backtested.** The earlier version of this file assumed
-> the opposite. See §2.16 of `docs/PLAN.md`.
+> Rewritten 2026-09-10 night after he corrected the premise twice. **His
+> backtest is a fresh test of new strategies he designs. His own trade history
+> is not what a strategy is copied from and not the test that decides the engine
+> is correct, but it is NOT off limits and may be used whenever it genuinely
+> helps, with its flaws stated.** An earlier version of this file said first that
+> his trades were the acceptance test, and then that they were unusable. Both
+> were wrong. See §2.16.0 of `docs/PLAN.md`.
 >
 > **Copy everything inside the fence and paste it as the first message of a new
 > chat.** Nothing else needs saying.
@@ -22,6 +26,14 @@ READ THESE FIRST, ALL THE WAY THROUGH. Do not ask me where anything is.
                               2.16 is the backtester specification, in my words.
                               2.15 is the data, already downloaded and checked.
 4. CLAUDE.md                  How to work here and what I actually trade.
+5. docs/CHAT_PROMPTS.md       Every chat I keep and the prompt that belongs to
+                              it, plus the rules that apply to all of them.
+
+The other chats and their prompts, so you know what is NOT yours:
+  docs/SUCCESSOR_PROMPT.md      the main chat: the terminal, the desk, live testing
+  docs/SUCCESSOR_AI_PARTNER.md  the AI partner chat: what the AI is and refuses
+Deeper reference if you ever need it: WHERE_EVERYTHING_LIVES.md, docs/API.md,
+docs/RUNBOOK.md, docs/architecture.md.
 
 WHO I AM. Abhishek. I am NOT a developer. I speak my prompts rather than typing
 them, so an odd word is transcription and not intent: ask me and I will correct
@@ -42,16 +54,28 @@ click Merge. Run git fetch and check whether the PR is already merged before
 pushing more; I merge mid-session. Never work on main and never in a git
 worktree. Ask me when unsure, mid-build is fine.
 
-=== THE THING THE LAST VERSION OF THIS DOCUMENT GOT WRONG ===
+=== CLEAN SLATE, BUT NOT A CLOSED BOOK. READ BOTH HALVES. ===
 
-I DO NOT WANT TO BACKTEST MY OWN PAST TRADES. Not the 21 swing trades, not the
-intraday year. They were not structured well enough to test and that is not what
-they are for. My trade history is for REFLECTION AND KNOWLEDGE: what I did, how
-I did it, how much, and how I was trading. Read it to understand me. Never treat
-it as the acceptance test for the engine.
+MY BACKTEST IS A FRESH TEST. I will design proper new strategies out of my own
+head, we will name them, and we will test THOSE. I am not copying anything, not
+even from my past. My past is my experience. My future I will write by my own
+hand, with your help.
 
-I am starting from a CLEAN SLATE. I will design proper new strategies, we will
-give them names, and we will backtest THOSE on the data we have.
+So my old trades are NOT the material a strategy comes from, and they are NOT
+the test that decides whether the engine is correct. The 21 swing trades and the
+intraday year were not structured well enough for that.
+
+BUT THEY ARE NOT OFF LIMITS EITHER, and an earlier version of this document put
+it too absolutely. Use my history whenever it is genuinely useful: to understand
+how I traded, to sanity-check something for a limited time, to reason about
+size, charges, discipline or holding periods. Just say plainly, every time, that
+it is flawed data. Thirteen of my twenty-one swing notes carry errors, my
+intraday journal differs from my broker's own figures by about 34,000 rupees
+across the year, and my Zerodha history is gone entirely.
+
+AND USE EVERY SOURCE WE HAVE: my history, my broker, the market, the REST API,
+the WebSocket, the recorder, the NSE files. Whatever is usable. We build a new
+structure on top of all of it, and the structure is mine.
 
 === THE DATA WINDOW: 2022 ONWARDS. NOT OLDER. ===
 

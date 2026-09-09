@@ -17,19 +17,65 @@ answer built on a guess.
 
 THIS IS THE MAIN CHAT: the terminal itself, the desk, the ticket, positions,
 the journal, the recorder, live testing. I KEEP ONE CHAT PER PURPOSE. If we
-drift into the backtester or into designing the AI partner, stop me and say so.
-docs/CHAT_PROMPTS.md lists every chat and the prompt that belongs to it.
+drift into building the backtester or designing the AI partner, stop me and say
+so; those have their own chats and their own prompts.
 
-TWO THINGS I CORRECTED ON 2026-09-10 NIGHT, so no session repeats an old plan.
-My own past trades are NOT backtesting material; they were not structured well
-enough, and my history is for reflection and knowledge only. And any data work
-starts from 2022, not 2018, because the market before and after Corona are
-different markets. docs/PLAN.md 2.16.0 and 2.16.2.
+EVERY DOCUMENT, AND WHICH ONE ANSWERS WHAT:
+  docs/ROADMAP.md               the direction, four horizons. YOU MAY NOT EDIT
+                                THIS WITHOUT MY EXPLICIT YES, EVERY TIME.
+  docs/SWAYAM_START_HERE.md     where everything lives, what is verified true
+  docs/PLAN.md                  the one plan. Section 1 and 2 are this chat's
+  CLAUDE.md                     how to work here, and what I actually trade
+  docs/CHAT_PROMPTS.md          every chat I keep and its prompt
+  docs/SUCCESSOR_BACKTESTER.md  the backtester chat's prompt. Not this chat's
+  docs/SUCCESSOR_AI_PARTNER.md  the AI partner chat's prompt. Not this chat's
+Deeper, only if needed: WHERE_EVERYTHING_LIVES.md, docs/API.md,
+docs/RUNBOOK.md, docs/architecture.md.
+
+=== WHAT HAPPENED ON THE NIGHT OF 2026-09-09 INTO THE 10th ===
+A separate chat did the backtesting foundation. ONE thing from it touches this
+chat, and it is the recorder.
+
+THE RECORDER WAS REBUILT AND REDEPLOYED, revision swayam-recorder-00003-kuq. It
+used to write twelve columns of zeros and a wrong expiry date on every row. It
+now records the real NIFTY level, real change in open interest, a correct
+expiry, and implied volatility with the four Greeks computed. Unknown values are
+NULL, never zero. It records TWO expiries a snapshot so a calendar can be
+valued, and it refuses to run on an NSE holiday.
+
+IT HAS NEVER YET WRITTEN A REAL FILE IN THE NEW SHAPE. Every proof so far was a
+dry run that deliberately wrote nothing. The first real object lands when the
+market opens. CHECK IT:
+  gcloud storage ls -l "gs://swayam-capital-options-data/$(date +%Y-%m-%d)/nifty_chain.parquet"
+Then have someone open it and confirm spot is not zero, that two expiry dates
+are present, and that implied volatility and delta have values.
+
+AND KNOW THIS GAP: the recorder captures the AFTERNOON ONLY. On 2026-09-09 every
+call from 09:15 to 13:25 failed with "Please provide valid token" and it began
+working the minute I refreshed my token by hand. I am asleep at 09:15. We
+decided NOT to fix that by storing my PIN, because the mornings can be
+backfilled for free later from FYERS' expired-contract history. docs/PLAN.md
+section 2.10.
+
+NOTHING ELSE IN THE LIVE PATH WAS TOUCHED. Not the execution ticket, not
+positions, not the journal writer, not services/fills.py, not the strategy
+builder, no migration. If the desk behaves differently today, it is NOT from
+that work and I want to know.
+
+=== TWO THINGS I SETTLED ON 2026-09-10 NIGHT ===
+My backtesting starts from a clean slate: new strategies out of my own head, not
+copied from my past. My old trades are not the material and not the test, but
+they are not off limits either. Use my history whenever it is genuinely useful
+and say every time that it is flawed data. Use every source we have: my history,
+my broker, the market, the API, the WebSocket, the recorder, the NSE files.
+And any data work starts from 2022, not 2018, because the market before and
+after Corona are different markets. docs/PLAN.md 2.16.0 and 2.16.2.
 
 MY OWN TRADING ARCHIVE, which nobody had written down before, is at
 E:\Project E\Trading\Bazaar. Everything I ever saved, including the swing
 journal spreadsheet and four strategies I wrote with rules. My own word for it
-is broken: some current, some years old, some spreadsheets lost.
+is broken: some current, some years old, some spreadsheets lost. My Zerodha
+history is gone entirely.
 
 WHO I AM AND HOW TO WORK WITH ME
 I am Abhishek. I am not a developer. Write plain English, never hand me code to

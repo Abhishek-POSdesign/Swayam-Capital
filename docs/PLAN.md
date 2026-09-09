@@ -1424,24 +1424,59 @@ document held earlier, so read it before anything else here.**
 
 ---
 
-#### 2.16.0 THE CORRECTION. His own trades are NOT the test material.
+#### 2.16.0 CLEAN SLATE, BUT NOT A CLOSED BOOK. His words, refined 2026-09-10.
+
+**This section was written once too absolutely and he corrected it. Read the
+whole thing; the nuance is the point.**
+
+**What he ruled out:** his own trades as the material a backtest is built on,
+or as the test that decides whether the engine is trusted.
 
 > "I don't want to do backtesting on the trades I did. The trades I did are not
 > very well structured, so we can't do backtesting on them, whether swing trades
-> or intraday trades. My trade history is just for reflection on what I did, how
-> I did it, how much I did, and how I was trading. It is just for my history and
-> for knowledge. I will do the backtesting on a clean slate. The things in my
-> mind will create proper new strategies. We'll give them the names and backtest
-> them on the data available."
+> or intraday trades... I will do the backtesting on a clean slate. The things in
+> my mind will create proper new strategies. We'll give them the names and
+> backtest them on the data available."
 
-**So: his 21 swing trades and his intraday year are READ FOR UNDERSTANDING HIM,
-never used to validate the engine.** An earlier version of this plan made them
-the acceptance test, and real work went into making them machine-readable and
-recovering the expiries their notes never carried (§2.15.9). That work stands
-and is still worth having for reflection. **It is off the critical path. Do not
-resurrect it as validation.**
+**What he did NOT rule out:** using his history whenever it is useful.
 
-The engine gets validated a different way. See §2.16.7.
+> "You change it so that my past data can be used whenever and wherever it is
+> required, whenever it can be useful, but it cannot be only backtest material.
+> My backtest will be a fresh test, a synthetic test. If you have to compare it
+> with my past trades, we can use it, because that is for a limited time, or a
+> very limited time, and the data is not very well structured. There might be
+> flaws."
+
+> "We will create everything on a clean slate, but we will use whatever
+> resources we have, whether by my history, by my broker, by market, by API, by
+> WebSocket, whatever is usable. We create our own structure out of that, a new
+> one."
+
+**And the sentence that settles how to hold both at once:**
+
+> "I'm not going to copy anything, not even from my past. My past is my
+> experience, and we should learn from it and use it whenever required. My
+> future, I will be writing by my own hand, with your help."
+
+**So the rule is about ROLE, not about permission:**
+
+| His history may be | His history may NOT be |
+|---|---|
+| Read to understand how he trades and what went wrong | The source a strategy is copied from |
+| Compared against, for a limited sanity check, with its flaws stated | The acceptance test that decides the engine is correct |
+| Used to reason about size, charges, discipline, holding periods | Treated as clean or reconciled data |
+| Quoted back to him in a finding | The reason a new strategy exists |
+
+**Every use of it carries the caveat.** The data is not well structured, 13 of
+the 21 swing notes carry errors (§2.15.9), the intraday journal differs from the
+broker's own figures by about ₹34,000 across the year, **and his Zerodha history
+is gone entirely — he has no record of it any more.** Say so wherever it is used.
+
+**Use every source there is.** His history, the broker, the market, the REST
+API, the WebSocket, the recorder, the NSE files. The structure built on top of
+them is new, and it is his.
+
+The engine is validated a different way. See §2.16.7.
 
 ---
 
@@ -1569,7 +1604,7 @@ entry and neither can be seen.
 
 ---
 
-#### 2.16.7 HOW THE ENGINE IS VALIDATED, now that his trades are not the test
+#### 2.16.7 HOW THE ENGINE IS VALIDATED, since his trades are not the test
 
 **Two different questions, and conflating them is how a backtest lies.**
 

@@ -89,11 +89,13 @@ A browser that sends 75 is ignored.
 
 **⚠️ TWO THINGS HE CORRECTED ON 2026-09-10 NIGHT. Both overturn earlier plans.**
 
-**1. His own trades are NOT backtesting material.** "The trades I did are not
-very well structured, so we can't do backtesting on them, whether swing trades
-or intraday trades. My trade history is just for reflection... I will do the
-backtesting on a clean slate." Read his history to understand him. Never use it
-to validate the engine. `docs/PLAN.md` §2.16.0.
+**1. Clean slate, but not a closed book.** The backtest is a fresh test of new
+strategies he designs. His old trades are NOT what a strategy is copied from and
+NOT the test that decides the engine is correct. **They are still usable
+whenever they genuinely help**, with the flaws stated every time. "I'm not going
+to copy anything, not even from my past. My past is my experience... My future,
+I will be writing by my own hand, with your help." Use every source there is.
+`docs/PLAN.md` §2.16.0.
 
 **2. The data window is 2022 onwards, not 2018.** "The market is totally
 different than what it was before Corona and after Corona. I want maybe 22 to

@@ -60,9 +60,19 @@ Propose in the chat and wait. Never edit and tell.
 
 ## Where his own history lives, and what it is for
 
-**It is for reflection and knowledge. It is NOT material for backtesting.** He
-said so on 2026-09-10: the trades were not structured well enough to test, and
-the backtester starts from a clean slate with new strategies.
+**Usable whenever it helps. Never the thing a strategy is copied from, and
+never the test that decides the engine is correct.** He settled this on
+2026-09-10: the backtest is a fresh test of new strategies he designs, but his
+history may be read, compared against and reasoned from whenever it is genuinely
+useful. **Every such use states that the data is flawed.** `docs/PLAN.md`
+§2.16.0 has his own words and the table of what it may and may not be.
+
+> "I'm not going to copy anything, not even from my past. My past is my
+> experience, and we should learn from it and use it whenever required. My
+> future, I will be writing by my own hand, with your help."
+
+**Use every source there is:** his history, the broker, the market, the REST
+API, the WebSocket, the recorder, the NSE files.
 
 | What | Where |
 |---|---|
@@ -72,6 +82,7 @@ the backtester starts from a clean slate with new strategies.
 | **His raw archive, everything he ever saved** | `E:\Project E\Trading\Bazaar` |
 | `Swing Trades Journal.xlsx`, the source of the 21 notes | `E:\Project E\Trading\Bazaar\Trading Journal\` |
 | Four strategies he wrote with rules | `E:\Project E\Trading\Bazaar\60 Day Challange\Strategies\` |
+| **His Zerodha history** | **Gone.** He had the account; he has no record of it any more |
 
 **The archive is his own description: broken.** Some of it is current, some
 years old, some spreadsheets were lost or deleted. He has not traded since
