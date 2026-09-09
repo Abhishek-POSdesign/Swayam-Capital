@@ -1,4 +1,8 @@
-import { executionKeyFor } from './utils/idempotency.js';
+import {
+  executionKeyFor,
+  releaseAllExecutionKeys,
+  releaseExecutionKey,
+} from './utils/idempotency.js';
 /**
  * API client wrapper for Swayam Capital backend.
  */
@@ -30,6 +34,45 @@ async function request(endpoint, options = {}) {
   }
 }
 
+/**
+ * Sends a trade and manages its execution key.
+ *
+ * The key belongs to the TRADE, so a retry of the same trade reuses it and
+ * cannot open a second position, while a genuinely different trade gets its
+ * own. On a final answer the key is released, so storage does not fill with
+ * spent keys.
+ *
+ * If the server still says the key is spent, that answer is final and the
+ * trade was NOT executed: the payload hash it holds differs from the one just
+ * sent. Every stored key is cleared and the trade is sent once more with a
+ * fresh one, because the alternative is what happened to him on 2026-09-09,
+ * which was being unable to trade at all with no way out from the screen.
+ */
+async function submitTrade(path, payload, ticketId) {
+  const body = {
+    ...payload,
+    idempotency_key: payload.idempotency_key || executionKeyFor(ticketId, payload),
+  };
+
+  try {
+    const res = await request(path, { method: 'POST', body: JSON.stringify(body) });
+    releaseExecutionKey(ticketId, payload);
+    return res;
+  } catch (err) {
+    const message = String((err && err.message) || err);
+    if (!/already been used for a different trade/i.test(message)) throw err;
+
+    releaseAllExecutionKeys();
+    const retry = {
+      ...payload,
+      idempotency_key: executionKeyFor(ticketId, payload),
+    };
+    const res = await request(path, { method: 'POST', body: JSON.stringify(retry) });
+    releaseExecutionKey(ticketId, payload);
+    return res;
+  }
+}
+
 export const api = {
   getHealth: () => request('/health'),
   getRules: (forceReload = false) => request(`/api/rules?force_reload=${forceReload}`),
@@ -55,13 +98,7 @@ export const api = {
   // lost response, cannot open a second position. The caller passes a stable
   // ticketId; the key is generated once for it and reused on every retry.
   executeTrade: (payload, ticketId = 'default') =>
-    request('/api/execute', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...payload,
-        idempotency_key: payload.idempotency_key || executionKeyFor(ticketId),
-      }),
-    }),
+    submitTrade('/api/execute', payload, ticketId),
   getPositions: (status = 'open') => request(`/api/positions?status=${status}`),
   getPositionsLive: () => request('/api/positions/live'),
   closePosition: (positionId, payload) =>
@@ -91,13 +128,7 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   executeMultiLeg: (payload, ticketId = 'default-multi') =>
-    request('/api/execute/multi-leg', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...payload,
-        idempotency_key: payload.idempotency_key || executionKeyFor(ticketId),
-      }),
-    }),
+    submitTrade('/api/execute/multi-leg', payload, ticketId),
   detectNakedShorts: (atTime = '15:20') =>
     request(`/api/positions/naked-shorts?at_time=${encodeURIComponent(atTime)}`),
   getSessionContextSummary: (sessionId) =>
