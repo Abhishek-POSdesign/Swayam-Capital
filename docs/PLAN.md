@@ -536,8 +536,12 @@ his PIN. A small scheduled job before 09:15 could do it. **That needs his PIN
 stored in Secret Manager, which is his call and nobody else's.** Not built.
 Raise it with him; do not implement it unasked.
 
-Until then the recorder's own forward history is an afternoon-only archive, and
-§2.15's purchased history is what covers the morning.
+Until then the recorder's own forward history is an afternoon-only archive.
+**The mornings are recoverable, though, and for nothing.** §2.15 established
+that FYERS serves 1-minute candles for expired option contracts, so every
+morning this recorder misses can be backfilled once those contracts expire.
+That makes the token gap a nuisance rather than a permanent hole, and it is why
+§2.15's loader is worth more than fixing the token first.
 
 ### 2.12 THE TRADING DESK. Execute, manage, exit. — THE NEXT JOB, AND THE BIG ONE
 
@@ -992,173 +996,190 @@ separately.
 
 ---
 
-### 2.15 Backtesting, milestone one: the data — RESEARCHED 2026-09-09 night
+### 2.15 Backtesting, milestone one: the data — RESEARCHED AND TESTED 2026-09-09 night
 
 **This is `ROADMAP.md` §3 milestone 1.** The backtester must test HIS structures
 under HIS constraints: entries in his window of roughly 14:00 to 15:30 IST, his
 capital, his four rules, charges per leg from `services/charges.py`, fills at
-the bid and the ask, and the near-expiry square-off habit for calendars. And
-before it is trusted at all it must **reproduce the 21 swing trades in
+the bid and the ask, and the near-expiry square-off habit for calendars. Before
+it is trusted at all it must **reproduce the 21 swing trades in
 `00 - Reference/Historical Swing Trades`** and get what actually happened.
 
-Nothing here was bought and nothing was signed up for. Everything marked
-"verified" was tested against the live FYERS API on 2026-09-09 night; everything
-else is a vendor's own published statement, cited.
+Nothing was bought and nothing was signed up for. Everything marked **tested**
+was called against his live FYERS account on 2026-09-09 night; everything else
+is a vendor's own published statement, cited in §2.15.8.
 
 ---
 
-#### 2.15.1 He asked whether this is built on NIFTY data or options data. Both.
+#### 2.15.1 THE HEADLINE: he already owns the data, and it is free
 
-They are two different problems with two different answers.
+**FYERS has an expired F&O contracts endpoint, it is not in the version of the
+SDK this repository installs, and it works on his account today.**
 
-**The underlying: solved, free, and already available.** The FYERS history API
-returns NIFTY index candles going back years, and it costs nothing beyond the
-account he already has. Verified on 2026-09-09 night:
+It was found because he dropped his own Perplexity research into
+`docs/Independent reports/` at 23:46 on 2026-09-09, and that report flagged a
+June 2026 FYERS community reply mentioning a beta endpoint. Testing it was the
+single most valuable half hour of the night. Without his file the
+recommendation in this section would have been to pay a second broker for data
+he can already reach.
+
+**What was tested, and what came back:**
+
+| Endpoint | Result |
+|---|---|
+| `GET /data/history/fno/expired/expiry-dates` | **Works.** Every NIFTY weekly and monthly expiry, listed back to Q1 2019 |
+| `GET /data/history/fno/expired/underlying-symbols` | **Works.** Every contract for a given expiry. 454 contracts for 8 Sep 2026; 362 contracts across 181 strikes from 9,000 to 32,000 for 28 Mar 2024 |
+| `GET /data/history/fno/expired/historical-data` | **Works.** 1-minute and daily candles for expired option contracts |
+
+Base is `https://api-t1.fyers.in/data`, header
+`Authorization: {app_id}:{access_token}`, `version: 3` — the same credentials
+the terminal already holds.
+
+**The depth, bisected by hand:**
+
+| Expiry tested | Candles |
+|---|---|
+| 8 Sep 2026, 27 Mar 2025, 26 Sep 2024, 28 Mar 2024 | **Yes** |
+| **29 Feb 2024** | **Yes — the earliest found** |
+| 25 Jan 2024, 28 Dec 2023, 30 Nov 2023, 26 Oct 2023, 28 Sep 2023, 27 Apr 2023, 25 Jan 2023, 27 Oct 2022, 20 Oct 2022 | No. `s=no_data`, though the contracts are still listed |
+
+**So: roughly two years and seven months of 1-minute expired NIFTY option
+history, every strike, every expiry, at zero cost, from the account he already
+uses.** That clears his stated minimum of two years. FYERS said in June 2026
+that more years were being added, so the floor may move; re-test it rather than
+assuming either way.
+
+**What the candles do NOT contain, tested rather than assumed.** Each candle is
+six values: timestamp, open, high, low, close, volume. **No open interest, no
+implied volatility, no Greeks and no bid or ask.** `greeks=1` and `greeks=0`
+returned byte-identical payloads. Do not plan around the Greeks arriving; plan
+to compute them, which the recorder already does in `cloud/recorder/bs_math.py`
+and which needs only the underlying, and the underlying is also free (§2.15.3).
+
+**One thing to be careful about, and it is not optional.** The installed
+`fyers-apiv3` is **3.1.5**; these methods appear in **3.1.17**, released
+2026-09-06. **Do not upgrade the package in the project environment as part of
+this work.** That environment is what his execution ticket runs on. The loader
+should call the three endpoints directly with `requests`, which is what the
+tests above did and what proved they work. Upgrading the SDK is its own change,
+on its own day, with the desk re-tested afterwards.
+
+---
+
+#### 2.15.2 He asked whether this is built on NIFTY data or options data. Both.
+
+They are two different problems and they now have two different free answers.
+
+**The underlying**, from the ordinary FYERS history API, tested:
 
 | Resolution | Depth proved | Per request |
 |---|---|---|
 | 1 minute | **January 2018 onwards.** 22,401 candles for Q1 2018; 2017 returns `no_data` | About 100 days |
-| Daily | **At least 2010.** 252 candles for 2010, 252 for 2020 | About 366 days |
+| Daily | **At least 2010.** 252 candles for 2010 | About 366 days |
 
-That is the spine: every entry, every exit and every day in between can be
-placed against a real NIFTY level at the minute he would have been at the
-screen. It also gives realised volatility, the average daily move for rule 2,
-and the 20- and 50-day ranges the Home sidebar already shows.
+That is the spine. Every entry, exit and day in between can be placed against a
+real NIFTY level at the minute he would have been at the screen. It also gives
+realised volatility, the average daily move rule 2 needs, and the 20- and 50-day
+ranges Home already shows.
 
-**The options: not solved, and not solvable from FYERS.** That is the whole of
-the rest of this section.
+**The options**, from the expired-contracts endpoint in §2.15.1, back to
+February 2024. Together they are the whole data set, for nothing.
 
 ---
 
-#### 2.15.2 What was tested and ruled out
+#### 2.15.3 What was ruled out, and why
 
-**FYERS history cannot return an expired option. Proved, not assumed.**
-A contract that is still listed returns full one-minute candles: 1,539 of them
-for `NSE:NIFTY2691523300CE` over five days. A contract that has expired returns
-`Invalid symbol provided`. Tested on `NSE:NIFTY2690823850PE`, which expired on
-8 September 2026 — the day before the test — with its name taken verbatim out
-of the NSE bhavcopy so the name could not be at fault. Also tested on contracts
-expired eight days and four years earlier. All three refused.
+**The ordinary FYERS history API cannot return an expired option.** A listed
+contract returns full 1-minute candles: 1,539 for `NSE:NIFTY2691523300CE` over
+five days. An expired one returns `Invalid symbol provided`. Tested on
+`NSE:NIFTY2690823850PE`, which expired the day before the test, with its name
+taken verbatim from the NSE bhavcopy so the name could not be at fault. **This
+is why the expired-contracts endpoint in §2.15.1 is a separate route and not a
+parameter on the old one.** Anyone testing the old endpoint concludes FYERS has
+no historical options. That conclusion is now wrong.
 
-**Zerodha cannot either.** Once an option expires its instrument token leaves
-`kite.instruments()`, and `historical_data()` needs that token. Zerodha's own
-support article and developer forum say expired F&O contract history is not
-available through the API and that there are no plans to add it. His family
-Zerodha account does not change this.
+**Zerodha cannot, and a family account does not help.** Once an option expires
+its instrument token leaves `kite.instruments()`, and `historical_data()` needs
+that token. Zerodha's own support article and developer forum say expired option
+history is not available and there are no plans to add it.
 
-**Global Datafeeds (GDFL) keeps one month of options history.** Their own page:
-options history of any timeframe is available for one month only. Not a
-candidate for two years.
+**Global Datafeeds keeps one month** of options history, by their own page.
 
-**TrueData sells backfill in days, not years.** Their price page lists tick-data
-upgrades of 5, 10 and 20 days at ₹299, ₹699 and ₹999 a month against a Velocity
-subscription of ₹1,440 to ₹2,796 a month. That is a live-data product with a
-short look-back, not a historical archive.
+**TrueData sells backfill in days, not years:** tick-data upgrades of 5, 10 and
+20 days at ₹299, ₹699 and ₹999 a month, on top of a Velocity subscription of
+₹1,440 to ₹2,796 a month.
 
 **Stolo, NiftyTrader, TradingTick, StockMojo and OptionBacktesting are viewers,
-not data.** Several genuinely hold years of NSE option chain history — Stolo
-advertises four years minute by minute, TradingTick six years — but they are
-screens and one-date-at-a-time CSV downloads. There is no bulk export and no
-API. Loading two years into Postgres from a web form is not a plan.
+not data.** Several hold years of history, but as screens and one-date-at-a-time
+downloads. There is no bulk export. Loading two years from a web form is not a
+plan.
 
-**Kaggle and GitHub datasets are refused on principle.** There are NIFTY option
-chain datasets there covering 2024 to 2026. Their provenance cannot be checked,
-their gaps cannot be checked, and this is the terminal he intends to trade real
-money through. A backtest is only worth what its data is worth.
+**Kaggle and GitHub datasets are refused on principle.** Provenance cannot be
+checked and gaps cannot be checked. This is the terminal he intends to trade
+real money through.
 
 ---
 
-#### 2.15.3 THE RECOMMENDATION: Dhan, for one or two months, then stop
+#### 2.15.4 The paid fallback, if and only if it is ever needed
 
-**DhanHQ's expired-options endpoint is the only source found that is deep
-enough, fine enough, bulk-loadable and cheap.** From Dhan's own API
-documentation:
+**Dhan, and only for one thing: minute data before February 2024.** DhanHQ's
+`POST /charts/rollingoption` gives, by their documentation, five years of
+expired options at minute level including implied volatility, open interest and
+the spot, up to 30 days a call, at **₹499 a month plus tax, about ₹589**, free
+in any month he has traded 25 times in the previous 30 days.
 
-| | |
-|---|---|
-| Depth | **The last 5 years**, rolling |
-| Granularity | **Minute level**, resampled to 1, 5, 15, 25 and 60 minutes |
-| Fields | open, high, low, close, **volume, open interest, implied volatility, and the spot** |
-| Coverage | Index options **ATM+10 to ATM-10**; other contracts ATM±3 |
-| Per call | Up to 30 days |
-| Cost | **₹499 a month plus tax, about ₹589.** Free in any month he has executed 25 trades in the previous 30 days |
+**Its limitation is the reason it is the fallback and not the recommendation:
+index coverage is ATM+10 to ATM−10.** At 50-point strikes that is about ±500
+points. FYERS returns every strike, 181 of them on the expiry tested. For a
+condor whose wings sit outside that band, or a leg that drifts as the index
+moves over three weeks, Dhan's window may not contain the contract at all.
 
-**The plan is to subscribe, pull, and cancel.** Two years of NIFTY index options
-at minute granularity is a bounded download. One month of subscription is
-₹589 and two is ₹1,178. After the load, the recorder from §2.10 accumulates
-forward for nothing.
+**So the honest ordering is: FYERS first, free and complete from February 2024;
+NSE end-of-day free for everything older; Dhan only if a specific question needs
+minute data from 2022 or 2023 and the answer is worth ₹589.** Opening a Dhan
+account is his to do, not mine, and their public API documentation states no
+licence or redistribution terms at all, so he should read the agreement before
+any load.
 
-**The cost, all in:**
-
-| Item | Rupees |
-|---|---|
-| Dhan Data API, one month | 589 |
-| Dhan Data API, a second month if the load needs it | 589 |
-| FYERS NIFTY index history, 2018 onwards | 0 |
-| NSE end-of-day bhavcopy, all years | 0 |
-| The recorder, forward from now | 0 |
-| **Total, worst case** | **1,178** |
-
-**Two things he has to do himself, and I have not done either.**
-
-1. **Open a Dhan account.** It is free and it is a normal broker onboarding with
-   KYC, but it is a signup, and signing him up for anything is not mine to do.
-   He does not have to fund it or trade through it; the Data API needs the
-   account, not the balance.
-2. **Read Dhan's data terms before the load.** Their public API documentation
-   states no redistribution or licence terms at all, so I could not verify them.
-   Personal use inside his own terminal is the ordinary case and almost
-   certainly fine, but it should be his eyes on the agreement, not mine.
-
-**The one real limitation, and the first thing to test.** Coverage is ten
-strikes either side of the money, which at 50-point NIFTY strikes is about ±500
-points, or ±2.1% at today's level. Two questions the documentation does not
-answer and a one-month subscription would: whether "at the money" is re-anchored
-each day, and therefore whether a leg drifts out of coverage when the index
-moves 800 points during a three-week trade; and whether the far expiry of a
-calendar is covered on the same terms. **Test that against Trade-01 first**,
-which rolled a short put from 16,700 to 17,100 on a roughly 17,000 index, before
-paying for a second month.
-
-**The fallback if Dhan disappoints: Upstox.** Its Expired Instruments API gives
-1-minute OHLC for expired option contracts on the Upstox Plus plan, which Upstox
-says can be activated free for now. The catch is depth: Upstox's own community
-answer states six months of expired history with a stated intention to reach two
-years, and that answer is older than this document, so the current figure must be
-checked before relying on it. `marketcalls/ExpiryTrack` is an existing open
-project that downloads exactly this into DuckDB and is worth reading either way.
+Upstox is a second fallback with the same shape: 1-minute expired option candles
+on the Upstox Plus plan, which Upstox says can be activated free for now, but
+their own community answer states six months of retention with an intention to
+reach two years, and that answer predates this document.
 
 ---
 
-#### 2.15.4 The free end-of-day spine, which already works in this repository
+#### 2.15.5 The free end-of-day spine, which already works in this repository
 
 **NSE's UDiFF bhavcopy is free, official, and goes back years.**
-`src/swayam/bhavcopy.py` already downloads and parses it, and
-`data/bhavcopy/` already holds 22 days. One day is about 31,500 rows and 5.7 MB
-covering every F&O contract, of which roughly 1,600 are NIFTY options.
+`src/swayam/bhavcopy.py` already downloads and parses it and `data/bhavcopy/`
+already holds 22 days. One day is about 31,500 rows and 5.7 MB across every F&O
+contract, of which roughly 1,600 are NIFTY options.
 
 Its columns are, not by coincidence, the ones the recorder writes as NULL:
-
 `OpnPric`, `HghPric`, `LwPric`, `ClsPric`, `PrvsClsgPric`, `SttlmPric`,
 `UndrlygPric`, `OpnIntrst`, `ChngInOpnIntrst`, `TtlTradgVol`, `TtlTrfVal`,
 `XpryDt`, `StrkPric`, `OptnTp`, `NewBrdLotQty`.
 
-`UndrlygPric` is the real underlying, `SttlmPric` is the official settlement,
-and `NewBrdLotQty` is the lot size on that day — which matters, because the lot
-was 75 before January 2026 and is 65 now, and a backtest of his 2022 trades that
-uses 65 is wrong by 15%.
+`UndrlygPric` is the real underlying, `SttlmPric` the official settlement, and
+`NewBrdLotQty` the lot size **on that day** — which matters, because the lot was
+75 before January 2026 and is 65 now, and a backtest of his 2022 trades using 65
+is wrong by fifteen per cent.
 
-**So bhavcopy is the daily bar for every contract in every year, for nothing.**
-What it cannot do is place an entry at 14:20. That is what Dhan is for.
+**This is what covers his 21 historical trades.** They ran October 2022 to April
+2023, which is outside the FYERS minute window. Bhavcopy gives every one of those
+contracts a daily open, high, low, close, settlement, open interest and
+underlying, for nothing. His own sheet already records what he actually paid and
+received, so the acceptance test in `ROADMAP.md` §3 milestone 2 does not need
+minute data to run: it needs the daily path, the charges, and his recorded fills.
 
 ---
 
-#### 2.15.5 The shape it loads into
+#### 2.15.6 The shape it loads into
 
-Three tables, all `swayam_*`, all in the existing Supabase project. Nothing here
-touches `swayam_positions` or anything the trading desk reads.
+Four tables, all `swayam_*`, in the existing Supabase project. **Nothing here
+touches `swayam_positions` or anything the trading desk reads.**
 
-**`swayam_underlying_bars`** — the NIFTY spine, from FYERS, free.
+**`swayam_underlying_bars`** — the NIFTY spine, FYERS, free.
 
 | Column | Type | Note |
 |---|---|---|
@@ -1169,103 +1190,127 @@ touches `swayam_positions` or anything the trading desk reads.
 | `volume` | bigint | Zero on the index; kept for futures later |
 | | | Primary key `(symbol, resolution, bar_start_utc)` |
 
-**`swayam_options_eod`** — one row per contract per day, from the NSE bhavcopy.
+**`swayam_options_contracts`** — the contract master, from the expired-symbols
+endpoint. Without it nothing else can be looked up.
 
 | Column | Type | Note |
 |---|---|---|
-| `trade_date` | date | |
-| `symbol` | text | The FYERS-style name, `NIFTY2691523300PE`, so it joins the recorder |
+| `symbol` | text | `NSE:NIFTY24MAR22300CE` |
 | `underlying`, `expiry_date`, `strike`, `option_type` | | |
+| `expiry_kind` | text | `W` or `M` |
+| `lot_size` | integer | From the bhavcopy for that date. **Never a constant** |
+| | | Primary key `(symbol)` |
+
+**`swayam_options_eod`** — one row per contract per day, NSE bhavcopy.
+
+| Column | Type | Note |
+|---|---|---|
+| `trade_date`, `symbol` | | Primary key |
 | `open`, `high`, `low`, `close`, `prev_close`, `settle_price` | numeric | |
 | `volume`, `turnover_inr`, `open_interest`, `change_in_oi` | | |
 | `underlying_spot` | numeric | `UndrlygPric`, real |
-| `lot_size` | integer | `NewBrdLotQty` **on that day**, never a constant |
 | `source` | text | `nse_bhavcopy` |
-| | | Primary key `(trade_date, symbol)` |
 
-**`swayam_options_intraday`** — the minute bars, from Dhan for the past and from
-the recorder going forward. **Same column names as the recorder's Parquet file,
-deliberately**, so the two load through one path.
+**`swayam_options_intraday`** — the minute bars, from FYERS for the past and the
+recorder going forward. **Same column names as the recorder's Parquet file,
+deliberately**, so both load through one path.
 
 | Column | Type | Note |
 |---|---|---|
-| `snapshot_time_utc` | timestamptz | |
+| `snapshot_time_utc` | timestamptz | The candle's start for history, the snapshot instant for the recorder |
 | `trade_date`, `symbol`, `underlying`, `expiry_date`, `strike`, `option_type` | | |
-| `open`, `high`, `low`, `close` | numeric | NULL from the recorder, real from Dhan |
-| `bid`, `ask` | numeric | Real from the recorder, NULL from Dhan |
-| `volume`, `open_interest`, `change_in_oi`, `prev_oi` | | |
-| `underlying_spot` | numeric | |
-| `tte_years`, `iv`, `delta`, `gamma`, `theta`, `vega` | numeric | |
-| `source` | text | **`recorder`, `dhan` or `bhavcopy`. Not optional.** Every row says where it came from, so a result can always be traced to its data |
+| `open`, `high`, `low`, `close` | numeric | NULL from the recorder, real from FYERS history |
+| `bid`, `ask` | numeric | Real from the recorder, NULL from FYERS history |
+| `volume` | bigint | |
+| `open_interest`, `change_in_oi`, `prev_oi` | bigint | **NULL from FYERS history.** It does not send them |
+| `underlying_spot` | numeric | Joined from `swayam_underlying_bars` for history |
+| `tte_years`, `iv`, `delta`, `gamma`, `theta`, `vega` | numeric | Computed with the same maths for both sources |
+| `source` | text | **`recorder`, `fyers_expired`, `dhan`. Not optional.** Every row says where it came from, so a result can always be traced to its data |
 | | | Primary key `(symbol, snapshot_time_utc, source)` |
 
-**Note the honest asymmetry.** The recorder has the bid and the ask and no
-open/high/low; Dhan has open/high/low and no bid or ask. That matters for the
-fill model: `services/fills.py` fills a buy at the ask and a sell at the bid,
-and Dhan's history cannot support that directly. **The backtester will have to
-model the spread from the recorder's own measured spreads**, by moneyness and
-time of day, rather than pretend a candle close is a fill. Write that down now;
-it is the single most likely way a backtest of his flatters itself.
+**Note the honest asymmetry, and write it into the backtester's assumptions.**
+The recorder has bid and ask and no open/high/low. FYERS history has
+open/high/low and no bid, ask or open interest. `services/fills.py` fills a buy
+at the ask and a sell at the bid, and **the historical rows cannot support that
+directly.** The backtester must model the spread from the recorder's own
+measured spreads, by moneyness and time of day, and label any result that used a
+modelled spread as such. This is the single most likely way a backtest of his
+flatters itself.
 
 ---
 
-#### 2.15.6 How the recorder's files join it
+#### 2.15.7 How the recorder's own files join it
 
-`scripts/ingest_gcs_to_duckdb.py` already reads the recorder's daily Parquet
-into a local DuckDB `options_history` table. The loader in §2.15.7 does the same
-into Postgres, with `source = 'recorder'`, and the recorder's column names were
-kept identical for exactly that reason.
+`scripts/ingest_gcs_to_duckdb.py` already reads the recorder's daily Parquet into
+a local DuckDB `options_history`. The loader does the same into Postgres with
+`source = 'recorder'`, and the recorder's column names were chosen to match.
 
-The three sources overlap and complement rather than conflict:
+The sources overlap by design:
 
-- **Before the recorder existed:** Dhan for the minutes, bhavcopy for the day.
-- **From 10 September 2026:** the recorder for the afternoon minutes with real
-  bids and asks, Dhan for the mornings until his token problem is solved
-  (§2.10), bhavcopy for the daily close, settlement and lot size.
+- **February 2024 to now:** FYERS expired history for the minutes, bhavcopy for
+  the daily close, settlement, open interest and lot size.
+- **Before February 2024:** bhavcopy only, daily. That is his 21 trades.
+- **From 10 September 2026 forward:** the recorder, with real bids and asks and
+  computed Greeks, for the **afternoon only** until the token gap in §2.10 is
+  settled. FYERS expired history fills each morning in afterwards, once that
+  day's contracts expire.
 - **A cross-check that costs nothing:** on any overlapping day the recorder's
   last snapshot before 15:30 and the bhavcopy close for the same contract should
-  agree closely. **They are the acceptance test for the loader.** If they do
-  not, one of the two is being read wrong, and better to find that on a Tuesday
-  than inside a backtest result.
+  agree closely, and so should the FYERS historical candle for that minute.
+  **Those three agreeing is the acceptance test for the loader.** Better to find
+  a disagreement on a Tuesday than inside a backtest result.
 
 ---
 
-#### 2.15.7 What to build, in order, when he opens this work
+#### 2.15.8 What to build, in order, when he opens this work
 
-1. **`scripts/load_bhavcopy_to_postgres.py`** — free, no signup, can start
-   immediately. Fills `swayam_options_eod` from `data/bhavcopy/` and from NSE
-   for any date range. Caged tests, `db_guard` respected.
+1. **`scripts/load_bhavcopy_to_postgres.py`** — free, no signup, could start
+   tomorrow. Fills `swayam_options_contracts` and `swayam_options_eod` from
+   `data/bhavcopy/` and from NSE for any date range, back through 2022 so his 21
+   trades are covered. Caged tests, `db_guard` respected.
 2. **`scripts/load_nifty_history.py`** — free. Fills `swayam_underlying_bars`
-   from FYERS, 100 days per request at 1 minute, back to January 2018.
-3. **The Dhan loader**, only once he has an account: `swayam_options_intraday`
-   with `source = 'dhan'`, 30 days per call, resumable, and a manifest of what
-   was fetched so a broken run does not have to start again.
+   from FYERS, 100 days a request at 1 minute, back to January 2018.
+3. **`scripts/load_expired_options.py`** — free. Walks the expiry-dates endpoint,
+   then the contracts for each expiry, then the candles, into
+   `swayam_options_intraday` with `source = 'fyers_expired'`. **Calls the REST
+   endpoints with `requests`; does not upgrade `fyers-apiv3`.** Resumable, with a
+   manifest of what was fetched, because it is roughly 130 expiries times a few
+   hundred contracts and it will be interrupted.
 4. **The recorder loader** into the same table with `source = 'recorder'`.
-5. **The reconciliation check** of 2.15.6 before any backtest is run at all.
-6. **Then, and only then, the backtester**, whose first job is the 21 historical
-   trades. `ROADMAP.md` §3 milestone 2: it is not trusted until it reproduces
-   what those trades actually did.
+5. **The three-way reconciliation of §2.15.7**, before any backtest is run.
+6. **Then the backtester**, whose first job is the 21 historical trades.
+   `ROADMAP.md` §3 milestone 2: it is not trusted until it reproduces what those
+   trades actually did.
+
+**Rate limits are the practical constraint, not money.** FYERS' data API limits
+are not published per endpoint; the loader must back off on refusal exactly as
+`src/swayam/api/chain_feed.py` already does, and it must never run during his
+window, because it shares the token with the live terminal.
 
 ---
 
-#### 2.15.8 Sources
+#### 2.15.9 Sources
 
-- FYERS history behaviour on live and expired option contracts, and NIFTY index
-  depth: measured directly against the live API, 2026-09-09 night. The probes are
-  not committed; they are three calls to `fyersModel.history()`.
-- Zerodha, expired F&O contracts:
-  `support.zerodha.com/category/trading-and-markets/charts-and-orders/charts/articles/historical-data-for-expired-f-o-contract`
-  and `kite.trade/forum/discussion/15660`.
-- Dhan expired options: `dhanhq.co/docs/v2/expired-options-data/`. Pricing:
+- **Tested directly against his live FYERS account, 2026-09-09 night:** the
+  expired-contract endpoints and their depth, the ordinary history API's refusal
+  of expired symbols, and the NIFTY index depth. The probes were scratch scripts
+  and are not committed; they are plain `requests` calls to the three paths in
+  §2.15.1.
+- His own research, which found the FYERS beta and prompted the test:
+  `docs/Independent reports/Swayam Capital Historical Options Data Research by Perpexility.md`.
+- FYERS official reply confirming the beta and four years:
+  `fyers.in/community/t/is-historical-options-oi-data-via-api/22795`.
+  Endpoint list read from `fyers-apiv3` 3.1.17 on PyPI, released 2026-09-06.
+- Zerodha: `support.zerodha.com/category/trading-and-markets/charts-and-orders/charts/articles/historical-data-for-expired-f-o-contract`
+  and `kite.trade/forum/discussion/16179`.
+- Dhan: `dhanhq.co/docs/v2/expired-options-data/`; pricing at
   `dhan.co/support/platforms/dhanhq-api/how-does-the-dhanhq-data-api-subscription-work/`.
-- Upstox expired instruments: `upstox.com/developer/api-documentation/get-expired-historical-candle-data/`;
-  depth statement at `community.upstox.com/t/historical-availability-retrieval-limit-per-query-for-expired-options-contract/9245`;
-  `github.com/marketcalls/ExpiryTrack`.
+- Upstox: `upstox.com/developer/api-documentation/get-expired-historical-candle-data/`;
+  depth at `community.upstox.com/t/historical-availability-retrieval-limit-per-query-for-expired-options-contract/9245`.
 - Global Datafeeds: `globaldatafeeds.in/global-datafeeds-apis/global-datafeeds-apis/introduction/type-of-data-available/`.
 - TrueData pricing: `truedata.in/price`.
-- Stolo: `stolo.in/solutions/nse-spots-futures-options-historical-data/` and `stolo.in/pricing/`.
-- NSE UDiFF bhavcopy: already implemented in `src/swayam/bhavcopy.py`; column
-  list read off `data/bhavcopy/2026-09-01.csv`.
+- NSE UDiFF bhavcopy: implemented in `src/swayam/bhavcopy.py`; columns read off
+  `data/bhavcopy/2026-09-01.csv`.
 
 ---
 
@@ -1345,6 +1390,14 @@ Kept short. Detail is in the git history and the pull requests.
 
 | Date | What | Proof |
 |---|---|---|
+| 2026-09-09 | Recorder writes real spot, implied volatility and Greeks | Deployed revision `swayam-recorder-00003-kuq`, dry-run at 00:05 IST: 164 rows, expiries 2026-09-15 and 2026-09-29, spot `23431.5`, 151 rows with implied volatility and delta, 164 with change in open interest, `wrote_anything: false` |
+| 2026-09-09 | The recorder's Black-Scholes matches the terminal's | `tests/cloud/test_recorder_bs_math.py`: price and all four Greeks agree with `vollib` to better than 1e-9 across 1,080 cases |
+| 2026-09-09 | Unknown values are NULL, never zero | `open`, `high`, `low`, `settle_price`, `turnover_inr` all null through a Parquet round trip, as `float64` not the `null` type |
+| 2026-09-09 | Two expiries recorded, so a calendar can be valued | The far expiry carries more vega and slower decay than the near one, asserted on a captured live chain |
+| 2026-09-09 | The recorder refuses to record on an NSE holiday | 2026-11-10 Diwali refused mid-session; 2026-11-09 accepted |
+| 2026-09-09 | A deployment can be proved out of hours without writing | `?dry_run=1` returns the counts and writes nothing; the bucket held 2 objects before and after, unchanged since 10:00:02Z |
+| 2026-09-09 | The scheduler path is unchanged | A POST with no query string at 00:06 IST returned `skipped, before market open` |
+| 2026-09-09 | FYERS serves expired option candles, free, back to Feb 2024 | `/data/history/fno/expired/historical-data` returned 1-minute candles for 28 Mar 2024 and every expiry since; 25 Jan 2024 and earlier return `no_data`. §2.15 |
 | 2026-09-08 | Test suite can no longer write to his live record | 81 rows before a full run, 81 after. It used to go 67 → 79 → 81 |
 | 2026-09-08 | Two fixture rows quarantined | Zero open positions; the live API returns `[]` |
 | 2026-09-08 | Risk panel stopped overstating risk 100x | 1.74% rendered as 1.74%, with a regression test |

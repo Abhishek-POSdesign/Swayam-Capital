@@ -75,7 +75,27 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: THE HANDOVER, 2026-09-09 night, before the first live send
+### Latest first: THE BACKTESTING FOUNDATION, 2026-09-09 into the small hours
+
+**Nothing in this section touches the execution ticket, positions, the journal
+writer, fills, the strategy builder or any migration. His live send is
+unaffected.**
+
+| | |
+|---|---|
+| **The recorder writes real numbers now** | Deployed, revision `swayam-recorder-00003-kuq`. Real spot, real change in open interest, a correct expiry date, and implied volatility with the four Greeks computed. Unknown values are NULL, never zero. `docs/PLAN.md` §2.10 |
+| **The thirteenth broken column nobody had spotted** | `expiry_date` said every contract expired the day it was recorded. Worse than a zero, because a zero announces itself. Fixed and cross-checked against each contract's own name |
+| **Proved on the deployed copy, not just locally** | `?dry_run=1` fetches and computes but writes nothing: 164 rows, two expiries, spot `23431.5`, 151 rows with implied volatility. The bucket was unchanged before and after |
+| **Two expiries every snapshot** | Near and nearest monthly, so a calendar can be valued. Ten of his twenty-one historical trades are calendars |
+| **NSE holidays now stop it** | It used to record a full day of frozen prices on a closed exchange, indistinguishable from a real session |
+| **⚠️ THE GAP HE SHOULD KNOW ABOUT** | **The recorder captures the afternoon only.** On 2026-09-09 every call from 09:15 to 13:25 failed with `Please provide valid token`; it started working the minute he refreshed by hand. He is asleep at 09:15. The fix needs his PIN in Secret Manager and is **his decision**. `docs/PLAN.md` §2.10 |
+| **THE BACKTESTING DATA IS FREE, and he already owns it** | FYERS has an expired-contracts endpoint, not in the SDK version installed here, tested working on his account: 1-minute candles for expired NIFTY options, **every strike**, back to **February 2024**. `docs/PLAN.md` §2.15 |
+| Which means the mornings are recoverable | Every morning the recorder misses can be backfilled once those contracts expire. The token gap is a nuisance, not a hole |
+| **Do NOT upgrade `fyers-apiv3` to reach it** | Installed 3.1.5, the methods are in 3.1.17. The loader calls the REST endpoints with `requests`. Upgrading the package changes what his execution ticket runs on |
+| His 21 historical trades, Oct 2022 to Apr 2023 | Outside the FYERS minute window. Covered at daily resolution by the free NSE bhavcopy, which already works in this repository |
+| Tests | Python **501 pass, 1 long-standing fail** (`test_notifications` dispatch). Vault folder 3 notes before and after |
+
+### Earlier: THE HANDOVER, 2026-09-09 night, before the first live send
 
 | | |
 |---|---|
@@ -314,8 +334,14 @@ His decisions, do not relitigate:
 2a. **A real send through the ticket.** Never done with a live book. Tomorrow.
 2b. **Real-money orders.** Not built, and by decision not next. `docs/PLAN.md`
    §2.14 has the research and the order of work.
-3. **The recorder writing to its bucket**, and whether its Greeks and spot
-   columns are real or zeros. `docs/PLAN.md` §2.10.
+3. ~~The recorder writing zeros.~~ **FIXED and deployed 2026-09-09 night**,
+   revision `swayam-recorder-00003-kuq`, proved by dry run on the deployed copy.
+   `docs/PLAN.md` §2.10. **What is still NOT done: it captures the afternoon
+   only**, because the FYERS token is not valid at 09:15 and he is asleep then.
+   That fix needs his PIN in Secret Manager and is his decision.
+   **Also not done: the recorder's new file has not yet been written by a real
+   scheduled run.** Every proof so far is a dry run that wrote nothing. The
+   first real object in the new shape lands when the market opens.
 4. **Calendars.** Briefed and ready, `docs/CALENDAR_BUILD_BRIEF.md`. Ten of his
    twenty-one historical trades are calendars and they are blocked from
    execution. **His decision whether he needs them to start. Do not push him.**
