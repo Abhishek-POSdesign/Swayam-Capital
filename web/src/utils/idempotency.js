@@ -42,8 +42,20 @@ function fingerprint(payload) {
     payload.underlying || '',
     payload.mode || '',
     ...legs.map((l) => [
-      l.direction, l.strike, l.option_type, l.quantity_lots, l.entry_premium, l.expiry_date,
+      l.direction, l.strike, l.option_type, l.quantity_lots,
+      // A market leg's price is the market's, not his. The ticket re-quotes
+      // every five seconds, so keying on it would give a retry after a lost
+      // response a NEW key and a second position. A limit price is his
+      // instruction and stays in the key.
+      String(l.order_type || 'MARKET').toUpperCase() === 'MARKET' ? 'MKT' : `L${l.limit_price ?? l.entry_premium}`,
+      l.expiry_date,
     ].join(':')),
+    // One by one: the leg being added, keyed the same way.
+    payload.leg ? [
+      payload.leg.direction, payload.leg.strike, payload.leg.option_type, payload.leg.quantity_lots,
+      String(payload.leg.order_type || 'MARKET').toUpperCase() === 'MARKET' ? 'MKT' : `L${payload.leg.limit_price ?? payload.leg.entry_premium}`,
+      payload.leg.expiry_date,
+    ].join(':') : '',
   ].join('|');
 
   // djb2. Not a security hash, just a stable short label for a storage slot.
