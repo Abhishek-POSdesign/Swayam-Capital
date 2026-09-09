@@ -197,6 +197,15 @@ which he did not create himself is test data.
 - **Plan first, plain English, six parts.** Then build. Then hand off, five
   parts. His `/layman-plan` and `/handoff` skills carry the shape.
 - **Ask when unsure.** He has said so explicitly, and mid-build is fine.
+- **When he says "fix it", stop planning and start typing.** He gets
+  impatient with explanation he did not ask for. Plans are for new work; a
+  fault he has just shown you is not new work.
+- **A refusal on his screen must say what he can DO**, not only what went
+  wrong. An execution key error left him unable to trade twice in one
+  afternoon with no way out from the page.
+- **He judges a screen with words like immature, cheap, and I must feel good
+  while managing it.** Those are requirements, not decoration. A cross where
+  a dustbin belongs is a real complaint.
 - **`node --check` is not verification.** It has passed files the browser then
   rejected. Load the real page in a real browser, in both themes.
 - **A thing that has never run has never been tested.** On 2026-09-09 the close
@@ -250,7 +259,8 @@ which he did not create himself is test data.
 |---|---|
 | `docs/SUCCESSOR_PROMPT.md` | The prompt he pastes into a new chat, plus what was learned by talking to him. **Keep it accurate** |
 | `docs/SWAYAM_START_HERE.md` | Where everything lives, what is verified, what is not done |
-| `docs/PLAN.md` | The one plan. What happens next, in order |
+| `docs/PLAN.md` | The one plan. **Section 2.12 is the current job.** Section 2.12.0 is the audit of his first three real trades |
+| `docs/Independent reports/` | Four audits from 2026-09-07, all marked SUPERSEDED. History only |
 | Vault `00 - Developer Logs/SESSION_LOG_2026-09-09.md` | **What the 8/9 September session found and fixed.** A historical record, not an authority. Read it when you need to know why the code looks the way it does |
 | `docs/UI_BUILD_BRIEF_ROUND_3.md` | His own sweep of the live pages. **Built and merged**, PR #39 |
 | `docs/UI_BUILD_BRIEF_ROUND_2.md` | Round 2. Built and merged. History |

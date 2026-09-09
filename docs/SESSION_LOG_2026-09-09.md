@@ -243,4 +243,41 @@ Ask him.
 
 ---
 
+---
+
+## 12. THE AFTERNOON HE ACTUALLY TRADED
+
+Sections 1 to 11 above were written before the market opened. What follows
+happened between 13:30 and 15:30 IST on 2026-09-09, and it is the more important
+half.
+
+**He took three paper trades. All three made a gross profit. All three lost
+money.** Gross +195, charges 585, net -390, charges 300% of gross. The full audit
+is  section 2.12.0.
+
+**Four separate things stopped him, all fixed the same afternoon.**
+
+1. The close wrote two columns that did not exist. Migration 020.
+2. A ghost position survived on Home after he had closed it, because an
+   in-process list shadowed the database.
+3. Live profit and loss had never worked once: it sent the word NIFTY where
+   FYERS wants a symbol.
+4. **The execution key was minted once per browser and never released**, so his
+   first trade worked and every later one was refused. He could not trade twice
+   in one afternoon and the screen gave him no way out.
+
+**And the live site wrote his first trade note into a container folder and
+reported success.** The Windows vault path became a relative directory on Linux,
+mkdir created it, the write succeeded, and the note died with the container.
+That is now refused and queued instead.
+
+**His verdict on the whole experience:** immature execution, immature exit,
+immature monitoring. Taking a position is more immature than buying a soda
+bottle. That verdict is the reason section 2.12 exists.
+
+**What the recorder actually wrote,** measured from its first real file: 10,332
+rows, twelve columns entirely zero including the underlying spot and every Greek.
+
+---
+
 *Nothing in this file overrides `MY TRADING RULES - ONE PAGE.md`.*

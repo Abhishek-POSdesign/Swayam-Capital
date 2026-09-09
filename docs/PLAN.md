@@ -285,7 +285,11 @@ market. Do not push him and do not assume either way.**
 
 ## 2. NEXT, IN ORDER
 
-### 2.1 Notes into Obsidian from the cloud
+### 2.1 Notes into Obsidian from the cloud — SUPERSEDED BY 2.13
+
+> **Read 2.13 instead.** It carries the current Drive status, checked 2026-09-09,
+> and the bridge he chose that does not wait on Google. What follows is the
+> older write-up, kept only for the Drive detail it records.
 Blocked on a Google policy, not on code. `scripts/link_google_drive.py` is
 written and works.
 
@@ -451,7 +455,32 @@ evaluated in that file, and `CLAUDE.md` lists "no single-leg trades ever" among
 the rules he deleted. The rebuilt desk does not render it, so nothing wrong
 reaches his screen today. **Ask him before removing it.**
 
-### 2.10 The recorder records zeros where it should record numbers
+### 2.10 The recorder records zeros where it should record numbers — MEASURED 2026-09-09
+
+**No longer a suspicion. Its first real day is on disk and was opened.**
+
+`gs://swayam-capital-options-data/2026-09-09/nifty_chain.parquet`, **10,332 rows,
+24 columns.** Real: `close` in all 10,332 rows, `volume` and `open_interest` in
+9,801. **TWELVE COLUMNS ARE ENTIRELY ZERO, every row:**
+
+`open`, `high`, `low`, `settle_price`, `turnover_inr`, `change_in_oi`,
+`underlying_spot`, `iv`, `delta`, `gamma`, `theta`, `vega`.
+
+**So the archive is price, volume and open interest. Nothing else.** The README
+claims it calculates Greeks and tracks open-interest change; that claim is false
+and should be corrected.
+
+**Why it matters.** The recorder exists to feed a calendar backtest. A backtest
+with no underlying spot and no implied volatility cannot value a calendar at all,
+which is the one thing it was built for. Every day it runs like this is a day of
+history that will have to be recomputed later, if it can be.
+
+**Judgement: fix the spot and the implied volatility before the backtest work,
+not after.** Spot is available from the same FYERS response at any hour. The
+Greeks can be computed from spot, strike, expiry and price with the options-math
+engine that already exists in this repository.
+
+
 
 Found while proving the recorder on 2026-09-08. Its own fetch path returns 82
 real option rows with real close, volume and open interest, but
@@ -652,24 +681,63 @@ from the chain the natural way to build a structure.
 
 ---
 
-### 2.13 The live site cannot see his vault. Decide what that means.
+### 2.13 The live site cannot see his vault. THE BRIDGE, and the Drive question.
 
-Found while auditing 2026-09-09. Three separate features need his Obsidian vault
-at request time, and the Cloud Run container cannot reach it:
+Found while auditing 2026-09-09. Three features need his Obsidian vault at
+request time and the Cloud Run container cannot reach it.
 
-| Feature | What happens today |
+| Feature | What happens today | Bridged? |
+|---|---|---|
+| Trade notes | Refused and queued in `swayam_journal_outbox`, drained from his PC | **Yes, and it works** |
+| `/api/readiness/today` | **HTTP 500 every time.** His daily check-in is broken on the live site | No |
+| The AI reading his Method files | Reads a build-time snapshot baked into the image, not his live vault | No |
+
+#### Where Google Drive actually stands, checked 2026-09-09
+
+| | |
 |---|---|
-| Trade notes | Refused and queued to the outbox, drained from his PC. **Correct** |
-| `/api/readiness/today` | **HTTP 500 every time.** His daily check-in is broken on the live site |
-| The AI reading his Method files | Reads a build-time snapshot baked into the image, not his live vault |
+| `drive.googleapis.com` | **ENABLED.** Older documents saying it is off are stale |
+| `google-api-python-client`, `google-auth-oauthlib` | **INSTALLED** |
+| `scripts/link_google_drive.py` | Written and works |
+| **The blocker** | The OAuth consent screen. A service account can never do this: zero Drive quota since June 2023, and both escapes need Workspace, which he does not have. So the app must act as HIM with the `drive.file` scope |
+| His words, 2026-09-09 | Something is in verification and may take about a week. He also has the separate OAuth client behind the site's Google sign-in and thinks that may need to settle first |
 
-The note path is already solved properly. The other two are not, and the
-readiness 500 is a visible broken feature he uses daily.
+**We cannot see Google's verification queue from here.** Do not promise a date.
+**Check it by trying:** run `scripts/link_google_drive.py` and read what Google
+says. That is the only honest status.
 
-**Options, and this is his call.** Mirror the small set of files the app needs
-into the database and read them from there; or finish the Google Drive OAuth path
-in section 2.1; or accept that these features are PC-only and say so on screen
-rather than returning 500. **Do not guess. Ask him.**
+**While it is in Testing the token dies every seven days.** That is survivable
+for a personal tool but it is not something to build a daily habit on, which is
+why the bridge below does not depend on Drive at all.
+
+#### THE BRIDGE. His decision, 2026-09-09: build one and do not wait for Google.
+
+**The pattern already exists and is proven.** The outbox holds what the cloud
+cannot write, and a script on his PC completes it. Extend the same idea in the
+other direction for the two features that READ the vault.
+
+**A small mirror table, `swayam_vault_mirror`,** holding only the handful of
+files the app needs: his Method files, his trading rules one-pager, and today's
+Atlas daily log. A script on his PC pushes them up; the live site reads them from
+the database instead of the filesystem.
+
+- **`/api/readiness/today` stops returning 500.** It reads the mirrored daily
+  log. If today's log has not been pushed yet it says so plainly and offers the
+  form empty, rather than erroring.
+- **The AI reads his real Method files** instead of a snapshot frozen at build
+  time, and the mirror records when each file was last pushed so the age is
+  visible rather than assumed.
+- **Nothing is duplicated by hand.** The push script runs alongside the drainer,
+  so one command on his PC keeps both directions current.
+
+**When Drive lands, the mirror stays.** It is faster, it works offline, and it
+removes a dependency on a Google approval he does not control. Drive becomes the
+way the app writes BACK into the vault from the cloud, which is the harder half
+and the one the outbox currently covers from his PC.
+
+**Where this sits in the order.** After section 2.12. It is not blocking a trade;
+it is blocking his daily check-in and the AI knowing his current rules. Tell him
+that plainly rather than letting it drift.
 
 ---
 
@@ -691,42 +759,10 @@ what the terminal could and could not do. His words are the specification.**
 > "There should be a classification: this is an intraday trade, this is an
 > options or swing trade."
 
-**What exists today.** `POST /api/execute` opens a whole structure and
-`POST /api/positions/{id}/close` closes every leg of it at once, refusing if any
-one leg cannot be priced. **There is no way to change a position after it is
-open.** No add, no remove, no roll, no partial close. That is the gap.
-
-**Why it matters more than it looks.** His own historical sheet proves the shape:
-Trade-01 rolled a short put from 16,700 to 17,100 mid-life and was closed in two
-pieces three days apart; Trade-07 carries two adjustments and six exits over two
-days. Roughly a third of his twenty-one trades were adjusted. A model that
-assumes open-then-close-unchanged cannot hold his record.
-
-**The design, in his terms.**
-
-1. **A trade has one identity and a human trade number**, per book, so he can say
-   "trade 14" and mean something. `swayam_positions` is already the campaign row;
-   it gains a number and a type.
-2. **A leg has its own life inside that trade**: when it was opened, at what
-   premium, and if it has been squared off, when and at what premium and for what
-   result. Adding a leg and squaring off a leg are recorded events, not edits.
-3. **The trade's result is the sum of its squared-off legs**, accumulated as they
-   close, so a partially closed trade shows what has actually been banked.
-4. **The trade closes when every leg is closed, or when he says so.** An explicit
-   close is his call and must be recorded as his call.
-5. **Every trade is classified** intraday or swing/positional. He will be swing
-   and positional at first and has said intraday will return. Both are counted
-   together in the record and separable in analytics.
-6. **Reshaping is not adding.** Rolling a leg or buying a wing on a structure he
-   already holds stays in the same trade. Putting more size behind a bet he
-   already holds is a NEW trade with its own number. This is the one distinction
-   the whole design turns on, and it is what reconciles `01 - Method/Exit Rules.md`
-   §5 with `MY TRADING RULES - ONE PAGE.md`. See `CLAUDE.md`.
-
-**Constraints.** A schema migration is needed, so it is numbered and reviewed,
-and the existing 81 quarantined rows must survive untouched. Nothing here may
-weaken the vault or database cages. **Plan it in plain English and get his
-approval before writing code**, as with everything else.
+**Everything else about this now lives in section 2.12**, because the way a
+trade is STORED and the way he WORKS with it are the same job. His words
+above are the specification; 2.12 is the build. Do not plan this section
+separately.
 
 ---
 

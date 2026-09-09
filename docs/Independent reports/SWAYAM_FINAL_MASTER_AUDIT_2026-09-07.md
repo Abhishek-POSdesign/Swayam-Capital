@@ -1,3 +1,11 @@
+> **SUPERSEDED, 2026-09-09. Historical record only.**
+>
+> These audits were written on 2026-09-07. Two days of heavy work followed and
+> most of what they list is fixed, and several of the worst faults were found
+> AFTER them, by actually trading. **Do not plan from this file.**
+>
+> Current truth: docs/SWAYAM_START_HERE.md, then docs/PLAN.md.
+
 # 🏁 SWAYAM CAPITAL — FINAL MASTER AUDIT & FIX PLAN (2026-09-07)
 
 > **THE single source of truth.** Consolidates THREE independent audits — Claude, Codex (`CODEX_INDEPENDENT_AUDIT_2026-09-07.md`), and Hermes (`SWAYAM_ROUND2_AUDIT_20260907_112114.md`) — all verified against source by Claude. Plus data-source research and what professional traders actually use. This supersedes the earlier piecemeal Claude docs. **Start here to fix.**

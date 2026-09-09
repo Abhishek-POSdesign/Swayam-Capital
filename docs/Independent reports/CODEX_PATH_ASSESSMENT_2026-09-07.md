@@ -1,3 +1,11 @@
+> **SUPERSEDED, 2026-09-09. Historical record only.**
+>
+> These audits were written on 2026-09-07. Two days of heavy work followed and
+> most of what they list is fixed, and several of the worst faults were found
+> AFTER them, by actually trading. **Do not plan from this file.**
+>
+> Current truth: docs/SWAYAM_START_HERE.md, then docs/PLAN.md.
+
 # Swayam: Are we now on the right path?
 
 **Date:** 2026-09-07  

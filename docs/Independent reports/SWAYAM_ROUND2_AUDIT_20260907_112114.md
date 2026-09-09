@@ -1,3 +1,11 @@
+> **SUPERSEDED, 2026-09-09. Historical record only.**
+>
+> These audits were written on 2026-09-07. Two days of heavy work followed and
+> most of what they list is fixed, and several of the worst faults were found
+> AFTER them, by actually trading. **Do not plan from this file.**
+>
+> Current truth: docs/SWAYAM_START_HERE.md, then docs/PLAN.md.
+
 # SWAYAM CAPITAL — INDEPENDENT ROUND 2 AUDIT
 **Date:** 2026-09-07 11:21:14
 **Scope:** Home Page + Strategy Builder Page
