@@ -41,6 +41,20 @@ router = APIRouter()
 # In-memory store for paper positions in local mode
 _local_paper_positions: list[dict[str, Any]] = []
 
+# What FYERS calls the indices. A position row stores "NIFTY"; the option-chain
+# API wants the full symbol and rejects anything else.
+# Expiry date -> FYERS epoch, cached for ten minutes. Resolving it costs a
+# call, and the desk polls positions every few seconds.
+_expiry_epoch_cache: dict[str, tuple[str, float]] = {}
+
+_FYERS_INDEX_SYMBOLS = {
+    "NIFTY": "NSE:NIFTY50-INDEX",
+    "NIFTY50": "NSE:NIFTY50-INDEX",
+    "BANKNIFTY": "NSE:NIFTYBANK-INDEX",
+    "FINNIFTY": "NSE:FINNIFTY-INDEX",
+    "SENSEX": "BSE:SENSEX-INDEX",
+}
+
 # 5-second in-memory cache for FYERS option chains
 # key: f"{underlying}_{expiry}" -> {"data": raw_chain, "timestamp": float}
 _chain_cache: dict[str, dict[str, Any]] = {}
@@ -136,10 +150,45 @@ def _get_cached_option_chain(underlying: str, expiry: Optional[str] = None) -> d
             return entry["data"]
 
     try:
+        # THIS CALL HAD NEVER WORKED ONCE. It passed the position's underlying,
+        # the word "NIFTY", where FYERS wants a symbol, and an ISO date where it
+        # wants an expiry epoch. FYERS answered "Please provide a valid symbol",
+        # so /api/positions/live raised 503 every single time and his open
+        # position showed "profit and loss unavailable". Proven against live
+        # FYERS on 2026-09-09.
+        from swayam.api.routes.market import resolve_expiry_epoch
+
+        symbol = _FYERS_INDEX_SYMBOLS.get(str(underlying).upper(), str(underlying))
+
+        # Resolving the epoch costs one small extra call, so it is best effort:
+        # if it cannot be resolved we ask for the chain without one rather than
+        # refusing outright. The symbol is the part that was actually fatal.
+        epoch: Optional[str] = None
+        if expiry:
+            cache_key_epoch = f"{symbol}|{expiry}"
+            cached = _expiry_epoch_cache.get(cache_key_epoch)
+            if cached and (now - cached[1]) < 600.0:
+                epoch = cached[0]
+            else:
+                try:
+                    # One small call, cached for ten minutes, because the desk
+                    # polls positions and the FYERS request budget is finite.
+                    base = fyers_client.get_option_chain(underlying=symbol, strike_count=2)
+                    epoch = resolve_expiry_epoch(base, str(expiry))
+                    if epoch:
+                        _expiry_epoch_cache[cache_key_epoch] = (epoch, now)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Could not resolve the expiry epoch for %s: %s", expiry, exc)
+            if not epoch:
+                logger.warning(
+                    "FYERS did not list an expiry on %s; reading the chain without one.",
+                    expiry,
+                )
+
         raw_chain = fyers_client.get_option_chain(
-            underlying=underlying,
+            underlying=symbol,
             strike_count=40,
-            timestamp=expiry,
+            timestamp=epoch,
         )
         _chain_cache[cache_key] = {"data": raw_chain, "timestamp": now}
         return raw_chain
@@ -214,6 +263,33 @@ def _build_chain_lookup(raw_chain: dict[str, Any]) -> tuple[float, dict[tuple[fl
 # Endpoints
 # ---------------------------------------------------------------------------
 
+def _ids_the_database_knows(ids: set[str]) -> set[str]:
+    """Which of these positions the database has ever heard of, at any status.
+
+    THE GHOST, found 2026-09-09. `_local_paper_positions` is an in-process list
+    written when a trade opens. The merge below only skipped a local copy if the
+    same id was ALREADY in the database result, and that result holds open rows
+    only. So once a position closed, the database stopped returning it, the
+    stale in-memory copy stopped being skipped, and Home showed a position that
+    had been closed for half an hour.
+
+    Worse, it is per process: his trade was closed from his PC, so the Cloud Run
+    instance still had `status: open` in its own memory and had no way to learn
+    otherwise.
+
+    The database is the truth. The local list is a fallback for when the
+    database cannot be reached, and it must never shadow it.
+    """
+    if not ids:
+        return set()
+    try:
+        res = db.client.table("swayam_positions").select("id").in_("id", sorted(ids)).execute()
+        return {str(r["id"]) for r in (res.data or [])}
+    except Exception as exc:
+        logger.warning("Could not check the database for local position ids: %s", exc)
+        return set()
+
+
 @router.get("/api/positions", response_model=list[PositionResponse])
 def get_positions(status: str = Query(default="open")) -> list[PositionResponse]:
     """Returns list of positions with current unrealized P&L."""
@@ -236,10 +312,16 @@ def get_positions(status: str = Query(default="open")) -> list[PositionResponse]
             ),
         ) from exc
 
-    # Merge with local session paper trades if not already present
-    existing_ids = {p.get("id") for p in positions_data}
+    # Merge local session paper trades ONLY where the database has never heard
+    # of them. A local copy must never shadow a row the database owns.
+    existing_ids = {str(p.get("id")) for p in positions_data}
+    local_ids = {str(l.get("id")) for l in _local_paper_positions} - existing_ids
+    known = _ids_the_database_knows(local_ids)
     for local_pos in _local_paper_positions:
-        if local_pos.get("id") not in existing_ids and local_pos.get("status") == status:
+        pid = str(local_pos.get("id"))
+        if pid in existing_ids or pid in known:
+            continue
+        if local_pos.get("status") == status:
             positions_data.append(local_pos)
 
     results: list[PositionResponse] = []
@@ -284,10 +366,16 @@ def get_positions_live() -> list[LivePositionResponse]:
         if db.url and db.key:
             raise HTTPException(status_code=503, detail="Cannot fetch positions from Supabase.") from exc
 
-    # Merge local positions
-    existing_ids = {p.get("id") for p in positions_data}
+    # Same rule as above: the database owns the truth about a position, and a
+    # stale in-memory copy on one instance must never resurrect a closed trade.
+    existing_ids = {str(p.get("id")) for p in positions_data}
+    local_ids = {str(l.get("id")) for l in _local_paper_positions} - existing_ids
+    known = _ids_the_database_knows(local_ids)
     for local_pos in _local_paper_positions:
-        if local_pos.get("id") not in existing_ids and local_pos.get("status") == "open":
+        pid = str(local_pos.get("id"))
+        if pid in existing_ids or pid in known:
+            continue
+        if local_pos.get("status") == "open":
             positions_data.append(local_pos)
 
     if not positions_data:
