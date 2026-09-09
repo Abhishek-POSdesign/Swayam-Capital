@@ -67,9 +67,48 @@ def canonical_payload_hash(payload: dict[str, Any]) -> str:
     The idempotency key itself is excluded: the question this answers is
     "is this the same trade?", not "is this the same request envelope?".
     """
-    trimmed = {k: v for k, v in payload.items() if k != "idempotency_key"}
+    trimmed = _the_trade_itself(payload)
     encoded = json.dumps(trimmed, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+# Fields that change between one press and the next WITHOUT the trade changing.
+# Found 2026-09-09 evening while checking the ticket for loopholes: the desk
+# re-quotes every five seconds and the spot ticks, so a retry after a lost
+# response carried a different spot and different market prices, hashed
+# differently under the same key, was refused as "a different trade", and the
+# browser's recovery then minted a fresh key and sent again. That is the
+# double position the key exists to prevent, reachable on exactly the bad day.
+_NOT_THE_TRADE = {"idempotency_key", "current_spot", "iv_per_leg", "target_date"}
+
+
+def _the_trade_itself(payload: dict[str, Any]) -> dict[str, Any]:
+    """The request with everything that is not his instruction stripped out.
+
+    A MARKET leg's price is the market's, not his: two presses of the same
+    ticket at two different quotes are the same instruction. A LIMIT leg's
+    price IS his instruction and stays.
+    """
+    def leg_view(leg: Any) -> Any:
+        if not isinstance(leg, dict):
+            return leg
+        view = dict(leg)
+        if str(view.get("order_type") or "MARKET").upper() == "MARKET":
+            view.pop("entry_premium", None)
+            view.pop("limit_price", None)
+        return view
+
+    out: dict[str, Any] = {}
+    for k, v in payload.items():
+        if k in _NOT_THE_TRADE:
+            continue
+        if k == "legs" and isinstance(v, list):
+            out[k] = [leg_view(l) for l in v]
+        elif k == "leg":
+            out[k] = leg_view(v)
+        else:
+            out[k] = v
+    return out
 
 
 def claim_execution(idempotency_key: str, payload: dict[str, Any]) -> None:

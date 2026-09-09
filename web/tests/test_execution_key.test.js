@@ -81,3 +81,28 @@ describe('the execution key belongs to the trade, not the ticket', () => {
     }
   });
 });
+
+describe('a market leg re-quoted is the same trade', () => {
+  beforeEach(() => {
+    installStorage();
+    releaseAllExecutionKeys();
+  });
+
+  it('keeps the SAME key when only a market price moved between presses', () => {
+    const a = { ...tradeA, current_spot: 23635.1, legs: [{ ...tradeA.legs[0], order_type: 'MARKET', entry_premium: 293.35 }] };
+    const b = { ...tradeA, current_spot: 23641.0, legs: [{ ...tradeA.legs[0], order_type: 'MARKET', entry_premium: 294.1 }] };
+    expect(executionKeyFor('desk', a)).toBe(executionKeyFor('desk', b));
+  });
+
+  it('gives a DIFFERENT key when a limit price changed, because that is his instruction', () => {
+    const a = { ...tradeA, legs: [{ ...tradeA.legs[0], order_type: 'LIMIT', limit_price: 290 }] };
+    const b = { ...tradeA, legs: [{ ...tradeA.legs[0], order_type: 'LIMIT', limit_price: 291 }] };
+    expect(executionKeyFor('desk', a)).not.toBe(executionKeyFor('desk', b));
+  });
+
+  it('keys an added leg on the leg, not on the spot', () => {
+    const a = { leg: { ...tradeA.legs[0], order_type: 'MARKET' }, current_spot: 23635.1 };
+    const b = { leg: { ...tradeA.legs[0], order_type: 'MARKET' }, current_spot: 23640.9 };
+    expect(executionKeyFor('add-leg-x-2', a)).toBe(executionKeyFor('add-leg-x-2', b));
+  });
+});
