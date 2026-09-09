@@ -1333,7 +1333,16 @@ clean zero rows with no error at all.
 
 ---
 
-#### 2.15.9 HIS 21 TRADES: readable, covered, and flawed — DONE 2026-09-10
+#### 2.15.9 HIS 21 TRADES: for reflection ONLY, not for testing
+
+> **He ruled these out as test material on 2026-09-10.** See §2.16.0.
+> The work below stands and is worth having, because understanding how he
+> traded is worth having. It is NOT the acceptance test and must not be
+> resurrected as one.
+>
+> **`Swing Trades Journal.xlsx` was found on 2026-09-10**, in his own
+> archive at `E:\Project E\Trading\Bazaar\Trading Journal\`. Earlier
+> notes here said it was lost. It is not.
 
 **The data covers them.** Every strike in all 21 trades is present on the day he
 opened it.
@@ -1408,25 +1417,78 @@ Trade-07 planned ₹7,000 and lost ₹21,000; Trade-10 planned ₹5,250 and lost
 
 ---
 
-### 2.16 THE BACKTESTER. His words, 2026-09-10. Do not relitigate.
+### 2.16 THE BACKTESTER. His words. Corrected by him 2026-09-10 night.
 
-**Written from what he said when asked directly. Everything in quotation marks
-is his. This section is the specification; the data it stands on is §2.15.**
+**Everything in quotation marks is his. Section 2.16.0 overturns a premise this
+document held earlier, so read it before anything else here.**
 
 ---
 
-#### 2.16.0 The single most important correction he made
+#### 2.16.0 CLEAN SLATE, BUT NOT A CLOSED BOOK. His words, refined 2026-09-10.
 
-**He is NOT a time-based trader and this is not an algo.**
+**This section was written once too absolutely and he corrected it. Read the
+whole thing; the nuance is the point.**
+
+**What he ruled out:** his own trades as the material a backtest is built on,
+or as the test that decides whether the engine is trusted.
+
+> "I don't want to do backtesting on the trades I did. The trades I did are not
+> very well structured, so we can't do backtesting on them, whether swing trades
+> or intraday trades... I will do the backtesting on a clean slate. The things in
+> my mind will create proper new strategies. We'll give them the names and
+> backtest them on the data available."
+
+**What he did NOT rule out:** using his history whenever it is useful.
+
+> "You change it so that my past data can be used whenever and wherever it is
+> required, whenever it can be useful, but it cannot be only backtest material.
+> My backtest will be a fresh test, a synthetic test. If you have to compare it
+> with my past trades, we can use it, because that is for a limited time, or a
+> very limited time, and the data is not very well structured. There might be
+> flaws."
+
+> "We will create everything on a clean slate, but we will use whatever
+> resources we have, whether by my history, by my broker, by market, by API, by
+> WebSocket, whatever is usable. We create our own structure out of that, a new
+> one."
+
+**And the sentence that settles how to hold both at once:**
+
+> "I'm not going to copy anything, not even from my past. My past is my
+> experience, and we should learn from it and use it whenever required. My
+> future, I will be writing by my own hand, with your help."
+
+**So the rule is about ROLE, not about permission:**
+
+| His history may be | His history may NOT be |
+|---|---|
+| Read to understand how he trades and what went wrong | The source a strategy is copied from |
+| Compared against, for a limited sanity check, with its flaws stated | The acceptance test that decides the engine is correct |
+| Used to reason about size, charges, discipline, holding periods | Treated as clean or reconciled data |
+| Quoted back to him in a finding | The reason a new strategy exists |
+
+**Every use of it carries the caveat.** The data is not well structured, 13 of
+the 21 swing notes carry errors (§2.15.9), the intraday journal differs from the
+broker's own figures by about ₹34,000 across the year, **and his Zerodha history
+is gone entirely — he has no record of it any more.** Say so wherever it is used.
+
+**Use every source there is.** His history, the broker, the market, the REST
+API, the WebSocket, the recorder, the NSE files. The structure built on top of
+them is new, and it is his.
+
+The engine is validated a different way. See §2.16.7.
+
+---
+
+#### 2.16.1 The second correction: he is NOT a time-based trader
 
 > "I'm not looking for a time-based strategy. Time only matters to me because I
 > can only trade in the afternoon due to my night shift. For the rest, I am a
 > price-action and technical-based trader, mostly a price-action-based trader."
 
-So "enter at 2 pm every day" is the wrong shape entirely. The question the
-backtester answers is closer to: **when the market looks like THIS, and he is
-looking at it in his window, what happens next, and which structure pays best
-for it?** It is a research tool he drives, not a robot that trades.
+"Enter at 2 pm every day" is the wrong shape. The question is: **when the market
+looks like THIS, and he is looking at it in his window, what happens next, and
+which structure pays best for it?** A research tool he drives, not a robot.
 
 > "I want to know what kind of price action forms in what kind of market cycle,
 > because the market has different cycles... around the afternoon, that is the
@@ -1435,54 +1497,72 @@ for it?** It is a research tool he drives, not a robot that trades.
 
 ---
 
-#### 2.16.1 The four charts he actually reads, in his words
+#### 2.16.2 THE DATA WINDOW: 2022 onwards, and he was firm about it
 
-| Chart | What he uses it for |
+> "I always wanted to test the last 3 to 4 years of NIFTY data... I don't want to
+> test that old data because the market is totally different than what it was
+> before Corona and after Corona. I want maybe 22 to 26."
+
+**Default window: 2022-01-01 to now. Every result says so.** Older data exists
+because it was free to take, and it is not to be used without him asking.
+
+**Inside his window there are two tiers, and a result must say which it used:**
+
+| Period | What is available |
 |---|---|
-| **Weekly** | Important for the wider view |
-| **Daily** | **The most important.** Where the market is heading, and where the major support and resistance are |
-| **Hourly** | The movement, the pattern, the direction over the next few days, the possible reversal area, the entry area |
-| **15-minute** | The intraday trend, and the actual entries |
+| 2022 and 2023 | Daily option prices only. Minute prices for the index. |
+| Feb 2024 onwards | Minute option prices, every strike, plus everything above. |
 
-All four are built from the one minute file we hold, back to January 2018.
+**That boundary cannot be bought away.** FYERS is the only source that serves
+expired option contracts and its minute history starts in February 2024
+(§2.15.1). So a strategy whose entry depends on the minute inside the day can
+only be tested on about two and a half years, and one that works off daily
+closes can be tested on four and a half. Say which, on every result.
 
 ---
 
-#### 2.16.2 His market cycles, roughly, pending their own session
+#### 2.16.3 The four charts he actually reads
 
-**His rough definition, given 2026-09-10, and he asked for a dedicated session
-to give these proper words. Treat this as a sketch, not a specification.**
+| Chart | What he uses it for |
+|---|---|
+| **Weekly** | The wider view |
+| **Daily** | **The most important.** Where the market is heading, and the major support and resistance |
+| **Hourly** | The movement, the pattern, direction over a few days, the possible reversal area, the entry area |
+| **15-minute** | The intraday trend, and the actual entries |
 
-- **Trending**, and within that **aggressive** or **basic**.
-  - Bullish or bearish. "Bearish is mostly aggressive, and mostly short-term."
-  - "The Indian market is mostly in a bull run on the long-term chart, but in the
-    short term it becomes bearish and aggressively bearish."
-- **Sideways**, and within that:
-  - **Squeezing** — "which is going to blast someday".
-  - **Expanding** — in both directions.
+All four build from the one minute file.
+
+---
+
+#### 2.16.4 His market cycles, roughly, pending their own session
+
+**A sketch, not a specification. He asked for a dedicated session.**
+
+- **Trending**, and within it **aggressive** or **basic**, bullish or bearish.
+  "Bearish is mostly aggressive, and mostly short-term." "The Indian market is
+  mostly in a bull run on the long-term chart, but in the short term it becomes
+  bearish and aggressively bearish."
+- **Sideways**: **squeezing**, "which is going to blast someday", or
+  **expanding** in both directions.
 
 > "As for the current situation, I can say it is squeezing... We will have to do
 > a session to give words to all of this. That will be a particular session."
 
-**When that session happens it can be evidence-based rather than theoretical.**
-Once he defines a cycle roughly, all eight and a half years can be labelled, and
-we can count how often each appears, how long each lasts, and what tended to
-follow. A definition that catches nothing will show itself before anything is
-built on it. **That session is the gate to building any of the rest of this.**
+**That session can be evidence-based.** Once he defines a cycle roughly, label
+2022 onwards and count how often each appears, how long each lasts, and what
+tended to follow. A definition that catches nothing shows itself before anything
+is built on it. **It is the gate to all the rest.**
 
 ---
 
-#### 2.16.3 The structure follows from TWO different questions, not one
-
-**This changed the design.** He picks a structure down one of two paths, and the
-system needs both, not a single "choose a strategy" step.
+#### 2.16.5 The structure follows from TWO questions, not one
 
 | Path | Trades | What decides it |
 |---|---|---|
-| **Directional** | bull call spread, bull condor, bear condor, bear put spread | "I make the view: the setup, the direction of the market, and the formations" |
+| **Directional** | bull call spread, bull or bear condor, bear put spread | "I make the view: the setup, the direction of the market, and the formations" |
 | **Volatility** | iron condor, iron butterfly, calendar | "It is not about the direction. It is about the volatility" |
 
-His own volatility rules, as he stated them:
+His stated volatility rules:
 
 - **An event is coming and volatility can increase → calendar.**
 - **Volatility is too high now and going to squeeze, market mostly sideways →
@@ -1491,14 +1571,17 @@ His own volatility rules, as he stated them:
 > "But again, these are the past things. I will start a clean slate after
 > brainstorming and understanding the structure."
 
-So these are his starting hypotheses, not fixed rules. The backtester's job is
-to test them, not to enshrine them.
+Starting hypotheses, not fixed rules.
+
+**He also has four strategies he wrote years ago with rules**, at
+`E:\Project E\Trading\Bazaar\60 Day Challange\Strategies`: 03 PM Candle
+Breakout, 5 EMA Buying, 5 EMA Selling, Morning Conviction. **Read them for how
+he thinks about writing a rule, not as strategies to test.** Most are intraday
+and morning-based, which no longer fits his life.
 
 ---
 
-#### 2.16.4 Adjustments, which is where his money actually went
-
-**His rule is more precise than he may realise, and it is testable.**
+#### 2.16.6 Adjustments, which is where his money actually went
 
 > "Adjustment mostly means we have to make sure what the premium left is in any
 > leg. If there is not much premium left in any leg, then we must adjust them to
@@ -1508,87 +1591,63 @@ to test them, not to enshrine them.
 
 Two triggers, both measurable:
 
-1. **Premium exhaustion.** A leg sold for ₹40 now worth ₹4 has given 90% of what
-   it will ever give and is carrying risk for nothing. That threshold is a
-   number and the right value can be found from the data.
+1. **Premium exhaustion.** A leg sold at ₹40 now worth ₹4 has given 90% of what
+   it will ever give and carries risk for nothing. The right threshold is a
+   number the data can find.
 2. **A fully hedged position becomes reachable.**
 
-And one condition: **the scenario changed** — sideways becoming trending,
-squeezing, volatility rising or crashing. That depends on §2.16.2 existing first.
+One condition: **the scenario changed** — sideways becoming trending, squeezing,
+volatility rising or crashing. Depends on §2.16.4 existing first.
 
-**Test the un-adjusted structure first.** Holding a structure untouched gives a
-clean read of whether the entry had an edge at all. Adjustments are the second
-layer, tested against that baseline, because otherwise a good adjustment rule
-can hide a bad entry and neither can be seen.
+**Test the un-adjusted structure first**, or a good adjustment rule hides a bad
+entry and neither can be seen.
 
 ---
 
-#### 2.16.5 WHAT "IT WORKED" MEANS. Not profit first.
+#### 2.16.7 HOW THE ENGINE IS VALIDATED, since his trades are not the test
 
-**He said his risk and reward was what let him survive, and that he took small
-quick losses. His own record agrees with the first half and contradicts the
-second.** Numbers in §2.15.9.
+**Two different questions, and conflating them is how a backtest lies.**
 
-- Winners held a median of **7 days**. Losers held a median of **6.5 days**. He
-  did not cut losses faster than he ran winners.
-- **Three of eight losers broke the stop written down before entry**, costing
-  **₹17,039 more than his own plan allowed — 23% of everything he made.**
+**Question one: is the engine correct?** Answered mechanically, not against any
+trade of his.
 
-> **So the first measure a backtest reports is: did this trade stay inside the
-> plan it was given?** A strategy that makes money while regularly breaking its
-> own stop cannot be sized up, because the day it breaks badly it takes the year
-> with it. That is Trade-07 in swing form, and the intraday year of FY 2025-26 is
-> the same pattern at higher frequency.
+1. **Pricing.** Build a known structure on a known past day and check every leg
+   against the raw rows it came from. The rows are on disk and can be read.
+2. **Charges.** Against `services/charges.py`, the only correct charge model in
+   the repository, versioned by effective date and computed in `Decimal`.
+3. **Fills.** Against the same rules `services/fills.py` uses on the live desk:
+   a buy pays the ask, a sell gets the bid, a limit fills at his price or better.
+   For history the spread is MODELLED, and every result says so.
+4. **A synthetic trade with an outcome known in advance comes back with that
+   outcome**, including a leg squared off alone and a structure adjusted mid-life.
+5. **The two sources still agree.** `scripts/reconcile_option_history.py` is the
+   standing check: FYERS minute candles and NSE's daily file reproduce each
+   other's open, high and low on 98 to 99% of contract-days.
 
-Every result therefore reports, in this order:
-
-1. **Discipline.** How often the trade stayed inside its planned stop, and by how
-   much it overshot when it did not.
-2. **Charges.** Gross against net, per leg, from `services/charges.py`. FY
-   2025-26 was gross **+₹6,109** and net **−₹86,299** on ₹92,408 of charges. A
-   backtest that ignores costs would have called that year fine.
-3. **The spread**, and clearly marked as modelled rather than measured for any
-   period before the recorder existed.
-4. **Then** profit, win rate, expectancy and the worst run.
+**Question two: does a strategy have an edge?** Answered by holding back data he
+did not use when designing it, and by walking forward. Never by the same data
+twice.
 
 ---
 
-#### 2.16.6 What to build, in order
+#### 2.16.8 PROPOSED REPLACEMENT FOR `ROADMAP.md` §3. NEEDS HIS EXPLICIT YES.
 
-Nothing here starts before §2.16.2's session.
+`ROADMAP.md` §3 milestone 2 currently reads that the backtester "must reproduce
+what those trades actually did before it is trusted on anything", meaning his 21
+historical swing trades. **He rejected that on 2026-09-10.** The roadmap may not
+be edited without his approval, so it still says it. **Ask him.**
 
-1. **The cycle labeller.** His definitions applied to eight years, with counts,
-   durations and what followed. This is also how his definitions get tested.
-2. **The formation detector**, from his own list, on the timeframes in §2.16.1.
-3. **The replay engine.** One structure, one past day, priced from the minute
-   bars at the minute he would have acted. Never from a daily close (§2.15.8).
-4. **The measurement**, in the order of §2.16.5.
-5. **Validation.** See §2.16.7, which proposes an amendment to the roadmap.
-6. **Only then, the scenario sweep**: the same idea run many ways and ranked.
+Proposed replacement for milestone 2:
 
----
+> 2. **Data loaded** and checked against itself. Two independent sources, FYERS'
+>    minute candles and NSE's official daily file, must reproduce each other
+>    before either is trusted. The backtester is validated mechanically, on
+>    pricing, charges, fills and a synthetic trade with a known outcome, NOT
+>    against his own past trades. His trade history is for reflection and
+>    knowledge; it was not structured for testing and he has said so.
 
-#### 2.16.7 A PROPOSED AMENDMENT TO `ROADMAP.md` §3. NEEDS HIS APPROVAL.
-
-**The roadmap says the backtester is not trusted until it reproduces his 21
-historical swing trades. That test is weaker than it looks, and there is a
-better one available.**
-
-The 21 trades run October 2022 to April 2023, before the minute data begins, so
-they can only be replayed day by day. Thirteen of the notes carry errors and the
-spreadsheet behind them is missing (§2.15.9).
-
-**His intraday year, April 2025 to March 2026, is fully inside the minute data.**
-It is reconciled against raw FYERS statements in the vault at
-`00 - Reference/Historical Trade Journal/`, and its accounting is verified:
-gross **+₹6,109**, charges **−₹92,408**, net **−₹86,299** across 246 contracts.
-
-**Recommendation:** validate the engine against the intraday year first, because
-the data is complete and the accounting is broker-verified, then use the 21 swing
-trades as a second check at daily resolution. Both, in that order, rather than
-the swing trades alone.
-
-**Do not edit `ROADMAP.md` for this without asking him.** Propose and wait.
+And a note added to milestone 1: **the window is 2022 onwards**, because the
+market before and after Corona are different markets.
 
 ---
 

@@ -75,6 +75,22 @@ would not have to keep explaining myself to every agent who helps me. It is not
 structured well enough for that yet. The AI partner is the interface to it, and
 its first job is to know my story so I never have to tell it again.
 
+TWO THINGS I SETTLED ON 2026-09-10, SO YOU DO NOT REPEAT AN OLD ASSUMPTION.
+
+My backtesting starts from a clean slate: new strategies out of my own head, not
+copied from my past. My old trades are not the material and not the test. But
+they are NOT off limits either. Use my history whenever it is genuinely useful,
+and say every time that it is flawed data. Use every source we have: my history,
+my broker, the market, the API, the WebSocket, the recorder, the NSE files.
+docs/PLAN.md 2.16.0.
+
+And any data work starts from 2022, not 2018, because the market before and
+after Corona are different markets.
+
+I keep ONE CHAT PER PURPOSE. docs/CHAT_PROMPTS.md lists them all, and the other
+prompts are docs/SUCCESSOR_PROMPT.md for the main chat and
+docs/SUCCESSOR_BACKTESTER.md for the backtester.
+
 WHAT I EXPECT FROM THIS CHAT. Talk with me. I will talk a great deal and you
 structure what I say and read it back. Do not answer a half-formed thought with
 a build plan. We are designing what this thing is before anything is built.

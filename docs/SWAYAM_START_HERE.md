@@ -15,9 +15,18 @@ the four horizons, with gates that are proven on the running system and no
 dates. Every piece of work below belongs to one horizon; name it before
 building. Editing the roadmap needs his explicit approval.
 
-**It lives in `docs/SUCCESSOR_PROMPT.md`**, in full, ready to copy. It is kept
-there rather than here so it can be maintained properly and so he never has to
-reconstruct it from memory.
+**He keeps ONE CHAT PER PURPOSE and each has its own prompt.**
+**`docs/CHAT_PROMPTS.md` says which to paste into which.** In short:
+
+| Chat | Paste |
+|---|---|
+| Main, the terminal itself | `docs/SUCCESSOR_PROMPT.md` |
+| Backtester | `docs/SUCCESSOR_BACKTESTER.md` |
+| AI partner | `docs/SUCCESSOR_AI_PARTNER.md` |
+
+They are kept there rather than here so they can be maintained properly and so
+he never has to reconstruct one from memory. **If a session has to ask him
+something already settled, the prompt is at fault: fix the prompt.**
 
 That file also carries a second half, "notes for the session that reads this",
 holding what was learned by talking to him rather than by reading the code.
@@ -32,6 +41,7 @@ holding what was learned by talking to him rather than by reading the code.
 | Code | `D:\Claude\POS\Trading-Platform\Swayam Capital` |
 | GitHub | `Abhishek-POSdesign/Swayam-Capital` |
 | Python | `.\.venv\Scripts\python.exe` (editable install; work in the primary folder, NEVER a worktree) |
+| **His raw trading archive** | **`E:\Project E\Trading\Bazaar`.** Everything he ever saved: the swing journal spreadsheet, four written strategies, broker reports, daily records. **His own word for it is broken**: some current, some years old, some spreadsheets lost. Evidence of how he worked, never a reconciled record |
 | **Vault** | **`G:\My Drive\Second Brain`.** `D:\Second Brain` is EMPTY and STALE. Never use it. **Writes to it are caged during tests** — see §3 |
 | Database | Supabase `wxijlrwoiaeaupaaqecc`, ap-south-1. **Shared with two other apps.** Scope everything to `swayam_*`. |
 | DB connection | Session pooler `aws-1-ap-south-1.pooler.supabase.com:5432`, user `postgres.wxijlrwoiaeaupaaqecc`, in `SUPABASE_DB_URL`. **aws-1, not aws-0.** The direct host is IPv6-only and drops here. |
@@ -75,18 +85,25 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: THE WORK IS SPLIT IN TWO, 2026-09-10
+### Latest first: A CLEAN SLATE, AND ONE CHAT PER PURPOSE, 2026-09-10 night
 
-**He asked for two chats rather than one, so a long conversation cannot mix
-them.** Each has its own prompt to paste. `docs/SUCCESSOR_PROMPT.md` is still the
-general one for ordinary work on the terminal.
+**⚠️ TWO THINGS HE CORRECTED ON 2026-09-10 NIGHT. Both overturn earlier plans.**
 
-| Chat | Prompt to paste | Its specification |
-|---|---|---|
-| **The backtester** | `docs/SUCCESSOR_BACKTESTER.md` | `docs/PLAN.md` §2.16, data in §2.15 |
-| **The AI partner** | `docs/SUCCESSOR_AI_PARTNER.md` | `docs/PLAN.md` §2.17 |
+**1. Clean slate, but not a closed book.** The backtest is a fresh test of new
+strategies he designs. His old trades are NOT what a strategy is copied from and
+NOT the test that decides the engine is correct. **They are still usable
+whenever they genuinely help**, with the flaws stated every time. "I'm not going
+to copy anything, not even from my past. My past is my experience... My future,
+I will be writing by my own hand, with your help." Use every source there is.
+`docs/PLAN.md` §2.16.0.
 
-**The vocabulary work belongs to the backtesting chat**, because a definition
+**2. The data window is 2022 onwards, not 2018.** "The market is totally
+different than what it was before Corona and after Corona. I want maybe 22 to
+26." Older data exists because it was free; do not use it without asking him.
+§2.16.2.
+
+**One chat per purpose, each with its own prompt.** `docs/CHAT_PROMPTS.md` is the
+index. The vocabulary work belongs to the backtesting chat, because a definition
 that cannot be measured is only words.
 
 | | |
@@ -94,9 +111,9 @@ that cannot be measured is only words.
 | **The data is downloaded and checked** | 804,379 NIFTY minute bars from 2018, 4,569,843 daily option rows from 2018, 59,292,184 minute option bars from Feb 2024. Free. `data/history/`, git-ignored. `docs/PLAN.md` §2.15.8 |
 | **Two sources agree** | FYERS minute candles and NSE's daily file reproduce each other's open, high and low on 98 to 99% of 167,717 contract-days |
 | **⚠️ THE DAILY CLOSE IS NOT A TRADEABLE PRICE** | It is a half-hour weighted average, proved not assumed. A backtest fills from minute bars, never a daily close. The index close and its 15:29 level differ by a median of 7.7 points |
-| **His 21 trades are readable, and flawed** | Expiries recovered for 69 of 72 legs. **13 of the 21 notes carry errors**, and `Swing Trades Journal.xlsx` is not in the vault. §2.15.9 |
+| **His 21 trades: reflection only** | Readable, expiries recovered for 69 of 72 legs, 13 of 21 notes carry errors. **Not test material any more.** `Swing Trades Journal.xlsx` WAS found, in `E:\Project E\Trading\Bazaar\Trading Journal\`. §2.15.9 |
 | **What his record actually says** | 13 wins of 21, net **+₹73,676**. He held winners a median of 7 days and losers 6.5. Three of eight losers broke his own written stop, costing **₹17,039, 23% of the era's profit** |
-| **Open, needs his approval** | §2.16.7 proposes validating the engine on his intraday year first, since its data is complete and its accounting is broker-verified. That changes `ROADMAP.md` §3 |
+| **⚠️ Open, needs his explicit yes** | `ROADMAP.md` §3 still says the backtester must reproduce his 21 swing trades. **He has rejected that.** The replacement text is in §2.16.8. Do not edit the roadmap before he says yes |
 | **Still open** | `ROADMAP.md` §2's rows for the recorder and backtesting are stale and may not be edited without him. The recorder still captures the afternoon only (§2.10) |
 
 
