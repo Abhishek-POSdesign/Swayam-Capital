@@ -1,161 +1,182 @@
-"""
-Unit tests for Swayam Options Recorder Cloud Function.
+"""Unit tests for the Swayam Options Recorder Cloud Function.
+
+The parsing tests that used to live here asserted a FYERS response shape that
+does not exist and passed for a week while the recorder wrote zeros. They have
+been replaced by `test_recorder_real_shape.py`, which drives a reply captured
+from the live API. What is left here is the machinery around the parse: the
+market gate, the append-and-deduplicate write, and the HTTP handler.
 """
 
 from datetime import date, datetime, timezone
 import io
+import json
+from pathlib import Path
+import sys
 from unittest.mock import MagicMock, patch
 from zoneinfo import ZoneInfo
+
 import pandas as pd
-import pytest
 
-import sys
-from pathlib import Path
-
-# Add cloud/recorder to sys.path for testing recorder modules
 RECORDER_DIR = Path(__file__).resolve().parent.parent.parent / "cloud" / "recorder"
-sys.path.insert(0, str(RECORDER_DIR))
+if str(RECORDER_DIR) not in sys.path:
+    sys.path.insert(0, str(RECORDER_DIR))
 
-from fyers_recorder import append_and_dedupe_to_gcs, fetch_options_snapshot, is_market_open
-from main import record_snapshot
+from fyers_recorder import append_and_dedupe_to_gcs, is_market_open, to_dataframe  # noqa: E402
+from main import record_snapshot  # noqa: E402
+
+IST = ZoneInfo("Asia/Kolkata")
 
 
 def test_is_market_open_weekday_during_hours():
-    tz = ZoneInfo("Asia/Kolkata")
-    # Wednesday at 11:30 AM IST
-    dt = datetime(2026, 9, 9, 11, 30, 0, tzinfo=tz)
-    is_open, reason = is_market_open(dt)
+    is_open, reason = is_market_open(datetime(2026, 9, 9, 11, 30, tzinfo=IST))
     assert is_open is True
     assert "Market open" in reason
 
 
 def test_is_market_open_weekend():
-    tz = ZoneInfo("Asia/Kolkata")
-    # Saturday at 11:30 AM IST
-    dt = datetime(2026, 9, 12, 11, 30, 0, tzinfo=tz)
-    is_open, reason = is_market_open(dt)
+    is_open, reason = is_market_open(datetime(2026, 9, 12, 11, 30, tzinfo=IST))
     assert is_open is False
     assert "Weekend" in reason
 
 
 def test_is_market_open_before_open():
-    tz = ZoneInfo("Asia/Kolkata")
-    # Monday at 08:30 AM IST
-    dt = datetime(2026, 9, 7, 8, 30, 0, tzinfo=tz)
-    is_open, reason = is_market_open(dt)
+    is_open, reason = is_market_open(datetime(2026, 9, 7, 8, 30, tzinfo=IST))
     assert is_open is False
     assert "before market open" in reason
 
 
 def test_is_market_open_after_close():
-    tz = ZoneInfo("Asia/Kolkata")
-    # Monday at 16:00 PM IST
-    dt = datetime(2026, 9, 7, 16, 0, 0, tzinfo=tz)
-    is_open, reason = is_market_open(dt)
+    is_open, reason = is_market_open(datetime(2026, 9, 7, 16, 0, tzinfo=IST))
     assert is_open is False
     assert "after market close" in reason
 
 
-def test_fetch_options_snapshot_parsing(monkeypatch):
-    mock_fyers_instance = MagicMock()
-    mock_fyers_instance.optionchain.return_value = {
-        "s": "ok",
-        "data": {
-            "underlyingValue": 24850.50,
-            "optionsChain": [
-                {
-                    "strike_price": 24850.0,
-                    "call_symbol": "NSE:NIFTY26SEP24850CE",
-                    "call_ltp": 120.50,
-                    "call_volume": 50000,
-                    "call_oi": 1500000,
-                    "call_pdoi": 25000,
-                    "call_iv": 0.142,
-                    "put_symbol": "NSE:NIFTY26SEP24850PE",
-                    "put_ltp": 95.25,
-                    "put_volume": 42000,
-                    "put_oi": 1200000,
-                    "put_pdoi": -15000,
-                    "put_iv": 0.148,
-                }
-            ],
-        },
-    }
-
-    with patch("fyers_recorder.fyersModel.FyersModel", return_value=mock_fyers_instance):
-        df = fetch_options_snapshot(access_token="fake_token")
-        assert len(df) == 2
-        ce_row = df[df["option_type"] == "CE"].iloc[0]
-        pe_row = df[df["option_type"] == "PE"].iloc[0]
-
-        assert ce_row["strike"] == 24850.0
-        assert ce_row["close"] == 120.50
-        assert ce_row["open_interest"] == 1500000
-        assert ce_row["underlying_spot"] == 24850.50
-
-        assert pe_row["strike"] == 24850.0
-        assert pe_row["close"] == 95.25
-        assert pe_row["open_interest"] == 1200000
+def _one_snapshot_row(when: datetime) -> pd.DataFrame:
+    """One real row, taken from the live chain on 2026-09-09 night."""
+    return to_dataframe([{
+        "snapshot_time_utc": when,
+        "trade_date": date(2026, 9, 9),
+        "symbol": "NSE:NIFTY2691523450CE",
+        "underlying": "NIFTY",
+        "expiry_date": date(2026, 9, 15),
+        "strike": 23450.0,
+        "option_type": "CE",
+        "open": None, "high": None, "low": None,
+        "close": 138.5,
+        "settle_price": None,
+        "volume": 5529225,
+        "turnover_inr": None,
+        "open_interest": 2364570,
+        "change_in_oi": 2318810,
+        "prev_oi": 45760,
+        "underlying_spot": 23431.5,
+        "bid": 138.15, "ask": 139.45,
+        "tte_years": 0.015496,
+        "iv": 0.116357, "delta": 0.510173, "gamma": 0.001175,
+        "theta": -14.16663, "vega": 11.632687,
+    }])
 
 
 def test_append_and_dedupe_to_gcs_idempotent():
-    now_utc = datetime(2026, 9, 9, 10, 0, 0, tzinfo=timezone.utc)
-    row1 = {
-        "snapshot_time_utc": now_utc,
-        "trade_date": date(2026, 9, 9),
-        "symbol": "NSE:NIFTY26SEP24850CE",
-        "underlying": "NIFTY",
-        "expiry_date": date(2026, 9, 24),
-        "strike": 24850.0,
-        "option_type": "CE",
-        "open": 100.0,
-        "high": 125.0,
-        "low": 95.0,
-        "close": 120.0,
-        "settle_price": 100.0,
-        "volume": 1000,
-        "turnover_inr": 0.0,
-        "open_interest": 5000,
-        "change_in_oi": 100,
-        "underlying_spot": 24850.0,
-        "bid": 119.5,
-        "ask": 120.5,
-        "iv": 0.14,
-        "delta": 0.5,
-        "gamma": 0.001,
-        "theta": -5.0,
-        "vega": 12.0,
-    }
-    df = pd.DataFrame([row1])
+    """A scheduler double-fire must not double the rows."""
+    df = _one_snapshot_row(datetime(2026, 9, 9, 10, 0, tzinfo=timezone.utc))
 
-    # Mock storage client and blob
-    mock_client = MagicMock()
-    mock_bucket = MagicMock()
-    mock_blob = MagicMock()
+    mock_client, mock_bucket, mock_blob = MagicMock(), MagicMock(), MagicMock()
     mock_client.bucket.return_value = mock_bucket
     mock_bucket.blob.return_value = mock_blob
 
-    # First run: blob does not exist
     mock_blob.exists.return_value = False
-    total_1 = append_and_dedupe_to_gcs(mock_client, "test-bucket", df, target_date=date(2026, 9, 9))
-    assert total_1 == 1
+    assert append_and_dedupe_to_gcs(mock_client, "test-bucket", df, target_date=date(2026, 9, 9)) == 1
 
-    # Capture the uploaded parquet bytes
     uploaded_bytes = mock_blob.upload_from_string.call_args[0][0]
-
-    # Second run (e.g. Cloud Scheduler retry): blob now exists with same snapshot
     mock_blob.exists.return_value = True
     mock_blob.download_as_bytes.return_value = uploaded_bytes
 
-    total_2 = append_and_dedupe_to_gcs(mock_client, "test-bucket", df, target_date=date(2026, 9, 9))
-    # Deduplication ensures row count remains 1, NOT 2!
-    assert total_2 == 1
+    assert append_and_dedupe_to_gcs(mock_client, "test-bucket", df, target_date=date(2026, 9, 9)) == 1
+
+
+def test_the_next_minutes_snapshot_is_added_not_replaced():
+    first = _one_snapshot_row(datetime(2026, 9, 9, 10, 0, tzinfo=timezone.utc))
+    second = _one_snapshot_row(datetime(2026, 9, 9, 10, 1, tzinfo=timezone.utc))
+
+    mock_client, mock_bucket, mock_blob = MagicMock(), MagicMock(), MagicMock()
+    mock_client.bucket.return_value = mock_bucket
+    mock_bucket.blob.return_value = mock_blob
+
+    mock_blob.exists.return_value = False
+    append_and_dedupe_to_gcs(mock_client, "test-bucket", first, target_date=date(2026, 9, 9))
+    mock_blob.exists.return_value = True
+    mock_blob.download_as_bytes.return_value = mock_blob.upload_from_string.call_args[0][0]
+
+    assert append_and_dedupe_to_gcs(
+        mock_client, "test-bucket", second, target_date=date(2026, 9, 9)
+    ) == 2
+
+
+def test_the_blank_columns_survive_a_round_trip_through_the_file():
+    """What went in as unknown must come back as unknown, not as zero."""
+    df = _one_snapshot_row(datetime(2026, 9, 9, 10, 0, tzinfo=timezone.utc))
+    mock_client, mock_bucket, mock_blob = MagicMock(), MagicMock(), MagicMock()
+    mock_client.bucket.return_value = mock_bucket
+    mock_bucket.blob.return_value = mock_blob
+    mock_blob.exists.return_value = False
+    append_and_dedupe_to_gcs(mock_client, "test-bucket", df, target_date=date(2026, 9, 9))
+
+    written = pd.read_parquet(io.BytesIO(mock_blob.upload_from_string.call_args[0][0]))
+    for column in ("open", "high", "low", "settle_price", "turnover_inr"):
+        assert written[column].isna().all(), f"{column} came back as something other than NULL"
+    assert written["underlying_spot"].iloc[0] == 23431.5
+    assert written["expiry_date"].iloc[0] == date(2026, 9, 15)
 
 
 def test_main_record_snapshot_skips_when_closed():
     req = MagicMock()
+    req.args = {}
     with patch("main.is_market_open", return_value=(False, "Market closed (Weekend)")):
-        resp, status, headers = record_snapshot(req)
+        resp, status, _ = record_snapshot(req)
         assert status == 200
-        assert "skipped" in resp
+        assert json.loads(resp)["status"] == "skipped"
         assert "Weekend" in resp
+
+
+def test_a_dry_run_writes_nothing_and_ignores_the_market_gate():
+    """The only way to prove a deployment out of hours, and it must not record."""
+    req = MagicMock()
+    req.args = {"dry_run": "1"}
+    df = _one_snapshot_row(datetime(2026, 9, 9, 10, 0, tzinfo=timezone.utc))
+
+    with patch("main.is_market_open", return_value=(False, "closed")) as gate, \
+         patch("main.get_fyers_access_token", return_value="token"), \
+         patch("main.fetch_options_snapshot", return_value=df), \
+         patch("main.storage.Client") as storage_client, \
+         patch("main.append_and_dedupe_to_gcs") as writer:
+        resp, status, _ = record_snapshot(req)
+
+    body = json.loads(resp)
+    assert status == 200
+    assert body["status"] == "dry_run"
+    assert body["wrote_anything"] is False
+    assert body["rows"] == 1
+    assert body["underlying_spot"] == 23431.5
+    assert body["rows_with_iv"] == 1
+    writer.assert_not_called()
+    storage_client.assert_not_called()
+    gate.assert_not_called()
+
+
+def test_the_scheduler_never_triggers_a_dry_run():
+    """The scheduler POSTs with no query string. That must record, not dry-run."""
+    req = MagicMock()
+    req.args = {}
+    df = _one_snapshot_row(datetime(2026, 9, 9, 10, 0, tzinfo=timezone.utc))
+
+    with patch("main.is_market_open", return_value=(True, "open")), \
+         patch("main.get_fyers_access_token", return_value="token"), \
+         patch("main.fetch_options_snapshot", return_value=df), \
+         patch("main.storage.Client"), \
+         patch("main.append_and_dedupe_to_gcs", return_value=1) as writer:
+        resp, status, _ = record_snapshot(req)
+
+    assert status == 200
+    assert json.loads(resp)["status"] == "recorded"
+    writer.assert_called_once()
