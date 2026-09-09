@@ -64,7 +64,13 @@ def deploy() -> None:
         f'--max-instances=1 '
         f'--project={PROJECT_ID} '
         f'--set-secrets=FYERS_ACCESS_TOKEN=fyers-access-token:latest '
-        f'--set-env-vars=FYERS_CLIENT_ID={settings.fyers_client_id},FYERS_APP_ID={settings.fyers_app_id},GCS_OPTIONS_BUCKET={BUCKET}'
+        # RISK_FREE_RATE travels with the deployment so the archive's implied
+        # volatility and Greeks are computed against the same rate the terminal
+        # uses. `tests/cloud/test_recorder_config.py` fails if they diverge.
+        f'--set-env-vars=FYERS_CLIENT_ID={settings.fyers_client_id},'
+        f'FYERS_APP_ID={settings.fyers_app_id},'
+        f'GCS_OPTIONS_BUCKET={BUCKET},'
+        f'RISK_FREE_RATE={settings.risk_free_rate}'
     )
     run_command(deploy_cmd, "Deploying Cloud Function Gen2")
 

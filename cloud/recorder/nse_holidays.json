@@ -1,0 +1,37 @@
+{
+  "2026": [
+    {"date": "2026-01-26", "day": "Monday", "holiday": "Republic Day"},
+    {"date": "2026-03-03", "day": "Tuesday", "holiday": "Holi"},
+    {"date": "2026-03-20", "day": "Friday", "holiday": "Id-ul-Fitr (Ramzan Id)"},
+    {"date": "2026-03-27", "day": "Friday", "holiday": "Ram Navami"},
+    {"date": "2026-04-03", "day": "Friday", "holiday": "Good Friday"},
+    {"date": "2026-04-14", "day": "Tuesday", "holiday": "Dr. Ambedkar Jayanti"},
+    {"date": "2026-05-01", "day": "Friday", "holiday": "Maharashtra Day"},
+    {"date": "2026-05-27", "day": "Wednesday", "holiday": "Bakri Id"},
+    {"date": "2026-08-15", "day": "Saturday", "holiday": "Independence Day"},
+    {"date": "2026-08-26", "day": "Wednesday", "holiday": "Milad-un-Nabi"},
+    {"date": "2026-10-02", "day": "Friday", "holiday": "Mahatma Gandhi Jayanti"},
+    {"date": "2026-10-20", "day": "Tuesday", "holiday": "Dussehra"},
+    {"date": "2026-11-10", "day": "Tuesday", "holiday": "Diwali - Laxmi Pujan"},
+    {"date": "2026-11-11", "day": "Wednesday", "holiday": "Diwali - Balipratipada"},
+    {"date": "2026-11-24", "day": "Tuesday", "holiday": "Guru Nanak Jayanti"},
+    {"date": "2026-12-25", "day": "Friday", "holiday": "Christmas"}
+  ],
+  "2027": [
+    {"date": "2027-01-26", "day": "Tuesday", "holiday": "Republic Day"},
+    {"date": "2027-03-09", "day": "Tuesday", "holiday": "Id-ul-Fitr"},
+    {"date": "2027-03-22", "day": "Monday", "holiday": "Holi"},
+    {"date": "2027-03-26", "day": "Friday", "holiday": "Good Friday"},
+    {"date": "2027-04-14", "day": "Wednesday", "holiday": "Dr. Ambedkar Jayanti"},
+    {"date": "2027-04-16", "day": "Friday", "holiday": "Ram Navami"},
+    {"date": "2027-05-01", "day": "Saturday", "holiday": "Maharashtra Day"},
+    {"date": "2027-05-17", "day": "Monday", "holiday": "Bakri Id"},
+    {"date": "2027-08-15", "day": "Sunday", "holiday": "Independence Day"},
+    {"date": "2027-10-02", "day": "Saturday", "holiday": "Mahatma Gandhi Jayanti"},
+    {"date": "2027-10-09", "day": "Saturday", "holiday": "Dussehra"},
+    {"date": "2027-10-29", "day": "Friday", "holiday": "Diwali - Laxmi Pujan"},
+    {"date": "2027-11-01", "day": "Monday", "holiday": "Diwali - Balipratipada"},
+    {"date": "2027-11-14", "day": "Sunday", "holiday": "Guru Nanak Jayanti"},
+    {"date": "2027-12-25", "day": "Saturday", "holiday": "Christmas"}
+  ]
+}

@@ -20,6 +20,35 @@ TIMEZONE: str = os.getenv("TIMEZONE", "Asia/Kolkata")
 STRIKE_COUNT: int = int(os.getenv("STRIKE_COUNT", "20"))
 UNDERLYING_SYMBOL: str = os.getenv("UNDERLYING_SYMBOL", "NSE:NIFTY50-INDEX")
 
+# The rate the implied volatility solve and the Greeks are computed against.
+# Must match `RISK_FREE_RATE` in the terminal's own .env, the RBI 91-day
+# Treasury bill rate. `tests/cloud/test_recorder_config.py` fails if the two
+# drift apart: two different rates would mean the archive and the screen quote
+# different Greeks for the same contract on the same afternoon.
+def _float_env(name: str, default: float) -> float:
+    """A float from the environment, tolerant of an inline comment.
+
+    The terminal's own `.env` writes `RISK_FREE_RATE=0.068   # RBI 91-day
+    T-Bill rate`, and a bare `float()` on that raises at import time, which in a
+    Cloud Function means the whole recorder fails to start rather than failing
+    one call. Falls back to the default and says so rather than dying.
+    """
+    raw = (os.getenv(name) or "").split("#", 1)[0].strip()
+    if not raw:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        import logging
+
+        logging.getLogger("swayam-recorder").warning(
+            "%s is not a number (%r). Using %s.", name, raw, default
+        )
+        return default
+
+
+RISK_FREE_RATE: float = _float_env("RISK_FREE_RATE", 0.068)
+
 
 TOKEN_CACHE_SECONDS = 60.0
 _token_lock = threading.Lock()
