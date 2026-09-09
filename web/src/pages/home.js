@@ -86,6 +86,8 @@ export class HomePage {
     this.livePositionsError = null;
     this.positionsExpanded = readPositionsExpanded();
     /** Closed-trade KPIs behind "Your record", per book. */
+    /** What the last exit attempt did, in money. Cleared on the next load. */
+    this.positionsNotice = null;
     this.record = null;
     this.recordError = null;
     this.recordLoading = false;
@@ -865,8 +867,14 @@ export class HomePage {
           ? '<span class="na">unavailable</span>'
           : `<b class="${pnl < 0 ? 'dn' : 'up'}">${escapeHtml(inr(pnl))}</b>`}</td>
         <td class="n">${pct === null ? DASH : escapeHtml(`${pct.toFixed(1)}%`)}</td>
+        <td class="n"><button type="button" class="posexit" data-exit="${escapeHtml(String(p.id))}"
+          title="Square off every leg at the traded price">Exit</button></td>
       </tr>`;
     }).join('');
+
+    const notice = this.positionsNotice
+      ? `<div class="why"><b>${escapeHtml(this.positionsNotice)}</b></div>`
+      : '';
 
     const note = this.livePositionsError
       ? `<div class="why">Profit and loss could not be valued against the live chain. ${escapeHtml(this.livePositionsError)}</div>`
@@ -875,8 +883,8 @@ export class HomePage {
     return `<div class="tw"><table class="g"><thead><tr>
         <th>Strategy</th><th style="text-align:right">Opened</th><th style="text-align:right">To expiry</th>
         <th style="text-align:right">Max loss</th><th style="text-align:right">Unrealised</th>
-        <th style="text-align:right">Of risk</th></tr></thead>
-      <tbody>${rows}</tbody></table></div>${note}`;
+        <th style="text-align:right">Of risk</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table></div>${notice}${note}`;
   }
 
   renderPositions() {
@@ -899,6 +907,51 @@ export class HomePage {
 
     const btn = host.querySelector('#home-positions-toggle');
     if (btn) btn.addEventListener('click', () => this.togglePositions());
+    this.bindExitButtons(host);
+  }
+
+  /**
+   * Squaring off from the page he actually looks at.
+   *
+   * There was NO way to close a position anywhere in the app until 2026-09-09.
+   * `ActiveTradesComponent` carries an exit flow and is imported by main.js,
+   * but it is never instantiated and no page has a mount point for it. He
+   * opened his first ever position and had to close it from a terminal.
+   *
+   * It asks first, because closing is not undoable, and it says what happened
+   * in money rather than just succeeding quietly.
+   */
+  bindExitButtons(host) {
+    host.querySelectorAll('.posexit').forEach((btn) => {
+      btn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        const id = btn.getAttribute('data-exit');
+        if (!id) return;
+
+        const row = this.positions.find((p) => String(p.id) === id) || {};
+        const name = row.strategy_name || 'this position';
+        if (!window.confirm(`Square off ${name}? Every leg is closed at the traded price. This cannot be undone.`)) return;
+
+        btn.disabled = true;
+        const original = btn.textContent;
+        btn.textContent = 'Closing…';
+        try {
+          const res = await api.closePosition(id, {
+            close_reason: 'manual',
+            notes: 'Squared off from Home.',
+          });
+          const net = typeof res.realized_pnl_inr === 'number' ? inr(res.realized_pnl_inr) : DASH;
+          const charges = typeof res.total_charges_inr === 'number' ? inr(res.total_charges_inr) : DASH;
+          this.positionsNotice = `Closed. Net ${net} after ${charges} of charges.`;
+          await this.loadPositions();
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = original;
+          this.positionsNotice = `Not closed: ${(err && err.message) || err}`;
+          this.renderPositions();
+        }
+      });
+    });
   }
 
   togglePositions() {

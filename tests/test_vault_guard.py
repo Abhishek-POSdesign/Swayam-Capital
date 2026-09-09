@@ -58,10 +58,14 @@ def test_a_trade_note_lands_in_the_cage_not_in_his_vault(cage_the_vault):
     assert written.exists(), "the note should still be written, just not to his vault"
     assert str(settings.vault_path) not in str(written)
 
+    # Compare the FILE, not the name. He now has real trades of his own, and a
+    # note written today legitimately shares the day's naming pattern.
     real_journal_dir = settings.vault_path / "02 - Projects" / "Trading" / "04 - Journal"
-    assert not (real_journal_dir / Path(rel).name).exists(), (
-        "a test just wrote a trade note into his real Second Brain"
-    )
+    real_twin = real_journal_dir / Path(rel).name
+    if real_twin.exists():
+        assert real_twin.read_text(encoding="utf-8") != written.read_text(encoding="utf-8"), (
+            "a test just wrote a trade note into his real Second Brain"
+        )
 
 
 @pytest.mark.real_vault

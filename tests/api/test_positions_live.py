@@ -219,7 +219,10 @@ def test_positions_live_caching_within_5_seconds(client):
         assert resp2.status_code == 200
 
         # FYERS get_option_chain must have been called exactly once
-        assert mock_fyers.get_option_chain.call_count == 1
+        # Two calls on the FIRST request: one resolves the expiry to a FYERS
+        # epoch, one reads the chain. The second request adds none, which is
+        # what the five-second cache is for.
+        assert mock_fyers.get_option_chain.call_count == 2
 
 
 def test_positions_live_holding_days_calculation(client):

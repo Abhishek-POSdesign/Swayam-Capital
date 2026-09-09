@@ -812,3 +812,24 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .sw-desk .stepper input::-webkit-outer-spin-button,
 .sw-desk .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .sw-desk .stepper input:focus-visible { outline: 2px solid var(--info); outline-offset: -2px; }
+
+/* Squaring off from Home. There was no way to close a position anywhere in the
+   app until 2026-09-09; he had to do his first one from a terminal. Quiet until
+   hovered, because it is the one irreversible control on the page. */
+.posexit {
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--fg-2);
+  cursor: pointer;
+}
+.posexit:hover:not(:disabled),
+.posexit:focus-visible {
+  border-color: var(--accent-coral, #dd8170);
+  color: var(--accent-coral, #dd8170);
+}
+.posexit:disabled { opacity: 0.55; cursor: default; }

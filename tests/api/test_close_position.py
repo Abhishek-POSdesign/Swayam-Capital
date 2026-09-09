@@ -327,7 +327,9 @@ def test_close_position_fetches_ltp_when_exit_legs_omitted(client):
     data = resp.json()
     assert data["status"] == "closed"
     assert data["realized_pnl_inr"] == 7349.70
-    mock_fyers.get_option_chain.assert_called_once()
+    # Twice: the expiry is resolved to a FYERS epoch, then the chain is
+    # read. It used to send the word NIFTY as a symbol and never worked.
+    assert mock_fyers.get_option_chain.call_count == 2
 
 
 def test_close_position_journal_uses_the_live_balance(client):
