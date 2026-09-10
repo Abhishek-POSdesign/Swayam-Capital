@@ -156,8 +156,11 @@ me; and AI cost is a trading expense, tracked in my record, quality first.
 STILL OPEN, in order.
 - Correction: I did not understand the question. PLAN 2.17.10 item 4 says how
   to ask it properly. Ask it that way.
-- The tension between "advise on anything" and "no recommended trade on my
-  screen". PLAN 2.17.10 item 6. Put it to me, do not decide it.
+- SETTLED 2026-09-11: it may advise and recommend a SETUP, a view, a scenario,
+  a strategy, with reasons from backtest, history, market condition, expert
+  view and research. It may never say "buy this, sell this, go long, go
+  short", never place an order, never create a full trade for me. PLAN
+  2.17.10 item 6.
 - The cost cap numbers, once you have done the model research and we have a
   measured month on the Google credit, which runs to 29 September 2026.
 - Which documents are law. Parked. For now, the latest merged commit wins.

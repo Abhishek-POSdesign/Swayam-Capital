@@ -2238,11 +2238,16 @@ capacity, but it does not have any power to change anything financially. It
 has the power to document things, not to change the document." Three parts:
 advice unbounded; action zero, no power over money; writing allowed, editing
 not, so it appends its own notes and never edits his documents.
-**One tension to put to him, not decide for him:** §2.17.1 says "do not put a
-recommended trade anywhere on my screen", and this says advice has no
-boundaries. The mentor's reading: a colleague may say "I would look at a bear
-put here" in conversation, and what he forbids is a signal service, a
-recommended-trade widget, and strategies printed with a promise. Confirm.
+**The tension between this and §2.17.1, settled by him the same night.**
+The partner MAY advise a setup, a view, a scenario, a strategy, and say why:
+"It can read the market scenario like me and say that this setup can work as
+per our backtest, as per our history, as per our past trades, as per the
+market condition, as per the expert view. It must have checked using the
+research, so it can create a view with me, a setup with me." What it may NOT
+do: "Buy this, sell this. Go long, go short." It cannot place an order and it
+cannot "create a full trade for me". **So the line is: a setup with reasons,
+yes; an order, never.** "Why? Why this one?" is the standard every
+recommendation must answer, from sources it names.
 
 **7. What it reads.** "Only what is necessary: anything related to my trading
 life and trading decisions." It may know his investments as a whole, because
