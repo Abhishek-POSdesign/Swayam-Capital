@@ -1630,7 +1630,12 @@ twice.
 
 ---
 
-#### 2.16.8 PROPOSED REPLACEMENT FOR `ROADMAP.md` §3. NEEDS HIS EXPLICIT YES.
+#### 2.16.8 PROPOSED REPLACEMENT FOR `ROADMAP.md` §3 — APPROVED AND APPLIED 2026-09-10 night
+
+**He said yes to both on 2026-09-10 at the close of the day: this replacement,
+and the two stale §2 rows. `ROADMAP.md` now carries both, and the vault mirror
+was re-copied.** The proposal is kept below as the record of what was asked.
+
 
 `ROADMAP.md` §3 milestone 2 currently reads that the backtester "must reproduce
 what those trades actually did before it is trusted on anything", meaning his 21

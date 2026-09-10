@@ -113,8 +113,8 @@ that cannot be measured is only words.
 | **⚠️ THE DAILY CLOSE IS NOT A TRADEABLE PRICE** | It is a half-hour weighted average, proved not assumed. A backtest fills from minute bars, never a daily close. The index close and its 15:29 level differ by a median of 7.7 points |
 | **His 21 trades: reflection only** | Readable, expiries recovered for 69 of 72 legs, 13 of 21 notes carry errors. **Not test material any more.** `Swing Trades Journal.xlsx` WAS found, in `E:\Project E\Trading\Bazaar\Trading Journal\`. §2.15.9 |
 | **What his record actually says** | 13 wins of 21, net **+₹73,676**. He held winners a median of 7 days and losers 6.5. Three of eight losers broke his own written stop, costing **₹17,039, 23% of the era's profit** |
-| **⚠️ Open, needs his explicit yes** | `ROADMAP.md` §3 still says the backtester must reproduce his 21 swing trades. **He has rejected that.** The replacement text is in §2.16.8. Do not edit the roadmap before he says yes |
-| **Still open** | `ROADMAP.md` §2's rows for the recorder and backtesting are stale and may not be edited without him. The recorder still captures the afternoon only (§2.10) |
+| **Roadmap edits, approved and applied 2026-09-10 night** | He said yes to both. `ROADMAP.md` §3 milestone 2 now validates the backtester mechanically, not against his 21 trades; milestone 1 records the 2022 window; the §2 rows for the recorder and backtesting are current. Vault mirror re-copied |
+| **Still open** | The recorder captures the afternoon only until the token gap is closed (§2.10). **The first live send through the ticket is today, 2026-09-10, in his window: PLAN §2.12.4.** He refreshes the token, says "Hi" to the main chat, and it walks him step by step |
 
 
 ### Earlier: THE BACKTESTING FOUNDATION, 2026-09-09 into the small hours
