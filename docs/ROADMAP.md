@@ -12,6 +12,11 @@
 > proven. That week is why every milestone below is a condition proven on the
 > running system, never a session's report, and never a date.
 >
+> Edited with his explicit approval on 2026-09-10 night: §3 milestones 1 and 2
+> and the two §2 rows for the recorder and backtesting, after the backtesting
+> chat's findings and his correction that his past trades are experience, not
+> test material.
+>
 > Mirrored in his vault at `02 - Projects/Trading/06 - Platform Plan/Roadmap.md`.
 > The vault is the Second Brain this whole thing serves; a future dedicated
 > session will make the vault itself the single entry point for agents. Until
@@ -192,8 +197,8 @@ results on his own real trades match what actually happened.
 | Position area with the exit ticket | 1 | PLAN §2.12.2 PR 3 | Next build |
 | Option chain tested live | 1 | PLAN §2.12.2 PR 5 | Not started |
 | Vault bridge so the check-in and the AI see his real files on the live site | 1 | PLAN §2.13 | Decided, not started |
-| Recorder recording real spot and Greeks | 1 | PLAN §2.10 | Measured: twelve zero columns. Not started |
-| Backtesting foundation: data sourced, loaded, first replay | 1 into 2 | §3 below, then PLAN | Not started |
+| Recorder recording real spot and Greeks | 1 | PLAN §2.10 | **Rebuilt and deployed 2026-09-10, revision 00003.** Real spot, real change in OI, correct expiry, IV and Greeks, two expiries, NULL never zero. First real file in the new shape still to be seen. Captures the afternoon only until the token gap is closed; mornings recoverable from FYERS' expired-contract history |
+| Backtesting foundation: data sourced, loaded, first replay | 1 into 2 | §3 below, PLAN §2.15 and §2.16, `docs/SUCCESSOR_BACKTESTER.md` | **Data sourced and checked 2026-09-09 night**, free, from 2022 onwards. Loaders under `scripts/` and `src/swayam/research/`. The backtester itself: specified in PLAN §2.16, its own chat, not started |
 | Scheduled backups | 1 | PLAN §2.6 | Runs by hand only |
 | Wake Alerts | gate into 2 | vault `06 - Platform Plan/Wake Alerts System.md` | Specified, not built |
 | Read-only broker bridge, the real book | 2 | PLAN §2.14 recommendation 2 | Decided, not started |
@@ -225,13 +230,24 @@ generic engine.
 
 **Milestones, in order, no dates:**
 
-1. **Data sourced.** Candidates to research, with cost: the FYERS history API
-   (what depth it gives for options), NSE data products, and third-party
-   vendors. Plus our own recorder from PLAN §2.10, once it records real spot and
-   implied volatility, accumulating forward from now.
-2. **Data loaded** into `swayam_*` tables in Postgres, with a documented shape,
-   and checked against his 21 historical swing trades: the backtester must
-   reproduce what those trades actually did before it is trusted on anything.
+1. **Data sourced.** Done on the night of 2026-09-09: FYERS' expired-contract
+   history (1-minute candles for every expired NIFTY strike from February 2024),
+   FYERS' index minute candles, and NSE's official daily file, all free and
+   already downloaded. Plus our own recorder from PLAN §2.10, which now records
+   real spot and implied volatility, accumulating forward. **The window is 2022
+   onwards, his decision of 2026-09-10:** the market before and after Corona are
+   different markets. Older data exists because it was free; it is not used
+   without asking him. PLAN §2.15 and §2.16.2.
+2. **Data loaded** and checked against itself. Two independent sources, FYERS'
+   minute candles and NSE's official daily file, must reproduce each other
+   before either is trusted. The backtester is validated mechanically, on
+   pricing, charges, fills and a synthetic trade with a known outcome, NOT
+   against his own past trades. His trade history is for reflection and
+   knowledge; it was not structured for testing and he has said so. His
+   correction of 2026-09-10, approved for this file the same night: "I'm not
+   going to copy anything, not even from my past. My past is my experience...
+   My future, I will be writing by my own hand, with your help." His history
+   stays usable whenever it genuinely helps, with its flaws stated every time.
 3. **His strategies written as rules** the backtester reads, the same rules the
    desk and later the executor read.
 4. **Results feed the desk:** a strategy's backtested expectancy beside its
