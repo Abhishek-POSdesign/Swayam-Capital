@@ -1055,6 +1055,44 @@ close." Tomorrow in his window: Home and the desk with a carried position, rule
 2 against a real carry, the 15:20 naked-shorts check on a hedged structure, and
 the position area's first real subject once PR 3 lands.
 
+### 2.12.7 BUILD A IS COMPLETE. Built 2026-09-11, pull request open, not merged.
+
+All three parts are on `feature/swayam-build-a-desk-home-chain-042`, one pull
+request. **Nothing is live until he merges, and migrations 022 and 023 must be
+applied first.**
+
+What part two added, on top of parts one and three:
+
+- **Home's running-trade band**, full width, below the daily check-in and above
+  Your money, replacing the collapsible strip. Blinking means running, solid
+  green or red means a target he set was reached, muted means nothing open or
+  squared off. It does NOT blink while the market is shut: the colour stays,
+  the breath stops, and the chip says "at the close", because his profit and
+  loss is not moving then.
+- **Targets**, per leg as prices and on the trade as rupees net of charges,
+  behind one sage button on the position card. A blank box is silence; a blank
+  trade loss falls back to rule 1 read live. `services/targets.py` owns the
+  rules and `/api/positions/live` carries `state`, `alerts[]` and `targets`.
+- **Manage on Home** opens BUILD_01's exit ticket in place, one leg or all.
+- **Home's Margin used** reads `margin_required_inr`, the field the desk reads,
+  and shows rule 4's share. The two pages agreed at 84,929 in the browser.
+- **The payoff crosshair.** Hover reads the NIFTY level and the money at expiry
+  and today. Proven on the real page: 25 pointer moves, zero re-renders, and
+  the markup before the crosshair group byte-identical.
+- **The terminal-test phase.** `swayam_phase` holds one timestamp, null today.
+  `provenance = 'terminal_test'` on every new position until he runs
+  `scripts/start_paper_trading.py`. `scripts/mark_terminal_tests.py` marks the
+  trades already in the record and **skips the open condor until it is
+  closed**. Both are his to run.
+- **Two fixed facts removed from Home's source:** "starts clean from 8
+  September 2026" and "81 build-and-test rows". Both were written into the
+  page and neither was read from anything.
+
+Verified 2026-09-11: Python 642 passing with the one stale mock still failing
+identically on `main`, JavaScript 314 passing in 35 files, his journal folder
+6 notes before and after every run, zero console errors on a clean load in
+both themes. **Only his window can prove a target reached on a live mark.**
+
 ### 2.12.6 WHAT HE CORRECTED AND DECIDED ON 2026-09-10 EVENING. Read before any build.
 
 **Corrections, in his words.**

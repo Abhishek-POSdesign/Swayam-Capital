@@ -2,10 +2,16 @@
 
 > Written 2026-09-10 evening by the main chat, from his feedback on the mockup.
 >
-> **STATE, 2026-09-11. THIS IS THE LAST PART OF BUILD A AND IT IS THE ONLY
-> PART LEFT.** Parts one and three are built, verified on the running system
-> and pushed. It gets its own chat because the previous one filled up, and it
-> continues on the SAME BRANCH so Build A stays one pull request.
+> **STATE, 2026-09-11. BUILT, VERIFIED AND PUSHED. Build A is complete and
+> its pull request is open.** Parts one, two and three are all on the branch
+> `feature/swayam-build-a-desk-home-chain-042`, one pull request, nothing
+> merged. Migrations 022 and 023 are NOT applied; he applies both before he
+> merges.
+>
+> **What only his window can prove:** a target reached on a LIVE mark and the
+> band going solid. Every state was rendered and read on the running page, but
+> the market was shut, so the transition itself has not happened on real
+> moving prices.
 >
 > **His correction of the states, 2026-09-10 late evening, which overrides any
 > other wording in this file:** "Blinking means the trade is running. When it

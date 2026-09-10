@@ -84,6 +84,7 @@ from swayam.services import capital as capital_service
 from swayam.services.capital import CapitalUnavailable
 from swayam.services.contract_master import ContractMasterUnavailable, get_lot_size
 from swayam.services.margin import MarginLeg, try_get_margin
+from swayam.services.phase import provenance_for_new_position
 
 logger = logging.getLogger(__name__)
 
@@ -592,6 +593,10 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
     # stored as "Short Strangle" because the strangle preset had been loaded
     # before he changed his mind, and the name stayed. He had no part in it.
     structure_name = name_from_legs(legs_dict)
+    # Read the phase ONCE for this send, so the row and its note cannot
+    # disagree about what this trade was.
+    new_provenance = provenance_for_new_position()
+    is_terminal_test = new_provenance == "terminal_test"
     db_record = {
         "id": position_id,
         # name_source is NOT written here on purpose. Migration 022 gives the
@@ -600,6 +605,14 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
         # failing on a column that is not there yet. Only the rename route
         # writes it, and by then the migration is applied.
         "strategy_name": structure_name,
+        # WHAT THIS TRADE IS, in his words. Paper trading has not started, so
+        # everything the terminal records today is a terminal test: real fills
+        # and real charges, but a click to see how the terminal behaves rather
+        # than a trade he planned. Read fresh from swayam_phase on every send,
+        # never cached, so the first trade after he runs start_paper_trading.py
+        # is written 'live'. The column has defaulted to 'live' since migration
+        # 017 and is plain text, so this is safe to write before 023 is applied.
+        "provenance": new_provenance,
         "underlying": req.underlying,
         "expiry_date": expiry_date_val,
         "legs": legs_dict,
@@ -652,6 +665,9 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
             current_spot=spot_at_entry,
             margin_base_inr=margin_base_inr,
             opened_at=opened_at,
+            # Same answer the row was written with, so the note lands in
+            # "Terminal tests" for exactly the trades the row calls tests.
+            terminal_test=is_terminal_test,
         )
     except Exception as e:
         # A note is not a trade. The vault is unreachable from Cloud Run (no

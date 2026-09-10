@@ -549,6 +549,10 @@ class JournalTradesResponse(BaseModel):
     # than leaving him to wonder. His question, 2026-09-08: "I'm not aware of
     # how you are making a row... and I am never aware of it."
     excluded_test_rows: int = 0
+    # The same total, split by WHY. A build test is a row a build made; a
+    # terminal test is a trade he clicked himself before paper trading began.
+    excluded_terminal_tests: int = 0
+    excluded_build_tests: int = 0
     unpriced_closed_trades: int = 0
     capital_base_inr: Optional[float] = None
     capital_base_source: Optional[str] = None

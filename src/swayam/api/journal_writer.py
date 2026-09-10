@@ -108,10 +108,35 @@ def _require_reachable_vault(base: Path) -> Path:
     return base
 
 
-def get_journal_dir(vault_path: Optional[Path] = None) -> Path:
-    """Returns the path to the 04 - Journal directory in the vault, ensuring it exists."""
+# Notes written before he says paper trading has begun go in their own room.
+TERMINAL_TESTS_SUBFOLDER = "Terminal tests"
+
+
+def journal_rel_dir(terminal_test: bool = False) -> str:
+    """The vault-relative folder a note of this kind belongs in."""
+    base = "02 - Projects/Trading/04 - Journal"
+    return f"{base}/{TERMINAL_TESTS_SUBFOLDER}" if terminal_test else base
+
+
+def get_journal_dir(vault_path: Optional[Path] = None, terminal_test: bool = False) -> Path:
+    """The folder this note belongs in, created inside a vault that already exists.
+
+    `terminal_test` puts the note in `04 - Journal/Terminal tests/` instead of
+    the journal folder itself. His correction of 2026-09-10: everything the
+    terminal has recorded so far was a click to see how it behaves, not a trade
+    he planned, and his paper record has to start clean on the day he says.
+
+    THE PHASE IS PASSED IN, NOT READ HERE, on purpose. This module writes files
+    into his Second Brain and nothing else; giving it a database read of its own
+    would put a network call inside the one code path that must never surprise
+    anybody. The callers that open trades already read the phase for the
+    position's `provenance`, and they hand the same answer down here, so the row
+    and the note can never disagree about what a trade was.
+    """
     base = _require_reachable_vault(vault_path or _default_vault_base())
     journal_dir = base / "02 - Projects" / "Trading" / "04 - Journal"
+    if terminal_test:
+        journal_dir = journal_dir / TERMINAL_TESTS_SUBFOLDER
     journal_dir.mkdir(parents=True, exist_ok=True)
     return journal_dir
 
@@ -142,6 +167,7 @@ def write_new_trade_journal(
     filename_override: Optional[str] = None,
     notice: Optional[str] = None,
     opened_at: Optional[str] = None,
+    terminal_test: bool = False,
 ) -> str:
     """Writes a new trade journal markdown note to Obsidian Second Brain.
 
@@ -174,7 +200,7 @@ def write_new_trade_journal(
     Raises:
         JournalWriteError: If target file already exists or write fails.
     """
-    journal_dir = get_journal_dir(vault_path)
+    journal_dir = get_journal_dir(vault_path, terminal_test=terminal_test)
     now = datetime.now()
     date_str = now.strftime("%Y-%m-%d")
     if filename_override:
@@ -274,6 +300,11 @@ def write_new_trade_journal(
 
     breakeven_str = ", ".join([f"{b:,.0f}" for b in breakevens]) if breakevens else "None"
 
+    # WHAT THIS TRADE WAS, on the face of the note. A terminal test is a real
+    # fill with real charges that he took to see how the terminal behaves, and
+    # it does not belong in the record his paper results are judged against.
+    provenance_value = "terminal_test" if terminal_test else "live"
+
     content = f"""---
 trade_id: {position_id}
 date: {date_str}
@@ -281,6 +312,7 @@ strategy: {strategy_name}
 underlying: {underlying}
 status: open
 mode: paper
+provenance: {provenance_value}
 ---
 
 # {date_str} — Trade #{seq_str} — {strategy_name}
@@ -345,7 +377,7 @@ mode: paper
     except Exception as e:
         raise JournalWriteError(f"Failed to write journal to {target_path}: {e}") from e
 
-    rel_path = f"02 - Projects/Trading/04 - Journal/{filename}"
+    rel_path = f"{journal_rel_dir(terminal_test)}/{filename}"
     return rel_path
 
 

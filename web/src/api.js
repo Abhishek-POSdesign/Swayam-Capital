@@ -107,6 +107,8 @@ export const api = {
     submitTrade('/api/execute', payload, ticketId),
   getPositions: (status = 'open') => request(`/api/positions?status=${status}`),
   getPositionsLive: () => request('/api/positions/live'),
+  // Has paper trading begun. One timestamp, set by a script only he runs.
+  getPhase: () => request('/api/phase'),
   closePosition: (positionId, payload) =>
     request(`/api/positions/${positionId}/close`, {
       method: 'POST',
@@ -152,6 +154,13 @@ export const api = {
     request(`/api/positions/${positionId}/name`, {
       method: 'PATCH',
       body: JSON.stringify({ name }),
+    }),
+  // What he wants a trade to tell him. It moves no order, no fill and no
+  // charge; a reached target lights Home up and waits for him.
+  setPositionTargets: (positionId, payload) =>
+    request(`/api/positions/${positionId}/targets`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
     }),
   detectNakedShorts: (atTime = '15:20') =>
     request(`/api/positions/naked-shorts?at_time=${encodeURIComponent(atTime)}`),

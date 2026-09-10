@@ -532,13 +532,25 @@ export class JournalPage {
     if (!host) return;
 
     const excluded = Number(tradesData?.excluded_test_rows) || 0;
+    const terminalTests = Number(tradesData?.excluded_terminal_tests) || 0;
+    const buildTests = Number(tradesData?.excluded_build_tests) || (excluded - terminalTests);
     const unpriced = Number(tradesData?.unpriced_closed_trades) || 0;
     const base = tradesData?.capital_base_inr;
     const source = tradesData?.capital_base_source;
 
     const lines = [];
-    if (excluded > 0) {
-      lines.push(`${excluded} row${excluded === 1 ? '' : 's'} excluded as build tests, not trades you took.`);
+    // Two different reasons, said separately, because they mean different
+    // things to him. A build test is a row a build made and never his. A
+    // terminal test is a trade HE clicked, real fills and real charges, before
+    // he said paper trading had begun.
+    if (buildTests > 0) {
+      lines.push(`${buildTests} row${buildTests === 1 ? '' : 's'} excluded as build tests, not trades you took.`);
+    }
+    if (terminalTests > 0) {
+      lines.push(`${terminalTests} terminal test${terminalTests === 1 ? '' : 's'} excluded: you clicked ${terminalTests === 1 ? 'it' : 'them'} to see how the terminal behaves, before paper trading began.`);
+    }
+    if (excluded > 0 && buildTests <= 0 && terminalTests <= 0) {
+      lines.push(`${excluded} row${excluded === 1 ? '' : 's'} excluded as tests, not trades you took.`);
     }
     if (unpriced > 0) {
       lines.push(`${unpriced} closed trade${unpriced === 1 ? '' : 's'} could not be valued and ${unpriced === 1 ? 'is' : 'are'} left out of every figure, not counted as zero.`);

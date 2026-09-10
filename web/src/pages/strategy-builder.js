@@ -26,6 +26,7 @@ import { ExecutionTicket } from '../components/execution-ticket.js';
 import { DataHealthStrip } from '../components/data-health-strip.js';
 import { PositionArea } from '../components/position-area.js';
 import { ExitTicket } from '../components/exit-ticket.js';
+import { TargetsModal } from '../components/targets-modal.js';
 import {
   maxLossProfit,
   breakevens,
@@ -206,6 +207,7 @@ export class StrategyBuilderPage {
      */
     this.positionArea = null;
     this.exitTicket = null;
+    this.targetsModal = null;
 
     /**
      * The open trade drawn on the payoff when he has not loaded anything else.
@@ -485,6 +487,7 @@ export class StrategyBuilderPage {
         <div id="overnight-modal-container"></div>
         <div id="execution-ticket-mount"></div>
         <div id="exit-ticket-mount"></div>
+        <div id="targets-mount"></div>
       </div>
     `;
 
@@ -544,6 +547,7 @@ export class StrategyBuilderPage {
         onAddLeg: (p) => this.addLegToOpenTrade(p),
         onShowOnPayoff: (p) => this.loadFromPosition(p),
         onRename: (p, name) => api.renamePosition(p.position_id, name),
+        onTargets: (p) => this.openTargets(p),
       });
       this.positionArea.init();
     }
@@ -562,9 +566,28 @@ export class StrategyBuilderPage {
       });
     }
 
+    const targetsHost = this.container.querySelector('#targets-mount');
+    if (targetsHost && !this.targetsModal) {
+      this.targetsModal = new TargetsModal(targetsHost, {
+        onSave: async (positionId, payload) => {
+          const res = await api.setPositionTargets(positionId, payload);
+          // Read the trade back, so what the card and Home show is what the
+          // database now holds rather than what the browser hoped it saved.
+          if (this.positionArea) await this.positionArea.refresh();
+          return res;
+        },
+      });
+    }
+
     this.renderPresets();
     this.bindControls();
     this.renderAll();
+  }
+
+  /** Opens the Targets modal for one trade. It cannot move money. */
+  openTargets(position) {
+    if (!this.targetsModal) return;
+    this.targetsModal.open(position);
   }
 
   /** Opens the exit ticket for one leg, or for every open leg. */
@@ -2001,6 +2024,10 @@ export class StrategyBuilderPage {
     if (this.exitTicket) {
       this.exitTicket.destroy();
       this.exitTicket = null;
+    }
+    if (this.targetsModal) {
+      this.targetsModal.destroy();
+      this.targetsModal = null;
     }
     if (this._serverTimer) {
       clearTimeout(this._serverTimer);

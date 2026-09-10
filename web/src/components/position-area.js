@@ -39,6 +39,48 @@ const EARLIER_KEY = 'swayam-desk-earlier-open';
  * two are five and a half hours apart, so the date has to be converted rather
  * than sliced off the front of the timestamp.
  */
+/**
+ * What this trade was, said on its own card rather than assumed.
+ *
+ * The card used to print "terminal test" on EVERY position unconditionally,
+ * which is true today and becomes a lie the day he starts paper trading. It
+ * now reads the row's own `provenance`, so the chip changes when the record
+ * changes and never before.
+ */
+export function provenanceChip(provenance) {
+  const value = String(provenance || '').toLowerCase();
+  if (value === 'terminal_test') {
+    return '<span class="chip c-test" title="You clicked this to see how the terminal behaves, before paper trading began. It is kept out of your record.">terminal test</span>';
+  }
+  if (value === 'build_test') {
+    return '<span class="chip c-test" title="A row a build made. Not a trade you took.">build test</span>';
+  }
+  if (value === 'live') return '<span class="chip c-sage">paper trade</span>';
+  // Nothing recorded. Say so rather than picking one of the three.
+  return '<span class="chip c-test" title="This row carries no provenance, so what it was is not recorded.">not recorded</span>';
+}
+
+/**
+ * The one line a reached target puts on the card. His instruction: "I do not
+ * want unnecessary things lying on my position page", so a target that has NOT
+ * been reached shows nothing here at all, and a reached one is a single line
+ * naming the leg and which kind it was.
+ */
+export function reachedLine(p) {
+  const alerts = Array.isArray(p && p.alerts) ? p.alerts : [];
+  if (!alerts.length) return '';
+  const said = alerts.map((a) => {
+    const what = a.kind === 'profit' ? 'profit' : 'loss';
+    if (a.scope === 'leg') return `${a.leg_label} · ${what} target reached`;
+    return a.from_rule1
+      ? `the whole trade · running loss reached rule 1`
+      : `the whole trade · ${what} target reached`;
+  });
+  const worst = alerts.some((a) => a.kind === 'loss') ? 'down' : 'up';
+  return `<div class="pa-reached ${worst}">${escapeHtml(said.join(' · '))}
+    <span>set by you · nothing has been exited</span></div>`;
+}
+
 export function istDay(iso) {
   if (!iso) return null;
   const d = new Date(iso);
@@ -271,7 +313,7 @@ export class PositionArea {
           <span>expiry <b>${escapeHtml(p.expiry_date || '—')}</b>${dte ? ` · ${escapeHtml(dte)}` : ''}</span>
           <span>${escapeHtml(kind)}</span>
           ${p.legs_closed ? `<span><b>${p.legs_closed}</b> leg${p.legs_closed === 1 ? '' : 's'} already out</span>` : ''}
-          <span class="chip c-test">terminal test</span>
+          ${provenanceChip(p.provenance)}
         </span>
         <div class="r">
           ${renaming
@@ -279,13 +321,15 @@ export class PositionArea {
                  <button class="btn sm pri" type="button" data-act="rename-save" data-pos="${escapeHtml(id)}">Save</button>
                  <button class="btn sm" type="button" data-act="rename-clear" data-pos="${escapeHtml(id)}" title="Hand the naming back to the structure">Use the structure's</button>
                  <button class="btn sm" type="button" data-act="rename-cancel">Cancel</button></span>`
-            : `<button class="btn sm" type="button" data-act="rename" data-pos="${escapeHtml(id)}">Edit name</button>
+            : `<button class="btn sm tgt" type="button" data-act="targets" data-pos="${escapeHtml(id)}" title="What should this trade tell you? Profit and loss, per leg or on the whole trade.">${TARGET_ICON} Targets</button>
+               <button class="btn sm" type="button" data-act="rename" data-pos="${escapeHtml(id)}">Edit name</button>
                <button class="btn sm" type="button" data-act="payoff" data-pos="${escapeHtml(id)}">Show on the payoff</button>
                <button class="btn sm" type="button" data-act="add-leg" data-pos="${escapeHtml(id)}">Add a leg</button>
                <button class="btn sm pri" type="button" data-act="exit-all" data-pos="${escapeHtml(id)}">Exit everything</button>`}
         </div>
       </header>
 
+      ${reachedLine(p)}
       ${this._tiles(p)}
       ${this._legsTable(p, openLegs)}
       ${this._confirmRow(p)}
@@ -496,7 +540,7 @@ export class PositionArea {
       <div><div class="k">Charges</div><div class="v">${orNA(inrExact(t.total_charges_inr))}</div></div>
       <div><div class="k">Net</div><div class="v ${tone(t.realized_pnl_inr)}">${orNA(signed(t.realized_pnl_inr))}</div></div>
       <div><div class="k">Fills</div><div class="v small">${escapeHtml(tradedPrice ? 'traded price' : t.fill_basis === 'bid_ask' ? 'bid / ask' : 'unrecorded')}</div></div>
-      <div class="chips"><span class="chip c-test">terminal test</span>${tradedPrice ? '<span class="chip c-warn">not comparable</span>' : ''}</div>
+      <div class="chips">${provenanceChip(t.provenance)}${tradedPrice ? '<span class="chip c-warn">not comparable</span>' : ''}</div>
     </div>`;
   }
 
@@ -568,6 +612,10 @@ export class PositionArea {
         this.render();
       } else if (act === 'exit-all' && p) {
         this.options.onExitAll && this.options.onExitAll(p);
+      } else if (act === 'targets' && p) {
+        // The modal belongs to the page, not to this component: Home mounts
+        // its own and the desk mounts its own, and neither borrows the other.
+        this.options.onTargets && this.options.onTargets(p);
       } else if (act === 'add-leg' && p) {
         this.options.onAddLeg && this.options.onAddLeg(p);
       } else if (act === 'payoff' && p) {
@@ -669,4 +717,5 @@ export class PositionArea {
 
 // A proper Reset: the icon AND the word. His words, 2026-09-09: "No cheap
 // round circle for reset, a proper reset button."
+const TARGET_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>';
 const RESET_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" focusable="false"><path d="M3 8a5 5 0 1 0 1.5-3.6M3 2.5v3h3"/></svg>';

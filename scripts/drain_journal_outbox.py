@@ -285,6 +285,7 @@ def cmd_drain(dry_run: bool) -> int:
             skipped += 1
             continue
 
+        row_provenance = _row_provenance(pid)
         try:
             rel_path = write_new_trade_journal(
                 position_id=pid,
@@ -296,6 +297,11 @@ def cmd_drain(dry_run: bool) -> int:
                 # moment the drainer ran, which for trades 02 and 03 of
                 # 2026-09-09 was 16:57, after the close.
                 opened_at=payload.get("opened_at"),
+                # The row already knows what this trade was. The drainer never
+                # re-decides it: a note written weeks later must land where the
+                # trade it describes says it belongs, not where today's phase
+                # would put a new one.
+                terminal_test=str(row_provenance or "").lower() == "terminal_test",
             )
             db.client.table("swayam_journal_entries").insert(
                 {
@@ -375,6 +381,29 @@ def _note_already_has_exit(rel_path: str, vault_base: Optional[Path] = None) -> 
     except Exception as exc:  # noqa: BLE001
         print(f"  could not read {rel_path} to check for an exit: {exc}")
         return False
+
+
+def _row_provenance(position_id: str) -> Optional[str]:
+    """What the position row says this trade was: live, terminal_test, build_test.
+
+    The drainer never decides this for itself. A note written days after the
+    trade must land where the TRADE says it belongs, not where today's phase
+    would put a new one, or a note could move rooms because he started paper
+    trading in between.
+    """
+    try:
+        rows = (
+            db.client.table("swayam_positions")
+            .select("provenance")
+            .eq("id", position_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        return rows[0].get("provenance") if rows else None
+    except Exception:
+        return None
 
 
 def _resolve_note_path(position_id: str) -> Optional[str]:

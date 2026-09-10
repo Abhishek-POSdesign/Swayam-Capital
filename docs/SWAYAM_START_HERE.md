@@ -85,20 +85,21 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: BUILD A, PARTS ONE AND THREE BUILT AND VERIFIED, 2026-09-11
+### Latest first: BUILD A COMPLETE, ALL THREE PARTS, 2026-09-11
 
-**On a branch, pushed, NOT merged. There is no pull request yet, so none of
-this is live.** Branch `feature/swayam-build-a-desk-home-chain-042`, cut from
-`main` at the merge of pull request #63.
+**On a branch with an open pull request, NOT merged, so none of this is
+live.** Branch `feature/swayam-build-a-desk-home-chain-042`, cut from `main`
+at the merge of pull request #63.
 
-**Part two is the only thing left in Build A.** The chat that finishes it
-starts at `docs/builds/BUILD_02_HOME_TARGETS_AND_READING.md` **section 0**,
-which carries the branch, the commits, everything parts one and three already
-built, the test counts to compare against, and the paste-prompt.
+**All three parts are built and verified on the running system in both
+themes.** Part two added Home's running-trade band and its three states,
+targets on a trade and on its legs, Manage from Home, the payoff crosshair,
+the terminal-test phase with its two scripts, and the big-number pass.
 
 | | |
 |---|---|
 | **Part one, the desk** | The position area below the payoff: three groups, six big tiles, the legs table with a way out of every leg. The exit ticket, market or limit per leg, with a proper Reset. The campaign model: a leg carries its own status, exit, charges and result, and ONE result row is written when the last open leg closes. The name comes from the OPEN legs, so his condor reads **Iron Condor** rather than Short Strangle. The payoff draws the trade he holds, at the fills it actually got. The drainer's close branch fixed at both faults |
+| **Part two, Home and targets** | Home's collapsible strip is replaced by the full-width band: blinking while a trade runs, solid green or red when a target he set is reached, muted when nothing is open or it is squared off. Targets per leg (prices) and on the trade (rupees, net of charges), behind one sage button on the position card. Manage opens the exit ticket ON Home. Home's Margin used reads `margin_required_inr`, the desk's own field, so the two pages agree. The payoff gains a hover crosshair that moves nothing. A new `swayam_phase` table and `terminal_test` provenance, with two scripts HE runs |
 | **Part three, the option chain** | His scroll is kept: painting only on a shape change, cells rewritten in place otherwise. A strike with no trade TODAY shows its real book greyed with the stale last trade struck through and cannot be added. The at-the-money row banded in sage and centred. Buy and Sell as buttons. Four figures a side, IV and volume on hover or behind More. **Max pain names its expiry on the chain AND on Home**, which is why the two screens disagreed |
 | **⚠️ MIGRATIONS 022 AND 023 ARE NOT APPLIED** | 022 is written and committed; 023 is part two's. He applies both, together, before merging |
 | **⚠️ THE OPEN CONDOR IS STILL OPEN AND UNTOUCHED** | `7cd4d017`. No script edits it. Its name corrects itself the first time a leg of it moves or he presses Edit name |

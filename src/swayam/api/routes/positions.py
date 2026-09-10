@@ -21,6 +21,8 @@ from swayam.api.journal_writer import append_exit_block
 from swayam.services.execution_safety import mark_journal_status, queue_journal_note
 from swayam.services.structure_name import is_open as _leg_is_open, name_from_legs, resolve_name
 from swayam.services.exit_refusal import reword_if_his_price
+from swayam.services.phase import read_phase
+from swayam.services.targets import evaluate_position as evaluate_targets
 from swayam.services.fills import FillRefused, LegQuote, exit_side_of, resolve_fill, spread_cost_inr
 from swayam.services.charges import (
     ChargeScheduleUnavailable,
@@ -141,6 +143,16 @@ class LivePositionResponse(BaseModel):
 
     # Why the cost of the round trip could not be read, when the profit could.
     charges_unavailable_reason: Optional[str] = None
+
+    # WHAT HE ASKED THIS TRADE TO TELL HIM, and whether it has.
+    #
+    # `state` is running | alert | quiet and is decided on the SERVER, so Home
+    # and the desk cannot disagree about the same trade. `alerts` names every
+    # target reached, leg by leg and then the trade. `targets` is what is set.
+    # services/targets.py has the rules; nothing here recomputes them.
+    state: str = "quiet"
+    alerts: list[dict[str, Any]] = []
+    targets: Optional[dict[str, Any]] = None
 
     # live | closing. Nothing may print LIVE unless this says live.
     market_state: str = "closing"
@@ -664,6 +676,10 @@ def _unpriced_position(
         days_held=_days_held(opened_at_str),
         days_remaining_to_expiry=_days_to_expiry(expiry_val),
         journal_path=pos.get("journal_path"),
+        # A trade nobody could price is still a trade he holds, so the band
+        # keeps its running state; there is simply nothing to compare a target
+        # against, so `alerts` stays empty and `error` says why.
+        state="running" if open_now else "quiet",
         market_state=market_state,
         read_at=read_at,
         error=reason,
@@ -954,6 +970,22 @@ def _value_one_position(
             running_loss = max(0.0, -running_basis)
             rule1_headroom = round(max(0.0, rule1_cap - running_loss), 2)
 
+    # TARGETS, and whether one has been reached. Evaluated against the same
+    # marks every other figure on this reply came from, so the signal and the
+    # money agree. A leg is judged on its price, the trade on its net after
+    # charges both ways, and a blank trade loss falls back to rule 1's cap read
+    # live above. Nothing here exits anything.
+    verdict = evaluate_targets(
+        legs=enriched_legs,
+        net_if_exit_now_inr=net_if_exit_now,
+        target_profit_inr=_opt_float(pos.get("target_profit_inr")),
+        target_loss_inr=_opt_float(pos.get("target_loss_inr")),
+        targets_set_at=(str(pos["targets_set_at"]) if pos.get("targets_set_at") else None),
+        rule1_cap_inr=rule1_cap,
+        legs_open=legs_open,
+        market_state=market_state,
+    )
+
     return LivePositionResponse(
         position_id=position_id,
         strategy_name=strategy_name,
@@ -991,6 +1023,9 @@ def _value_one_position(
         days_held=days_held,
         days_remaining_to_expiry=days_remaining,
         journal_path=journal_path,
+        state=verdict["state"],
+        alerts=verdict["alerts"],
+        targets=verdict["targets"],
         market_state=market_state,
         read_at=read_at,
         error=unpriced_reason,
@@ -1800,6 +1835,204 @@ def rename_position(position_id: str, req: RenamePositionRequest) -> dict[str, A
         "position_id": position_id,
         "strategy_name": update["strategy_name"],
         "name_source": update["name_source"],
+        "message": message,
+    }
+
+
+@router.get("/api/phase")
+def get_phase() -> dict[str, Any]:
+    """Has paper trading begun, and how confidently that is known.
+
+    One timestamp, set by `scripts/start_paper_trading.py`, which HE runs on
+    the day he decides. Until then every trade the terminal records is a
+    terminal test: a real fill with real charges that he took to see how the
+    terminal behaves, not a trade he planned.
+
+    The reply carries `source`, so a screen can say whether this is the table's
+    answer or the safe reading of an unreadable table. It never guesses a date.
+    """
+    return read_phase().to_dict()
+
+
+class LegTargetItem(BaseModel):
+    """One leg's pair of prices. Either may be blank, and blank clears it."""
+
+    sequence: int
+    target_price: Optional[float] = None
+    stop_price: Optional[float] = None
+
+
+class SetTargetsRequest(BaseModel):
+    """What he typed into the Targets modal. Every box may be blank.
+
+    His words, 2026-09-10: "My preference is to add a target for each leg.
+    Target always means both loss and profit... In case I cannot add profit and
+    loss for each leg, I have to add it for the whole trade."
+
+    A blank box CLEARS that target. It never means zero and it never means
+    leave it as it was, because a modal he can see is the whole truth of what
+    is set: if he emptied a box and pressed Save, he meant to empty it.
+    """
+
+    legs: list[LegTargetItem] = Field(default_factory=list)
+    target_profit_inr: Optional[float] = None
+    target_loss_inr: Optional[float] = None
+
+
+@router.put("/api/positions/{position_id}/targets")
+def set_position_targets(position_id: str, req: SetTargetsRequest) -> dict[str, Any]:
+    """Saves what he wants this trade to tell him. It changes nothing else.
+
+    THIS ROUTE CANNOT MOVE MONEY. It writes two numbers on the row and two
+    numbers on each leg of the `legs` JSON, and it touches no order, no fill,
+    no charge and no result. A reached target lights Home up and waits for him.
+
+    A CLOSED TRADE IS REFUSED, because a target on a trade that is already in
+    the record would be a signal that can never fire, sitting where he would
+    read it as live.
+
+    A blank box clears. A loss figure is stored as a size, so a minus sign he
+    types is taken as emphasis rather than as a direction, and a zero is
+    treated as blank: zero is not a level, it is an empty box with a keystroke
+    in it.
+    """
+    try:
+        res = db.client.table("swayam_positions").select("*").eq("id", position_id).execute()
+        pos = res.data[0] if res.data else None
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503, detail=f"Could not read position {position_id}: {exc}"
+        ) from exc
+    if pos is None:
+        raise HTTPException(status_code=404, detail=f"Position '{position_id}' not found.")
+
+    if str(pos.get("status") or "").lower() == "closed":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This trade is closed, so a target on it could never fire. "
+                "Targets belong on a trade you still hold."
+            ),
+        )
+
+    def level(value: Optional[float]) -> Optional[float]:
+        """A price or a rupee figure he typed, or None for an empty box."""
+        if value is None:
+            return None
+        try:
+            out = float(value)
+        except (TypeError, ValueError):
+            return None
+        if out != out or out in (float("inf"), float("-inf")):
+            return None
+        # Zero is an empty box with a keystroke in it, not a level.
+        return None if out == 0 else out
+
+    wanted = {int(item.sequence): item for item in req.legs}
+    legs = [dict(leg) for leg in (pos.get("legs") or [])]
+    legs_touched = 0
+    unknown = sorted(
+        seq
+        for seq in wanted
+        if seq not in {int(leg.get("sequence")) for leg in legs if leg.get("sequence") is not None}
+    )
+    if unknown:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"This trade has no leg {', '.join(str(u) for u in unknown)}, "
+                "so nothing was saved."
+            ),
+        )
+
+    for leg in legs:
+        seq = leg.get("sequence")
+        if seq is None or int(seq) not in wanted:
+            continue
+        item = wanted[int(seq)]
+        take, cut = level(item.target_price), level(item.stop_price)
+        if take is not None and take < 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"A take-profit price cannot be negative (leg {seq}). Nothing was saved.",
+            )
+        if cut is not None and cut < 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"A cut-loss price cannot be negative (leg {seq}). Nothing was saved.",
+            )
+        leg["target_price"] = take
+        leg["stop_price"] = cut
+        legs_touched += 1
+
+    profit = level(req.target_profit_inr)
+    loss = level(req.target_loss_inr)
+    # A loss is a size. A minus sign he typed is emphasis, not a direction.
+    if loss is not None:
+        loss = abs(loss)
+    if profit is not None and profit < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="A profit target below zero is a loss wearing the wrong label. Nothing was saved.",
+        )
+
+    anything_set = (
+        profit is not None
+        or loss is not None
+        or any(
+            leg.get("target_price") is not None or leg.get("stop_price") is not None
+            for leg in legs
+        )
+    )
+
+    update = {
+        "legs": legs,
+        "target_profit_inr": profit,
+        "target_loss_inr": loss,
+        # Cleared everything? Then he has no targets set, and the stamp goes
+        # with them rather than claiming he set something at that moment.
+        "targets_set_at": datetime.now(timezone.utc).isoformat() if anything_set else None,
+    }
+
+    try:
+        db.client.table("swayam_positions").update(update).eq("id", position_id).execute()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "The targets could not be saved, so nothing changed. "
+                "Your trade and your legs are exactly as they were. "
+                f"{exc}"
+            ),
+        ) from exc
+
+    for p in _local_paper_positions:
+        if str(p.get("id")) == position_id:
+            p.update(update)
+
+    leg_count = sum(
+        1
+        for leg in legs
+        if leg.get("target_price") is not None or leg.get("stop_price") is not None
+    )
+    if not anything_set:
+        message = "Targets cleared. This trade will not signal you until you set one."
+    else:
+        bits = []
+        if leg_count:
+            bits.append(f"{leg_count} leg{'' if leg_count == 1 else 's'}")
+        if profit is not None or loss is not None:
+            bits.append("the whole trade")
+        message = "Targets saved on " + " and ".join(bits) + "."
+        if loss is None:
+            message += " With the trade loss blank, rule 1 stands in, read live."
+
+    return {
+        "position_id": position_id,
+        "legs_updated": legs_touched,
+        "target_profit_inr": profit,
+        "target_loss_inr": loss,
+        "targets_set_at": update["targets_set_at"],
         "message": message,
     }
 

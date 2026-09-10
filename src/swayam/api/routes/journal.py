@@ -148,11 +148,22 @@ def get_journal_trades(
         # than leaving him to wonder which rows are missing and why.
         excluded_check = (
             client.table("swayam_positions")
-            .select("id")
+            .select("id,provenance")
             .neq("provenance", LIVE_PROVENANCE)
             .execute()
         )
-        excluded_test_rows = len(excluded_check.data or [])
+        excluded_rows = excluded_check.data or []
+        excluded_test_rows = len(excluded_rows)
+        # A build test and a terminal test are excluded for DIFFERENT reasons
+        # and he should not have to guess which is which. A build test is a row
+        # a build made. A terminal test is a trade HE clicked, with real fills
+        # and real charges, before he said paper trading had begun.
+        excluded_terminal_tests = sum(
+            1
+            for r in excluded_rows
+            if str(r.get("provenance") or "").lower() == "terminal_test"
+        )
+        excluded_build_tests = excluded_test_rows - excluded_terminal_tests
     except Exception as exc:
         logger.error("Failed to query journal trades from Supabase: %s", exc)
         raise HTTPException(
@@ -410,6 +421,8 @@ def get_journal_trades(
         total_count=total_count,
         kpis=kpis,
         excluded_test_rows=excluded_test_rows,
+        excluded_terminal_tests=excluded_terminal_tests,
+        excluded_build_tests=excluded_build_tests,
         unpriced_closed_trades=unpriced_closed,
         capital_base_inr=capital_base,
         capital_base_source=capital_source,

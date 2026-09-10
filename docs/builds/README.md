@@ -29,7 +29,7 @@ trickiest piece, resting orders, is left aside for its own chat.
 
 | Build | Documents, read in this order | Branch | What it is |
 |---|---|---|---|
-| **A** | `BUILD_01_DESK_POSITION_AREA.md` **DONE**, then `BUILD_04_OPTION_CHAIN.md` **DONE**, then `BUILD_02_HOME_TARGETS_AND_READING.md` **LEFT** | `feature/swayam-build-a-desk-home-chain-042` | The position area on the desk, the exit ticket, the campaign model, the name from the legs, click-to-load, the drainer fault; then Home's running-trade band and its states, targets, Manage from Home, the crosshair, the terminal-test phase, the big-number pass; then the option chain. **Built in that order, handed off once at the end**, with a short progress note in the chat after each of the three parts. Migrations 022 and 023 |
+| **A** | `BUILD_01_DESK_POSITION_AREA.md` **DONE**, `BUILD_04_OPTION_CHAIN.md` **DONE**, `BUILD_02_HOME_TARGETS_AND_READING.md` **DONE** | `feature/swayam-build-a-desk-home-chain-042` | The position area on the desk, the exit ticket, the campaign model, the name from the legs, click-to-load, the drainer fault; then Home's running-trade band and its states, targets, Manage from Home, the crosshair, the terminal-test phase, the big-number pass; then the option chain. **Built in that order, handed off once at the end**, with a short progress note in the chat after each of the three parts. Migrations 022 and 023 |
 | **B** | `BUILD_03_RESTING_ORDERS.md` | `feature/swayam-build03-resting-orders-044` | A limit away from the book rests as an open order, entry and exit, with a watcher, Modify and Cancel, expiry at the bell. **After Build A is merged.** Migration 024 |
 
 The option chain's look is judged by eye, so the main chat supplies its mockup
@@ -43,20 +43,23 @@ like it.** Not "inspired by": identical in hierarchy, sizes and placement.
 
 ## WHERE BUILD A IS, 2026-09-11
 
-**Parts one and three are built, verified on the running system and pushed.
-Part two is the only thing left, and it goes on the SAME branch so Build A
-stays one pull request.** There is no pull request yet and nothing is merged,
-so nothing is live.
+**ALL THREE PARTS ARE BUILT, verified on the running system in both themes,
+and pushed. Build A is one pull request and it is open.** Nothing is merged,
+so nothing is live until he clicks Merge.
+
+**MIGRATIONS 022 AND 023 ARE NOT APPLIED.** He applies both, together, before
+merging. Until 023 is applied the Targets modal refuses to save and says so,
+the phase reads "paper trading has not started", and everything else works.
 
 **The order changed once, on his instruction:** part three was built before
 part two because he approved the option chain's mockup while part two was
 still unstarted. The chain depends on neither of the others, so it cost
 nothing.
 
-**The chat that finishes it starts at `BUILD_02_HOME_TARGETS_AND_READING.md`
-SECTION 0**, which carries the branch, the commits, everything parts one and
-three already built, the counts to compare against, and what this machine does
-that will otherwise waste a session. The prompt to paste is in that file.
+**Two scripts he runs himself, not a build and not an agent:**
+`scripts\mark_terminal_tests.py` (dry by default) marks the trades he clicked
+to test the terminal, and `scripts\start_paper_trading.py` declares the day
+paper trading begins. **The second must not be run until he says so.**
 
 ## Rules every builder follows. They are in each prompt too.
 

@@ -359,10 +359,20 @@ describe('the three groups', () => {
     expect(html).toContain('traded price');
   });
 
-  it('every row says it is a terminal test', async () => {
-    const { html } = await rendered([condor()], [closedRow()]);
-    const chips = html.split('terminal test').length - 1;
-    expect(chips).toBeGreaterThanOrEqual(2);
+  it('says what a trade was from its own row, not from a fixed label', async () => {
+    // The card used to print "terminal test" on EVERY position unconditionally.
+    // That is true today and becomes a lie the day he starts paper trading, so
+    // the chip reads the row's own provenance.
+    const test = await rendered([condor({ provenance: 'terminal_test' })], [closedRow()]);
+    expect(test.html).toContain('terminal test');
+
+    const live = await rendered([condor({ provenance: 'live' })], [closedRow()]);
+    expect(live.html).toContain('paper trade');
+    expect(live.html).not.toContain('>terminal test<');
+
+    // A row with nothing recorded says so rather than picking one of the three.
+    const unknown = await rendered([condor()], [closedRow()]);
+    expect(unknown.html).toContain('not recorded');
   });
 
   it('says plainly when nothing is open', async () => {

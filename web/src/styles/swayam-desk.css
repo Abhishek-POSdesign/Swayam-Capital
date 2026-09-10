@@ -309,18 +309,18 @@
   color: var(--fg-3); font-weight: 600;
 }
 .sw-desk .v {
-  font-family: var(--m); font-size: 24px; font-weight: 700; margin-top: 4px;
+  font-family: var(--m); font-size: 26px; font-weight: 800; margin-top: 4px;
   font-variant-numeric: tabular-nums; letter-spacing: -0.025em; line-height: 1.08;
 }
-.sw-desk .met .v { font-size: 26px; }
+.sw-desk .met .v { font-size: 30px; }
 .sw-desk .rl .v { font-size: 19px; }
 .sw-desk .v.sm { font-size: 16px; }
 /* The one accent, on the numbers that matter: Balance and the four limits on
    Home, Margin needed and Max loss on the desk. Semantic green and red keep
    their meaning and win where they apply. */
-.sw-desk .v.acc { font-size: 28px; color: var(--brand); }
+.sw-desk .v.acc { font-size: 30px; color: var(--brand); }
 .sw-desk .rl .v.acc { font-size: 22px; }
-.sw-desk .met .v.acc { font-size: 28px; }
+.sw-desk .met .v.acc { font-size: 32px; }
 .sw-desk .s { font-size: 11px; color: var(--fg-2); margin-top: 3px; }
 .sw-desk .met .s, .sw-desk .mn .s { font-family: var(--m); }
 
@@ -667,59 +667,11 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
    impact-brief popover.
    ========================================================================== */
 
-/* ---------- open positions: one full-width collapsible line ----------------
-   Its colour follows the money and nothing else: grey with nothing open, sage
-   in profit, coral in loss. There is no colour at all when there is no
-   position to colour, which is why `t-flat` sets a neutral edge rather than a
-   third hue. Sage and coral are the brand tokens, defined in both themes, so
-   the value is read rather than hardcoded. */
-.sw-desk .posstrip { margin-bottom: 12px; overflow: visible; }
-.sw-desk .posstrip .posline {
-  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
-  padding: 10px 14px; background: none; border: none; cursor: pointer;
-  font-family: var(--f); font-size: 13px; color: var(--fg);
-  border-left: 3px solid var(--line-2); border-radius: 10px;
-}
-.sw-desk .posstrip .posline:hover { background: var(--panel-2); }
-.sw-desk .posstrip .posline:focus-visible { outline: 2px solid var(--info); outline-offset: -2px; }
-.sw-desk .posstrip.t-profit .posline { border-left-color: var(--accent-sage); }
-.sw-desk .posstrip.t-loss .posline { border-left-color: var(--accent-coral); }
-.sw-desk .posstrip .pcar {
-  font-size: 10px; color: var(--fg-3); width: 12px; flex: none; line-height: 1;
-}
-.sw-desk .posstrip .plbl {
-  font-family: var(--m); font-size: 9.5px; letter-spacing: 0.09em; text-transform: uppercase;
-  color: var(--fg-3); font-weight: 600; flex: none;
-}
-.sw-desk .posstrip .psum {
-  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0;
-  color: var(--fg-2);
-}
-.sw-desk .posstrip .psum .pn { font-family: var(--m); font-weight: 600; color: var(--fg); }
-.sw-desk .posstrip .psum .pv { font-family: var(--m); font-weight: 700; font-variant-numeric: tabular-nums; }
-.sw-desk .posstrip .psum .pv.up { color: var(--accent-sage); }
-.sw-desk .posstrip .psum .pv.dn { color: var(--accent-coral); }
-.sw-desk .posstrip .psum .pdim { color: var(--fg-3); font-size: 12px; }
-.sw-desk .posstrip .psum .psep { color: var(--line-2); }
-.sw-desk .posstrip .posline > .r {
-  margin-left: auto; font-family: var(--m); font-size: 10.5px; color: var(--fg-3);
-  font-weight: 500; flex: none; padding-left: 10px;
-}
-.sw-desk .posstrip .posdet { border-top: 1px solid var(--line); }
-.sw-desk .posstrip .posdet table.g td b.up { color: var(--accent-sage); }
-.sw-desk .posstrip .posdet table.g td b.dn { color: var(--accent-coral); }
-.sw-desk .posstrip .posdet .pdim {
-  font-style: normal; color: var(--fg-3); font-family: var(--m); font-size: 10.5px;
-  margin-left: 6px;
-}
-/* The strip sits in the main column between the daily check-in and Your money,
-   and reads as one line rather than a card to lift off the page. */
-.sw-desk .posstrip:hover { transform: none; box-shadow: var(--edge), var(--shadow); }
-.sw-desk .bento-grid .posstrip { margin-bottom: 0; }
-@media (max-width: 720px) {
-  .sw-desk .posstrip .posline { flex-wrap: wrap; }
-  .sw-desk .posstrip .posline > .r { margin-left: 0; padding-left: 22px; width: 100%; }
-}
+/* The collapsible open-positions strip was REPLACED on 2026-09-11 by Home's
+   running-trade band, below. His words: "A running trade is unmistakable on
+   Home and goes quiet only when squared off." Its rules are deleted rather
+   than left behind, because dead CSS is the next agent's wrong turn. */
+
 
 /* ---------- today's caps, inside "Your money" ------------------------------
    A band, deliberately not a row of tiles: its own ground and its own heading,
@@ -1335,3 +1287,216 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 }
 .ocm .ocm-foot b { color: var(--fg-2); }
 .ocm .ocm-foot .r { margin-left: auto; text-align: right; }
+
+/* =============================================================================
+   HOME'S RUNNING-TRADE BAND, THE TARGETS MODAL, THE CROSSHAIR READOUT
+   docs/builds/BUILD_02_HOME_TARGETS_AND_READING.md, sections 3.2 to 3.6.
+
+   His three states, in his own words of 2026-09-10, after he corrected a
+   first reading that had them backwards:
+
+     BLINKING  the trade is running. "Very light blinking, so that it always
+               attracts attention that my profit and losses are running."
+     SOLID     green or red. A target he set was reached, on a leg or on the
+               trade, profit or loss. It stops blinking and it needs him.
+     MUTED     nothing open, or squared off. "No blink, no color."
+
+   The colour comes from the money and from nothing else. There is no third
+   hue and no status palette: sage when he is up, coral when he is down, and
+   the card's own ground when there is nothing to colour.
+   ========================================================================== */
+
+.sw-desk .hb {
+  display: grid;
+  grid-template-columns: auto 1.4fr 1fr 1fr 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 20px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-card, 16px);
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+  margin-bottom: 10px;
+}
+.sw-desk .hb:last-child { margin-bottom: 0; }
+
+/* Running: the ground takes the money's colour. */
+.sw-desk .hb.tint-up { background: var(--up-bg); border-color: var(--up); }
+.sw-desk .hb.tint-down { background: var(--down-bg); border-color: var(--down); }
+
+/* The breath. About two and a half seconds a cycle: a ring that swells and
+   fades, never a flash, and never anything that moves the layout. */
+.sw-desk .hb.running { animation: sw-breathe 2.4s ease-in-out infinite; }
+@keyframes sw-breathe {
+  0%, 100% { box-shadow: var(--shadow-card); }
+  50% { box-shadow: 0 0 0 5px var(--up-bg), var(--shadow-card); }
+}
+.sw-desk .hb.tint-down.running { animation-name: sw-breathe-down; }
+@keyframes sw-breathe-down {
+  0%, 100% { box-shadow: var(--shadow-card); }
+  50% { box-shadow: 0 0 0 5px var(--down-bg), var(--shadow-card); }
+}
+/* Motion he cannot use is replaced by a state he can see, never removed and
+   left saying nothing. */
+@media (prefers-reduced-motion: reduce) {
+  .sw-desk .hb.running { animation: none; outline: 2px solid currentColor; outline-offset: 2px; }
+  .sw-desk .hdot.pulse { animation: none; }
+}
+
+/* Alert: solid, white text, and it does NOT breathe. */
+.sw-desk .hb.solid-up { background: var(--up); border-color: var(--up); color: #fff; }
+.sw-desk .hb.solid-down { background: var(--down); border-color: var(--down); color: #fff; }
+.sw-desk .hb.solid-up .k, .sw-desk .hb.solid-down .k,
+.sw-desk .hb.solid-up .t small, .sw-desk .hb.solid-down .t small { color: rgba(255, 255, 255, 0.82); }
+.sw-desk .hb.solid-up .v, .sw-desk .hb.solid-down .v,
+.sw-desk .hb.solid-up .v.up, .sw-desk .hb.solid-up .v.dn,
+.sw-desk .hb.solid-down .v.up, .sw-desk .hb.solid-down .v.dn { color: #fff; }
+.sw-desk .hb.solid-up .hchip, .sw-desk .hb.solid-down .hchip { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.sw-desk .hb.solid-up .hbtn, .sw-desk .hb.solid-down .hbtn { background: #fff; color: #101116; border-color: #fff; }
+.sw-desk .hb.solid-up .na, .sw-desk .hb.solid-down .na { color: rgba(255, 255, 255, 0.75); }
+
+/* Quiet: the card's own ground, muted text, nothing raised. */
+.sw-desk .hb.quiet { background: var(--panel); border-color: var(--line); box-shadow: none; color: var(--fg-3); }
+.sw-desk .hb.quiet .v, .sw-desk .hb.quiet .t { color: var(--fg-3); }
+.sw-desk .hb.one { grid-template-columns: auto 1fr; padding: 12px 20px; }
+.sw-desk .hb .qtext { font-size: 13px; color: var(--fg-2); }
+
+.sw-desk .hb .k {
+  font-family: var(--m); font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--fg-3); font-weight: 700;
+}
+.sw-desk .hb .v {
+  font-family: var(--m); font-size: 26px; font-weight: 800; letter-spacing: -0.025em;
+  margin-top: 3px; font-variant-numeric: tabular-nums; line-height: 1.05;
+}
+/* The figure his eye should land on first. */
+.sw-desk .hb .v.hero { font-size: 40px; }
+.sw-desk .hb .v.up { color: var(--up); }
+.sw-desk .hb .v.dn { color: var(--down); }
+.sw-desk .hb .v.muted { color: var(--fg-3); font-size: 19px; }
+.sw-desk .hb .t { font-size: 19px; font-weight: 800; min-width: 0; }
+.sw-desk .hb .t small {
+  display: block; font-family: var(--m); font-size: 12px; color: var(--fg-2);
+  font-weight: 500; margin-top: 3px;
+}
+
+.sw-desk .hchip {
+  font-family: var(--m); font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 5px 9px; border-radius: 4px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--panel-2); color: var(--fg-2);
+}
+.sw-desk .hchip.c-up { background: var(--up-bg); color: var(--up); }
+.sw-desk .hchip.c-down { background: var(--down-bg); color: var(--down); }
+.sw-desk .hchip.flat { background: var(--panel-2); color: var(--fg-3); }
+.sw-desk .hdot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: inline-block; }
+.sw-desk .hdot.pulse { animation: sw-dot 1.6s ease-in-out infinite; }
+@keyframes sw-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+.sw-desk .hbtn {
+  font-family: var(--f); font-size: 13.5px; font-weight: 600; border-radius: 8px;
+  padding: 10px 16px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--line-2); background: var(--panel); color: var(--fg);
+}
+.sw-desk .hbtn:hover:not(:disabled) { border-color: var(--fg-3); }
+.sw-desk .hbtn.pri { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.sw-desk .hbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+.sw-desk .hbtn:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+
+@media (max-width: 980px) {
+  .sw-desk .hb { grid-template-columns: 1fr 1fr; }
+  .sw-desk .hb.one { grid-template-columns: auto 1fr; }
+}
+
+/* Margin used carries rule 4's share, so the tile answers "how much of my
+   ceiling is that?" without him going to the desk to find out. */
+.sw-desk .mbar {
+  height: 7px; border-radius: 4px; background: var(--panel-2); overflow: hidden; margin-top: 6px;
+  border: 1px solid var(--line);
+}
+.sw-desk .mbar i { display: block; height: 100%; background: var(--accent-sage); border-radius: 4px; }
+
+/* ---------- a reached target, on the position card, one line and no more --- */
+.sw-desk .pa-reached {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  padding: 10px 20px; border-bottom: 1px solid var(--line);
+  font-family: var(--m); font-size: 13.5px; font-weight: 700;
+}
+.sw-desk .pa-reached.up { background: var(--up-bg); color: var(--up); }
+.sw-desk .pa-reached.down { background: var(--down-bg); color: var(--down); }
+.sw-desk .pa-reached span { margin-left: auto; font-weight: 500; font-size: 11.5px; color: var(--fg-3); }
+
+/* The Targets button: sage, because it is his own intention rather than an
+   action on the market. */
+.sw-desk .btn.tgt { border-color: var(--accent-sage); color: var(--accent-sage); background: var(--accent-sage-tint); }
+.sw-desk .btn.tgt:hover:not(:disabled) { background: var(--accent-sage-tint-hover); }
+
+/* ---------- the targets modal --------------------------------------------- */
+.tg-backdrop {
+  position: fixed; inset: 0; z-index: 960; background: rgba(6, 8, 8, 0.55);
+  display: flex; align-items: flex-start; justify-content: center; padding: 40px 14px; overflow: auto;
+}
+.tg {
+  background: var(--panel); border: 1px solid var(--line-2); border-radius: 14px;
+  width: min(820px, 100%); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  color: var(--fg); font-family: var(--f);
+}
+.tg .tg-h { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tg .tg-h h2 { margin: 0; font-size: 18px; font-weight: 800; }
+.tg .tg-h .r { margin-left: auto; }
+.tg .tg-hint { padding: 12px 20px; color: var(--fg-2); font-size: 13px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+.tg .tw { overflow-x: auto; }
+.tg table.tg-t { width: 100%; border-collapse: collapse; }
+.tg table.tg-t th {
+  font-family: var(--m); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--fg-3); font-weight: 700; text-align: left; padding: 10px 12px;
+  border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.tg table.tg-t td { padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; font-size: 14px; }
+.tg table.tg-t td.n { text-align: right; font-family: var(--m); font-variant-numeric: tabular-nums; }
+.tg table.tg-t td.n small { display: block; font-size: 10.5px; color: var(--fg-3); }
+.tg table.tg-t td small { display: block; font-family: var(--m); font-size: 11px; color: var(--fg-3); font-weight: 500; margin-top: 2px; }
+.tg .tg-leg { font-family: var(--m); font-size: 16px; font-weight: 800; }
+.tg .bs { font-family: var(--m); font-size: 11px; font-weight: 700; border-radius: 4px; padding: 5px 8px; display: inline-block; min-width: 54px; text-align: center; }
+.tg .bs.B { background: var(--up-bg); color: var(--up); }
+.tg .bs.S { background: var(--down-bg); color: var(--down); }
+.tg input[type='number'] {
+  width: 112px; font-family: var(--m); font-size: 16px; font-weight: 700;
+  background: var(--panel-2); color: var(--fg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 8px 9px; font-variant-numeric: tabular-nums;
+}
+.tg input[type='number']:focus-visible { outline: 2px solid var(--info); outline-offset: 1px; }
+.tg .tg-means { font-family: var(--m); font-size: 11.5px; line-height: 1.35; color: var(--fg-2); }
+.tg .tg-means .up { color: var(--up); font-weight: 700; }
+.tg .tg-means .down { color: var(--down); font-weight: 700; }
+.tg .na { color: var(--fg-3); font-style: italic; }
+.tg tr.tg-trade td { background: var(--panel-2); }
+.tg .up { color: var(--up); } .tg .down { color: var(--down); }
+.tg .tg-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 14px 20px; border-top: 1px solid var(--line); background: var(--panel-2); }
+.tg .tg-actions .why { font-family: var(--m); font-size: 11px; color: var(--fg-3); margin-left: auto; max-width: 52ch; text-align: right; }
+.tg .tg-refused { margin: 12px 20px 0; padding: 10px 14px; border: 1px solid var(--down); border-radius: 8px; background: var(--down-bg); font-size: 13px; }
+.tg .tg-saved { margin: 12px 20px 0; padding: 10px 14px; border: 1px solid var(--accent-sage); border-radius: 8px; background: var(--accent-sage-tint); font-size: 13px; }
+@media (max-width: 720px) {
+  .tg table.tg-t td.tg-means, .tg table.tg-t th:last-child { display: none; }
+  .tg input[type='number'] { width: 90px; }
+}
+
+/* ---------- the payoff crosshair's readout -------------------------------- */
+.sw-desk .chartwrap { position: relative; }
+.sw-desk .payoff-readout {
+  position: absolute; top: 10px; right: 12px;
+  background: var(--panel); border: 1px solid var(--line-2); border-radius: 9px;
+  padding: 9px 13px; font-family: var(--m); font-size: 12.5px; min-width: 232px;
+  box-shadow: var(--shadow-card); pointer-events: none;
+  display: grid; grid-template-columns: auto auto; gap: 3px 14px; align-items: center;
+}
+.sw-desk .payoff-readout .k {
+  color: var(--fg-3); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700;
+}
+.sw-desk .payoff-readout .v { font-weight: 800; font-size: 17px; text-align: right; font-variant-numeric: tabular-nums; }
+.sw-desk .payoff-readout .v.small { font-size: 13.5px; font-weight: 600; }
+.sw-desk .payoff-readout .v.up { color: var(--up); }
+.sw-desk .payoff-readout .v.down { color: var(--down); }
+.sw-desk .payoff-readout .v.na { color: var(--fg-3); font-style: italic; font-weight: 500; }
+.sw-desk .pay { cursor: crosshair; }
+.sw-desk .hb .qstamp { font-family: var(--m); font-size: 11px; color: var(--fg-3); font-style: normal; margin-left: 8px; }
