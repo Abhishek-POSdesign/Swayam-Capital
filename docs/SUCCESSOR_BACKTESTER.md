@@ -150,10 +150,31 @@ The execution ticket, positions, the journal writer, services/fills.py, the
 recorder, the strategy builder page, or any migration. The backtester is its own
 layer under src/swayam/research/ and its own tables.
 
+=== THE DATABASE. DISCUSSED WITH THE MAIN CHAT ON 10 SEPTEMBER. BRAINSTORM IT
+WITH ME FIRST. ===
+Read docs/PLAN.md section 2.19 before anything else in this chat. The main
+chat and I discussed where the backtesting data lives and I agreed with its
+recommendation: the terminal's record stays in the hosted Supabase Postgres;
+the market history NEVER goes into Supabase. It stays on my PC as the Parquet
+files it already is, queried by DuckDB, with the Google bucket as the copy.
+That overturns PLAN 2.15.6, which designed four Postgres tables for it, and
+the "loading into Postgres" wording in ROADMAP.md, which the main chat will
+change with my yes. Before you build anything on this, you talk to me: a
+brainstorm in plain English on how the whole thing will work, the files, the
+DuckDB store, what the recorder adds each afternoon, and the BACKUP SYSTEM
+end to end, because I want my backups to go into my vault, the Second Brain,
+and I want to understand what goes there and what goes to the bucket. The
+main chat's recommendation on that is in 2.19; argue with it if you disagree.
+Then you rewrite 2.15.6 with me and record my decisions in 2.19, dated. I
+will also move my two business apps into my personal Supabase project myself,
+in a separate session, at my own time; do not assume it is done.
+
 === OPEN, AND WAITING ON ME ===
-- ROADMAP section 3 still says the backtester must reproduce my 21 historical
-  swing trades. I have rejected that. Ask me to approve the replacement text in
-  PLAN 2.16.7. Do not edit ROADMAP.md before I say yes.
+- ROADMAP section 3 milestone 2 was corrected with my approval on 10 September
+  (PR #60). What still needs my yes is the "loading into Postgres" wording in
+  gate 7 and milestone 2, once 2.19 is settled. Do not edit ROADMAP.md.
+- PLAN 2.15's opening paragraph and the body of 2.16.8 still carry the old
+  "reproduce the 21 trades" sentences. Clean them; they are stale.
 - My formations. I have not listed them. Start from my list, not a textbook.
 ```
 
