@@ -1,10 +1,14 @@
 # BUILD 04 — THE OPTION CHAIN, TESTED LIVE AND MADE USABLE
 
-> Placeholder written 2026-09-10 evening by the main chat. Branch
-> `feature/swayam-build04-option-chain-045`. **Not ready to hand to a builder:
-> it waits for its own mockup from the main chat, because he will judge it by
-> eye.** When the mockup is approved, the main chat fills this file to the
-> shape of BUILD_01 to 03 and writes the paste-prompt.
+> Written 2026-09-10 evening by the main chat. **This is PART THREE OF BUILD
+> A**, built by the same chat, on the same branch and in the same pull request
+> as BUILD_01 and BUILD_02, after both. **It waits for its own mockup from the
+> main chat, because he will judge it by eye.** The main chat supplies that
+> mockup into Build A's chat while the builder is on parts one and two, and
+> fills this file to the shape of the others at the same time. The builder
+> starts the chain only when the mockup is in hand; if it is not there when
+> parts one and two are done, the builder says so and waits rather than
+> guessing at the look.
 
 ## What is known, from `docs/PLAN.md` §2.12.5 item 9 and the session log of 10 September
 

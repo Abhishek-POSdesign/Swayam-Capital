@@ -141,21 +141,26 @@ WHAT WAS DECIDED ON 10 SEPTEMBER, AND IS NOT UP FOR DISCUSSION
 - Limit orders REST. A limit away from the market sits as an open order until
   the bid or ask reaches it, inside the exchange's price band. The ticket's
   refusal of such a limit was wrong. 2.12.5 item 1. Build 03.
-- FOUR BUILDS, in this order, one builder chat each, one at a time:
-  Build 01 the desk's position area, the exit ticket for one leg or all, the
-  campaign model in the record, the name from the legs, click a position to
-  load it on the payoff, the drainer's close-row fault, the price wording.
-  Build 02 Home's running-trade band with its states, targets per leg and per
-  trade, Manage from Home, the payoff crosshair, the terminal-test phase, the
-  big-number pass. Build 03 resting orders. Build 04 the option chain, after
-  its own mockup. docs/builds/. Nothing moves ahead of them.
+- TWO BUILDS. Build A, one builder chat, one branch, one pull request, in
+  this order: the desk's position area, the exit ticket for one leg or all,
+  the campaign model in the record, the name from the legs, click a position
+  to load it on the payoff, the drainer's close-row fault, the price wording
+  (BUILD_01); then Home's running-trade band with its states, targets per leg
+  and per trade, Manage from Home, the payoff crosshair, the terminal-test
+  phase, the big-number pass (BUILD_02); then the option chain after its
+  mockup (BUILD_04). Build B, its own chat after Build A is merged: resting
+  orders (BUILD_03), the trickiest piece, kept apart on purpose. I do not
+  have whole days to open chats and answer questions; do not split further.
+  docs/builds/. Nothing moves ahead of them.
 - The mockup every build is held to: Swayam Position Area,
   https://claude.ai/code/artifact/ef242a22-59a7-4752-8aa4-91d59393c5d5. The
   build must be identical to it.
-- Home, Option B: the whole band takes its colour from the money. SOLID means
-  running. BLINKING means a target was reached, profit or loss, on a leg or
-  the trade, and needs me. MUTED means nothing open or squared off. Manage on
-  Home opens the exit ticket right there. No coloured edge.
+- Home, Option B: the whole band takes its colour from the money. BLINKING
+  means running. SOLID green or solid red means a target was reached, profit
+  or loss, on a leg or the trade, and needs my attention. MUTED means nothing
+  open or squared off. A first reading had this backwards; this is the
+  correct one. Manage on Home opens the exit ticket right there. No coloured
+  edge.
 - Targets per leg by preference, the whole trade as fallback, both profit and
   loss, set from a designer button on the position card that opens a small
   modal. No extra column on the position page. A blank box is no signal.
@@ -207,7 +212,7 @@ answers do we start.
    opening a second trade?
 9. What are my hours, and what may never be planned for 09:15?
 10. What is the Trade Journal page waiting for, and what may you not do to it?
-11. What do solid, blinking and muted mean on Home's band, and what is a
+11. What do blinking, solid and muted mean on Home's band, and what is a
     target on a leg?
 12. Which of the six trades are paper trades?
 13. List every question you have where two documents disagree or something is

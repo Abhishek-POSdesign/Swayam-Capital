@@ -802,15 +802,15 @@ from the chain the natural way to build a structure.
 
 ---
 
-**SUPERSEDED THE SAME EVENING. PR 3 is now FOUR BUILDS in `docs/builds/`,
-his decision of 2026-09-10 evening, each its own pull request from its own
-builder chat, one at a time:** Build 01 the position area, the exit ticket
-and the campaign model (`BUILD_01_DESK_POSITION_AREA.md`); Build 02 Home's
-band, targets, Manage from Home, the crosshair, the terminal-test phase and
-the big-number pass (`BUILD_02_HOME_TARGETS_AND_READING.md`); Build 03
-resting orders (`BUILD_03_RESTING_ORDERS.md`); Build 04 the option chain,
-after its own mockup (`BUILD_04_OPTION_CHAIN.md`). §2.12.6 has what he
-corrected and decided that evening. The one-PR list below is kept as the
+**SUPERSEDED THE SAME EVENING. PR 3 is now TWO BUILDS in `docs/builds/`,
+his decision of 2026-09-10 evening, corrected late that night from four to
+two:** Build A, one chat, one branch, one pull request, is the position area,
+the exit ticket and the campaign model (`BUILD_01_DESK_POSITION_AREA.md`),
+then Home's band, targets, Manage from Home, the crosshair, the terminal-test
+phase and the big-number pass (`BUILD_02_HOME_TARGETS_AND_READING.md`), then
+the option chain after its mockup (`BUILD_04_OPTION_CHAIN.md`). Build B is
+resting orders alone (`BUILD_03_RESTING_ORDERS.md`), after Build A. §2.12.6
+has what he corrected and decided that evening. The one-PR list below is kept as the
 record of what was asked; the build documents are the specification.
 
 **PR 3, THE BUILD SPEC AS OF 2026-09-10 AFTERNOON.** One pull request, in this
@@ -1067,17 +1067,25 @@ the position area's first real subject once PR 3 lands.
   the finished build on the running system before he merges. One fresh
   builder chat per build, one at a time, one pull request each.
   `docs/builds/README.md`.
-- **Four builds**, in the order above. Resting orders were cut out of the
-  desk build because they are the riskiest piece to prove.
+- **Two builds, his correction later the same night.** "We cannot go with
+  small, small builds... I don't have a whole day for building it." Build A
+  is the desk's position area, exit ticket and campaign model, then Home's
+  band, targets, Manage, the crosshair, the terminal-test phase and the
+  big-number pass, then the option chain: `BUILD_01`, `BUILD_02`, `BUILD_04`
+  in that order, one chat, one branch, one pull request. Build B is resting
+  orders alone, `BUILD_03`, kept apart because it is the trickiest to prove.
 - **The mockup**, Swayam Position Area,
   https://claude.ai/code/artifact/ef242a22-59a7-4752-8aa4-91d59393c5d5, built
   on the real condor at the 15:26 closing book, accepted with his feedback
   applied. "The mockup must be identical" to the build.
 - **Home: Option B.** The whole band takes its colour from the money, no
-  coloured edge. **Solid means running. Blinking means a target was reached,
-  profit or loss, on a leg or on the trade, and needs him. Muted means
-  nothing open or squared off.** "As soon as the trade is squared off,
-  everything goes mute: no blink, no color."
+  coloured edge. **Blinking means running. Solid green or solid red means a
+  target was reached, profit or loss, on a leg or on the trade, and needs
+  him. Muted means nothing open or squared off.** His correction later that
+  night, after a first reading had it backwards: "Blinking means the trade
+  is running. When it becomes a solid color, then the trade has reached its
+  target, either profit or loss. Green and red colors define it." And: "As
+  soon as the trade is squared off, everything goes mute: no blink, no color."
 - **Targets**, "target always means both loss and profit", per leg by
   preference, the whole trade as the fallback, set from a designer button on
   the position card that opens a small modal. "I don't want unnecessary
