@@ -1500,3 +1500,118 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .sw-desk .payoff-readout .v.na { color: var(--fg-3); font-style: italic; font-weight: 500; }
 .sw-desk .pay { cursor: crosshair; }
 .sw-desk .hb .qstamp { font-family: var(--m); font-size: 11px; color: var(--fg-3); font-style: normal; margin-left: 8px; }
+
+/* =============================================================================
+   BUILD B — OPEN ORDERS. A limit the book has not reached, waiting for it.
+
+   Screen 4 of the mockup. Three groups inside the position area, each labelled
+   and coloured by its nature, because he asked for exactly that: "every kind
+   of order clearly labelled and coloured by its nature."
+
+     RESTING   amber, with a pulsing dot. Amber, never red: an order that is
+               waiting is not a warning and it is certainly not a rule. It is
+               his own instruction, sitting there.
+     FILLED    the money's own colours, because a fill is money.
+     EXPIRED   muted, as everything closed or spent is on his screens.
+   ========================================================================== */
+
+.sw-desk .ord-card { margin-bottom: 12px; }
+.sw-desk .ord-card:hover { transform: none; box-shadow: var(--shadow-card); }
+
+.sw-desk .orders { border-collapse: collapse; width: 100%; }
+.sw-desk .orders th {
+  font-family: var(--m); font-size: 10.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg-3); font-weight: 700;
+  text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.sw-desk .orders td {
+  padding: 12px; border-bottom: 1px solid var(--line); vertical-align: middle;
+  font-variant-numeric: tabular-nums; font-size: 14.5px;
+}
+.sw-desk .orders tr:last-child td { border-bottom: none; }
+.sw-desk .orders td.n, .sw-desk .orders th.n { text-align: right; font-family: var(--m); }
+.sw-desk .orders td.leg { font-family: var(--m); font-weight: 700; font-size: 17px; }
+.sw-desk .orders td.trade { font-weight: 700; }
+.sw-desk .orders td.big-n { font-family: var(--m); font-size: 19px; font-weight: 800; }
+.sw-desk .orders td .sub {
+  display: block; font-family: var(--m); font-size: 11.5px; color: var(--fg-3);
+  font-weight: 500; margin-top: 2px;
+}
+.sw-desk .orders td.act { display: flex; gap: 6px; justify-content: flex-end; white-space: nowrap; }
+.sw-desk .orders tr.gone td { opacity: .62; }
+.sw-desk .orders td.joined { font-family: var(--m); font-size: 13px; color: var(--fg-2); }
+.sw-desk .orders td.why { font-family: var(--m); font-size: 13px; color: var(--fg-2); }
+.sw-desk .orders .oflight { font-family: var(--m); font-size: 12px; color: var(--fg-3); }
+
+/* His price, editable in place. A re-price keeps the order, so this is an
+   edit of the thing he is looking at rather than a new one beside it. */
+.sw-desk .orders input[data-order-price] {
+  width: 104px; font-family: var(--m); font-size: 17px; font-weight: 800;
+  padding: 6px 8px; border: 1px solid var(--line-2); border-radius: 6px;
+  background: var(--panel-2); color: var(--fg); text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The state cell: what it waits for, big enough to read at a glance. */
+.sw-desk .orders td.state { font-family: var(--m); font-size: 12.5px; line-height: 1.4; }
+.sw-desk .orders td.state b { display: block; color: var(--fg); font-weight: 700; font-size: 13.5px; margin-top: 4px; }
+.sw-desk .orders td.state .muted { display: block; color: var(--fg-3); }
+
+.sw-desk .c-rest { background: var(--warn-bg); color: var(--warn); }
+.sw-desk .orders .dot {
+  width: 8px; height: 8px; border-radius: 50%; background: currentColor;
+  display: inline-block; margin-right: 5px;
+}
+.sw-desk .orders .dot.pulse { animation: sw-ord-pulse 1.6s ease-in-out infinite; }
+@keyframes sw-ord-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .sw-desk .orders .dot.pulse { animation: none; } }
+
+/* A dustbin for cancel, never a cheap cross. His words, 2026-09-09. */
+.sw-desk .btn.danger { color: var(--down); border-color: var(--down); }
+.sw-desk .btn.danger:hover { background: var(--down-bg); border-color: var(--down); }
+
+.sw-desk .ord-foot {
+  display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap;
+  padding: 12px 18px; border-top: 1px solid var(--line); background: var(--panel-2);
+}
+.sw-desk .ord-foot .say { font-size: 13px; color: var(--fg-2); max-width: 62ch; }
+/* The sentence he must never be without. It is not a footnote. */
+.sw-desk .ord-foot .awake {
+  font-family: var(--m); font-size: 12px; color: var(--warn);
+  background: var(--warn-bg); border-radius: 7px; padding: 8px 11px;
+  margin-left: auto; max-width: 46ch; line-height: 1.4;
+}
+
+/* The bell's warning: a resting exit that expired on a trade still open. */
+.sw-desk .ord-warn, .sw-desk .hb-warn {
+  border: 1px solid var(--down); background: var(--down-bg); color: var(--fg);
+  border-radius: 11px; padding: 12px 16px; margin: 14px 0 4px; font-size: 14px;
+}
+.sw-desk .ord-warn b { display: block; font-weight: 800; font-size: 15px; margin-bottom: 3px; }
+.sw-desk .ord-warn span { color: var(--fg-2); }
+.sw-desk .hb-warn { margin: 0 0 8px; }
+
+/* Home's third figure when something is waiting for a price. */
+.sw-desk .hb .v.amber { color: var(--warn); font-size: 22px; }
+.sw-desk .hb.solid-up .v.amber, .sw-desk .hb.solid-down .v.amber { color: #fff; }
+
+/* What is waiting, on either ticket's result screen. Never mixed in with what
+   filled: a trade that opened with two of four legs must not read as four. */
+.xt .xt-resting, .xt2 .xt-resting {
+  border-top: 1px solid var(--line); padding: 14px 18px; background: var(--warn-bg);
+}
+.xt .xt-resting h3, .xt2 .xt-resting h3 {
+  margin: 0 0 8px; font-size: 15px; font-weight: 800; color: var(--warn);
+  letter-spacing: 0.02em;
+}
+.xt .xt-resting .xt-awake, .xt2 .xt-resting .xt-awake {
+  margin: 10px 0 0; font-size: 13px; color: var(--fg-2); line-height: 1.5; max-width: 78ch;
+}
+.xt .fills .st.wait, .xt2 .fills .st.wait { background: var(--warn-bg); color: var(--warn); }
+/* The awake sentence when nothing is resting. It has to be on the screen in
+   every state, not only when something is waiting: what he must never believe
+   is that anything is watched while he is away. */
+.sw-desk .pa-empty .awake-inline {
+  display: block; margin-top: 8px; font-family: var(--m); font-size: 12px;
+  color: var(--warn); line-height: 1.4;
+}

@@ -556,6 +556,11 @@ export class StrategyBuilderPage {
         onOpenRead: (open) => this.autoLoadOpenTrade(open),
         onRename: (p, name) => api.renamePosition(p.position_id, name),
         onTargets: (p) => this.openTargets(p),
+        // BUILD B. What is waiting for a price, and the two things he can do
+        // about it. A re-price keeps the order and its place in his book.
+        fetchOrders: () => api.getOrders('today'),
+        onModifyOrder: (orderId, price) => api.modifyOrder(orderId, price),
+        onCancelOrder: (orderId) => api.cancelOrder(orderId),
       });
       this.positionArea.init();
     }

@@ -40,7 +40,16 @@ from swayam.services.charges import (
     opposite,
     side_from_direction,
 )
-from swayam.services.exit_refusal import reword_if_his_price
+from swayam.services.exit_refusal import (
+    is_his_price,
+    price_not_reached,
+    reword_if_his_price,
+    side_needed,
+    will_rest,
+)
+from swayam.services import order_watcher
+from swayam.services import orders as book
+from swayam.services.price_band import band_for_leg, check_price
 from swayam.services.structure_name import (
     is_open as leg_is_open,
     name_from_legs,
@@ -116,32 +125,83 @@ def _fill_for(leg: LegRequest, underlying: str) -> tuple[Fill, LegQuote]:
     quote = quote_leg(
         strike=leg.strike, expiry=leg.expiry_date, option_type=leg.option_type, underlying=underlying,
     )
-    limit = leg.limit_price
-    if limit is None and (leg.order_type or "").upper() == "LIMIT":
-        limit = leg.entry_premium
-    fill = resolve_fill(
-        direction=leg.direction,
-        order_type=leg.order_type,
-        limit_price=limit,
-        quote=quote,
-        leg_label=_leg_label(leg),
-    )
+    limit = _limit_of(leg)
+    try:
+        fill = resolve_fill(
+            direction=leg.direction,
+            order_type=leg.order_type,
+            limit_price=limit,
+            quote=quote,
+            leg_label=_leg_label(leg),
+        )
+    except FillRefused as exc:
+        # The book that refused it travels with the refusal, so the caller can
+        # tell "his price has not been reached", which now RESTS, from "there
+        # is no market", which still refuses. Without this the caller would
+        # have to quote the leg a second time, and a second quote is a second
+        # FYERS request per leg.
+        exc.quote = quote  # type: ignore[attr-defined]
+        raise
     return fill, quote
 
 
-def _fill_all(legs: list[LegRequest], underlying: str) -> tuple[list[tuple[LegRequest, Fill, LegQuote]], Optional[float]]:
-    """Fills every leg or refuses the whole ticket, naming every leg that cannot fill.
+def _limit_of(leg: LegRequest) -> Optional[float]:
+    """The price he actually asked for on a limit leg, wherever the ticket put it."""
+    limit = leg.limit_price
+    if limit is None and (leg.order_type or "").upper() == "LIMIT":
+        limit = leg.entry_premium
+    return limit
 
-    Nothing is written until every leg has a fill. He sees all the problems at
-    once rather than fixing one and hitting the next.
+
+def _fill_all(
+    legs: list[LegRequest],
+    underlying: str,
+    *,
+    rest_away: bool = False,
+) -> tuple[list[tuple[LegRequest, Fill, LegQuote]], Optional[float], list[dict[str, Any]]]:
+    """Fills every leg it can, and says what to do about the ones it cannot.
+
+    Two kinds of leg do not fill, and Build B is the difference between them.
+
+      * **His price.** The book is there, the side he needs is published, and
+        the market simply has not come to his number. Since Build B that is
+        not a refusal: the leg RESTS as an open order until the book reaches
+        it. It comes back in the third return value.
+      * **Anything else.** No book at all, a side that is not published, or
+        the bell. Those are facts about the market, not about his price, and
+        they still refuse the whole ticket, with every leg named and what to
+        do about it, exactly as before.
+
+    `rest_away=False` keeps the old behaviour, where his price refuses too. It
+    is what the preview and anything not placing an order use.
     """
     filled: list[tuple[LegRequest, Fill, LegQuote]] = []
     refused: list[dict[str, Any]] = []
+    to_rest: list[dict[str, Any]] = []
     spot: Optional[float] = None
     for seq, leg in enumerate(legs, start=1):
+        limit = _limit_of(leg)
         try:
             fill, quote = _fill_for(leg, underlying)
         except FillRefused as exc:
+            quote = getattr(exc, "quote", None) or _quote_of(leg, underlying)
+            side_price = quote.ask if leg.direction.lower() == "buy" else quote.bid
+            his_price = rest_away and is_his_price(
+                order_type=leg.order_type,
+                book_is_tradeable=quote.tradeable,
+                side_price=side_price,
+                limit_price=limit,
+            )
+            if his_price:
+                to_rest.append({
+                    "sequence": seq,
+                    "leg": leg,
+                    "label": _leg_label(leg),
+                    "limit_price": float(limit),
+                    "book": side_price,
+                    "side": side_needed(leg.direction),
+                })
+                continue
             refused.append({
                 "sequence": seq,
                 "leg": _leg_label(leg),
@@ -164,7 +224,188 @@ def _fill_all(legs: list[LegRequest], underlying: str) -> tuple[list[tuple[LegRe
                 "refused_legs": refused,
             },
         )
-    return filled, spot
+    if spot is None:
+        # Every leg is resting, so no fill carried a spot back. The book that
+        # refused them did, and it is the same reading.
+        for candidate in to_rest:
+            quote = _quote_of(candidate["leg"], underlying)
+            if quote.spot:
+                spot = quote.spot
+                break
+    return filled, spot, to_rest
+
+
+def _quote_of(leg: LegRequest, underlying: str) -> LegQuote:
+    """The book for one leg, for deciding WHY it did not fill. Costs no extra call
+    while the chain feed already holds the expiry."""
+    try:
+        return quote_leg(
+            strike=leg.strike, expiry=leg.expiry_date,
+            option_type=leg.option_type, underlying=underlying,
+        )
+    except Exception:  # noqa: BLE001
+        return LegQuote(None, None, None, None, "unavailable", False, None)
+
+
+# --------------------------------------------------------------- resting
+#
+# BUILD B. A limit the book has not reached used to refuse the whole ticket.
+# It cost him his strangle on 10 September and gave his condor the name of the
+# preset he had loaded first, because he had to rebuild the trade at market.
+# His words: "It should not execute if the price is not available, but must be
+# sitting in the system till the time the bid and ask reach the price I want."
+#
+# Nothing below writes a position, a charge or a note. It writes an ORDER, and
+# the order becomes a leg only when the watcher fills it, through this same
+# file's own paths.
+
+
+def _rest_them(
+    to_rest: list[dict[str, Any]],
+    *,
+    underlying: str,
+    strategy_name: Optional[str],
+    kind: str,
+    position_id: Optional[str],
+    group_id: str,
+    extra_leg: Optional[dict[str, Any]] = None,
+) -> list[dict[str, Any]]:
+    """Puts the legs that could not fill into the order book, and says so.
+
+    Refuses, sending NOTHING, in two cases, both of them facts rather than
+    rules: after 15:30, because a resting order placed then would expire the
+    same second; and a price outside the exchange's band for the day or off
+    its tick, because no such order could ever be held.
+
+    The band is one FYERS depth call per leg placed. Not per refresh, not per
+    leg on the ticket: only the ones that actually rest.
+    """
+    if not to_rest:
+        return []
+
+    if book.session_is_over():
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": (
+                    "Nothing was sent and nothing is resting. The market is shut, and an "
+                    "order placed now would expire at once because everything resting "
+                    "expires at 15:30. Place it in your window."
+                ),
+                "refused_legs": [
+                    {"leg": c["label"], "reason": price_not_reached(side_hit=c["side"], market=c["book"]),
+                     "market": c["book"], "your_price": c["limit_price"]}
+                    for c in to_rest
+                ],
+            },
+        )
+
+    # Read every band BEFORE anything is written, so a price the exchange
+    # would not hold refuses the whole ticket with nothing half done.
+    bands: dict[int, Any] = {}
+    band_refusals: list[dict[str, Any]] = []
+    for candidate in to_rest:
+        leg: LegRequest = candidate["leg"]
+        band = band_for_leg(
+            underlying=underlying, expiry=leg.expiry_date,
+            strike=leg.strike, option_type=leg.option_type,
+        )
+        bands[candidate["sequence"]] = band
+        refusal = check_price(band, float(candidate["limit_price"]))
+        if refusal:
+            band_refusals.append({
+                "leg": candidate["label"],
+                "reason": refusal,
+                "market": candidate["book"],
+                "your_price": candidate["limit_price"],
+                "band_source": band.source,
+            })
+    if band_refusals:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": (
+                    "Nothing was sent and nothing is resting. "
+                    + ("One price" if len(band_refusals) == 1 else f"{len(band_refusals)} prices")
+                    + " is outside what the exchange will hold today."
+                ),
+                "refused_legs": band_refusals,
+            },
+        )
+
+    provenance = provenance_for_new_position()
+    new_orders = []
+    for candidate in to_rest:
+        leg = candidate["leg"]
+        payload = {
+            "direction": str(leg.direction).lower(),
+            "strike": float(leg.strike),
+            "option_type": str(leg.option_type).upper(),
+            "expiry_date": str(leg.expiry_date),
+            "quantity_lots": int(leg.quantity_lots or 1),
+            "underlying": underlying,
+        }
+        if strategy_name:
+            payload["strategy_name"] = strategy_name
+        if extra_leg:
+            payload.update(extra_leg)
+        new_orders.append(book.NewOrder(
+            kind=kind,
+            leg=payload,
+            limit_price=float(candidate["limit_price"]),
+            position_id=position_id,
+            group_id=group_id,
+            band=bands.get(candidate["sequence"]),
+            provenance=provenance,
+        ))
+
+    try:
+        rows = book.place(new_orders)
+    except book.OrderBookUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    order_watcher.invalidate()
+    out = []
+    for row, candidate in zip(rows, to_rest):
+        band = bands.get(candidate["sequence"])
+        out.append({
+            "order_id": str(row.get("id")),
+            "sequence": candidate["sequence"],
+            "leg": candidate["label"],
+            "direction": str(candidate["leg"].direction).upper(),
+            "strike": candidate["leg"].strike,
+            "option_type": candidate["leg"].option_type,
+            "expiry_date": candidate["leg"].expiry_date,
+            "quantity_lots": candidate["leg"].quantity_lots,
+            "limit_price": float(candidate["limit_price"]),
+            "book": candidate["book"],
+            "side": candidate["side"],
+            "kind": kind,
+            "position_id": position_id,
+            "band_source": band.source if band else None,
+            "band_note": band.describe() if band else None,
+            "expires_at": row.get("expires_at"),
+            "how": will_rest(
+                side_hit=candidate["side"],
+                market=candidate["book"],
+                limit=float(candidate["limit_price"]),
+                band=(band.describe() if band else None),
+            ),
+        })
+    return out
+
+
+def _resting_message(resting: list[dict[str, Any]]) -> str:
+    """The one line that must never be mistaken for a refusal."""
+    if not resting:
+        return ""
+    names = ", ".join(r["leg"] for r in resting)
+    one = len(resting) == 1
+    return (
+        f"{names} {'is' if one else 'are'} resting as {'an open order' if one else 'open orders'} "
+        f"until the book reaches your price, and {'it expires' if one else 'they expire'} at 15:30. "
+        "They fill only while this terminal is awake and reading prices, so keep a page open."
+    )
 
 
 def _charge_entry(leg_dict: dict[str, Any], contracts: int, on: date) -> None:
@@ -472,7 +713,56 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
     # fabricated fill. A market leg now fills at the server's quote read at
     # this moment, a limit only if the market is at or through it, and a leg
     # with no live price does not fill at all.
-    filled, spot_from_quotes = _fill_all(req.legs, req.underlying)
+    # BUILD B: a leg whose limit the book has not reached does not refuse the
+    # ticket any more. It comes back in `to_rest` and becomes an open order.
+    filled, spot_from_quotes, to_rest = _fill_all(req.legs, req.underlying, rest_away=True)
+
+    # ONE PRESS, ONE GROUP. When nothing fills, every leg rests as an entry
+    # order and the FIRST of them to fill opens the trade; the rest join it
+    # rather than opening trades of their own. The group is how they find each
+    # other.
+    group_id = str(uuid.uuid4())
+
+    if not filled:
+        if not to_rest:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "Nothing was sent: this ticket has no legs to fill."},
+            )
+        resting = _rest_them(
+            to_rest,
+            underlying=req.underlying,
+            strategy_name=req.strategy_name,
+            kind=book.ENTRY,
+            position_id=None,
+            group_id=group_id,
+        )
+        response = {
+            "position_id": None,
+            "status": "resting",
+            "journal_status": "not_written",
+            "fills": [],
+            "resting": resting,
+            "resting_count": len(resting),
+            "message": (
+                "No trade is open yet. "
+                + _resting_message(resting)
+                + " The first one to fill opens the trade and the others join it."
+            ),
+            # Nothing has been charged, nothing has been valued, and saying so
+            # is better than a zero that looks like a figure.
+            "entry_charges_inr": 0.0,
+            "fill_basis": FILL_BASIS,
+        }
+        if idem_key:
+            complete_execution(idem_key, group_id, response)
+        return response
+
+    # The trade that EXISTS is only the legs that actually filled. The payoff,
+    # the greeks, the margin and the name are all computed for what he holds,
+    # never for what he has asked for and not yet got.
+    req.legs = [leg for leg, _fill, _quote in filled]
+
     for leg, fill, _quote in filled:
         # The fill is the entry. Payoff, greeks, charges and the record are all
         # built from it, not from the price the browser had a moment earlier.
@@ -757,6 +1047,34 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
     except Exception as exc:
         logger.warning("Could not dispatch trade_opened event: %s", exc)
 
+    # THE LEGS THAT DID NOT FILL NOW WAIT, ON THIS TRADE.
+    #
+    # The trade is already recorded, so this cannot be allowed to raise: a
+    # ticket whose fills landed must never report failure. If the orders
+    # cannot be written he is told exactly that, in the same answer, rather
+    # than being left believing something is waiting when nothing is.
+    resting: list[dict[str, Any]] = []
+    resting_error: Optional[str] = None
+    if to_rest:
+        try:
+            resting = _rest_them(
+                to_rest,
+                underlying=req.underlying,
+                strategy_name=structure_name,
+                kind="add_leg",
+                position_id=position_id,
+                group_id=group_id,
+            )
+        except HTTPException as exc:
+            detail = exc.detail
+            refused = detail.get("refused_legs") if isinstance(detail, dict) else None
+            first = refused[0].get("reason") if refused else None
+            resting_error = str(first or (detail.get("error") if isinstance(detail, dict) else detail))
+        except Exception as exc:  # noqa: BLE001
+            resting_error = str(exc)
+        if resting_error:
+            logger.warning("Legs could not be rested on %s: %s", position_id[:8], resting_error)
+
     if journal_status == "written":
         message = f"Paper trade #{position_id[:8]} opened. Journal at {journal_rel_path}."
     elif journal_status == "pending":
@@ -771,12 +1089,25 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
             f"could not be written OR queued. Write it by hand for this position."
         )
 
+    if resting:
+        message = f"{message} {_resting_message(resting)}"
+    elif resting_error:
+        message = (
+            f"{message} The legs away from the book are NOT waiting: {resting_error} "
+            f"Send them again when you want them."
+        )
+
     response = {
         "position_id": position_id,
         "journal_path": journal_rel_path,
         "journal_status": journal_status,
         "status": "opened",
         "message": message,
+        # What is waiting, listed on its own so the ticket can show fills and
+        # resting orders separately rather than in one blurred list.
+        "resting": resting,
+        "resting_count": len(resting),
+        "resting_error": resting_error,
         "execution_mode": req.execution_mode,
         "fills": fills_out,
         "spot_at_entry": round(float(spot_at_entry), 2),
@@ -857,7 +1188,35 @@ def _add_leg_inner(position_id: str, req: AddLegRequest, idem_key: Optional[str]
     stored_legs: list[dict[str, Any]] = list(pos.get("legs") or [])
 
     # Fill the new leg against the live market, exactly as the ticket does.
-    filled, spot_from_quote = _fill_all([req.leg], underlying)
+    # BUILD B: if his limit is away from the book it rests on THIS trade
+    # instead of refusing, which is what "execute one by one" needs: a leg
+    # that rests counts as sent, and the next leg can still be sent.
+    filled, spot_from_quote, to_rest = _fill_all([req.leg], underlying, rest_away=True)
+    if not filled:
+        resting = _rest_them(
+            to_rest,
+            underlying=underlying,
+            strategy_name=pos.get("strategy_name"),
+            kind="add_leg",
+            position_id=position_id,
+            group_id=str(uuid.uuid4()),
+        )
+        response = {
+            "position_id": position_id,
+            "status": "resting",
+            "journal_status": "not_written",
+            "fill": None,
+            "resting": resting,
+            "resting_count": len(resting),
+            "legs_count": len(stored_legs),
+            "message": (
+                f"Nothing was added to trade #{position_id[:8]} yet. " + _resting_message(resting)
+            ),
+        }
+        if idem_key:
+            complete_execution(idem_key, position_id, response)
+        return response
+
     new_leg_req, fill, _quote = filled[0]
     new_leg_req.entry_premium = fill.price
     spot_now = spot_from_quote if spot_from_quote else req.current_spot
@@ -1062,12 +1421,45 @@ def _exit_charge(direction: str, price: float, contracts: int, on: date) -> floa
     return float(cost.total_inr)
 
 
+def _exit_leg_request(leg: dict[str, Any], pos: dict[str, Any]) -> LegRequest:
+    """A stored leg described as the ORDER that will close it.
+
+    The direction is flipped on purpose: a leg he bought is closed by a SELL,
+    so the order waits on the BID. Getting this the wrong way round would have
+    the order watching the wrong side of the book for ever.
+    """
+    return LegRequest(
+        strike=float(leg["strike"]),
+        option_type=str(leg["option_type"]).upper(),
+        direction=exit_side_of(str(leg.get("direction", "buy"))),
+        quantity_lots=int(leg.get("quantity_lots", 1) or 1),
+        expiry_date=str(leg.get("expiry_date") or pos.get("expiry_date")),
+        order_type="LIMIT",
+    )
+
+
+class _ExitShouldRest(Exception):
+    """His price on an exit, which the book has not reached. It waits, it does not refuse.
+
+    Carried rather than returned so `_fill_the_exit` keeps one obvious success
+    path. `_apply_leg_exit` catches it and writes the order.
+    """
+
+    def __init__(self, *, label: str, side: str, book: Optional[float], limit_price: float) -> None:
+        super().__init__(label)
+        self.label = label
+        self.side = side
+        self.book = book
+        self.limit_price = limit_price
+
+
 def _fill_the_exit(
     *,
     leg: dict[str, Any],
     underlying: str,
     order_type: str,
     limit_price: Optional[float],
+    rest_away: bool = False,
 ) -> tuple[Fill, LegQuote]:
     """Fills one leg REVERSED, by exactly the rule the entry used.
 
@@ -1097,6 +1489,20 @@ def _fill_the_exit(
             leg_label=label,
         ), quote
     except FillRefused as exc:
+        # BUILD B. His price on the way OUT waits for the book exactly as it
+        # does on the way in. Only a fact about the market still refuses.
+        if rest_away and is_his_price(
+            order_type=order_type,
+            book_is_tradeable=quote.tradeable,
+            side_price=side_price,
+            limit_price=limit_price,
+        ):
+            raise _ExitShouldRest(
+                label=label,
+                side=side_needed(exit_direction),
+                book=side_price,
+                limit_price=float(limit_price),
+            ) from exc
         raise HTTPException(
             status_code=422,
             detail={
@@ -1300,12 +1706,55 @@ def _apply_leg_exit(
     except Exception:
         opened_on = closed_at.date()
 
-    fill, exit_quote = _fill_the_exit(
-        leg=leg,
-        underlying=underlying,
-        order_type=(req.order_type or "MARKET").upper(),
-        limit_price=req.limit_price,
-    )
+    try:
+        fill, exit_quote = _fill_the_exit(
+            leg=leg,
+            underlying=underlying,
+            order_type=(req.order_type or "MARKET").upper(),
+            limit_price=req.limit_price,
+            rest_away=True,
+        )
+    except _ExitShouldRest as waiting:
+        # HIS PRICE ON THE WAY OUT. The leg is not closed, the trade is
+        # untouched, and an open order now waits for the book. When it fills
+        # it comes back through THIS function, so the leg closes, the charges
+        # are taken and the note is written by exactly this code.
+        resting = _rest_them(
+            [{
+                "sequence": sequence,
+                "leg": _exit_leg_request(leg, pos),
+                "label": waiting.label,
+                "limit_price": waiting.limit_price,
+                "book": waiting.book,
+                "side": waiting.side,
+            }],
+            underlying=underlying,
+            strategy_name=pos.get("strategy_name"),
+            kind=(book.REVERSE if reverse else book.EXIT_LEG),
+            position_id=position_id,
+            group_id=str(uuid.uuid4()),
+            extra_leg={
+                "sequence": int(sequence),
+                "close_reason": req.close_reason,
+                "notes": req.notes,
+            },
+        )
+        return {
+            "position_id": position_id,
+            "status": "resting",
+            "last_leg": False,
+            "journal_status": "not_written",
+            "fill": None,
+            "resting": resting,
+            "resting_count": len(resting),
+            "legs_open": len(open_legs(stored_legs)),
+            "legs_closed": len(stored_legs) - len(open_legs(stored_legs)),
+            "message": (
+                f"Nothing was exited. " + _resting_message(resting)
+                + " The trade is exactly as it was until it fills."
+            ),
+        }
+
     closed_leg = _close_the_leg(
         leg, fill=fill, contracts=contracts, closed_at=closed_at, opened_on=opened_on
     )

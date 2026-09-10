@@ -943,6 +943,10 @@ export class HomePage {
   /** The third figure on the band: what he asked this trade to tell him. */
   _bandThird(p) {
     const alerts = Array.isArray(p.alerts) ? p.alerts : [];
+    // BUILD B. Something waiting for a price outranks a target that has not
+    // been reached, because it is a live instruction of his that the market
+    // has not met yet. A reached target still comes first: that one needs him.
+    const resting = Number(p.resting_orders || 0);
     if (alerts.length) {
       const a = alerts[0];
       const what = a.kind === 'profit' ? 'profit' : 'loss';
@@ -951,6 +955,13 @@ export class HomePage {
         k: 'Reached',
         v: `${who} · ${what}`,
         tone: a.kind === 'profit' ? 'up' : 'down',
+      };
+    }
+    if (resting > 0) {
+      return {
+        k: 'Open orders',
+        v: `${resting} resting`,
+        tone: 'amber',
       };
     }
     const t = p.targets || {};
@@ -1010,7 +1021,16 @@ export class HomePage {
     const pnl = typeof p.unrealized_pnl_inr === 'number' ? p.unrealized_pnl_inr : null;
     const net = typeof p.net_if_exit_now_inr === 'number' ? p.net_if_exit_now_inr : null;
 
-    return `<div class="${cls}" data-band="${escapeHtml(String(p.position_id))}">
+    // BUILD B, his instruction of 2026-09-10. A resting exit that the bell
+    // killed leaves him holding a leg he meant to be out of. He must not find
+    // that out by accident, so it sits ABOVE the band, in plain words, and
+    // points at the 15:20 naked-shorts reading. A warning only: it never
+    // trades and it never changes an order.
+    const stranded = typeof p.orders_warning === 'string' && p.orders_warning
+      ? `<div class="hb-warn" role="status">${escapeHtml(p.orders_warning)}</div>`
+      : '';
+
+    return `${stranded}<div class="${cls}" data-band="${escapeHtml(String(p.position_id))}">
       <div>${chip}</div>
       <div class="t">${escapeHtml(p.strategy_name || 'Trade')}<small>${escapeHtml(meta)}</small></div>
       ${money('Open profit / loss', pnl === null ? null : signed(pnl, { whole: true }), `hero ${pnl === null ? '' : pnl < 0 ? 'dn' : 'up'}`)}

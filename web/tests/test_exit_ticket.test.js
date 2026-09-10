@@ -98,12 +98,14 @@ describe('the exit is the entry rule, reversed', () => {
     expect(f.how).toContain('better');
   });
 
-  it('a limit the book has not reached does not fill, and says whose price it is', () => {
+  it('a limit the book has not reached does not fill NOW, and says it will wait', () => {
+    // BUILD B. Buying back the sold call needs the ask to come down to 95. It
+    // does not refuse: it rests until it does, or until the bell.
     const sold = { direction: 'sell', bid: 98.6, ask: 98.75 };
     const f = previewExit(sold, { mode: 'LIMIT', limit: 95 });
     expect(f.ok).toBe(false);
     expect(f.away).toBe(true);
-    expect(f.how).toContain('your price, not a rule');
+    expect(f.how).toContain('rests until the ask reaches 95.00');
     expect(f.how).toContain('the ask is 98.75');
   });
 
@@ -170,18 +172,24 @@ describe('the ticket as he reads it', () => {
     expect(host.innerHTML).toMatch(/data-x="send-all"[^>]*disabled/);
   });
 
-  it('a limit away from the book shows the amber note and greys the send', () => {
+  it('a limit away from the book shows the amber note and KEEPS the send live', () => {
+    // BUILD B replaced this test's original meaning on purpose: the send used
+    // to go grey, which is the refusal he asked to be removed.
     const { t, host } = mount();
     t.open(condor());
-    // Buying back the sold 23,800 call needs the ask, 98.75. Bidding 95 will not fill.
+    // Buying back the sold 23,800 call needs the ask, 98.75. Bidding 95 will
+    // not fill now, so that leg rests and the others go.
     const i = t.legs.findIndex((l) => l.sequence === 3);
     t.setMode(i, 'LIMIT');
     t.setLimit(i, '95');
 
     const html = host.innerHTML;
     expect(html).toContain('your price, not a rule');
-    expect(html).toContain('Resting orders arrive in the next build');
-    expect(html).toMatch(/data-x="send-all"[^>]*disabled/);
+    expect(html).toContain('will rest as open orders until the book reaches your price');
+    expect(html).toContain("inside today's price band");
+    expect(html).toContain('expire at the bell');
+    expect(html).toContain('Send the fills and rest the rest');
+    expect(html).not.toMatch(/data-x="send-all"[^>]*disabled/);
     // Never red, and never beside a rule.
     expect(html).not.toContain('Unlimited');
   });

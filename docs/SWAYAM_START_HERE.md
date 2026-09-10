@@ -85,6 +85,28 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
+### Latest first: BUILD B, RESTING ORDERS, 2026-09-10 night
+
+**On a branch, pushed, NOT merged, so none of it is live.** Branch
+`feature/swayam-build03-resting-orders-044`, cut from `main` at the merge of
+pull request #66. **Migration 024 IS APPLIED**, by him, 17:59 on 2026-09-10.
+
+**A limit the book has not reached now WAITS instead of refusing.** His words
+of 10 September, item 1 of `docs/PLAN.md` §2.12.5, built. Entry and exit
+alike. `docs/builds/BUILD_03_RESTING_ORDERS.md` has every proof.
+
+| | |
+|---|---|
+| **The order book** | `swayam_orders`, one trading day, everything resting expires at 15:30 and is charged nothing. A row there is not a trade: no position, no fill, no charge and no note until it fills |
+| **The band comes from the FYERS DEPTH call, not the quote** | The quote carries no band at all. Verified live: 23,800 September call, 0.05 to 327.45, tick 0.05, against 263.85 on 10 September. One depth call per order placed, never per refresh. A failure lets the order rest and SAYS the band could not be read |
+| **The watcher never calls FYERS** | It rides on the chain feed's refreshes and reads the book the desk is already quoting from. A fill goes down exactly the path a sent leg takes |
+| **One order fills at most once** | One conditional update in the database that only one process can win. His own requirement of 2026-09-10 |
+| **⚠️ IT ONLY FILLS WHILE THE BACKEND IS AWAKE** | Which on Cloud Run means while one of his pages is open. It is NOT sitting at the broker. That sentence is on the screen in every state and in the handoff |
+| **The bell's warning** | A resting exit killed by 15:30 while its trade is still open is named on Home and on the desk, pointing at the 15:20 naked-shorts check. Proved live on his real condor |
+| **Built in a worktree, deliberately** | Another chat held the primary folder. The worktree got its own Python environment and its own ports, 8010 and 5183, and `import swayam` was proved to resolve inside it before any test ran. `main` gets merged in again before the pull request |
+| **Verified on the running system** | Python 692 passing, JavaScript 339 in 36 files, journal folder 6 notes before and after, three groups rendered from the real backend in both themes, the verification rows removed again and the table shown empty |
+| **Only his window can prove** | A fill from the book. And a resting order on the live screen at all, because nothing may rest after 15:30 |
+
 ### Latest first: BUILD A COMPLETE, ALL THREE PARTS, 2026-09-10
 
 **On a branch with an open pull request, NOT merged, so none of this is

@@ -164,6 +164,18 @@ export const api = {
     }),
   detectNakedShorts: (atTime = '15:20') =>
     request(`/api/positions/naked-shorts?at_time=${encodeURIComponent(atTime)}`),
+
+  // BUILD B. His open orders: a limit the book has not reached, waiting for
+  // it. Read, re-price and cancel. None of these is a trade; a resting order
+  // becomes one only when the watcher fills it.
+  getOrders: (date = 'today') => request(`/api/orders?date=${encodeURIComponent(date)}`),
+  // The price and nothing else. The order keeps its id and its place.
+  modifyOrder: (orderId, limitPrice) =>
+    request(`/api/orders/${orderId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ limit_price: limitPrice }),
+    }),
+  cancelOrder: (orderId) => request(`/api/orders/${orderId}`, { method: 'DELETE' }),
   getSessionContextSummary: (sessionId) =>
     request(`/api/ai/session/${sessionId}/context-summary`),
   getJournalTrades: (params = {}) => {

@@ -11,13 +11,13 @@ So a price that has not been reached says one thing, a rule says another, and
 they never share a colour. Amber for a price, never red, never beside a rule
 tile.
 
-WHAT THIS BUILD DOES AND DOES NOT DO. In Build A a limit the book has not
-reached refuses that send. Build B makes it REST as an open order until the
-book comes to it, which is what he actually asked for: "It should not execute
-if the price is not available, but must be sitting in the system till the time
-the bid and ask reach the price I want." The wording says so plainly, so the
-refusal reads as a limitation of the terminal today rather than as a rule he
-has broken.
+WHAT CHANGED IN BUILD B, 2026-09-10. A limit the book has not reached no
+longer refuses anything. It RESTS as an open order until the book comes to it,
+which is what he actually asked for: "It should not execute if the price is
+not available, but must be sitting in the system till the time the bid and ask
+reach the price I want." So `will_rest` is now the sentence he normally sees,
+and `price_not_reached` is kept for the two places where resting is not
+possible: after the bell, and on a preview, which sends nothing.
 
 The fill rule itself is untouched. `services/fills.py` decides whether a leg
 fills. This only decides how the refusal is worded when it does not, and it
@@ -35,7 +35,7 @@ def side_needed(direction: str) -> str:
 
 
 def price_not_reached(*, side_hit: str, market: Optional[float]) -> str:
-    """The sentence a limit away from the book must use, everywhere."""
+    """A limit away from the book, where nothing can rest: after the bell, or a preview."""
     where = (
         f"the {side_hit} is {market:,.2f}"
         if market is not None
@@ -43,7 +43,27 @@ def price_not_reached(*, side_hit: str, market: Optional[float]) -> str:
     )
     return (
         f"Your price, not a rule: {where}. "
-        "Resting orders arrive in the next build; for now move the price or switch to market."
+        "Nothing rests after 15:30, so move the price, switch to market, or place it in your window."
+    )
+
+
+def will_rest(*, side_hit: str, market: Optional[float], limit: Optional[float], band: Optional[str] = None) -> str:
+    """What a limit away from the book does now: it waits for the book.
+
+    Build B. The one sentence that has to be unmistakable, because he lost a
+    strangle to the old refusal: nothing is wrong, nothing is blocked, and the
+    order is sitting there until his price arrives or the bell comes.
+    """
+    where = (
+        f"the {side_hit} is {market:,.2f}"
+        if market is not None
+        else f"the {side_hit} is not published"
+    )
+    mine = f" at {limit:,.2f}" if limit is not None else ""
+    inside = f" {band}." if band else ""
+    return (
+        f"Your price, not a rule: {where}. This leg rests as an open order{mine} until the "
+        f"book reaches it, and expires at the bell.{inside}"
     )
 
 

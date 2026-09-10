@@ -37,10 +37,13 @@ describe('the fill preview mirrors the exchange', () => {
     expect(previewFill({ bs: 'B', price: 82.2, bid: 81.9, ask: 82.45 }, { mode: 'MARKET' })).toEqual({ ok: true, price: 82.45, how: 'market · at the ask 82.45' });
     expect(previewFill({ bs: 'S', price: 185, bid: 184.75, ask: 185.3 }, { mode: 'MARKET' })).toEqual({ ok: true, price: 184.75, how: 'market · at the bid 184.75' });
   });
-  it('a buy limit below the ask does not fill, and says where the ask is', () => {
+  it('a buy limit below the ask does not fill NOW, and says it will wait', () => {
+    // BUILD B. It does not refuse any more: it rests until the ask comes down
+    // to his price. The note says both where the book is and what happens.
     const f = previewFill({ bs: 'B', price: 82.2, bid: 81.9, ask: 82.45 }, { mode: 'LIMIT', limit: 80 });
     expect(f.ok).toBe(false);
-    expect(f.how).toContain('your price, not a rule');
+    expect(f.away).toBe(true);
+    expect(f.how).toContain('rests until the ask reaches 80.00');
     expect(f.how).toContain('ask is 82.45');
   });
   it('a limit through the market fills at the market, which is better than his limit', () => {
@@ -80,7 +83,11 @@ describe('the execution ticket', () => {
     expect(p[1]).toMatchObject({ strike: 23700, option_type: 'CE', order_type: 'MARKET', expiry_date: '2026-09-29' });
   });
 
-  it('a limit away from the market blocks both send buttons and names the leg', () => {
+  it('a limit away from the market rests instead of blocking the send', () => {
+    // BUILD B replaced this test's original meaning on purpose. It used to
+    // assert that both send buttons went grey. That refusal cost him his
+    // strangle on 10 September. The buttons now stay live and the ticket says
+    // which legs will wait.
     const { t, host } = ticket();
     t.open(condor(), ctx());
     const i = t.legs.findIndex((l) => l.bs === 'B' && l.strike === 24000);
@@ -89,9 +96,13 @@ describe('the execution ticket', () => {
     const { blocked } = t.totals();
     expect(blocked).toEqual(['BUY 24,000 CE']);
     expect(host.innerHTML).toContain('your price, not a rule');
-    expect(host.innerHTML).toContain('data-xt="send-all" disabled');
-    expect(host.innerHTML).toContain('data-xt="send-one" disabled');
-    expect(host.innerHTML).toContain('Move it, press Reset, or switch it to market');
+    expect(host.innerHTML).not.toContain('data-xt="send-all" disabled');
+    expect(host.innerHTML).not.toContain('data-xt="send-one" disabled');
+    expect(host.innerHTML).toContain('Send the fills and rest the rest');
+    expect(host.innerHTML).toContain('will rest as open orders until the book reaches your price');
+    expect(host.innerHTML).toContain("inside today's price band");
+    expect(host.innerHTML).toContain('expire at the bell');
+    expect(host.innerHTML).toContain('will wait for the book and expire at 15:30');
     // The net at his prices is still a real figure, and says it is conditional.
     expect(t.totals().net).not.toBeNull();
     expect(t.totals().hypothetical).toBe(true);
