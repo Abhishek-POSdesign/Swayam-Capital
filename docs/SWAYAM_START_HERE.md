@@ -85,7 +85,25 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: THE FIRST LIVE SEND, 2026-09-10, 13:39 to 14:30 IST
+### Latest first: THE PLAN FOR THE POSITION AREA, AND THE BUILDER CHATS, 2026-09-10 evening
+
+**Nothing was built. Everything was planned, and the way we build changed.**
+`docs/PLAN.md` §2.12.6 has his corrections and decisions; the vault session
+log `00 - Developer Logs/SESSION_LOG_2026-09-10_evening.md` has the narrative.
+
+| | |
+|---|---|
+| **⚠️ EVERY TRADE IN THE RECORD IS A TERMINAL TEST** | All six. Paper trading has NOT started; he will say when, and a script he runs marks that day (Build 02). The open condor 7cd4d017 is a terminal test too, still open on purpose, still not to be closed, edited or marked by script |
+| **⚠️ THE SYSTEM NAMED THE CONDOR "SHORT STRANGLE"** | Not him. The strangle preset was loaded, the ticket refused his limit price, he went to a condor at market, the name stayed. Any document saying "he named it" is wrong |
+| **The main chat is the orchestrator and does not build** | It plans, draws the mockup, writes `docs/builds/BUILD_0N_*.md` with the prompt at the top, and reviews the finished build before he merges. One fresh builder chat per build, one at a time. `docs/builds/README.md` |
+| **Four builds, in order** | 01 the desk's position area, exit ticket, campaign model, name from the legs, click-to-load, drainer fault. 02 Home's band and states, targets, Manage from Home, the crosshair, the terminal-test phase, the big-number pass. 03 resting orders. 04 the option chain, after its own mockup |
+| **The mockup they are held to** | **Swayam Position Area**, https://claude.ai/code/artifact/ef242a22-59a7-4752-8aa4-91d59393c5d5, built on the real condor marked at the 15:26 closing book from the recorder, exit charges through the real engine. The build must be identical |
+| **Home, decided** | Option B, the whole band coloured from the money. Solid means running; blinking means a target was reached; muted means squared off. Manage opens the exit ticket on Home. Targets per leg, both profit and loss, from a designer button and a small modal |
+| **His screen rules, standing** | Numbers he reads big and bold, informative text small and muted, cards 70 to 80 percent filled, mockup first for any visual change and the build identical to it |
+| Cleanup | The folder is on `main` at the PR 61 merge, six merged branches deleted locally and on GitHub, one branch in the repository. One empty worktree folder from the AI partner chat is locked by another process; git no longer knows it |
+| Record | Unchanged: 1 open, 2 closed on 10 Sep, 3 closed on 9 Sep. All terminal tests. Two failed `close` rows in the outbox until Build 01 fixes the drainer |
+
+### Earlier: THE FIRST LIVE SEND, 2026-09-10, 13:39 to 14:30 IST
 
 **The live test passed, and it found the next build.** `docs/PLAN.md` §2.12.5
 has every figure and every decision; the vault session log
@@ -94,7 +112,7 @@ has every figure and every decision; the vault session log
 | | |
 |---|---|
 | **Proven on the live market** | The ticket sends, at the ask and the bid, spot and margin stored. Rule 4 tested for the first time. One by one keeps one trade. The chain builds a structure. The close fills against the book. Notes complete in the vault. The recorder records real numbers |
-| **⚠️ AN OPEN POSITION IS CARRIED OVERNIGHT ON PURPOSE** | Trade `7cd4d017`, a four-leg condor named "Short Strangle" because that preset was loaded first. His instruction: keep it open to see how things look after the close and as the first real subject for the position area. **Do not close it. Do not treat it as test data.** |
+| **⚠️ AN OPEN POSITION IS CARRIED OVERNIGHT ON PURPOSE** | Trade `7cd4d017`, a four-leg condor the system named "Short Strangle" because that preset was loaded first. His instruction: keep it open to see how things look after the close and as the first real subject for the position area. **Do not close it. Do not edit it.** (It is a terminal test, like every row; he said so that evening.) |
 | **His decisions from the test** | Limit orders must REST until the book reaches them. The position area is the next build, with the exit ticket, resting orders and the Home fixes, in one PR. The payoff shows the open trade. A running trade is unmistakable on Home, no coloured edge. §2.12.5 items 1 to 8 |
 | **The chain's faults** | Scroll thrown to the top every five seconds, cause confirmed. A stale strike in live ink. §2.12.5 item 9. PR 5 |
 | **Two outbox rows fail on every drain** | `close` rows for 03a1b63d and 8030ed03, already completed by another route. Notes are fine. §2.12.5 item 8 |
@@ -378,19 +396,19 @@ His decisions, do not relitigate:
 
 ## 5. WHAT IS NOT DONE. Do not claim any of these.
 
-1. **THE LIVE MARKET TEST. This is the gate to paper trading.** Nothing from
-   rounds 2 and 3 has been seen with a live market, and **nothing at all has
-   been seen with a real open position, because he has never had one.** The Home
-   positions strip's colour, its combined profit and loss, its running-loss
-   headroom, the desk's margin-used figure feeding rule 4, and the Trade Journal
-   row are all verified only against injected data. `docs/PLAN.md` §1 is the
-   script, sized for his 90 minutes.
-2. **Managing a trade from the screen.** A leg can now be ADDED to an open
-   trade (PR #49, one by one), but a leg cannot be exited or reversed on its
-   own, and the whole trade can only be closed from a terminal until PR 3
-   brings the position area and the exit ticket. `docs/PLAN.md` §2.12.2 PR 3.
+1. ~~The live market test.~~ **DONE 2026-09-09 and 2026-09-10.** Every reading
+   in `docs/PLAN.md` §1 and §2.12.5 was taken on the live market, including a
+   real open position and the first send through the ticket. **What it is
+   NOT: paper trading.** Every trade taken so far is a terminal test; paper
+   trading starts on the day he says, marked by a script (Build 02).
+2. **Managing a trade from the screen.** A leg can be ADDED to an open trade
+   (PR #49, one by one), but a leg cannot be exited or reversed on its own,
+   and the whole trade can only be closed from a terminal until Build 01
+   brings the position area and the exit ticket. `docs/builds/`.
    (The Trade Journal's four faults are DONE. `docs/PLAN.md` §2.2.)
-2a. **A real send through the ticket.** Never done with a live book. Tomorrow.
+2a. ~~A real send through the ticket.~~ **DONE 2026-09-10**, condor at
+   13:45:49 IST, `docs/PLAN.md` §2.12.5. A limit away from the book still
+   refuses instead of resting: Build 03.
 2b. **Real-money orders.** Not built, and by decision not next. `docs/PLAN.md`
    §2.14 has the research and the order of work.
 3. ~~The recorder writing zeros.~~ **FIXED and deployed 2026-09-09 night**,

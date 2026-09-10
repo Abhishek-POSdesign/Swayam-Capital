@@ -55,9 +55,10 @@ had to correct it more than once.
 | The recorder | **Deployed** 19:05 IST, revision `swayam-recorder-00002-lez`. Its first real chance to write is 09:15 on the next trading day |
 | Tests | Python **413 pass, 1 fail**. JavaScript **216 pass, 0 fail**. The one failure is `test_notifications` dispatch, confirmed identical on a clean tree, so it pre-dates all of this |
 
-**His deadline is Friday 2026-09-11.** Paper trading starts when the live
-verification passes, not on a fixed date. His words: "I'm not keeping a minimum
-fixed date, but a deadline is fixed."
+**His deadline was Friday 2026-09-11.** On 2026-09-10 evening he said himself
+it will not be met, because the backtester runs behind and the position area is
+four builds away. Nothing is planned against a date. Paper trading starts on
+the day he says so, and a script he runs marks that day (§2.12.6, Build 02).
 
 ### The mis-merge. RESOLVED 2026-09-08 by PR #37. Kept for the lesson.
 
@@ -801,7 +802,18 @@ from the chain the natural way to build a structure.
 
 ---
 
-**PR 3, THE BUILD SPEC AS OF 2026-09-10 EVENING.** One pull request, in this
+**SUPERSEDED THE SAME EVENING. PR 3 is now FOUR BUILDS in `docs/builds/`,
+his decision of 2026-09-10 evening, each its own pull request from its own
+builder chat, one at a time:** Build 01 the position area, the exit ticket
+and the campaign model (`BUILD_01_DESK_POSITION_AREA.md`); Build 02 Home's
+band, targets, Manage from Home, the crosshair, the terminal-test phase and
+the big-number pass (`BUILD_02_HOME_TARGETS_AND_READING.md`); Build 03
+resting orders (`BUILD_03_RESTING_ORDERS.md`); Build 04 the option chain,
+after its own mockup (`BUILD_04_OPTION_CHAIN.md`). §2.12.6 has what he
+corrected and decided that evening. The one-PR list below is kept as the
+record of what was asked; the build documents are the specification.
+
+**PR 3, THE BUILD SPEC AS OF 2026-09-10 AFTERNOON.** One pull request, in this
 order, each piece verified in a real browser against the real backend and, for
 fills, against the live market in his window:
 
@@ -1025,6 +1037,64 @@ live log, the database or his vault, not from a summary. The vault session log
 close." Tomorrow in his window: Home and the desk with a carried position, rule
 2 against a real carry, the 15:20 naked-shorts check on a hedged structure, and
 the position area's first real subject once PR 3 lands.
+
+### 2.12.6 WHAT HE CORRECTED AND DECIDED ON 2026-09-10 EVENING. Read before any build.
+
+**Corrections, in his words.**
+
+1. **Every trade in the record is a terminal test, not a paper trade.** "We
+   have not started the paper trading. We are doing the testing of how the
+   terminal works. All these paper trades are test trades... I did not
+   backtest, plan, or review it. It was just clicking the order and checking
+   how the terminal behaves." All six, the open condor included. Paper trading
+   starts on the day he says; Build 02 gives him the script that marks it and
+   the script that marks the six. His paper record must start clean: "how I
+   will play with the money depends upon how my paper trade will perform."
+2. **The system named the condor "Short Strangle". He did not.** "It was the
+   system error that gave it the name." He loaded the strangle preset, the
+   ticket refused his limit price because the book had not reached it, he went
+   to a condor at market, and the name stayed with the preset. "I had no role
+   to play in naming any order I made today." Build 01 derives the name from
+   the legs; Build 03 makes the limit rest.
+3. **The backtester is what runs behind**, not the strategy builder. It is the
+   backtester chat's work. The deadline of 11 September will not be met, and
+   he said so.
+
+**Decisions.**
+
+- **The main chat is the orchestrator and does not build.** It plans, draws
+  the mockup, writes the build document with its paste-prompt, and reviews
+  the finished build on the running system before he merges. One fresh
+  builder chat per build, one at a time, one pull request each.
+  `docs/builds/README.md`.
+- **Four builds**, in the order above. Resting orders were cut out of the
+  desk build because they are the riskiest piece to prove.
+- **The mockup**, Swayam Position Area,
+  https://claude.ai/code/artifact/ef242a22-59a7-4752-8aa4-91d59393c5d5, built
+  on the real condor at the 15:26 closing book, accepted with his feedback
+  applied. "The mockup must be identical" to the build.
+- **Home: Option B.** The whole band takes its colour from the money, no
+  coloured edge. **Solid means running. Blinking means a target was reached,
+  profit or loss, on a leg or on the trade, and needs him. Muted means
+  nothing open or squared off.** "As soon as the trade is squared off,
+  everything goes mute: no blink, no color."
+- **Targets**, "target always means both loss and profit", per leg by
+  preference, the whole trade as the fallback, set from a designer button on
+  the position card that opens a small modal. "I don't want unnecessary
+  things lying on my position page." A blank box is no signal; a blank trade
+  loss falls back to rule 1.
+- **Manage on Home opens the exit ticket right there**, one leg or all. Not a
+  link to the desk.
+- **Resting orders are visible in the position area as Open orders**, three
+  groups, each labelled and coloured by its nature. No modal to keep open.
+- **The payoff crosshair**: hover reads the NIFTY level and the profit or
+  loss, at expiry and today, without moving anything. Accepted as drawn.
+- **"Net if you exit now" is after charges both ways**: "the actual profit
+  that will come into my account after exiting." Keep it beside the open
+  profit or loss, never instead of it.
+- **Standing screen rules:** numbers he reads are big and bold; informative
+  text is small and muted; a card is 70 to 80 percent filled; any change
+  with a visual impact gets a mockup first.
 
 ### 2.18 THE TRADE JOURNAL PAGE. To be planned WITH him, in its own discussion. Not started.
 
