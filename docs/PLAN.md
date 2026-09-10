@@ -2128,6 +2128,105 @@ migrations 002, 005, 006, 013. Then the live database, read only.
   far." Audit the existing partner against §2.17.7 and list what is right,
   what is wrong, what changes, what is fixed. Then step by step.
 
+### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
+
+**Why it came up.** He has one free Supabase account with two projects:
+"Sikka Personal Apps" (his daily apps) and "Sikka Business Apps" (two
+rarely used business apps, and Swayam beside them). He asked whether Swayam
+should have its own database now that backtesting brings a lot of data, and
+what the no-cost options are. **This section is the discussion and the
+recommendation he agreed with. It is not yet built, and the backtester chat
+must brainstorm it with him before anything is built**, because he wants to
+understand how it will all work, including the backups.
+
+**Measured 2026-09-10 evening, read-only, through the Supabase connector and
+on his disk:**
+
+| | |
+|---|---|
+| The whole shared database | 15 MB, of a 500 MB free allowance |
+| Swayam's 22 tables | 1.7 MB |
+| The two business apps' 17 tables beside it | 1.9 MB |
+| The backtesting data on his PC, `data/history/` | 631 MB as compressed Parquet files: 59.3 million minute option bars, 4.6 million daily rows, 0.8 million index bars |
+| The same data as Postgres rows | several gigabytes, an estimate: it does not fit a free project and would strain a paid one |
+| The recorder's bucket `gs://swayam-capital-options-data` | 3.1 MB after two days, about 1.3 MB a trading day |
+| `data/options_cache.duckdb` | Already exists: the backtester chat's local query store |
+
+**The recommendation he agreed with: split by PURPOSE, not by account.**
+
+1. **The terminal's record stays in a hosted Postgres**, because the live site
+   on Cloud Run must reach it. It is tiny and stays tiny: a trade is a row.
+2. **The backtesting history never enters a hosted Postgres.** It lives on his
+   PC as the Parquet files it already is, queried by **DuckDB**, with the
+   Google bucket as the copy. DuckDB is a database engine built for exactly
+   this: columns, billions of rows, one file, no server, faster on his PC
+   than any hosted database would be over the network. Cost of the bucket
+   copy: about a rupee or two a month.
+3. **This overturns §2.15.6**, which designed four `swayam_*` Postgres tables
+   for the history, and **`ROADMAP.md` §1 gate 7 and §3 milestone 2**, which
+   say "loading into Postgres". They should read: loaded on his PC in DuckDB
+   from the Parquet files, with the bucket as the copy. **The §2.15.6 change is
+   the backtester chat's to make with him. The roadmap line needs his
+   explicit yes in the main chat before it is edited.**
+4. **Sharing the free project with the business apps is fine for now** at
+   15 MB. The risks were never size: no staging (the guards cover it) and one
+   app touching another's tables (the `swayam_` prefix and scoped queries
+   cover it). **No move during Build A.**
+5. **When Swayam deserves its own project, horizon 2, the real-money mirror:**
+   the clean zero-cost move is to move the two low-use business apps (17
+   tables, 1.9 MB) into "Sikka Personal Apps", leaving "Sikka Business Apps"
+   to Swayam alone, under his own login, no new secrets. **His decision,
+   2026-09-10: he will do that move himself when he has the chance, in its
+   own session.** Not a second Supabase account on another email (against
+   their fair use), not his wife's account (the record of his money under
+   someone else's login), not Firebase (not Postgres; the whole app speaks
+   SQL). Supabase Pro on his own organisation, about ₹2,100 a month, is
+   reasonable the day real money is mirrored, for built-in backups and no
+   pausing. Not before.
+6. **The one thing to do soon: the nightly backup, §2.6.** A free project
+   keeps no point-in-time history, so his own backup is his only one. The
+   script exists and its restore drill passed; it has run once, by hand.
+
+**His worry, answered, so it is not asked again.** He had heard that a large
+dataset must be in Postgres, because "if you save it in Excel form it can
+crash". That is true of Excel and of plain CSV files: Excel stops at about a
+million rows and a CSV has to be read whole. Parquet with DuckDB is neither.
+It is a real database format and a real database engine, built for hundreds
+of millions of rows, read in columns, in one file, without a server. The
+59 million minute bars already sit in it on his PC and were checked against
+NSE's file across 167,717 contract-days (§2.15.8). "Not hosted" is not
+"not a database".
+
+**WHAT THE BACKTESTER CHAT MUST BRAINSTORM WITH HIM, before building anything
+on this.** He said: "the backtest builder needs to talk to me about it, do a
+brainstorm on this, and make me understand as well how everything will
+work, including the backup system."
+
+- **How the history is stored and queried**, in plain English: the files,
+  the DuckDB store, what a query looks like to him, what the recorder adds
+  each afternoon, how a morning gap is backfilled.
+- **The backup system, end to end.** His wish: **"I want backup to go in my
+  vault in the Second Brain."** Recommendation to put to him: the
+  terminal's RECORD (trades, journal, results: a few megabytes) is backed
+  up nightly into the vault under `00 - Developer Logs/Backups/` or beside
+  it, where Obsidian can see it and Drive keeps it. The MARKET HISTORY
+  (631 MB and growing) is backed up to the Google bucket, and if he wants a
+  Drive copy too it goes in a Drive folder BESIDE the vault, not inside it,
+  because a large binary folder inside the vault slows Obsidian and its sync
+  and gains nothing. He decides.
+- **What "loaded" means for `ROADMAP.md` gate 7** once the Postgres wording
+  goes, so the gate is still a condition proven on the running system.
+- **What the desk reads from the history** (§3 milestone 4 of the roadmap,
+  "results feed the desk") and how the live site, which cannot see his PC,
+  gets a backtest result: a small results table in Supabase pushed from his
+  PC, the same pattern as the outbox and the vault mirror.
+- **The move of the business apps** into the personal project: his own
+  session, his timing, and what the backtester chat must not assume about
+  it.
+
+Then the backtester chat rewrites §2.15.6 with him and records his decisions
+here, in this section, dated.
+
 ---
 
 ## 3. THE BIG ONE, AFTER THE ABOVE

@@ -102,6 +102,8 @@ log `00 - Developer Logs/SESSION_LOG_2026-09-10_evening.md` has the narrative.
 | **His screen rules, standing** | Numbers he reads big and bold, informative text small and muted, cards 70 to 80 percent filled, mockup first for any visual change and the build identical to it |
 | Cleanup | The folder is on `main` at the PR 61 merge, six merged branches deleted locally and on GitHub, one branch in the repository. One empty worktree folder from the AI partner chat is locked by another process; git no longer knows it |
 | Record | Unchanged: 1 open, 2 closed on 10 Sep, 3 closed on 9 Sep. All terminal tests. Two failed `close` rows in the outbox until Build 01 fixes the drainer |
+| **The database, discussed and agreed** | The terminal's record stays in the shared Supabase project (15 MB of 500 MB, Swayam 1.7 MB). **The market history never goes into Supabase**: 631 MB of Parquet on his PC, queried by DuckDB, the bucket as the copy. Overturns PLAN §2.15.6 and the roadmap's "loading into Postgres", the latter pending his yes. **The backtester chat brainstorms it with him first, backups included; he wants backups in his vault.** He will move the two business apps into his personal project himself, later. `docs/PLAN.md` §2.19 |
+| **Build A is under way** in its own chat, folder held by it | Its seven answers were correct; it found the live valuation marks at the traded price and that a naive drainer fix would double the Exit block. The FYERS price band for Build B was found on the **depth** call, not the quote: `BUILD_03` §3.2 |
 
 ### Earlier: THE FIRST LIVE SEND, 2026-09-10, 13:39 to 14:30 IST
 

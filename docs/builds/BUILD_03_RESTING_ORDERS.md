@@ -129,13 +129,22 @@ it), `result jsonb` (what filling it produced: position id, leg sequence),
 - The amber note on both tickets: "your price, not a rule. {Legs} will rest
   as open orders until the book reaches your price, inside today's price
   band, and expire at the bell. The other legs fill now."
-- **The price band.** Read the contract's upper and lower band from the
-  FYERS quote used for the leg if the quote carries it; store it on the
-  order with `band_source = 'FYERS quote'`. A limit outside the band is
-  refused with the band named. **If the quote does not carry a band, the
-  order rests anyway, `band_source = 'unavailable'`, and the ticket says
-  "band not readable from FYERS; the order rests without a band check".**
-  Never an invented band.
+- **The price band. Settled by a read-only test on 2026-09-10 evening.**
+  The FYERS **quote** call carries no band at all (its fields: ask, atp,
+  bid, ch, chp, high_price, low_price, lp, open_price, prev_close_price,
+  spread, volume and names). The FYERS **market depth** call does:
+  `fyers_client.model.depth(data={"symbol": sym, "ohlcv_flag": "1"})`
+  returns, keyed by the symbol, `lower_ckt`, `upper_ckt` and `tick_Size`,
+  beside `bids`, `ask`, `ltp`, `oi`, `pdoi`, `totalbuyqty`, `totalsellqty`.
+  For `NSE:NIFTY26SEP23800CE` at the close: lower 0.05, upper 263.85, tick
+  0.05. So: **one depth call when the order is placed**, store the band on
+  the order with `band_source = 'FYERS depth'`, refuse a limit outside it
+  with the band named, and refuse a limit that is not on the tick. **If the
+  depth call fails, the order rests anyway, `band_source = 'unavailable'`,
+  and the ticket says "band not readable from FYERS; the order rests without
+  a band check".** Never an invented band. The depth call is one more FYERS
+  request per placement, not per refresh; it does not touch the chain feed's
+  budget.
 
 ### 3.3 The watcher
 
