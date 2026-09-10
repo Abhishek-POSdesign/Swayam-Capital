@@ -16,7 +16,7 @@
 |---|---|---|---|
 | **Main** | `docs/SUCCESSOR_PROMPT.md` | `docs/PLAN.md` §1, §2 | The terminal itself: the desk, the ticket, positions, the journal, the recorder, live testing, everything that runs |
 | **Backtester** | `docs/SUCCESSOR_BACKTESTER.md` | `docs/PLAN.md` §2.16, data in §2.15 | Market vocabulary, new strategies, the replay engine, the measurement |
-| **AI partner** | `docs/SUCCESSOR_AI_PARTNER.md` | `docs/PLAN.md` §2.17 | What the AI in the terminal IS, what it refuses, how it is corrected |
+| **AI partner** | `docs/SUCCESSOR_AI_PARTNER.md` | `docs/PLAN.md` §2.17 | **The mentor chat.** Designs, monitors, corrects and feeds the trading partner that lives in the terminal, whichever model that is. Never claims to be the partner. §2.17.7 |
 
 More chats will be added. When one is, add a row here, write its prompt beside
 the others, and give it a numbered section in `docs/PLAN.md` so the prompt has
