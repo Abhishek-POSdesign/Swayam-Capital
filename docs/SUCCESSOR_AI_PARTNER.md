@@ -141,22 +141,76 @@ WHERE WE ARE. The first session read everything and found that the partner in
 the terminal today is running on a stale version of me: it reads Method files
 that still carry rules my one-pager deleted, and nothing tells it which
 document wins. Its memory is empty: 25 messages and about six rupees in its
-whole life. PLAN 2.17.8 has the facts. My words for the next step: "First of
-all, we will see what we have so far. If we need to correct anything, we will
-correct it. We will fix it, and we will move on, step by step."
+whole life. PLAN 2.17.8 has the facts. Nobody ever planned what it should do,
+so we plan it now, from the start.
 
-QUESTIONS STILL OPEN BETWEEN US, in order. PLAN 2.17.9 has where you lean.
-- Which of my documents is constitution and which is history.
-- What should it refuse to answer, and what should it say when it refuses?
-- How does it hold a conversation across days without me repeating myself?
-- What does it read from my vault, and what should it never read?
-- How do I correct it, and where does that correction get stored so it sticks?
-- What does it cost me a month, and what is the cap?
+THE SECOND SESSION, 2026-09-11, was one round of questions and my answers.
+PLAN 2.17.10 has them. The short version: we are DRAFTING, not making hard
+rules; the vault is the home and my PC holds what the partner needs until
+Drive is possible; the backtest and the partner start together when both are
+ready; the partner can advise on anything but has no power over money and may
+write its own notes but never edit my documents; it reads what my trading life
+needs and nothing is walled off forever; it speaks reality, naturally, like
+me; and AI cost is a trading expense, tracked in my record, quality first.
 
-BEFORE THIS CHAT ENDS, EVERY TIME: update docs/PLAN.md 2.17 and this file,
-commit on a feature branch, open a pull request, and tell me. I will clear the
-chat when its context fills and paste this again. What you did not write down
-is gone.
+STILL OPEN, in order.
+- Correction: I did not understand the question. PLAN 2.17.10 item 4 says how
+  to ask it properly. Ask it that way.
+- The tension between "advise on anything" and "no recommended trade on my
+  screen". PLAN 2.17.10 item 6. Put it to me, do not decide it.
+- The cost cap numbers, once you have done the model research and we have a
+  measured month on the Google credit, which runs to 29 September 2026.
+- Which documents are law. Parked. For now, the latest merged commit wins.
+
+YOUR STANDING JOBS, every session, before you say anything to me:
+- Read the recent commits (git log) and what changed in docs/. The terminal
+  grows daily and the partner's design must follow it.
+- Keep THE PAPERS list below current: every document you refer to, with its
+  path, so I can find the latest myself.
+- Update docs/PLAN.md 2.17 and this file, commit on a feature branch, open a
+  pull request, and tell me. I clear the chat when its context fills and
+  paste this again. What you did not write down is gone.
+
+THE PAPERS. Every document this chat refers to, with its path. Latest merged
+commit wins over anything older.
+  Repo, D:\Claude\POS\Trading-Platform\Swayam Capital
+    docs/ROADMAP.md                   direction, four horizons, his end goal
+    docs/PLAN.md                      the one plan; 2.17 is this chat's section;
+                                      2.16 backtester; 2.13 the vault bridge;
+                                      2.18 the journal page; 2.19 the database
+    docs/SWAYAM_START_HERE.md         where everything lives, what is verified
+    docs/CHAT_PROMPTS.md              every chat and its prompt
+    docs/SUCCESSOR_PROMPT.md          the main chat's prompt
+    docs/SUCCESSOR_BACKTESTER.md      the backtester chat's prompt
+    docs/builds/README.md             the builder-chat loop and the builds
+    docs/MY_TRADING_RULES_ONE_PAGE.md mirror of his rules one-pager
+    docs/AI_TRADING_PARTNER.md        how the existing partner was built (old)
+    docs/AI_MEMORY_SYSTEM.md          the existing memory tables (old)
+    docs/AI_INTEGRATION.md            the original AI philosophy (old)
+    CLAUDE.md                         how to work here, what he trades
+    src/swayam/ai/persona/trading_partner.py   what the partner is told and
+                                      reads every turn
+    src/swayam/ai/memory.py, router.py, grounded.py, context_builder.py
+    src/swayam/api/routes/ai.py, lessons.py, session.py
+    src/swayam/services/so_far_today.py        the cost-gate pattern
+    migrations/002, 005, 006, 013     the AI tables
+  Vault, G:\My Drive\Second Brain\02 - Projects\Trading\
+    MY TRADING RULES - ONE PAGE.md    his rules, overrides everything
+    Trading Overview.md               the map of the trading vault
+    00 - Reference/Trading Journey - The Story So Far.md    the why
+    00 - Reference/Personal Trading Brief.md                 his identity (3 Sept)
+    00 - Reference/Historical Swing Trades/                  21 trades, 2022-23
+    00 - Reference/Historical Trade Journal/                 the intraday year
+    00 - Reference/Influences/                               four mentors
+    01 - Method/                      the 3 Sept rules; partly stale, see CLAUDE.md
+    04 - Journal/                     his real trade notes; three exist
+    06 - Platform Plan/Roadmap.md, Platform Overview.md,
+      Self-Improving Agent Integration.md, AI Trading Partner Chapter.md
+  Vault, G:\My Drive\Second Brain\03 - Knowledge\Trading\
+    Books, Frameworks, Zerodha Varsity   other people's teaching
+  Vault, G:\My Drive\Second Brain\00 - Developer Logs\
+    SESSION_LOG_2026-09-09.md and _evening.md   why the code looks as it does
+  His raw archive, E:\Project E\Trading\Bazaar   broken, evidence not record
 ```
 
 ---
@@ -199,6 +253,25 @@ after one session. Write as you go, not at the end.
 closed. The mentor read back the roles and opened a pull request carrying
 §2.17.7 to §2.17.9 and this file. The next session starts with "what we have
 so far": the audit of the existing partner against §2.17.7.
+
+**How the second session went, 2026-09-11.** He had time for one round. Nine
+questions were put, basics first; his answers are in PLAN §2.17.10. Two of
+the nine did not land: the correction question, which he did not understand
+and asked to have explained in detail, and the law-versus-history question,
+which he answered by asking for a paths list instead. Both are recorded with
+how to re-ask them. He also gave the mentor homework: research the model
+options and their real prices, and measure a month of Gemini on the Google
+credit before 29 September 2026.
+
+**He answers from a phone-sized attention span, at the end of his night.**
+Nine questions was the most he could take, and two misfired. Next time, fewer
+and more concrete, with the scenario spelled out before the question.
+
+**The working folder was in use by the main chat on 2026-09-11**, on another
+branch with uncommitted changes, so this chat's documentation went out from a
+separate clone at `C:\Users\Kevin\AppData\Local\Temp\swayam-mentor`. That
+clone is disposable; check `git fetch` and the open pull requests before
+assuming anything about it.
 
 **One transcription flag from that session, unresolved.** He said "You will
 trade Gemini, Opus, Sonnet, Deepseek." Read as "train", or as "it could be";
