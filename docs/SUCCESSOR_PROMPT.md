@@ -146,15 +146,24 @@ propose an architecture. All of that is done and written down. Update
 docs/PLAN.md as work lands; every superseded plan was deleted for exactly this
 reason.
 
-WHERE THINGS STAND, 9 September 2026, night
-I have taken three real paper trades. The live market test is PASSED and is no
-longer the gate. Everything is merged and deployed; the repository has one
-branch, main, and no open pull requests. On the evening of 9 September the
-execution ticket (PR #49), a retry fix (#50), the Home strip move (#51) and
-realistic fills at the bid and ask (#52) were built, merged and deployed. The
-first send through the ticket with a live market has NOT happened yet; it is
-scheduled for my window on 10 September, docs/PLAN.md 2.12.4. Read the vault
-session log 00 - Developer Logs/SESSION_LOG_2026-09-09_evening.md too.
+WHERE THINGS STAND, 10 September 2026, after my window
+The execution ticket, realistic fills, one by one, the option chain and the
+close were all proven ON THE LIVE MARKET on 10 September, docs/PLAN.md 2.12.5.
+I have six paper trades in the record: three from 9 September marked "traded
+price, not comparable", two closed on 10 September at the bid and ask, and ONE
+OPEN: trade 7cd4d017, a four-leg condor, carried overnight on purpose. Do not
+close it and do not call it test data.
+
+THE NEXT BUILD IS PR 3, exactly as docs/PLAN.md 2.12.2 specifies it after the
+live test: the position area below the payoff, the exit ticket with market or
+limit per leg, RESTING limit orders (my decision: a limit away from the market
+sits until the book reaches it, it does not refuse), the campaign model in the
+record, the Home fixes, the drainer's close-row fault. One pull request, in
+that order. Then PR 5, the option chain, whose faults are listed in 2.12.5
+item 9. Read 2.12.5 before touching either.
+
+Read the vault session logs too: 00 - Developer Logs/SESSION_LOG_2026-09-09_evening.md
+and SESSION_LOG_2026-09-10.md.
 
 REAL-MONEY ORDERS. I asked, it was researched, the answer is in docs/PLAN.md
 2.14. For now orders go through the FYERS terminal and everything else lives
@@ -172,9 +181,9 @@ execution, immature exit, immature monitoring. Taking a position is more immatur
 than buying a soda bottle.
 
 WHAT I WANT YOU TO BUILD. docs/PLAN.md section 2.12. In this order.
-(Items 1, 2 and 4 were built on 9 September as PRs #49 to #52. If PR #52 is
-merged, start at item 3 and read what 2.12.2 records for PRs 1 and 2 first.
-If it is not, ask me.)
+(Items 1, 2 and 4 were built on 9 September as PRs #49 to #52 and proven live
+on 10 September. Start at item 3, and read 2.12.5 and the PR 3 spec in 2.12.2
+first. Item 5's faults are in 2.12.5 item 9.)
 1. The execution ticket. I press Execute and I see what is about to be sent
    before it goes: every leg, market or limit with a switch, an editable price
    with a proper reset button, editable lots, the margin needed, my four rules,

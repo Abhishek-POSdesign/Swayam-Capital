@@ -801,6 +801,42 @@ from the chain the natural way to build a structure.
 
 ---
 
+**PR 3, THE BUILD SPEC AS OF 2026-09-10 EVENING.** One pull request, in this
+order, each piece verified in a real browser against the real backend and, for
+fills, against the live market in his window:
+
+1. **The position area** below the payoff: open now, closed today, earlier.
+   Big bold figures, colour from the money without a coloured edge. Per open
+   position: legs with entry fill, live mark at the side he would get, profit
+   and loss per leg, "net if you exit now" after charges both ways, rule 1
+   headroom, max loss, margin stored. The payoff shows the open trade when no
+   structure is loaded.
+2. **The exit ticket**: exit one leg, exit everything, market or limit per
+   leg, editable price with Reset, exit charges per leg, gross, charges both
+   ways and net before he presses, close reason from the four the record
+   allows. Reverse a leg and add a leg through the same ticket.
+3. **Resting orders**: the pending-order book from 2.12.5 item 1, entry and
+   exit alike, with a watcher on the chain feed, modify and cancel in the
+   position area, expiry at the bell.
+4. **The campaign model in the record**: a leg exited alone books its result
+   on the position's legs; the trade's result is the sum when the last leg
+   closes or he says the trade is closed. One result row per trade stays.
+5. **Home**: the running trade unmistakable, margin used from the same sum as
+   the desk, the strategy name following the structure.
+6. **The drainer's close-row fault**, 2.12.5 item 8, and the price-block
+   wording, item 2.
+
+Nothing in `services/fills.py` changes except the addition of resting orders;
+the fill rule stays the exchange's.
+
+**PR 5, THE BUILD SPEC AS OF 2026-09-10 EVENING.** The chain works with a live
+market; it is unusable while it fights his scroll. In order: keep his scroll
+across redraws and update rows in place; show the book and grey the row for a
+strike with no trades today, never offer it for a fill; centre and mark the
+at-the-money row properly; buttons that look like buttons; a readable table
+with fewer figures at a glance and the rest on hover; max pain labelled with
+its expiry. Mockup first, because he will judge it by eye.
+
 #### 2.12.3 WHAT MUST NOT BREAK
 
 1. The payoff graph, its drag, and both sliders. He has said this twice.
@@ -873,7 +909,7 @@ that plainly rather than letting it drift.
 
 ---
 
-### 2.12.4 TOMORROW'S LIVE TEST, 2026-09-10, and the loopholes only the market can close
+### 2.12.4 THE LIVE TEST OF 2026-09-10 — RUN. Results and decisions are in 2.12.5. The script is kept below.
 
 Written the night before, with the market shut. Everything in PRs #49 to #52
 is proven by test and in a browser against the real backend, but **no order has
@@ -911,6 +947,74 @@ order, cheapest proof first:
   reason naming a position with no stored margin, that position predates 021.
 - The desk's own 5-second re-quote can move a market leg's price on the ticket
   while he reads it. That is honest; the server fills at its own read anyway.
+
+### 2.12.5 WHAT THE LIVE TEST OF 2026-09-10 PROVED, AND WHAT HE DECIDED. Read before building PR 3 or PR 5.
+
+His window, 13:39 to about 14:30 IST. He refreshed the token, said "Hi", and
+the main chat walked him step by step. Every figure below was read from the
+live log, the database or his vault, not from a summary. The vault session log
+`00 - Developer Logs/SESSION_LOG_2026-09-10.md` has the narrative.
+
+**Proven on the live market, first time ever for each:**
+
+| | Proof |
+|---|---|
+| A send through the ticket | Condor, 13:45:49 IST, 200. Four legs at the ask and the bid, spread cost ₹42, charges ₹127 per leg recorded, spot 23,435.05 stored, broker margin ₹84,929 stored |
+| Rule 4 tested against a real margin-used figure | Desk read margin used ₹84,929 and rule 4 ₹1,03,926 of ₹5,54,961 |
+| Execute one by one | Trade 03a1b63d: leg 1 at 14:02:29, leg 2 through `/legs` at 14:02:38, one id, sequence 1 and 2, margin re-quoted ₹54,595 |
+| The option chain builds a structure the ticket takes | Trade 8030ed03 from the chain, 14:10:48, both legs at the book |
+| A limit through the market fills at the market | "limit 111.00 · fills at the bid 111.55, better" on the strangle's leg 2 |
+| The close against the live book | Two spreads closed from his PC: every leg at the bid or ask with the traded price beside it, exit charges per leg, one result row each. Net −₹196.91 and −₹123.91 |
+| The notes | Three written by the drainer, complete and in order: real opening time in IST, broker margin, fills line, Adjustments for the added leg, Exit with the side each leg hit |
+| Home | New position on the line within 15 seconds, no reload, no Exit button |
+| The recorder | Real spot, IV and Greeks on 4,428 rows by 14:00, two expiries |
+
+**What he found, and decided. Each is now a build item.**
+
+1. **Limit orders REST. His words:** "I can place 111, 112, or 113 because it's
+   a limit order... It should not execute if the price is not available, but
+   must be sitting in the system till the time the bid and ask reach the price
+   I want." The ticket's refusal of a limit away from the market was my design
+   and it is wrong. **PR 3 builds a pending-order book:** a limit that cannot
+   fill now becomes an open order, watched against the live book on the chain
+   feed's cadence while the market is open, fills when the bid or ask reaches
+   it, shows in the position area with modify and cancel, expires at the bell.
+   Inside the exchange's daily price band, which is to be read from FYERS.
+2. **A price block must not read like a rule block.** The strangle was stopped
+   by his limit price, but the red "Unlimited" tiles beside the greyed buttons
+   made it look like the hedge rule. Entry is never blocked by a rule; the
+   wording says "your price, not a rule".
+3. **The position area does not exist and he thought it did.** He approved the
+   clickable journey and read all of it as built. Only the ticket half was.
+   PR 3 is one build, before anything else: the position area, the exit
+   ticket with market or limit per leg, resting orders, and the Home fixes.
+4. **The payoff graph shows the open trade** when no new structure is loaded.
+5. **A running trade is unmistakable on Home** and goes quiet only when squared
+   off. **The coloured edge beside "Open positions" goes**; profit and loss are
+   shown another way. He will see a mockup first.
+6. **The strategy name follows the structure**, or is his to edit. The condor
+   is still called "Short Strangle" because that preset was loaded first.
+7. **Home's "Margin used" reads the wrong source**: unavailable on Home while
+   the desk showed ₹84,929 from the same position. One sum, both pages.
+8. **The drainer fails a `close` row it has already completed** by the other
+   route (entry note lands, exit appended at once). Rows queued with
+   `awaiting_entry_note` carry no `journal_rel_path`; the close branch must
+   resolve the path from the position and mark the row done when the note
+   already holds an Exit. Two such rows sit in the outbox now.
+9. **The option chain**, all for PR 5: it rebuilds its whole markup every five
+   seconds and throws the scroll to the top, so he could not stay on the
+   at-the-money strikes (cause confirmed in `option-chain-modal.js`); a strike
+   with no trades today shows a dead last trade in live ink (22,850 CE at
+   1,575.95 against a live book of 691.90 to 709.85) and must show the book,
+   greyed, and never be offered for a fill; the at-the-money row centred and
+   unmistakable; buy and sell buttons that look like buttons; a table readable
+   at a glance; max pain labelled with its expiry on the chain and on Home.
+
+**The overnight test.** Trade 7cd4d017, the condor, four legs, stays open into
+2026-09-11 on his instruction: "We have to see how things look after the market
+close." Tomorrow in his window: Home and the desk with a carried position, rule
+2 against a real carry, the 15:20 naked-shorts check on a hedged structure, and
+the position area's first real subject once PR 3 lands.
 
 ### 2.14 REAL-MONEY ORDERS FROM THIS TERMINAL. His question of 2026-09-09 night, researched.
 
@@ -2045,6 +2149,12 @@ Kept short. Detail is in the git history and the pull requests.
 | 2026-09-09 | The path nobody had run: one by one, then close, then the note | `tests/api/test_ticket_end_to_end.py`: first leg opens, second joins, real close values both, one result row, note complete in order |
 | 2026-09-09 | Fills are the exchange's: a buy pays the ask, a sell gets the bid, a limit fills at his price or better | `services/fills.py`; the close is the same rule reversed and refuses after the bell. PR #52 |
 | 2026-09-09 | The spread cost is visible, per leg, on the ticket and in the note | Recorded on every fill against the traded price |
+| 2026-09-10 | **The first send through the ticket, on the live market** | Condor at 13:45:49 IST, four legs at the ask and the bid, spot and margin stored, 200 in the live log |
+| 2026-09-10 | **Rule 4 tested against a real margin-used figure, first time ever** | ₹1,03,926 of ₹5,54,961 on the desk |
+| 2026-09-10 | One by one keeps one trade | 03a1b63d: two legs, sequence 1 and 2, one id |
+| 2026-09-10 | The chain builds a structure the ticket sends | 8030ed03, both legs from the book |
+| 2026-09-10 | The close fills against the live book | Two spreads, every leg at the bid or ask, side and traded price recorded |
+| 2026-09-10 | The recorder records real numbers | 4,428 rows, spot 23,418 to 23,443, IV and Greeks on 4,079 rows |
 
 ---
 

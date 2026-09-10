@@ -85,7 +85,23 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: A CLEAN SLATE, AND ONE CHAT PER PURPOSE, 2026-09-10 night
+### Latest first: THE FIRST LIVE SEND, 2026-09-10, 13:39 to 14:30 IST
+
+**The live test passed, and it found the next build.** `docs/PLAN.md` §2.12.5
+has every figure and every decision; the vault session log
+`00 - Developer Logs/SESSION_LOG_2026-09-10.md` has the narrative.
+
+| | |
+|---|---|
+| **Proven on the live market** | The ticket sends, at the ask and the bid, spot and margin stored. Rule 4 tested for the first time. One by one keeps one trade. The chain builds a structure. The close fills against the book. Notes complete in the vault. The recorder records real numbers |
+| **⚠️ AN OPEN POSITION IS CARRIED OVERNIGHT ON PURPOSE** | Trade `7cd4d017`, a four-leg condor named "Short Strangle" because that preset was loaded first. His instruction: keep it open to see how things look after the close and as the first real subject for the position area. **Do not close it. Do not treat it as test data.** |
+| **His decisions from the test** | Limit orders must REST until the book reaches them. The position area is the next build, with the exit ticket, resting orders and the Home fixes, in one PR. The payoff shows the open trade. A running trade is unmistakable on Home, no coloured edge. §2.12.5 items 1 to 8 |
+| **The chain's faults** | Scroll thrown to the top every five seconds, cause confirmed. A stale strike in live ink. §2.12.5 item 9. PR 5 |
+| **Two outbox rows fail on every drain** | `close` rows for 03a1b63d and 8030ed03, already completed by another route. Notes are fine. §2.12.5 item 8 |
+| **The next build** | PR 3 as specified in §2.12.2 after the live test. Nothing else moves ahead of it |
+| Record | 3 trades from 2026-09-09 marked traded price; 2 closed today at the bid and ask; 1 open |
+
+### Earlier: A CLEAN SLATE, AND ONE CHAT PER PURPOSE, 2026-09-10 night
 
 **⚠️ TWO THINGS HE CORRECTED ON 2026-09-10 NIGHT. Both overturn earlier plans.**
 
