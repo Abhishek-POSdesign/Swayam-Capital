@@ -513,7 +513,24 @@ def get_positions(status: str = Query(default="open")) -> list[PositionResponse]
                     int(outcome["holding_days"]) if outcome.get("holding_days") is not None else None
                 ),
                 id=str(p.get("id")),
-                strategy_name=p.get("strategy_name", "Unknown Strategy"),
+                # THE NAME FOLLOWS THE LEGS unless he typed one himself, on a
+                # closed trade as much as an open one. Without this a spread
+                # stored before migration 022 keeps whatever the preset left
+                # behind, which is how his condor came to be called "Short
+                # Strangle" and a bull put spread reads "Custom".
+                strategy_name=resolve_name(
+                    p.get("legs") or [],
+                    name_source=str(p.get("name_source") or "structure"),
+                    current_name=p.get("strategy_name"),
+                    # A closed trade is named by every leg it held, not by the
+                    # open ones, because it has none left.
+                    closed=str(p.get("status") or "").lower() == "closed",
+                )
+                or "Unknown Strategy",
+                name_source=str(p.get("name_source") or "structure"),
+                # What this trade was: live, terminal_test or build_test. The
+                # card reads it to say so, and said "not recorded" without it.
+                provenance=p.get("provenance"),
                 underlying=p.get("underlying", "NIFTY"),
                 legs=p.get("legs", []),
                 net_debit_credit_inr=float(p.get("net_debit_credit_inr", 0.0)),

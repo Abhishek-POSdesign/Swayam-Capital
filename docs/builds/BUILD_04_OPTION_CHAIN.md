@@ -1,7 +1,7 @@
 # BUILD 04 — THE OPTION CHAIN, TESTED LIVE AND MADE USABLE
 
 > Written 2026-09-10 evening by the main chat as a stub, and filled on
-> 2026-09-11 by the builder from screen 6 of the mockup and `docs/PLAN.md`
+> 2026-09-10 by the builder from screen 6 of the mockup and `docs/PLAN.md`
 > §2.12.5 item 9, on his approval of that screen. **This is PART THREE OF
 > BUILD A**, built by the same chat, on the same branch and in the same pull
 > request as `BUILD_01` and `BUILD_02`. It adds no migration.
@@ -11,7 +11,7 @@
 >
 > The mockup: screen 6 of
 > https://claude.ai/code/artifact/ef242a22-59a7-4752-8aa4-91d59393c5d5
-> **Approved as it stands, 2026-09-11.** Both expiries as the recorder
+> **Approved as it stands, 2026-09-10.** Both expiries as the recorder
 > captured them at the 15:26 close on 10 September, including the 22,850 call
 > with its dead 1,575.95 against a live book of 670.95 to 705.40, and max pain
 > computed from that open interest: 23,500 on the weekly against 24,000 on the
@@ -70,7 +70,7 @@ the top every five seconds costs him the part of that window he can least
 spare. The fifth, max pain, is a correctness fault: two screens showed two
 different numbers for what looked like the same thing.
 
-## 2. What exists today, verified 2026-09-11
+## 2. What exists today, verified 2026-09-10
 
 - `web/src/components/option-chain-modal.js`,
   `OptionChainModalComponent`. A floating panel on the desk, opened by the
@@ -95,7 +95,7 @@ different numbers for what looked like the same thing.
 - **Home's max pain is the WEEKLY one.** `nifty_snapshot.py` computes it from
   the weekly chain and `home.js` prints it under "Options, weekly" as a bare
   "Max pain". The desk's chain computes it for whatever expiry is selected,
-  which is usually the monthly. Verified on the running system 2026-09-11:
+  which is usually the monthly. Verified on the running system 2026-09-10:
   Home 23,500 for the 15 Sep weekly, the chain 24,000 for the 29 Sep monthly.
   **Neither said which.** Both figures are correct; the labels were not.
 - The Home snapshot already carries `weekly_expiry` and `monthly_expiry`, so

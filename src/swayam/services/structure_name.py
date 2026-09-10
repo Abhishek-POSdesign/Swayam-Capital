@@ -205,11 +205,40 @@ def name_from_legs(legs: Iterable[dict[str, Any]]) -> str:
     return f"Custom, {len(parsed)} leg{'' if len(parsed) == 1 else 's'}"
 
 
+def name_from_all_legs(legs: Iterable[dict[str, Any]]) -> str:
+    """The name of the structure a FINISHED trade had, from every leg it held.
+
+    A closed trade has no open legs, so `name_from_legs` would truthfully but
+    uselessly answer "No open legs". What he wants to read in his record is the
+    shape the trade WAS: the bull put spread stays a bull put spread after it is
+    squared off.
+
+    Only for a trade that is closed. An open trade is named by what is still
+    running, which is the whole point of naming from the open legs.
+    """
+    parsed = _normalise(legs or [])
+    if not parsed:
+        return "No legs recorded"
+
+    named: Optional[str] = None
+    if len(parsed) == 1:
+        named = _single(parsed[0])
+    elif len(parsed) == 2:
+        named = _two(parsed)
+    elif len(parsed) == 4:
+        named = _four(parsed)
+
+    if named:
+        return named
+    return f"Custom, {len(parsed)} leg{'' if len(parsed) == 1 else 's'}"
+
+
 def resolve_name(
     legs: Iterable[dict[str, Any]],
     *,
     name_source: Optional[str],
     current_name: Optional[str],
+    closed: bool = False,
 ) -> str:
     """The name to store: his if he set one, otherwise the structure's.
 
@@ -220,4 +249,4 @@ def resolve_name(
     """
     if str(name_source or "structure").lower() == "his" and current_name:
         return str(current_name)
-    return name_from_legs(legs)
+    return name_from_all_legs(legs) if closed else name_from_legs(legs)

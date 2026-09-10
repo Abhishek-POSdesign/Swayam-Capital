@@ -212,6 +212,9 @@ export class PositionArea {
     }
     this.loading = false;
     this.render();
+    // The desk asked to be told what is open, so it can draw a trade he holds
+    // on the payoff when he has not loaded anything himself.
+    if (this.options.onOpenRead) this.options.onOpenRead(this.open);
     return this.open;
   }
 

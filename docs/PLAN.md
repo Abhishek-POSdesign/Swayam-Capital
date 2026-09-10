@@ -802,7 +802,7 @@ from the chain the natural way to build a structure.
 
 ---
 
-**BUILT, 2026-09-11: BUILD A PARTS ONE AND THREE.** On branch
+**BUILT, 2026-09-10: BUILD A PARTS ONE AND THREE.** On branch
 `feature/swayam-build-a-desk-home-chain-042`, pushed, **not merged and no pull
 request yet, so none of it is live.** Part one is the position area, the exit
 ticket, the campaign model, the name from the open legs, click-to-load on the
@@ -1055,7 +1055,7 @@ close." Tomorrow in his window: Home and the desk with a carried position, rule
 2 against a real carry, the 15:20 naked-shorts check on a hedged structure, and
 the position area's first real subject once PR 3 lands.
 
-### 2.12.7 BUILD A IS COMPLETE. Built 2026-09-11, pull request open, not merged.
+### 2.12.7 BUILD A IS COMPLETE. Built 2026-09-10, pull request open, not merged.
 
 All three parts are on `feature/swayam-build-a-desk-home-chain-042`, one pull
 request. **Nothing is live until he merges, and migrations 022 and 023 must be
@@ -1088,7 +1088,7 @@ What part two added, on top of parts one and three:
   September 2026" and "81 build-and-test rows". Both were written into the
   page and neither was read from anything.
 
-Verified 2026-09-11: Python 642 passing with the one stale mock still failing
+Verified 2026-09-10: Python 642 passing with the one stale mock still failing
 identically on `main`, JavaScript 314 passing in 35 files, his journal folder
 6 notes before and after every run, zero console errors on a clean load in
 both themes. **Only his window can prove a target reached on a live mark.**

@@ -900,7 +900,7 @@ export class HomePage {
   }
 
   /**
-   * THE RUNNING-TRADE BAND. Replaced the collapsible strip on 2026-09-11.
+   * THE RUNNING-TRADE BAND. Replaced the collapsible strip on 2026-09-10.
    *
    * His words, 2026-09-10: "A running trade is unmistakable on Home and goes
    * quiet only when squared off." He chose Option B, the whole band coloured

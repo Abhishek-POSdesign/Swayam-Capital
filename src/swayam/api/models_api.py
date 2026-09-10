@@ -451,6 +451,13 @@ class PositionResponse(BaseModel):
     fill_basis: Optional[str] = None
     spot_at_entry: Optional[float] = None
 
+    # WHAT THIS TRADE WAS, and where its name came from. Both are on the row and
+    # both were missing from this reply, so the position area could not tell a
+    # terminal test from a paper trade on a CLOSED row and printed "not
+    # recorded" on every one of them.
+    provenance: Optional[str] = None
+    name_source: str = "structure"
+
     # THE RESULT, for a position that is closed. It lives in
     # swayam_trade_history, not on the position row, so it is joined on when
     # this endpoint is asked for closed trades. None on an open one, and None

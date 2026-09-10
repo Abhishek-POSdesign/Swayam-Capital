@@ -143,6 +143,9 @@ export class StrategyBuilderPage {
     /** Contract size. Server-resolved only; 65 is never assumed and 75 never sent. */
     this.lotSize = null;
     this.lotSizeSource = null;
+    // True while the size above came off a loaded position rather than the
+    // server's contract-master confirmation.
+    this.lotSizeFromPosition = false;
 
     this.expiries = [];
     this.expiry = null;
@@ -215,6 +218,10 @@ export class StrategyBuilderPage {
      * restores.
      */
     this.loadedFrom = null;
+    // The payoff draws a trade he HOLDS when he has not loaded anything.
+    // docs/PLAN.md 2.12.5 item 4. Once per visit: pressing "Clear and build
+    // new" means the desk stays empty, so it counts as having happened.
+    this._autoLoadedOnce = false;
 
     /** The open trade a newly executed leg should JOIN, rather than opening a new one. */
     this.joinTrade = null;
@@ -546,6 +553,7 @@ export class StrategyBuilderPage {
           api.reverseLeg(p.position_id, seq, payload, `reverse-${p.position_id}-${seq}`),
         onAddLeg: (p) => this.addLegToOpenTrade(p),
         onShowOnPayoff: (p) => this.loadFromPosition(p),
+        onOpenRead: (open) => this.autoLoadOpenTrade(open),
         onRename: (p, name) => api.renamePosition(p.position_id, name),
         onTargets: (p) => this.openTargets(p),
       });
@@ -648,7 +656,55 @@ export class StrategyBuilderPage {
     this.strategyName = position.strategy_name || null;
     this.loadedFrom = position;
     if (position.expiry_date) this.expiry = position.expiry_date;
+
+    // THE CONTRACT SIZE COMES OFF THE TRADE'S OWN LEGS.
+    //
+    // A position he already holds was filled at a known lot size and stored it
+    // on every leg. Waiting for the chain to confirm a size we already have
+    // left the desk saying "lot unconfirmed" after hours, and with no size
+    // there is no payoff, no margin, no max loss and no breakevens: his own
+    // open trade drew nothing.
+    //
+    // Every open leg must agree. If they disagree, or any leg has no stored
+    // size, nothing is set and the server's confirmation still governs, because
+    // a size taken from one leg would misprice the rest. It is NEVER 65 or 75
+    // by default; that number changed in January 2026.
+    const sizes = open.map((l) => Number(l.lot_size)).filter((n) => Number.isFinite(n) && n > 0);
+    if (sizes.length === open.length && new Set(sizes).size === 1) {
+      this.lotSize = sizes[0];
+      this.lotSizeSource = "stored on this trade's own legs, as it was filled";
+      this.lotSizeFromPosition = true;
+    }
+
     this.renderAll();
+  }
+
+  /**
+   * Draws what he HOLDS, by itself, when he has not loaded anything.
+   *
+   * docs/PLAN.md 2.12.5 item 4: "The payoff graph shows the open trade when no
+   * new structure is loaded." Having to press a button to see his own position
+   * is what made the desk feel empty after hours.
+   *
+   * It fires ONCE a visit and only onto an empty desk. Loading a preset or the
+   * chain fills the desk, so nothing is overwritten; pressing "Clear and build
+   * new" counts as having happened, so a clear means clear.
+   */
+  autoLoadOpenTrade(open) {
+    if (this._autoLoadedOnce) return;
+    if (this.loadedFrom) return;
+    if (Array.isArray(this.legs) && this.legs.length) return;
+    if (!Array.isArray(open) || !open.length) return;
+
+    const running = open.filter((p) => Number(p.legs_open || 0) > 0);
+    if (!running.length) return;
+    // The one he opened most recently is the one he is thinking about.
+    const latest = running.slice().sort(
+      (a, b) => String(b.opened_at || '').localeCompare(String(a.opened_at || '')),
+    )[0];
+
+    this._autoLoadedOnce = true;
+    this.loadFromPosition(latest);
   }
 
   /** Back to an empty desk he can build on. */
@@ -657,6 +713,16 @@ export class StrategyBuilderPage {
     this.legs = [];
     this.baseLots = [];
     this.strategyName = null;
+    // A clear means clear. Without this the auto-load would put the trade
+    // straight back on the next five-second read.
+    this._autoLoadedOnce = true;
+    // The contract size came off that trade's own legs, so it goes with it and
+    // the server confirms the next one.
+    if (this.lotSizeFromPosition) {
+      this.lotSize = null;
+      this.lotSizeSource = null;
+      this.lotSizeFromPosition = false;
+    }
     this.renderAll();
   }
 
@@ -1318,6 +1384,9 @@ export class StrategyBuilderPage {
           if (first && typeof first.lot_size === 'number' && first.lot_size > 0) {
             this.lotSize = first.lot_size;
             this.lotSizeSource = 'FYERS contract master, resolved server-side';
+            // The server has now confirmed it, so it no longer belongs to the
+            // loaded trade and clearing that trade must not take it away.
+            this.lotSizeFromPosition = false;
           }
         } catch (err) {
           this.preview = null;
@@ -1365,7 +1434,9 @@ export class StrategyBuilderPage {
     const cap = this.capital || {};
     return [
       { label: 'NIFTY 50', value: num(this.spot, 2), raw: this.spot, note: this.spotAt ? `tick ${istTime(this.spotAt) || ''}`.trim() : this.spotFreshness || '' },
-      { label: 'Lot', value: this.lotSize === null ? null : String(this.lotSize), note: this.lotSize === null ? 'server has not confirmed it' : 'contract master' },
+      // Where the size came from, said rather than assumed: the contract
+      // master, or the loaded trade's own stored legs.
+      { label: 'Lot', value: this.lotSize === null ? null : String(this.lotSize), note: this.lotSize === null ? 'server has not confirmed it' : (this.lotSizeFromPosition ? "this trade's stored legs" : 'contract master') },
       { label: 'Expiry', value: this.expiry || null },
       { label: 'Balance', value: inr(cap.risk_capital_inr), note: cap.source ? 'FYERS funds()' : '' },
       { label: 'Running loss cap', value: inr(cap.primary_risk_cap_inr), note: '1%' },

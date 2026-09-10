@@ -2,7 +2,7 @@
 
 > Written 2026-09-10 evening by the main chat, from his feedback on the mockup.
 >
-> **STATE, 2026-09-11. BUILT, VERIFIED AND PUSHED. Build A is complete and
+> **STATE, 2026-09-10. BUILT, VERIFIED AND PUSHED. Build A is complete and
 > its pull request is open.** Parts one, two and three are all on the branch
 > `feature/swayam-build-a-desk-home-chain-042`, one pull request, nothing
 > merged. Migrations 022 and 023 are NOT applied; he applies both before he
@@ -98,7 +98,7 @@ Home, and Payoff, Legs, Ready-made, Strikewise IV, Greeks and Rules and
 execution on the desk. **Part two's big-number pass carries this on**: any card
 whose title still does not claim its area gets fixed.
 
-### What this machine does, learned the hard way on 2026-09-11
+### What this machine does, learned the hard way on 2026-09-10
 
 - **Work in the primary folder**, `D:\Claude\POS\Trading-Platform\Swayam Capital`.
   The venv is an editable install pointing at it.
@@ -138,7 +138,7 @@ whose title still does not claim its area gets fixed.
 
 ### The counts to compare against
 
-| Suite | On this branch, 2026-09-11 |
+| Suite | On this branch, 2026-09-10 |
 |---|---|
 | Python | 616 passing, 1 failing (the stale mock above) |
 | JavaScript | 299 passing in 34 files |

@@ -41,7 +41,7 @@ The mockup every build is held to: https://claude.ai/code/artifact/ef242a22-59a7
 condor 7cd4d017 marked at the 15:26 IST closing book. **The build must look
 like it.** Not "inspired by": identical in hierarchy, sizes and placement.
 
-## WHERE BUILD A IS, 2026-09-11
+## WHERE BUILD A IS, 2026-09-10
 
 **ALL THREE PARTS ARE BUILT, verified on the running system in both themes,
 and pushed. Build A is one pull request and it is open.** Nothing is merged,
@@ -76,7 +76,7 @@ only. **And his addition of that evening: every card on any page must have a
 title bold and large enough, and coloured if it needs to be, so that the card
 claims the area it occupies.** The card headings were 12px, weight 600, in
 muted grey, quieter than the body beneath them; they are 16px, weight 800, in
-the primary ink from 2026-09-11. A dustbin for delete, a proper Reset button, never a cheap cross or a
+the primary ink from 2026-09-10. A dustbin for delete, a proper Reset button, never a cheap cross or a
 small round icon. No purple, lilac or violet; the accent is sage.
 
 **What must not break.** `docs/PLAN.md` §2.12.3, all seven lines. The payoff

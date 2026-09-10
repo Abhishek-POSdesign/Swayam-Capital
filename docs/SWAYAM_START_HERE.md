@@ -85,7 +85,7 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: BUILD A COMPLETE, ALL THREE PARTS, 2026-09-11
+### Latest first: BUILD A COMPLETE, ALL THREE PARTS, 2026-09-10
 
 **On a branch with an open pull request, NOT merged, so none of this is
 live.** Branch `feature/swayam-build-a-desk-home-chain-042`, cut from `main`
@@ -105,7 +105,7 @@ the terminal-test phase with its two scripts, and the big-number pass.
 | **⚠️ THE OPEN CONDOR IS STILL OPEN AND UNTOUCHED** | `7cd4d017`. No script edits it. Its name corrects itself the first time a leg of it moves or he presses Edit name |
 | **Verified on the running system, both themes** | Python 616 passing, JavaScript 299 passing in 34 files, his journal folder 6 notes before and after every run, zero console errors. **One Python test fails and it is not this work:** a stale mock in `test_notifications.py` that fails identically on `main`, which was checked by running it there |
 | **Only his window can prove** | A real fill, a one-leg exit, a reverse, the note landing in his vault, and the chain's rows moving under his eye while the market runs |
-| **A standing rule he added mid-build** | "Every card on any page must be bold and large enough, or, if required, colored, so that it claims that it is its card." The card headings are 16px weight 800 in the primary ink from 2026-09-11, on Home and the desk together |
+| **A standing rule he added mid-build** | "Every card on any page must be bold and large enough, or, if required, colored, so that it claims that it is its card." The card headings are 16px weight 800 in the primary ink from 2026-09-10, on Home and the desk together |
 
 ### Earlier: THE PLAN FOR THE POSITION AREA, AND THE BUILDER CHATS, 2026-09-10 evening
 
