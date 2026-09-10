@@ -1,11 +1,17 @@
 # BUILD 02 — HOME'S RUNNING TRADE, TARGETS, THE CROSSHAIR, THE TERMINAL-TEST PHASE
 
 > Written 2026-09-10 evening by the main chat, from his feedback on the
-> mockup. Branch `feature/swayam-build02-home-targets-043`. One pull request.
-> **Builds after BUILD_01 is merged**, because it opens BUILD_01's exit ticket
-> from Home and reads BUILD_01's live valuation.
+> mockup. **Corrected the same night: this is PART TWO OF BUILD A**, built by
+> the same chat, on the same branch and in the same pull request as
+> `BUILD_01_DESK_POSITION_AREA.md`, after part one and before
+> `BUILD_04_OPTION_CHAIN.md`. Migration 023. **It is not pasted into a chat of
+> its own**; the fence below is kept only so its questions can be asked.
 >
-> **The prompt he pastes into the builder chat is in the fence below.**
+> **His correction of the states, 2026-09-10 late evening, which overrides
+> any other wording in this file:** "Blinking means the trade is running.
+> When it becomes a solid color, then the trade has reached its target,
+> either profit or loss. Green and red colors define it." Muted means nothing
+> open or squared off.
 
 ---
 
@@ -53,7 +59,7 @@ sliders. Every trade in the record is a terminal test until I run the script
 that says paper trading has started.
 
 BEFORE YOU DO ANYTHING, ANSWER THESE IN YOUR OWN WORDS.
-1. What do solid, blinking and muted mean on Home's band, in my words?
+1. What do blinking, solid and muted mean on Home's band, in my words?
 2. What is a target on a leg, what is a target on the trade, and what happens
    when I leave a box blank?
 3. What does the Manage button on Home open, and why is it not a link to
@@ -72,11 +78,12 @@ BEFORE YOU DO ANYTHING, ANSWER THESE IN YOUR OWN WORDS.
 His decisions of 10 September, in his words. **Home:** "A running trade is
 unmistakable on Home and goes quiet only when squared off. The coloured edge
 goes." He chose **Option B**, the whole band coloured from the money. **The
-states:** "Whenever it reaches my target area, either profit or loss, it
-starts blinking green or red, and I'll open it. When it is not blinking, it
-becomes solid... As soon as the trade is squared off, everything goes mute:
-no blink, no color." So: **solid colour means running; blinking means a
-target was reached and needs him; muted means nothing open or squared off.**
+states, in his corrected words:** "Blinking means the trade is running. When
+it becomes a solid color, then the trade has reached its target, either
+profit or loss. Green and red colors define it... As soon as the trade is
+squared off, everything goes mute: no blink, no color." So: **blinking means
+running; solid green or red means a target was reached and needs him; muted
+means nothing open or squared off.**
 **Targets:** "My preference is to add a target for each leg. Target always
 means both loss and profit... In case I cannot add profit and loss for each
 leg, I have to add it for the whole trade." **Manage:** "Give a Manage button,
@@ -157,14 +164,18 @@ a third figure (Targets set, or Reached with the leg and kind); the
 **Manage** button.
 
 - **Running**: background `--up-bg` or `--down-bg` from the money, border to
-  match, solid, no animation. Chip "running" with a still dot.
-- **Alert**, a target reached: the same colours, and the band breathes:
-  saturation and a soft ring, about two seconds a cycle, gentle, never a
-  strobe. Chip "profit target reached" or "loss target reached" with a
-  pulsing dot; the third figure names the leg, e.g. "23,800 CE · profit".
-  Manage becomes the primary button. Under `prefers-reduced-motion` no
-  animation and a solid outline instead. The blink stops the moment no target
-  is reached or the leg is exited.
+  match, and the band **breathes gently**: saturation and a soft ring, about
+  two and a half seconds a cycle, never a strobe. His words: "very light
+  blinking, so that it always attracts attention that my profit and losses
+  are running." Chip "running" with a pulsing dot. Under
+  `prefers-reduced-motion` no animation and a soft outline instead.
+- **Alert**, a target reached: the band goes **solid**, deep green
+  (`--up`) or deep red (`--down-line`) with white text, and **stops
+  blinking**. Chip "profit target reached" or "loss target reached" with a
+  still dot; the third figure names the leg, e.g. "23,800 CE · profit".
+  Manage becomes the primary button. The band returns to running the moment
+  no target is reached any more, and goes quiet when the leg or trade is
+  exited.
 - **Quiet**: nothing open or squared off. Card colour, muted text, chip
   "squared off" or "nothing running", Manage disabled. The quiet line says
   "Your paper record starts clean on the day you say paper trading begins.
@@ -260,7 +271,7 @@ Any edit to 7cd4d017 by script.
   the Targets modal saves and reads back, the crosshair reads, Margin used on
   Home equals the desk's. No console errors. Screenshots beside the mockup.
 - **Only his window can prove:** a target reached on a live mark and the band
-  blinking. Say so in bold.
+  going solid. Say so in bold.
 
 ## 6. The handoff
 

@@ -1,29 +1,46 @@
 # BUILD 01 — THE POSITION AREA ON THE DESK, THE EXIT TICKET, THE CAMPAIGN MODEL
 
 > Written 2026-09-10 evening by the main chat, from his decisions of 9 and 10
-> September and his feedback on the mockup. Branch
-> `feature/swayam-build01-position-area-042`. One pull request.
+> September and his feedback on the mockup.
 >
-> **The prompt he pastes into the builder chat is in the fence below.** The rest
-> of this file is the specification the builder reads after pasting it.
+> **Corrected the same night: this is PART ONE OF BUILD A.** Build A is this
+> document, then `BUILD_02_HOME_TARGETS_AND_READING.md`, then
+> `BUILD_04_OPTION_CHAIN.md`, in one chat, one branch
+> `feature/swayam-build-a-desk-home-chain-042`, one pull request, migrations
+> 022 and 023. Only resting orders (`BUILD_03`) are a separate build. The
+> prompt in the fence below is Build A's prompt; the builder that pasted the
+> earlier four-build version follows the correction message he gave it.
 
 ---
 
 ```
 Swayam Capital, my NIFTY options terminal. THIS CHAT IS A BUILDER CHAT. It
-builds exactly ONE thing: Build 01, the position area on the Strategy Desk,
-the exit ticket and the campaign model in the record. The main chat planned
-it and will review it; you do not re-plan it, widen it, or start anything
-else. If I ask for something outside it, say so and point me to the main chat.
+builds exactly ONE build: BUILD A, which is three documents in order: the
+position area on the Strategy Desk with the exit ticket and the campaign
+model (BUILD_01), then Home's running-trade band, targets, Manage from Home,
+the payoff crosshair, the terminal-test phase and the big-number pass
+(BUILD_02), then the option chain (BUILD_04). One branch, one pull request,
+migrations 022 and 023. Resting orders (BUILD_03) are NOT yours. The main
+chat planned it and will review it; you do not re-plan it, widen it, or start
+anything else. If I ask for something outside it, say so.
 
 READ THESE, ALL THE WAY THROUGH, IN THIS ORDER. Do not ask me where anything is.
 1. docs/builds/README.md                 how a build works and the rules
-2. docs/builds/BUILD_01_DESK_POSITION_AREA.md   THIS BUILD, the whole spec
-3. docs/PLAN.md sections 2.12.1, 2.12.2, 2.12.3, 2.12.5, 2.12.6
-4. CLAUDE.md                             how to work here, what I trade
-5. docs/SWAYAM_START_HERE.md section 1   where everything lives
-6. The mockup: https://claude.ai/code/artifact/ef242a22-59a7-4752-8aa4-91d59393c5d5
-   Screens 1, 2 and 3 are yours. The build must look like them.
+2. docs/builds/BUILD_01_DESK_POSITION_AREA.md   part one, the whole spec
+3. docs/builds/BUILD_02_HOME_TARGETS_AND_READING.md   part two
+4. docs/builds/BUILD_04_OPTION_CHAIN.md   part three; its mockup arrives from
+                                         the main chat while you are on parts
+                                         one and two
+5. docs/PLAN.md sections 2.12.1, 2.12.2, 2.12.3, 2.12.5, 2.12.6
+6. CLAUDE.md                             how to work here, what I trade
+7. docs/SWAYAM_START_HERE.md section 1   where everything lives
+8. The mockup: https://claude.ai/code/artifact/ef242a22-59a7-4752-8aa4-91d59393c5d5
+   Every screen is yours. The build must look like them.
+
+HOME'S BAND, IN MY WORDS, SO NOBODY GETS IT BACKWARDS. Blinking means the
+trade is running. Solid green or solid red means a target I set was reached,
+profit or loss, on a leg or on the trade, and it needs my attention. Muted
+means nothing open or squared off.
 
 WHO I AM. Abhishek. Not a developer. Plain English, never code to approve, a
 recommendation rather than a menu. I speak my prompts, so an odd word is
@@ -39,18 +56,21 @@ muted. Cards are 70 to 80 percent filled. Colour only from the money. The
 build must be identical to the mockup, not picture-perfect there and cramped
 in reality.
 
-HOW WE WORK. Plan first in plain English, six parts, in the chat; I approve
-before any code. Feature branch feature/swayam-build01-position-area-042 off
-main, never main, never a git worktree, in the primary folder. git fetch and
-check the PR state before every push. Hand off in five parts with files as
-clickable links, any manual step (the migration) in bold up front, and one
-bold line saying what exists and what does not. Then I test, and the main chat
-reviews before I merge.
+HOW WE WORK. Plan first in plain English, six parts, in the chat, for the
+whole of Build A; I approve once, before any code. Then build part one, part
+two, part three in order, with a short note in the chat after each part. One
+feature branch feature/swayam-build-a-desk-home-chain-042 off main, never
+main, never a git worktree, in the primary folder. git fetch and check the PR
+state before every push. Hand off once, at the end, in five parts with files
+as clickable links, the manual steps (migrations 022 and 023, the drainer,
+the marking script) in bold up front, and one bold line saying what exists
+and what does not. Then I test, and the main chat reviews before I merge.
 
-DO NOT TOUCH: trade 7cd4d017 (open on purpose), docs/ROADMAP.md, the
-recorder, src/swayam/research/, the AI, the fill rule in services/fills.py,
-the Trade Journal page, the vault cage, the database guard, any migration but
-022. Every trade in the record is a terminal test; none is a paper trade.
+DO NOT TOUCH: trade 7cd4d017 by script (open on purpose), docs/ROADMAP.md,
+the recorder, src/swayam/research/, the AI, the fill rule in
+services/fills.py, the Trade Journal page, the vault cage, the database
+guard, any migration but 022 and 023. Every trade in the record is a terminal
+test; none is a paper trade.
 
 BEFORE YOU DO ANYTHING, ANSWER THESE IN YOUR OWN WORDS. I read your answers,
 then we start.
@@ -65,6 +85,10 @@ then we start.
 5. What is wrong with the drainer's close branch and how does this build fix it?
 6. Name every number on the position card, and where each one comes from.
 7. What may you never say LIVE without?
+8. What do blinking, solid and muted mean on Home's band, and what is a
+   target on a leg?
+9. What marks a trade as a terminal test, and which script must NOT be run
+   until I say paper trading starts?
 ```
 
 ---
@@ -307,12 +331,13 @@ On the execution ticket, when a limit is away from the book, the note beside
 the greyed buttons reads "your price, not a rule", amber, never red, never
 beside a rule tile. Same wording on the exit ticket.
 
-## 4. What is NOT in this build
+## 4. What is NOT in this part, and what is NOT in Build A at all
 
-Resting orders (BUILD_03). Targets, the Home band, the crosshair, the
-terminal-test phase, the big-number pass on Home (BUILD_02). The option chain
-(BUILD_04). The Trade Journal page (`docs/PLAN.md` §2.18). Any change to the
-fill rule. Any edit to trade 7cd4d017 by script.
+Not in this part, but in Build A's parts two and three: targets, the Home
+band, the crosshair, the terminal-test phase, the big-number pass (BUILD_02);
+the option chain (BUILD_04). **Not in Build A at all:** resting orders
+(BUILD_03, its own chat). The Trade Journal page (`docs/PLAN.md` §2.18). Any
+change to the fill rule. Any edit to trade 7cd4d017 by script.
 
 ## 5. How it is verified, and what only his window can prove
 
@@ -337,8 +362,11 @@ fill rule. Any edit to trade 7cd4d017 by script.
 
 ## 6. The handoff
 
-Five parts, per `README.md`. **Manual steps, in bold up front:** apply
-migration 022 (`.\.venv\Scripts\python.exe scripts\apply_migration.py up`);
-run the drainer once (`scripts\drain_journal_outbox.py`) so the two stuck
-close rows complete. One bold line: what exists and what does not. Then the
+One handoff for the whole of Build A, at the end, five parts, per
+`README.md`. **Manual steps, in bold up front:** apply migrations 022 and 023
+(`.\.venv\Scripts\python.exe scripts\apply_migration.py up`); run the drainer
+once (`scripts\drain_journal_outbox.py`) so the two stuck close rows
+complete; the marking script's dry run, and its `--apply` when he says; and
+the line that `scripts\start_paper_trading.py` is NOT to be run until he says
+paper trading starts. One bold line: what exists and what does not. Then the
 main chat reviews.

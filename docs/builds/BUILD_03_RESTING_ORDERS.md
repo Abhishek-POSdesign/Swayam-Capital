@@ -2,8 +2,9 @@
 
 > Written 2026-09-10 evening by the main chat, from his decision of 10
 > September (`docs/PLAN.md` §2.12.5 item 1). Branch
-> `feature/swayam-build03-resting-orders-044`. One pull request. **Builds after
-> BUILD_01 and BUILD_02 are merged.**
+> `feature/swayam-build03-resting-orders-044`. One pull request. **This is
+> BUILD B, the one piece kept apart because it is the trickiest to prove.
+> Builds after Build A (BUILD_01, 02 and 04 together) is merged.**
 >
 > **The prompt he pastes into the builder chat is in the fence below.**
 
@@ -20,7 +21,8 @@ widen it, or start anything else.
 READ THESE, ALL THE WAY THROUGH, IN THIS ORDER. Do not ask me where anything is.
 1. docs/builds/README.md                 how a build works and the rules
 2. docs/builds/BUILD_03_RESTING_ORDERS.md   THIS BUILD, the whole spec
-3. docs/builds/BUILD_01_DESK_POSITION_AREA.md and BUILD_02, what they left you
+3. docs/builds/BUILD_01_DESK_POSITION_AREA.md, BUILD_02 and BUILD_04, which
+   Build A built before you: what they left you
 4. docs/PLAN.md sections 1a (the chain feed), 2.12.1, 2.12.3, 2.12.5, 2.12.6
 5. CLAUDE.md, then docs/SWAYAM_START_HERE.md section 1
 6. The mockup: https://claude.ai/code/artifact/ef242a22-59a7-4752-8aa4-91d59393c5d5

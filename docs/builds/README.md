@@ -21,14 +21,20 @@
 **One build, one chat, one pull request.** Builds run one at a time, because
 only one session may write to the working folder.
 
-## The builds, in order
+## The builds. TWO, his correction of 2026-09-10 late evening.
 
-| # | Document | Branch | What it is |
+He does not have whole days to open chats, answer questions and re-explain.
+So the plumbing is ONE build in ONE chat and ONE pull request, and only the
+trickiest piece, resting orders, is left aside for its own chat.
+
+| Build | Documents, read in this order | Branch | What it is |
 |---|---|---|---|
-| 1 | `BUILD_01_DESK_POSITION_AREA.md` | `feature/swayam-build01-position-area-042` | The position area on the desk, the exit ticket, the campaign model in the record, the name from the legs, click-to-load on the payoff, the drainer fault |
-| 2 | `BUILD_02_HOME_TARGETS_AND_READING.md` | `feature/swayam-build02-home-targets-043` | Home's running-trade band and its states, targets per leg and per trade, Manage from Home, the payoff crosshair, the terminal-test phase, the big-number pass |
-| 3 | `BUILD_03_RESTING_ORDERS.md` | `feature/swayam-build03-resting-orders-044` | A limit away from the book rests as an open order, entry and exit, with a watcher, Modify and Cancel, expiry at the bell |
-| 4 | `BUILD_04_OPTION_CHAIN.md` | `feature/swayam-build04-option-chain-045` | The option chain's faults. **Waits for its own mockup from the main chat.** |
+| **A** | `BUILD_01_DESK_POSITION_AREA.md`, then `BUILD_02_HOME_TARGETS_AND_READING.md`, then `BUILD_04_OPTION_CHAIN.md` | `feature/swayam-build-a-desk-home-chain-042` | The position area on the desk, the exit ticket, the campaign model, the name from the legs, click-to-load, the drainer fault; then Home's running-trade band and its states, targets, Manage from Home, the crosshair, the terminal-test phase, the big-number pass; then the option chain. **Built in that order, handed off once at the end**, with a short progress note in the chat after each of the three parts. Migrations 022 and 023 |
+| **B** | `BUILD_03_RESTING_ORDERS.md` | `feature/swayam-build03-resting-orders-044` | A limit away from the book rests as an open order, entry and exit, with a watcher, Modify and Cancel, expiry at the bell. **After Build A is merged.** Migration 024 |
+
+The option chain's look is judged by eye, so the main chat supplies its mockup
+into Build A's chat while the builder is on the desk and Home; the builder
+starts the chain only when that mockup is in hand.
 
 The mockup every build is held to: https://claude.ai/code/artifact/ef242a22-59a7-4752-8aa4-91d59393c5d5
 (**Swayam Position Area**, 10 September evening). It is built on his real open
