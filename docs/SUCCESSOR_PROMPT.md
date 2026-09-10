@@ -1,8 +1,9 @@
 # THE PROMPT TO PASTE INTO A NEW CHAT
 
-> Rewritten 2026-09-09 evening, by the session that watched him take his first
-> three real paper trades. Written at his explicit request, so he never has to
-> spend an hour explaining the same things again.
+> Rewritten 2026-09-10 after the first live send, by the chat that walked him
+> through it. Written at his explicit request, so he never has to spend an hour
+> explaining the same things again, and so the next chat cannot say "understood"
+> before it has proved it.
 >
 > **Copy everything inside the fence and paste it as the first message.**
 > Nothing else needs to be said.
@@ -11,71 +12,40 @@
 
 ```
 Swayam Capital. My NIFTY options paper-trading terminal, and the instrument I
-intend to restart trading real money through. Read before you act. There is no
-hurry and I would rather you take twenty minutes reading than give me a fast
-answer built on a guess.
+intend to restart trading real money through. THIS IS THE MAIN CHAT: the
+terminal itself, the desk, the ticket, positions, the journal, the recorder,
+live testing. I keep one chat per purpose; the backtester and the AI partner
+have their own chats and their own prompts in docs/CHAT_PROMPTS.md. If we drift
+into their work, stop me and say so.
 
-THIS IS THE MAIN CHAT: the terminal itself, the desk, the ticket, positions,
-the journal, the recorder, live testing. I KEEP ONE CHAT PER PURPOSE. If we
-drift into building the backtester or designing the AI partner, stop me and say
-so; those have their own chats and their own prompts.
+READ THIS FIRST, AND TAKE IT SERIOUSLY. Every previous chat that said "I
+understood" after skimming cost me an hour or more of re-explaining what other
+chats did, what this chat is for, what has been built, what was decided, and
+what is next. I will not do that again. You do not say "understood". You read
+every file below all the way through, in order, and then you PROVE it by
+answering the questions at the end, in your own words, before you touch
+anything. Where anything is unclear or two documents disagree, you ASK me,
+one clear question at a time, with your recommendation. Do not guess, do not
+smooth over a conflict, do not fill a gap with an assumption.
 
-EVERY DOCUMENT, AND WHICH ONE ANSWERS WHAT:
-  docs/ROADMAP.md               the direction, four horizons. YOU MAY NOT EDIT
-                                THIS WITHOUT MY EXPLICIT YES, EVERY TIME.
-  docs/SWAYAM_START_HERE.md     where everything lives, what is verified true
-  docs/PLAN.md                  the one plan. Section 1 and 2 are this chat's
-  CLAUDE.md                     how to work here, and what I actually trade
-  docs/CHAT_PROMPTS.md          every chat I keep and its prompt
-  docs/SUCCESSOR_BACKTESTER.md  the backtester chat's prompt. Not this chat's
-  docs/SUCCESSOR_AI_PARTNER.md  the AI partner chat's prompt. Not this chat's
-Deeper, only if needed: WHERE_EVERYTHING_LIVES.md, docs/API.md,
+READ THESE, IN THIS ORDER, ALL THE WAY THROUGH. Do not ask me where anything is.
+0. docs/ROADMAP.md               PLAN STARTS HERE. My end goal and the four
+                                 horizons with their gates, in my words. You
+                                 may not edit it without my explicit yes.
+1. docs/SWAYAM_START_HERE.md     Where everything lives, what is verified true,
+                                 what is not done. Section 3, latest first.
+2. docs/PLAN.md                  The one plan. Section 2.12.5 is what the live
+                                 test of 10 September proved and what I decided.
+                                 Section 2.12.2 has the PR 3 and PR 5 build
+                                 specs as rewritten after it. Section 2.18 is
+                                 the Trade Journal page, which waits for its own
+                                 discussion with me.
+3. CLAUDE.md                     How to work here, and what I actually trade.
+4. docs/CHAT_PROMPTS.md          Every chat I keep, and what each one owns.
+5. G:\My Drive\Second Brain\00 - Developer Logs\SESSION_LOG_2026-09-09_evening.md
+6. G:\My Drive\Second Brain\00 - Developer Logs\SESSION_LOG_2026-09-10.md
+Deeper only when needed: WHERE_EVERYTHING_LIVES.md, docs/API.md,
 docs/RUNBOOK.md, docs/architecture.md.
-
-=== WHAT HAPPENED ON THE NIGHT OF 2026-09-09 INTO THE 10th ===
-A separate chat did the backtesting foundation. ONE thing from it touches this
-chat, and it is the recorder.
-
-THE RECORDER WAS REBUILT AND REDEPLOYED, revision swayam-recorder-00003-kuq. It
-used to write twelve columns of zeros and a wrong expiry date on every row. It
-now records the real NIFTY level, real change in open interest, a correct
-expiry, and implied volatility with the four Greeks computed. Unknown values are
-NULL, never zero. It records TWO expiries a snapshot so a calendar can be
-valued, and it refuses to run on an NSE holiday.
-
-IT HAS NEVER YET WRITTEN A REAL FILE IN THE NEW SHAPE. Every proof so far was a
-dry run that deliberately wrote nothing. The first real object lands when the
-market opens. CHECK IT:
-  gcloud storage ls -l "gs://swayam-capital-options-data/$(date +%Y-%m-%d)/nifty_chain.parquet"
-Then have someone open it and confirm spot is not zero, that two expiry dates
-are present, and that implied volatility and delta have values.
-
-AND KNOW THIS GAP: the recorder captures the AFTERNOON ONLY. On 2026-09-09 every
-call from 09:15 to 13:25 failed with "Please provide valid token" and it began
-working the minute I refreshed my token by hand. I am asleep at 09:15. We
-decided NOT to fix that by storing my PIN, because the mornings can be
-backfilled for free later from FYERS' expired-contract history. docs/PLAN.md
-section 2.10.
-
-NOTHING ELSE IN THE LIVE PATH WAS TOUCHED. Not the execution ticket, not
-positions, not the journal writer, not services/fills.py, not the strategy
-builder, no migration. If the desk behaves differently today, it is NOT from
-that work and I want to know.
-
-=== TWO THINGS I SETTLED ON 2026-09-10 NIGHT ===
-My backtesting starts from a clean slate: new strategies out of my own head, not
-copied from my past. My old trades are not the material and not the test, but
-they are not off limits either. Use my history whenever it is genuinely useful
-and say every time that it is flawed data. Use every source we have: my history,
-my broker, the market, the API, the WebSocket, the recorder, the NSE files.
-And any data work starts from 2022, not 2018, because the market before and
-after Corona are different markets. docs/PLAN.md 2.16.0 and 2.16.2.
-
-MY OWN TRADING ARCHIVE, which nobody had written down before, is at
-E:\Project E\Trading\Bazaar. Everything I ever saved, including the swing
-journal spreadsheet and four strategies I wrote with rules. My own word for it
-is broken: some current, some years old, some spreadsheets lost. My Zerodha
-history is gone entirely.
 
 WHO I AM AND HOW TO WORK WITH ME
 I am Abhishek. I am not a developer. Write plain English, never hand me code to
@@ -93,147 +63,114 @@ anything you can read from logs afterwards must not use up any of it.
 MY TWO RULES. I will not repeat them.
 1. No fake data. Every number on my screen is real from FYERS or the database,
    or it says unavailable and gives the reason. Never a placeholder shown as
-   real, never a fallback constant. This has been broken repeatedly and it is
-   what I care about most.
-2. Never tell me something is done, live or passing unless you checked it on the
-   running system that day and can show me the proof. An honest gap is welcome.
-   An overstatement is not. I have burned days and real money on false status.
+   real, never a fallback constant.
+2. Never tell me something is done, live or passing unless you checked it on
+   the running system that day and can show me the proof. An honest gap is
+   welcome. An overstatement is not. I have burned days and real money on
+   false status, and one chat told me the position manager existed when only
+   its mockup did.
 
 HOW WE WORK
 Plan before you build: plain English, six parts, in the chat, and I approve it
 before any code. Hand off after you build: five parts, files as clickable links,
 any manual step flagged in bold up front. Never work on main. Feature branch,
 pull request, I click Merge, because the pull request is my only revert button.
-Merge one pull request, wait for the green tick, then merge the next.
-
-Only one session may write to the working folder at a time. If two are needed at
-once, one takes a separate clone. Ask me which.
+git fetch and check whether the branch's pull request is already merged before
+pushing more work; I merge mid-session. Merge one pull request, wait for the
+green tick, then merge the next. Only one session writes to the working folder
+at a time; if two are needed, one takes a separate clone, and you ask me which.
+When I say "fix it", stop planning and start typing. When I show you a screen
+and call it immature or cheap, that is a requirement, not a mood.
 
 WHERE EVERYTHING LIVES. Do not ask me any of this.
 - Code: D:\Claude\POS\Trading-Platform\Swayam Capital
-- Python: .\.venv\Scripts\python.exe  (editable install; work in the primary
-  folder, NEVER a git worktree)
+- Python: .\.venv\Scripts\python.exe, editable install, work in the primary
+  folder, NEVER a git worktree
 - GitHub: Abhishek-POSdesign/Swayam-Capital, gh is authenticated
-- My vault, the Second Brain: G:\My Drive\Second Brain
-  An Obsidian vault in Google Drive. It holds my daily life through my Atlas app
-  and four years of my own trading history. IMPORTANT: D:\Second Brain is an
-  EMPTY, STALE folder from when I first installed Obsidian. Never read it, never
-  write to it.
+- My vault, the Second Brain: G:\My Drive\Second Brain. D:\Second Brain is an
+  EMPTY, STALE folder; never read it, never write to it.
 - Database: Supabase wxijlrwoiaeaupaaqecc, ap-south-1, shared with two other
   apps, so scope everything to swayam_*
 - Cloud: GCP swayam-capital. Live site is Cloud Run swayam-dashboard in
   asia-southeast1, mapped to swayam.abhisheksikka.com, behind Google sign-in.
+  The recorder is Cloud Run swayam-recorder in asia-south1.
 - There is NO staging database. Everything runs against live. The test suite is
-  caged by tests/db_guard.py for the database and by conftest.cage_the_vault for
-  my vault. Do not weaken or remove either guard.
-
-READ THESE, IN THIS ORDER, ALL THE WAY THROUGH
-0. docs/ROADMAP.md             — PLAN STARTS HERE. My end goal and the four
-                                 horizons with their gates, in my words. Edit
-                                 it only with my explicit approval.
-1. docs/SWAYAM_START_HERE.md   — where everything is, what is verified true, and
-                                 what is not done. Section 3 is the live status.
-2. docs/PLAN.md                — THE ONE PLAN. Section 0 is my hours. Section
-                                 2.12 is your job. Section 2.12.0 is the audit
-                                 of my first three real trades.
-3. CLAUDE.md                   — how to work here, and what I actually trade.
-4. G:\My Drive\Second Brain\00 - Developer Logs\SESSION_LOG_2026-09-09.md
-                               — what the last two sessions found and fixed, and
-                                 why the code looks the way it does.
-
-DO NOT re-audit the codebase, do not write a new plan document, and do not
-propose an architecture. All of that is done and written down. Update
-docs/PLAN.md as work lands; every superseded plan was deleted for exactly this
-reason.
+  caged by tests/db_guard.py for the database and by conftest.cage_the_vault
+  for my vault. Never weaken or remove either guard. My journal folder,
+  02 - Projects/Trading/04 - Journal, holds exactly 6 notes; check it before
+  and after every test run.
+- The local backend starts from .claude/launch.json as swayam-api, the web as
+  swayam-web. Both point at the LIVE database and live FYERS.
 
 WHERE THINGS STAND, 10 September 2026, after my window
-The execution ticket, realistic fills, one by one, the option chain and the
-close were all proven ON THE LIVE MARKET on 10 September, docs/PLAN.md 2.12.5.
-I have six paper trades in the record: three from 9 September marked "traded
-price, not comparable", two closed on 10 September at the bid and ask, and ONE
-OPEN: trade 7cd4d017, a four-leg condor, carried overnight on purpose. Do not
-close it and do not call it test data.
+On 9 September I took my first three paper trades. That evening the execution
+ticket (PR #49), a retry fix (#50), the Home strip move (#51) and realistic
+fills at the bid and ask (#52) were built and merged; the roadmap (#54, #60)
+and the handover docs (#53, #61) followed. A separate chat rebuilt the recorder
+and did the backtesting research (#55 to #58). On 10 September, in my window,
+everything from 9 September was proven ON THE LIVE MARKET: docs/PLAN.md 2.12.5
+has every figure. My record now holds six paper trades: three from 9 September
+marked "traded price, not comparable", two closed on 10 September at the bid
+and ask, and ONE OPEN, trade 7cd4d017, a four-leg condor named "Short Strangle"
+because that preset was loaded first, carried overnight on purpose. Do not
+close it. Do not call it test data. It is the first real subject for the
+position area.
 
-THE NEXT BUILD IS PR 3, exactly as docs/PLAN.md 2.12.2 specifies it after the
-live test: the position area below the payoff, the exit ticket with market or
-limit per leg, RESTING limit orders (my decision: a limit away from the market
-sits until the book reaches it, it does not refuse), the campaign model in the
-record, the Home fixes, the drainer's close-row fault. One pull request, in
-that order. Then PR 5, the option chain, whose faults are listed in 2.12.5
-item 9. Read 2.12.5 before touching either.
-
-Read the vault session logs too: 00 - Developer Logs/SESSION_LOG_2026-09-09_evening.md
-and SESSION_LOG_2026-09-10.md.
-
-REAL-MONEY ORDERS. I asked, it was researched, the answer is in docs/PLAN.md
-2.14. For now orders go through the FYERS terminal and everything else lives
-here. The next thing after the position area is the READ-ONLY bridge that
-mirrors my real positions and fills from FYERS into this terminal. Sending
-real orders from this app is a later, separate plan. Do not start it.
-
-All three of my trades made a GROSS PROFIT and all three LOST MONEY. Gross +195,
-charges 585, net -390. Charges were 300% of gross. That is my last financial
-year in miniature and it is the most useful thing this terminal has ever shown
-me. Do not let anyone weaken the charge engine.
-
-What those trades exposed is now the whole next job. My words: immature
-execution, immature exit, immature monitoring. Taking a position is more immature
-than buying a soda bottle.
-
-WHAT I WANT YOU TO BUILD. docs/PLAN.md section 2.12. In this order.
-(Items 1, 2 and 4 were built on 9 September as PRs #49 to #52 and proven live
-on 10 September. Start at item 3, and read 2.12.5 and the PR 3 spec in 2.12.2
-first. Item 5's faults are in 2.12.5 item 9.)
-1. The execution ticket. I press Execute and I see what is about to be sent
-   before it goes: every leg, market or limit with a switch, an editable price
-   with a proper reset button, editable lots, the margin needed, my four rules,
-   control over which leg goes first, and a choice of sending all legs together
-   or one at a time. No bid-ask ladder. No market depth.
-2. Realistic fills. I buy at the ask and sell at the bid, and a limit fills at
-   my price or better, as on Kite or FYERS. My results will look worse and be
-   truer. My trades from before this were filled at the traded price and are
-   marked as not comparable.
-3. The position area on the Strategy Desk, full width, BELOW the payoff graph.
-   Open now, closed today, earlier. Big bold numbers, colour from the money.
-   Exit one leg, reverse one leg, add a leg, exit everything. A real dustbin and
-   a real reset button. I must feel good while managing it.
-4. Home shows, Home does not manage. Move the open-positions strip below my
-   daily check-in and above Your money, make it refresh without a reload, and
-   take the Exit button off it.
-5. The option chain already adds legs and has never been used with a live
-   market. Test it and fix what it gets wrong rather than rebuilding it.
-
-MY DECISIONS ARE RECORDED IN 2.12.1 WORD FOR WORD. Do not relitigate them.
-Three more were taken on 9 September evening and are recorded there too: every
-exit, one leg or all, goes through the same ticket with market or limit per
-leg; one by one is a real add-a-leg on the same trade; the single-leg rule is
-gone. The journey I approved is a clickable prototype linked from 2.12.1.
-
-THE OPEN DECISION I HAVE MADE, section 2.13. The live site cannot see my vault,
-so my daily check-in returns an error there and the AI reads a frozen copy of my
-Method files. The Drive API is enabled and the libraries are installed; the only
-blocker is Google's consent screen and I cannot date it. Build the bridge that
-does not wait for Google: mirror the few files the app needs into the database.
-
-AFTER THAT, in order: the read-only broker bridge (2.14), the recorder's
-twelve zero columns (2.10), scheduled backups (2.6), the kill switch (2.5),
-then calendars (section 3) when I say so, then the AI chapter.
+WHAT WAS DECIDED ON 10 SEPTEMBER, AND IS NOT UP FOR DISCUSSION
+- Limit orders REST. A limit away from the market sits as an open order until
+  the bid or ask reaches it, inside the exchange's price band. The ticket's
+  refusal of such a limit was wrong. 2.12.5 item 1.
+- The position area does not exist yet. It is the next build, PR 3, in one
+  pull request: the position area below the payoff, the exit ticket with market
+  or limit per leg, resting orders, the campaign model in the record, the Home
+  fixes, the drainer's close-row fault. The spec is in 2.12.2. Nothing moves
+  ahead of it.
+- The payoff graph shows the open trade when nothing is loaded. A running trade
+  is unmistakable on Home, with no coloured edge. The strategy name follows the
+  structure. Home's margin used reads the desk's sum.
+- The option chain is PR 5, after PR 3: its scroll fault, the stale strike, the
+  at-the-money row, the buttons, readability, max pain with its expiry. 2.12.5
+  item 9. Mockup first.
+- The Trade Journal page gets its own discussion with me, 2.18. Not hurried,
+  not part of PR 3.
+- Real-money orders go through the FYERS terminal for now. The read-only
+  bridge that mirrors my real book into this terminal comes after PR 3 and PR 5.
+  Sending real orders from this app is a later horizon. Do not start it.
+- Calendars are my call, when I say so. The AI chapter is later.
 
 THINGS THAT WILL BITE YOU, ALL LEARNED THE HARD WAY
 - A path nobody has ever run has never been tested, whatever the tests say.
-  Three audits and a green suite all missed that closing a trade was impossible,
-  because nobody had ever closed one.
-- Check that the columns you write actually exist. tests/test_written_columns_exist.py
-  does this; keep it passing.
+  Before trusting any path I have not exercised, exercise it.
+- Check that the columns you write actually exist:
+  tests/test_written_columns_exist.py. Keep it passing.
 - A note is not a trade, at both ends. A vault write that can fail goes to the
   outbox and my action still succeeds.
 - Fix a rule where the rule lives, not where the symptom showed.
 - node --check is not verification. Load the real page in a real browser, in
-  both themes.
-- git fetch and check whether the branch's pull request is already merged before
-  pushing more work. I merge mid-session to review.
+  both themes, against the real backend.
+- /api/market/data-health is the one clock. Nothing says LIVE unless it does.
+- A mockup I approved is not a build. Say what exists and what does not, every
+  handoff, in bold.
 
-Ask me when you are unsure. I have said so explicitly and mid-build is fine.
+BEFORE YOU DO ANYTHING ELSE, ANSWER THESE IN YOUR OWN WORDS. If you cannot
+answer one from the documents, say so and ask. Only after I have read your
+answers do we start.
+1. Which trade is open right now, why is it open, and what must you never do
+   to it?
+2. What are the four horizons, and which one are we in?
+3. What did I decide about limit orders on 10 September, and what did the
+   ticket do wrong?
+4. Why was my short strangle not sent on 10 September? Was it a rule?
+5. What is PR 3, in the order it is built, and what is deliberately NOT in it?
+6. Which files did the backtesting chat promise not to touch, and did it keep
+   that promise?
+7. What is wrong with the drainer today, and why are the notes still fine?
+8. What does "one by one" do on the server, and what keeps a retry from
+   opening a second trade?
+9. What are my hours, and what may never be planned for 09:15?
+10. What is the Trade Journal page waiting for, and what may you not do to it?
+11. List every question you have where two documents disagree or something is
+    unclear, with your recommendation for each.
 ```
 
 ---

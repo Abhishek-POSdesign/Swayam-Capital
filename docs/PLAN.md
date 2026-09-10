@@ -1010,11 +1010,44 @@ live log, the database or his vault, not from a summary. The vault session log
    unmistakable; buy and sell buttons that look like buttons; a table readable
    at a glance; max pain labelled with its expiry on the chain and on Home.
 
+10. **The Trade Journal page needs its own planning session, not a hurried
+    fix. His words:** "The trade journal also needs planning, aesthetics, and
+    a lot of things, so I don't want that to be planned in a hurry." Seen on
+    2026-09-10: the basis marks work; the times are UTC labelled IST (08:40
+    shown for a 14:10 trade); "Trade context and rationale" is blank on every
+    row because nothing lets him write a rationale, a trigger, a setup or a
+    trend view; the AI lesson and the discipline audit fill themselves with
+    words he did not say; the aesthetics are not his. **§2.18 holds it until
+    he opens that discussion.** Not part of PR 3.
+
 **The overnight test.** Trade 7cd4d017, the condor, four legs, stays open into
 2026-09-11 on his instruction: "We have to see how things look after the market
 close." Tomorrow in his window: Home and the desk with a carried position, rule
 2 against a real carry, the 15:20 naked-shorts check on a hedged structure, and
 the position area's first real subject once PR 3 lands.
+
+### 2.18 THE TRADE JOURNAL PAGE. To be planned WITH him, in its own discussion. Not started.
+
+Opened by him on 2026-09-10 after seeing the page with six real rows. Do not
+build anything here without a plan he has approved in the chat. What is known:
+
+- The record is right: squared-off trades only, charges per leg, the basis on
+  every row, the 81 build rows excluded. Keep all of that.
+- Times print the UTC hour with an IST label. Every stamp on the page must be
+  IST, the trade's own time.
+- "Trade context and rationale" is blank on every row and always will be,
+  because there is no place to write the rationale, the trigger, the setup,
+  the trend view or the exit reason in his words. He wants to; his historical
+  sheet has all of them. Where and when he writes them is the design question:
+  on the ticket before the send, in the position area while it runs, on the
+  journal row after, or in the vault note, and which of those is the source.
+- The discipline audit prints "Rules Followed, trade was managed strictly
+  according to written position sizing, stop-loss ceiling, and entry criteria"
+  for every trade, which is not a measurement. It must show what was actually
+  checked, or a dash.
+- The AI lesson is generated on close and reads as filler. It stays a manual
+  button under the cost rule, and the lesson ledger is his to edit.
+- Aesthetics: he will judge it by eye. Mockup first, like the desk.
 
 ### 2.14 REAL-MONEY ORDERS FROM THIS TERMINAL. His question of 2026-09-09 night, researched.
 

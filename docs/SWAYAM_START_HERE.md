@@ -99,6 +99,7 @@ has every figure and every decision; the vault session log
 | **The chain's faults** | Scroll thrown to the top every five seconds, cause confirmed. A stale strike in live ink. §2.12.5 item 9. PR 5 |
 | **Two outbox rows fail on every drain** | `close` rows for 03a1b63d and 8030ed03, already completed by another route. Notes are fine. §2.12.5 item 8 |
 | **The next build** | PR 3 as specified in §2.12.2 after the live test. Nothing else moves ahead of it |
+| **The Trade Journal page** | Works for the record, wrong on times (UTC labelled IST), blank rationale with no way to write one. **To be planned with him in its own discussion, §2.18.** Not hurried, not part of PR 3 |
 | Record | 3 trades from 2026-09-09 marked traded price; 2 closed today at the bid and ask; 1 open |
 
 ### Earlier: A CLEAN SLATE, AND ONE CHAT PER PURPOSE, 2026-09-10 night
