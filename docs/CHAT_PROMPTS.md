@@ -17,6 +17,14 @@
 | **Main** | `docs/SUCCESSOR_PROMPT.md` | `docs/PLAN.md` §1, §2 | The terminal itself: the desk, the ticket, positions, the journal, the recorder, live testing, everything that runs |
 | **Backtester** | `docs/SUCCESSOR_BACKTESTER.md` | `docs/PLAN.md` §2.16, data in §2.15 | Market vocabulary, new strategies, the replay engine, the measurement |
 | **AI partner** | `docs/SUCCESSOR_AI_PARTNER.md` | `docs/PLAN.md` §2.17 | **The mentor chat.** Designs, monitors, corrects and feeds the trading partner that lives in the terminal, whichever model that is. Never claims to be the partner. §2.17.7 |
+| **Builder, one per build** | The fence at the top of `docs/builds/BUILD_0N_*.md` | That build document, `docs/builds/README.md` | **Builds exactly one build and nothing else.** Since 2026-09-10 evening the main chat is the orchestrator: it plans, draws the mockup, writes the build document, and reviews the finished build before he merges. A builder chat is opened fresh for each build and closed after it. |
+
+**How the builder loop runs**, his decision of 2026-09-10 evening: the main
+chat says "the plan is ready" and gives him the prompt; he opens a new chat
+and pastes it; that chat builds one build and hands off; he tests it and
+iterates with the builder; then the main chat reviews it against the build
+document and the mockup and says "all good"; then he merges. One build at a
+time. `docs/builds/README.md` has the rules every builder follows.
 
 More chats will be added. When one is, add a row here, write its prompt beside
 the others, and give it a numbered section in `docs/PLAN.md` so the prompt has

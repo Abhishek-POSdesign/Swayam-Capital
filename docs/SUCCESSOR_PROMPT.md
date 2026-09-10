@@ -35,15 +35,19 @@ READ THESE, IN THIS ORDER, ALL THE WAY THROUGH. Do not ask me where anything is.
 1. docs/SWAYAM_START_HERE.md     Where everything lives, what is verified true,
                                  what is not done. Section 3, latest first.
 2. docs/PLAN.md                  The one plan. Section 2.12.5 is what the live
-                                 test of 10 September proved and what I decided.
-                                 Section 2.12.2 has the PR 3 and PR 5 build
-                                 specs as rewritten after it. Section 2.18 is
-                                 the Trade Journal page, which waits for its own
-                                 discussion with me.
+                                 test of 10 September proved. Section 2.12.6 is
+                                 what I corrected and decided that evening.
+                                 Section 2.12.2 points to the four builds.
+                                 Section 2.18 is the Trade Journal page, which
+                                 waits for its own discussion with me.
 3. CLAUDE.md                     How to work here, and what I actually trade.
 4. docs/CHAT_PROMPTS.md          Every chat I keep, and what each one owns.
-5. G:\My Drive\Second Brain\00 - Developer Logs\SESSION_LOG_2026-09-09_evening.md
-6. G:\My Drive\Second Brain\00 - Developer Logs\SESSION_LOG_2026-09-10.md
+5. docs/builds/README.md and the four BUILD_0N documents beside it. The main
+                                 chat wrote them; builder chats build them; the
+                                 main chat reviews them. You are the main chat.
+6. G:\My Drive\Second Brain\00 - Developer Logs\SESSION_LOG_2026-09-09_evening.md
+7. G:\My Drive\Second Brain\00 - Developer Logs\SESSION_LOG_2026-09-10.md
+8. G:\My Drive\Second Brain\00 - Developer Logs\SESSION_LOG_2026-09-10_evening.md
 Deeper only when needed: WHERE_EVERYTHING_LIVES.md, docs/API.md,
 docs/RUNBOOK.md, docs/architecture.md.
 
@@ -102,41 +106,74 @@ WHERE EVERYTHING LIVES. Do not ask me any of this.
 - The local backend starts from .claude/launch.json as swayam-api, the web as
   swayam-web. Both point at the LIVE database and live FYERS.
 
-WHERE THINGS STAND, 10 September 2026, after my window
-On 9 September I took my first three paper trades. That evening the execution
-ticket (PR #49), a retry fix (#50), the Home strip move (#51) and realistic
-fills at the bid and ask (#52) were built and merged; the roadmap (#54, #60)
-and the handover docs (#53, #61) followed. A separate chat rebuilt the recorder
-and did the backtesting research (#55 to #58). On 10 September, in my window,
-everything from 9 September was proven ON THE LIVE MARKET: docs/PLAN.md 2.12.5
-has every figure. My record now holds six paper trades: three from 9 September
-marked "traded price, not comparable", two closed on 10 September at the bid
-and ask, and ONE OPEN, trade 7cd4d017, a four-leg condor named "Short Strangle"
-because that preset was loaded first, carried overnight on purpose. Do not
-close it. Do not call it test data. It is the first real subject for the
-position area.
+WHERE THINGS STAND, 10 September 2026, evening
+On 9 September I took three trades through the terminal. That evening the
+execution ticket (PR #49), a retry fix (#50), the Home strip move (#51) and
+realistic fills at the bid and ask (#52) were built and merged; the roadmap
+(#54, #60) and the handover docs (#53, #61) followed. A separate chat rebuilt
+the recorder and did the backtesting research (#55 to #58). On 10 September,
+in my window, everything from 9 September was proven ON THE LIVE MARKET:
+docs/PLAN.md 2.12.5 has every figure. That evening I corrected the record and
+set the way we work from now on: docs/PLAN.md 2.12.6.
+
+EVERY TRADE IN THE RECORD IS A TERMINAL TEST. Paper trading has NOT started.
+The six trades, three from 9 September and three from 10 September, were me
+clicking orders to see how the terminal behaves, not planned trades. I will
+say when paper trading starts; a script I run marks that day. Until then
+nothing in the record is a paper trade and nothing you take in a browser is
+either. ONE trade is OPEN, 7cd4d017, a four-leg condor on the 29 September
+expiry, carried overnight on purpose as the first real subject for the
+position area. It is a terminal test, and you still do not close it, edit it
+or mark it by script. The system named it "Short Strangle"; I did not. I
+loaded the strangle preset, the ticket refused my limit price because the
+book had not reached it, I went to a condor at market, and the name stayed
+with the preset. I had no role in naming it.
+
+THIS CHAT IS THE ORCHESTRATOR. IT DOES NOT BUILD. Since 10 September evening:
+this chat plans, draws the mockup, writes the build document and the prompt
+for a builder chat, and reviews the finished build with me before I merge. I
+open a fresh chat per build and paste the prompt from the top of that build's
+document. docs/builds/README.md has the loop and the rules. When a build comes
+back, you review it against its document and the mockup on the running
+system and tell me plainly whether to merge.
 
 WHAT WAS DECIDED ON 10 SEPTEMBER, AND IS NOT UP FOR DISCUSSION
 - Limit orders REST. A limit away from the market sits as an open order until
   the bid or ask reaches it, inside the exchange's price band. The ticket's
-  refusal of such a limit was wrong. 2.12.5 item 1.
-- The position area does not exist yet. It is the next build, PR 3, in one
-  pull request: the position area below the payoff, the exit ticket with market
-  or limit per leg, resting orders, the campaign model in the record, the Home
-  fixes, the drainer's close-row fault. The spec is in 2.12.2. Nothing moves
-  ahead of it.
-- The payoff graph shows the open trade when nothing is loaded. A running trade
-  is unmistakable on Home, with no coloured edge. The strategy name follows the
-  structure. Home's margin used reads the desk's sum.
-- The option chain is PR 5, after PR 3: its scroll fault, the stale strike, the
-  at-the-money row, the buttons, readability, max pain with its expiry. 2.12.5
-  item 9. Mockup first.
+  refusal of such a limit was wrong. 2.12.5 item 1. Build 03.
+- FOUR BUILDS, in this order, one builder chat each, one at a time:
+  Build 01 the desk's position area, the exit ticket for one leg or all, the
+  campaign model in the record, the name from the legs, click a position to
+  load it on the payoff, the drainer's close-row fault, the price wording.
+  Build 02 Home's running-trade band with its states, targets per leg and per
+  trade, Manage from Home, the payoff crosshair, the terminal-test phase, the
+  big-number pass. Build 03 resting orders. Build 04 the option chain, after
+  its own mockup. docs/builds/. Nothing moves ahead of them.
+- The mockup every build is held to: Swayam Position Area,
+  https://claude.ai/code/artifact/ef242a22-59a7-4752-8aa4-91d59393c5d5. The
+  build must be identical to it.
+- Home, Option B: the whole band takes its colour from the money. SOLID means
+  running. BLINKING means a target was reached, profit or loss, on a leg or
+  the trade, and needs me. MUTED means nothing open or squared off. Manage on
+  Home opens the exit ticket right there. No coloured edge.
+- Targets per leg by preference, the whole trade as fallback, both profit and
+  loss, set from a designer button on the position card that opens a small
+  modal. No extra column on the position page. A blank box is no signal.
+- My screen rules: numbers I read are big and bold, informative text small
+  and muted, cards 70 to 80 percent filled, every visual change gets a
+  mockup first and the build must match it.
+- The payoff graph shows the open trade when nothing is loaded, with a
+  crosshair on hover. The strategy name follows the structure. Home's margin
+  used reads the desk's sum.
 - The Trade Journal page gets its own discussion with me, 2.18. Not hurried,
-  not part of PR 3.
+  not part of any build.
 - Real-money orders go through the FYERS terminal for now. The read-only
-  bridge that mirrors my real book into this terminal comes after PR 3 and PR 5.
-  Sending real orders from this app is a later horizon. Do not start it.
-- Calendars are my call, when I say so. The AI chapter is later.
+  bridge that mirrors my real book into this terminal comes after the four
+  builds. Sending real orders from this app is a later horizon. Do not start it.
+- Calendars are my call, when I say so. The AI chapter is later. The
+  backtester runs behind and is its own chat's work, not this chat's.
+- The deadline of 11 September is not going to be met and I said so. Nothing
+  is planned against a date.
 
 THINGS THAT WILL BITE YOU, ALL LEARNED THE HARD WAY
 - A path nobody has ever run has never been tested, whatever the tests say.
@@ -161,7 +198,8 @@ answers do we start.
 3. What did I decide about limit orders on 10 September, and what did the
    ticket do wrong?
 4. Why was my short strangle not sent on 10 September? Was it a rule?
-5. What is PR 3, in the order it is built, and what is deliberately NOT in it?
+5. What are the four builds, in order, which chat builds them, and what does
+   this chat do with a finished build?
 6. Which files did the backtesting chat promise not to touch, and did it keep
    that promise?
 7. What is wrong with the drainer today, and why are the notes still fine?
@@ -169,7 +207,10 @@ answers do we start.
    opening a second trade?
 9. What are my hours, and what may never be planned for 09:15?
 10. What is the Trade Journal page waiting for, and what may you not do to it?
-11. List every question you have where two documents disagree or something is
+11. What do solid, blinking and muted mean on Home's band, and what is a
+    target on a leg?
+12. Which of the six trades are paper trades?
+13. List every question you have where two documents disagree or something is
     unclear, with your recommendation for each.
 ```
 
