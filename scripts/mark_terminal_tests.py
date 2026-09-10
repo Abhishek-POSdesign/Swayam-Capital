@@ -87,6 +87,64 @@ def candidates(rows: list[dict[str, Any]], started_at) -> tuple[list, list]:
     return to_mark, skipped
 
 
+def resolve_note(row: dict[str, Any], entry_paths: dict[str, str]) -> Optional[str]:
+    """Where this trade's note actually is, the same way the drainer finds it.
+
+    WHY THIS IS NOT JUST `journal_path`
+    -----------------------------------
+    Four of his five closed trades carry NO `journal_path` on the position row,
+    and their notes exist all the same: they were queued in the outbox and
+    written later by `scripts/drain_journal_outbox.py`, which records the path
+    it wrote in `swayam_journal_entries.md_path` and does not always put it back
+    on the row. Reading only the row made this script report "no note recorded"
+    for 6b4f364e, 63ce13e6, 03a1b63d and 8030ed03 and it would have marked them
+    while leaving four real notes sitting in his journal folder.
+
+    So the row wins when it has one, and the journal index answers when it does
+    not. Exactly `_resolve_note_path` in the drainer, which has been finding
+    them correctly all along.
+
+    Pure: the index is handed in, so this can be tested against faked rows.
+    """
+    on_row = row.get("journal_path")
+    if on_row:
+        return str(on_row).replace("\\", "/")
+    from_index = entry_paths.get(str(row.get("id")))
+    if from_index:
+        return str(from_index).replace("\\", "/")
+    return None
+
+
+def _entry_paths_for(position_ids: list[str]) -> dict[str, str]:
+    """The note each trade's journal index points at. One query, not one each."""
+    if not position_ids:
+        return {}
+    try:
+        rows = (
+            db.client.table("swayam_journal_entries")
+            .select("position_id,md_path,entry_type")
+            .in_("position_id", position_ids)
+            .execute()
+            .data
+            or []
+        )
+    except Exception as exc:
+        print(f"  the journal index could not be read, so only the rows own paths are known: {exc}")
+        return {}
+
+    out: dict[str, str] = {}
+    for r in rows:
+        # The ENTRY note is the file; an exit or adjustment row names the same
+        # file, so either will do, but the entry is the one to prefer.
+        pid = str(r.get("position_id"))
+        path = r.get("md_path")
+        if not path:
+            continue
+        if str(r.get("entry_type") or "") == "entry" or pid not in out:
+            out[pid] = str(path)
+    return out
+
+
 def _new_rel_path(old: Optional[str]) -> Optional[str]:
     """The same note, one folder deeper. None when there is no note to move."""
     if not old:
@@ -139,6 +197,11 @@ def main() -> int:
 
     to_mark, skipped = candidates(rows, phase.paper_trading_started_at)
 
+    # Resolved ONCE, and the same answers are used for the listing and for the
+    # move, so what the dry run shows him is exactly what --apply does.
+    entry_paths = _entry_paths_for([str(r.get("id")) for r in to_mark])
+    notes = {str(r.get("id")): resolve_note(r, entry_paths) for r in to_mark}
+
     print(f"Paper trading started: {phase.paper_trading_started_at or 'NOT YET'}")
     print(f"Rows read: {len(rows)}")
     print()
@@ -156,10 +219,11 @@ def main() -> int:
     print(f"WOULD MARK terminal_test ({len(to_mark)}):" if not args.apply else f"MARKING ({len(to_mark)}):")
     for row in to_mark:
         pid = str(row.get("id"))
-        old_rel = row.get("journal_path")
+        old_rel = notes.get(pid)
         new_rel = _new_rel_path(old_rel)
+        where = "" if row.get("journal_path") else " (path from the journal index)"
         note_text = (
-            f"note {old_rel} -> {new_rel}"
+            f"note {old_rel} -> {new_rel}{where}"
             if new_rel and new_rel != old_rel
             else ("note already in Terminal tests" if new_rel else "no note recorded")
         )
@@ -176,7 +240,7 @@ def main() -> int:
     failed = 0
     for row in to_mark:
         pid = str(row.get("id"))
-        old_rel = row.get("journal_path")
+        old_rel = notes.get(pid)
         new_rel = _new_rel_path(old_rel)
         moved = False
 

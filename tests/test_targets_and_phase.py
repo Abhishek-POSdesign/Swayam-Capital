@@ -405,3 +405,95 @@ def test_a_note_already_in_the_subfolder_is_not_moved_twice():
     # A path this script does not understand is left alone rather than guessed at.
     assert _new_rel_path("somewhere/else/note.md") is None
     assert _new_rel_path(None) is None
+
+
+# ------------------------------------- the note the script is about to move
+
+
+def test_the_note_is_found_the_way_the_drainer_finds_it():
+    """Four of his five closed trades carry no journal_path on the row.
+
+    Their notes exist all the same: they were queued in the outbox and written
+    later by the drainer, which records the path in swayam_journal_entries and
+    does not always put it back on the position. Reading only the row made the
+    dry run say "no note recorded" for 6b4f364e, 63ce13e6, 03a1b63d and
+    8030ed03, and applying it would have marked four trades while leaving four
+    real notes sitting in his journal folder.
+    """
+    from mark_terminal_tests import resolve_note
+
+    index = {"from-index": "02 - Projects/Trading/04 - Journal/2026-09-09-trade02.md"}
+
+    # The row's own path wins when it has one.
+    on_row = {"id": "on-row", "journal_path": "02 - Projects/Trading/04 - Journal/2026-09-09-trade01.md"}
+    assert resolve_note(on_row, index).endswith("2026-09-09-trade01.md")
+
+    # And the journal index answers when the row does not. This is the fault.
+    from_index = {"id": "from-index", "journal_path": None}
+    assert resolve_note(from_index, index).endswith("2026-09-09-trade02.md")
+
+    # Neither has one: still None, so nothing is invented and nothing is moved.
+    assert resolve_note({"id": "nowhere", "journal_path": None}, index) is None
+
+
+def test_a_windows_path_is_read_as_a_vault_path():
+    """A path stored with backslashes still finds its note."""
+    from mark_terminal_tests import resolve_note
+
+    row = {"id": "w", "journal_path": "02 - Projects\\Trading\\04 - Journal\\2026-09-10-trade02.md"}
+    assert resolve_note(row, {}) == "02 - Projects/Trading/04 - Journal/2026-09-10-trade02.md"
+
+
+def test_the_dry_run_names_a_note_for_every_one_of_his_five():
+    """His real five, one with the path on the row and four only in the index.
+
+    Every one must come out with a note to move. A row that reports no note is
+    a row whose note would be left behind in `04 - Journal/`.
+    """
+    from mark_terminal_tests import _new_rel_path, candidates, resolve_note
+
+    J = "02 - Projects/Trading/04 - Journal"
+    rows = [
+        {"id": "fdc785f4", "strategy_name": "Bull Call Spread", "status": "closed",
+         "provenance": "live", "opened_at": "2026-09-09T08:37:12+00:00",
+         "journal_path": f"{J}/2026-09-09-trade01.md"},
+        {"id": "6b4f364e", "strategy_name": "Iron Condor", "status": "closed",
+         "provenance": "live", "opened_at": "2026-09-09T09:10:00+00:00", "journal_path": None},
+        {"id": "63ce13e6", "strategy_name": "Bull Put Spread", "status": "closed",
+         "provenance": "live", "opened_at": "2026-09-09T09:40:00+00:00", "journal_path": None},
+        {"id": "03a1b63d", "strategy_name": "Bear Call Spread", "status": "closed",
+         "provenance": "live", "opened_at": "2026-09-10T08:02:29+00:00", "journal_path": None},
+        {"id": "8030ed03", "strategy_name": "Bull Put Spread", "status": "closed",
+         "provenance": "live", "opened_at": "2026-09-10T08:40:48+00:00", "journal_path": None},
+        # Open on purpose, and skipped whatever its note says.
+        {"id": "7cd4d017", "strategy_name": "Iron Condor", "status": "open",
+         "provenance": "live", "opened_at": "2026-09-10T08:15:49+00:00",
+         "journal_path": f"{J}/2026-09-10-trade01.md"},
+    ]
+    index = {
+        "6b4f364e": f"{J}/2026-09-09-trade02.md",
+        "63ce13e6": f"{J}/2026-09-09-trade03.md",
+        "03a1b63d": f"{J}/2026-09-10-trade02.md",
+        "8030ed03": f"{J}/2026-09-10-trade03.md",
+    }
+
+    to_mark, skipped = candidates(rows, None)
+    assert len(to_mark) == 5
+    assert [r["id"] for r, _ in skipped] == ["7cd4d017"]
+
+    moves = {}
+    for row in to_mark:
+        old = resolve_note(row, index)
+        assert old is not None, f"{row['id']} would have been marked with its note left behind"
+        moves[row["id"]] = _new_rel_path(old)
+
+    assert moves == {
+        "fdc785f4": f"{J}/Terminal tests/2026-09-09-trade01.md",
+        "6b4f364e": f"{J}/Terminal tests/2026-09-09-trade02.md",
+        "63ce13e6": f"{J}/Terminal tests/2026-09-09-trade03.md",
+        "03a1b63d": f"{J}/Terminal tests/2026-09-10-trade02.md",
+        "8030ed03": f"{J}/Terminal tests/2026-09-10-trade03.md",
+    }
+    # All six of his notes are accounted for: five moved, and the open condor's
+    # left exactly where it is.
+    assert len(set(moves.values())) == 5
