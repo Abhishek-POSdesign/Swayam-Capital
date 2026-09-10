@@ -394,17 +394,17 @@ export class OptionChainModalComponent {
     const disabled = alive ? '' : ` disabled title="${escapeHtml(why)}"`;
 
     const cells = [
-      [`${lower}-act`, `<td class="act ${lower}"><button type="button" class="ocbtn B" data-act="add" data-bs="B" data-strike="${strike}" data-type="${type}"${disabled}>Buy</button><button type="button" class="ocbtn S" data-act="add" data-bs="S" data-strike="${strike}" data-type="${type}"${disabled}>Sell</button></td>`],
+      [`${lower}-act`, `<td class="act ${lower}"><div class="pair"><button type="button" class="ocbtn B" data-act="add" data-bs="B" data-strike="${strike}" data-type="${type}"${disabled}>Buy</button><button type="button" class="ocbtn S" data-act="add" data-bs="S" data-strike="${strike}" data-type="${type}"${disabled}>Sell</button></div></td>`],
       [`${lower}-oi`, `<td class="n oi ${lower}${alive ? '' : ' dead'}" title="${escapeHtml(title)}"><i class="bar ${lower}" style="width:${bar.toFixed(1)}%"></i><span>${oi === null ? '<span class="na">—</span>' : escapeHtml(compact(oi))}</span></td>`],
-      [`${lower}-doi`, `<td class="n ${lower} ${dOi === null ? '' : dOi > 0 ? 'up' : dOi < 0 ? 'down' : ''}">${dOi === null ? '<span class="na">—</span>' : dOi === 0 ? '—' : escapeHtml(`${dOi > 0 ? '+' : '−'}${compact(Math.abs(dOi))}`)}</td>`],
+      [`${lower}-doi`, `<td class="n doi ${lower} ${dOi === null ? '' : dOi > 0 ? 'up' : dOi < 0 ? 'down' : ''}">${dOi === null ? '<span class="na">—</span>' : dOi === 0 ? '—' : escapeHtml(`${dOi > 0 ? '+' : '−'}${compact(Math.abs(dOi))}`)}</td>`],
     ];
     if (this.more) {
-      cells.push([`${lower}-iv`, `<td class="n ${lower} muted">${iv === null ? '<span class="na">—</span>' : escapeHtml(iv)}</td>`]);
-      cells.push([`${lower}-vol`, `<td class="n ${lower} muted">${vol === null ? '<span class="na">—</span>' : escapeHtml(compact(vol))}</td>`]);
+      cells.push([`${lower}-iv`, `<td class="n iv ${lower} muted">${iv === null ? '<span class="na">—</span>' : escapeHtml(iv)}</td>`]);
+      cells.push([`${lower}-vol`, `<td class="n vol ${lower} muted">${vol === null ? '<span class="na">—</span>' : escapeHtml(compact(vol))}</td>`]);
     }
     cells.push([
       `${lower}-px`,
-      `<td class="px ${lower}${alive ? '' : ' dead'} ${alive && isNum(chg) ? (chg < 0 ? 'down' : chg > 0 ? 'up' : '') : ''}" title="${escapeHtml(title)}">${price}</td>`,
+      `<td class="px ${lower}${alive ? '' : ' dead'}" title="${escapeHtml(title)}">${price}</td>`,
     ]);
 
     // Calls read left to right towards the strike; puts mirror them.
@@ -446,8 +446,8 @@ export class OptionChainModalComponent {
     }).join('');
 
     const cols = this.more ? 6 : 4;
-    const moreTh = this.more ? '<th class="n">IV</th><th class="n">Vol</th>' : '';
-    const moreThR = this.more ? '<th class="n">Vol</th><th class="n">IV</th>' : '';
+    const moreTh = this.more ? '<th class="n iv">IV</th><th class="n vol">Vol</th>' : '';
+    const moreThR = this.more ? '<th class="n vol">Vol</th><th class="n iv">IV</th>' : '';
 
     this.el.innerHTML = `
       <div class="ocm sw-desk" role="dialog" aria-label="Option chain"${this._pos ? ` style="left:${this._pos.left}px;top:${this._pos.top}px;transform:none"` : ''}>
@@ -458,9 +458,9 @@ export class OptionChainModalComponent {
             <thead>
               <tr><th class="side" colspan="${cols}">CALLS</th><th></th><th class="side" colspan="${cols}">PUTS</th></tr>
               <tr>
-                <th></th><th class="n">OI</th><th class="n">ΔOI</th>${moreTh}<th class="n">Call</th>
+                <th class="act"></th><th class="n oi">OI</th><th class="n doi">ΔOI</th>${moreTh}<th class="n px">Call</th>
                 <th class="strike">Strike</th>
-                <th>Put</th>${moreThR}<th class="n">ΔOI</th><th class="n">OI</th><th></th>
+                <th class="n px">Put</th>${moreThR}<th class="n doi">ΔOI</th><th class="n oi">OI</th><th class="act"></th>
               </tr>
             </thead>
             <tbody id="ocm-body">${body || `<tr><td colspan="${cols * 2 + 1}" class="na" style="padding:18px;text-align:center">${this.error ? escapeHtml(this.error) : 'Reading the chain…'}</td></tr>`}</tbody>

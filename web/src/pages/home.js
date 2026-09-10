@@ -862,7 +862,7 @@ export class HomePage {
       return `${missing} open position${missing === 1 ? ' has' : 's have'} no stored margin (opened before it was recorded)`;
     }
     const n = this.positions.length;
-    return `${n} open position${n === 1 ? '' : 's'} · same figure as the desk`;
+    return `across ${n} open position${n === 1 ? '' : 's'}`;
   }
 
   // ------------------------------------------------- open positions, the strip
@@ -956,11 +956,21 @@ export class HomePage {
     const t = p.targets || {};
     const withTargets = Number(t.legs_with_targets || 0);
     const total = Number(t.legs_total || 0);
-    const tradeSet = typeof t.target_profit_inr === 'number' || typeof t.target_loss_inr === 'number';
+    const profit = typeof t.target_profit_inr === 'number' ? t.target_profit_inr : null;
+    const loss = typeof t.target_loss_inr === 'number' ? t.target_loss_inr : null;
+
+    // WHAT HE SET, IN THE FIGURE HE TYPED. His question of 2026-09-11: "I just
+    // added a maximum loss for the whole trade, so where is this visible?" It
+    // said only "on the trade", which is not an answer. It shows the number.
+    if (profit !== null || loss !== null) {
+      const parts = [];
+      if (profit !== null) parts.push(`+${inr(profit)}`);
+      if (loss !== null) parts.push(`−${inr(loss)}`);
+      return { k: withTargets > 0 ? 'Trade target' : 'Targets set', v: parts.join(' / '), tone: '' };
+    }
     if (withTargets > 0) {
       return { k: 'Targets set', v: `${withTargets} of ${total} legs`, tone: '' };
     }
-    if (tradeSet) return { k: 'Targets set', v: 'on the trade', tone: '' };
     // Nothing set is not a failure and does not get a warning colour. It is
     // simply the truth, and the button beside it is how he changes it.
     return { k: 'Targets set', v: 'none yet', tone: 'muted' };
@@ -973,17 +983,35 @@ export class HomePage {
     const shut = p.market_state !== 'live';
     const alerts = Array.isArray(p.alerts) ? p.alerts : [];
 
+    // WHAT THE GROUND SAYS, corrected by him on 2026-09-11.
+    //
+    //   blinking green  a profit is running
+    //   blinking red    a loss is running
+    //   solid green     his profit target was reached
+    //   solid red       his loss target was reached
+    //   calm blue       the market is shut, so nothing is running at all
+    //   muted           nothing open, or squared off
+    //
+    // A shut market gets its OWN colour rather than a frozen green or red,
+    // because a green ground on a number that stopped moving hours ago reads
+    // as "running" when nothing is. His words: "when the market is closed,
+    // just give the blue colour or some other colour." The figures themselves
+    // keep their own green and red, because the money did what it did.
     const cls = state === 'alert'
       ? `hb ${tone === 'down' ? 'solid-down' : 'solid-up'}`
       : state === 'quiet'
         ? 'hb quiet'
-        : `hb tint-${tone}${shut ? '' : ' running'}`;
+        : shut
+          ? 'hb shut'
+          : `hb tint-${tone} running`;
 
     const chip = state === 'alert'
-      ? `<span class="hchip"><span class="hdot"></span> ${alerts[0] && alerts[0].kind === 'profit' ? 'profit target reached' : 'loss target reached'}</span>`
+      ? `<span class="hchip alert"><span class="hdot"></span> ${alerts[0] && alerts[0].kind === 'profit' ? 'profit target hit' : 'loss target hit'}</span>`
       : state === 'quiet'
-        ? '<span class="hchip flat">squared off</span>'
-        : `<span class="hchip ${tone === 'down' ? 'c-down' : 'c-up'}"><span class="hdot${shut ? '' : ' pulse'}"></span> running${shut ? ' · at the close' : ''}</span>`;
+        ? '<span class="hchip">squared off</span>'
+        : shut
+          ? '<span class="hchip">at the close</span>'
+          : `<span class="hchip ${tone === 'down' ? 'c-down' : 'c-up'}"><span class="hdot pulse"></span> running</span>`;
 
     const third = this._bandThird(p);
     const legs = Number(p.legs_open || 0);
@@ -996,8 +1024,6 @@ export class HomePage {
       expiry ? `expiry ${expiry}` : null,
       since ? `since ${since} IST` : null,
       kind,
-      // Every panel on Home says when it was last read. A band showing money
-      // is exactly the panel where that matters most.
       this._readStamp('livePositions'),
       p.error ? p.error : null,
     ].filter(Boolean).join(' · ');
@@ -1010,10 +1036,14 @@ export class HomePage {
     const pnl = typeof p.unrealized_pnl_inr === 'number' ? p.unrealized_pnl_inr : null;
     const net = typeof p.net_if_exit_now_inr === 'number' ? p.net_if_exit_now_inr : null;
 
+    // THE NAME OWNS THE CORNER, and the state chip sits beside it the way the
+    // CLOSED chip sits beside NIFTY 50. It used to have the whole first column
+    // to itself, which took the title's place and left the trade's name pushed
+    // along. His words: "the Iron Condor and the details should be there."
     return `<div class="${cls}" data-band="${escapeHtml(String(p.position_id))}">
-      <div>${chip}</div>
-      <div class="t">${escapeHtml(p.strategy_name || 'Trade')}<small>${escapeHtml(meta)}</small></div>
-      ${money('Open profit / loss', pnl === null ? null : signed(pnl, { whole: true }), `hero ${pnl === null ? '' : pnl < 0 ? 'dn' : 'up'}`)}
+      <div class="t"><span class="nm">${escapeHtml(p.strategy_name || 'Trade')}</span> ${chip}
+        <small>${escapeHtml(meta)}</small></div>
+      ${money('Open profit / loss', pnl === null ? null : signed(pnl, { whole: true }), pnl === null ? '' : pnl < 0 ? 'dn' : 'up')}
       ${money('Net if exited', net === null ? null : signed(net, { whole: true }), net === null ? '' : net < 0 ? 'dn' : 'up')}
       ${money(third.k, third.v, third.tone === 'up' ? 'up' : third.tone === 'down' ? 'dn' : third.tone)}
       <div><button class="hbtn${state === 'alert' ? ' pri' : ''}" type="button"
@@ -1029,7 +1059,7 @@ export class HomePage {
   _quietLine() {
     const testing = !this.phase || this.phase.paper_trading_started !== true;
     const words = testing
-      ? 'Your paper record starts clean on the day you say paper trading begins. Everything before that is a terminal test.'
+      ? 'Test trading. Your record starts clean on the day you say.'
       : 'Nothing running. Your paper record is live.';
     return `<div class="hb quiet one">
       <span class="hchip flat">nothing running</span>
@@ -1240,8 +1270,8 @@ export class HomePage {
       : null;
     const note = paper
       ? (started
-        ? `Your paper record starts from ${String(started).slice(0, 10)}. Build tests and terminal tests are quarantined and excluded from every figure here.`
-        : 'Paper trading has not started. Every trade below is a terminal test: you clicked it to see how the terminal behaves. Your paper record starts clean on the day you say so.')
+        ? `Your paper record starts from ${String(started).slice(0, 10)}. Test rows are excluded from every figure here.`
+        : 'Test trading. Every trade below was a click to see how the terminal behaves, and your record starts clean on the day you say.')
       : 'No real-money trades. Real execution is code-blocked: there is no order-placement code in the app at all. This book stays empty until you decide otherwise.';
 
     const why = this.recordError

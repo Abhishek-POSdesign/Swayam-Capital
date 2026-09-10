@@ -152,6 +152,7 @@ export class PositionArea {
     this.renaming = null;     // a position id
     this.timer = null;
     this.earlierOpen = this._readEarlierPreference();
+    this._bound = false;
   }
 
   _readEarlierPreference() {
@@ -695,9 +696,33 @@ export class PositionArea {
     this.render();
   }
 
+  /**
+   * ONCE. Never again, however many times the area redraws.
+   *
+   * THE BUG THIS FIXES, found on his machine 2026-09-11. `render()` called
+   * this, and this attached a click listener to `this.host` -- the element
+   * whose innerHTML render replaces, but which is itself never replaced. So
+   * every redraw added another listener to the same element, and every listener
+   * that fired called `act()`, which called `render()`, which added another.
+   *
+   * Measured in the browser before the fix: one click on Show ran `act` once,
+   * the next twice, then four times, then eight. Doubling. A dozen clicks is
+   * thousands of calls and the tab stops responding, which is exactly what he
+   * saw: "this also hangs the whole website... I will have to reopen the
+   * website if I use that button once."
+   *
+   * The five-second refresh timer redraws too, so listeners piled up merely by
+   * leaving the desk open.
+   *
+   * The exit ticket does not have this fault: it binds to the backdrop element
+   * INSIDE its own innerHTML, which is thrown away and rebuilt on every render,
+   * taking its listeners with it.
+   */
   _bind() {
     const root = this.host;
     if (!root || !root.addEventListener) return;
+    if (this._bound) return;
+    this._bound = true;
 
     root.addEventListener('click', (e) => {
       const el = e.target && e.target.closest ? e.target.closest('[data-act]') : null;
