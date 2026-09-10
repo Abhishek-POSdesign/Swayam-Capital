@@ -28,6 +28,8 @@ import { ChatSurfaceComponent } from '../components/chat-surface.js';
 import { SoFarTodayCardComponent } from '../components/so-far-today-card.js';
 import { PwaInstallPromptComponent } from '../components/pwa-install-prompt.js';
 import { DataHealthStrip } from '../components/data-health-strip.js';
+import { ExitTicket } from '../components/exit-ticket.js';
+import { signed } from '../components/position-area.js';
 import { updateHeaderSpot } from '../components/header.js';
 import { spotFeed } from '../modules/ws-client.js';
 import { inr, num, signedPct, escapeHtml, istTime, flashFor } from '../utils/display.js';
@@ -84,6 +86,12 @@ export class HomePage {
      */
     this.livePositions = null;
     this.livePositionsError = null;
+    // The exit ticket Manage opens, mounted here on Home. The desk mounts its
+    // own; neither borrows the other's.
+    this.exitTicket = null;
+    // Has paper trading begun. Null until read; treated as "not yet", which is
+    // true today and is what the quiet line says.
+    this.phase = null;
     this.positionsExpanded = readPositionsExpanded();
     /** Closed-trade KPIs behind "Your record", per book. */
     /** What the last exit attempt did, in money. Cleared on the next load. */
@@ -252,6 +260,7 @@ export class HomePage {
                      "Your money", in the main column, not up by the header.
                      Home shows the position; the desk manages it. -->
                 <div class="span-12" id="home-positions"></div>
+                <div id="home-exit-ticket"></div>
                 <div class="span-12" id="home-money"></div>
                 <div class="span-6" id="home-record"></div>
                 <div class="span-6" id="home-events"></div>
@@ -317,6 +326,7 @@ export class HomePage {
     await Promise.all([
       this.loadSnapshot(),
       this.loadCapital(),
+      this.loadPhase(),
       this.loadPositions(),
       this.loadEvents(),
       this.loadDaily(),
@@ -350,6 +360,24 @@ export class HomePage {
     this.renderMoney();
     // The strip prints how much of the running-loss cap a live loss has eaten,
     // and that cap is a percentage of the balance this call just read.
+    this.renderPositions();
+  }
+
+  /**
+   * Has paper trading begun. Read once per visit, because it changes exactly
+   * once, on a day he chooses, by a script only he runs.
+   *
+   * A failure is NOT an error on his screen. It leaves `phase` null, which the
+   * quiet line reads as "not yet", which is true today and is the safe
+   * direction: telling him his paper record has begun when it has not would
+   * put his own judgement of the terminal on a false footing.
+   */
+  async loadPhase() {
+    try {
+      this.phase = await api.getPhase();
+    } catch (_) {
+      this.phase = null;
+    }
     this.renderPositions();
   }
 
@@ -667,10 +695,49 @@ export class HomePage {
         <h3>Options, weekly <span class="r">chain · ${escapeHtml(this._readStamp('snapshot'))}</span></h3>
         ${this._kv('India VIX', num(f.india_vix, 2))}
         ${this._kv('Put-call ratio', num(f.weekly_pcr, 2))}
-        ${this._kv('Max pain', num(f.max_pain, 0))}
+        ${this._maxPainRow(f)}
         ${this._kv('Days to weekly expiry', this._dte(f.weekly_dte))}
         ${this._kv('Days to monthly expiry', this._dte(f.monthly_dte))}
       </div>`;
+  }
+
+  /**
+   * Max pain, saying WHICH EXPIRY it belongs to.
+   *
+   * docs/PLAN.md 2.12.5 item 9. On 2026-09-10 this card read 23,500 while
+   * the desk's option chain read 24,000, and neither said which expiry it
+   * meant. Both were right: this one is computed from the WEEKLY chain in
+   * nifty_snapshot.py, and the desk computes it for whatever expiry is
+   * selected there, which is usually the monthly.
+   *
+   * With no expiry to name it with, the figure is not shown at all. An
+   * unlabelled max pain is exactly what confused the two screens.
+   */
+  _maxPainRow(f) {
+    const label = this._expiryLabel(f && f.weekly_expiry);
+    if (!label) {
+      return this._kv(
+        'Max pain',
+        null,
+        null,
+        'the expiry it belongs to is unavailable, and an unlabelled max pain is what confused this card and the option chain',
+      );
+    }
+    return this._kv(
+      `Max pain, ${label} weekly`,
+      num(f.max_pain, 0),
+      null,
+      'the option chain on the desk shows it for the expiry selected there',
+    );
+  }
+
+  /** "15 Sep" from an ISO date, the way every expiry reads on the desk. */
+  _expiryLabel(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+    if (!m) return null;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[Number(m[2]) - 1];
+    return month ? `${Number(m[3])} ${month}` : null;
   }
 
   _money(k, formatted, sub, colour, accent = false) {
@@ -699,7 +766,7 @@ export class HomePage {
           ${this._money('Balance', inr(cap.risk_capital_inr), 'total', null, true)}
           ${this._money('Free cash', inr(cap.free_cash_inr), 'unpledged')}
           ${this._money('Collateral', inr(cap.collateral_inr), 'pledged holdings')}
-          ${this._money('Margin used', inr(used), this.marginUsedNote(), 'var(--fg-2)')}
+          ${this._marginTile(cap, used)}
         </div>
         ${this._capsBand(cap)}
         ${cap.reconciliation_note ? `<div class="why">${escapeHtml(cap.reconciliation_note)}</div>` : ''}
@@ -748,23 +815,54 @@ export class HomePage {
    * with something open it is honestly unknown until the broker is asked. It is
    * never assumed, and the sub-line below says which of the two it is.
    */
+  /**
+   * Margin used, with how much of rule 4 it has taken and a bar to read it by.
+   *
+   * Rule 4 is the deployable margin ceiling, twice the cash equivalent, and it
+   * is a percentage of the balance read fresh this session. No ceiling, no
+   * share, and the tile says so instead of drawing an empty bar that looks
+   * like zero used.
+   */
+  _marginTile(cap, used) {
+    const ceiling = cap && typeof cap.deployable_margin_ceiling_inr === 'number'
+      ? cap.deployable_margin_ceiling_inr
+      : null;
+    const share = used !== null && ceiling !== null && ceiling > 0 ? (used / ceiling) * 100 : null;
+    const note = share === null
+      ? this.marginUsedNote()
+      : `${this.marginUsedNote()} · ${share.toFixed(0)}% of rule 4`;
+    const bar = share === null
+      ? ''
+      : `<div class="mbar"><i style="width:${Math.max(0, Math.min(100, share)).toFixed(1)}%"></i></div>`;
+    return `<div class="mn"><div class="k">Margin used</div>
+      <div class="v" style="color:var(--fg-2)">${used === null ? '<span class="na" style="font-size:14px">unavailable</span>' : escapeHtml(inr(used))}</div>
+      <div class="s">${escapeHtml(note)}</div>${bar}</div>`;
+  }
+
   marginUsed() {
     if (!Array.isArray(this.positions)) return null;
     if (!this.positions.length) return 0;
     let total = 0;
-    let sawOne = false;
+    let missing = 0;
     for (const p of this.positions) {
-      if (typeof p.margin_used_inr === 'number') { total += p.margin_used_inr; sawOne = true; }
-      else if (typeof p.margin_blocked_inr === 'number') { total += p.margin_blocked_inr; sawOne = true; }
+      if (typeof p.margin_required_inr === 'number') total += p.margin_required_inr;
+      else missing += 1;
     }
-    return sawOne ? total : null;
+    // One position without it makes the whole figure unavailable. A partial
+    // sum is a smaller number that looks whole, which is exactly what he must
+    // never be shown. Identical to StrategyBuilderPage.refreshPositions.
+    return missing === 0 ? total : null;
   }
 
   marginUsedNote() {
     if (!Array.isArray(this.positions)) return 'positions not read yet';
     if (!this.positions.length) return 'nothing open';
-    if (this.marginUsed() === null) return 'no margin figure is stored on a position';
-    return 'across open positions';
+    const missing = this.positions.filter((p) => typeof p.margin_required_inr !== 'number').length;
+    if (missing) {
+      return `${missing} open position${missing === 1 ? ' has' : 's have'} no stored margin (opened before it was recorded)`;
+    }
+    const n = this.positions.length;
+    return `${n} open position${n === 1 ? '' : 's'} · same figure as the desk`;
   }
 
   // ------------------------------------------------- open positions, the strip
@@ -801,131 +899,213 @@ export class HomePage {
     return (Math.abs(pnl) / cap) * 100;
   }
 
-  /** grey with nothing open, sage in profit, coral in loss. Colour follows the money. */
-  positionsTone() {
-    if (!Array.isArray(this.positions) || !this.positions.length) return 'flat';
-    const pnl = this.combinedPnl();
-    if (typeof pnl !== 'number') return 'flat';
-    return pnl < 0 ? 'loss' : 'profit';
+  /**
+   * THE RUNNING-TRADE BAND. Replaced the collapsible strip on 2026-09-10.
+   *
+   * His words, 2026-09-10: "A running trade is unmistakable on Home and goes
+   * quiet only when squared off." He chose Option B, the whole band coloured
+   * from the money, and the coloured edge is gone.
+   *
+   * THE THREE STATES, IN HIS OWN WORDS, because a first reading had them
+   * backwards and he corrected it:
+   *
+   *   BLINKING  the trade is running. A gentle breath, never a strobe, "so
+   *             that it always attracts attention that my profit and losses
+   *             are running."
+   *   SOLID     green or red. A target HE set was reached, profit or loss, on
+   *             a leg or on the trade. It stops blinking and it needs him.
+   *   MUTED     nothing open, or squared off. "As soon as the trade is squared
+   *             off, everything goes mute: no blink, no color."
+   *
+   * THE STATE IS NOT DECIDED HERE. It arrives on `/api/positions/live` as
+   * `state`, computed by services/targets.py, so Home and the desk cannot
+   * disagree about the same trade. This file paints what it is told.
+   *
+   * AND IT DOES NOT BLINK OVER A FROZEN NUMBER. When the market is shut the
+   * band keeps its colour and stops breathing, and says "at the close",
+   * because his profit and loss is not running at nine in the evening and a
+   * blink that says it is would be a small lie.
+   */
+  bandTone(p) {
+    const pnl = p && p.unrealized_pnl_inr;
+    if (typeof pnl !== 'number' || !Number.isFinite(pnl)) return 'flat';
+    return pnl < 0 ? 'down' : 'up';
+  }
+
+  /** The trades that get a band, the ones needing him first. */
+  bandPositions() {
+    if (!Array.isArray(this.livePositions)) return [];
+    const open = this.livePositions.filter((p) => String(p.state || 'running') !== 'quiet');
+    const rank = (p) => (p.state === 'alert' ? 0 : p.state === 'running' ? 1 : 2);
+    return open.slice().sort((a, b) => rank(a) - rank(b));
+  }
+
+  /** The third figure on the band: what he asked this trade to tell him. */
+  _bandThird(p) {
+    const alerts = Array.isArray(p.alerts) ? p.alerts : [];
+    if (alerts.length) {
+      const a = alerts[0];
+      const what = a.kind === 'profit' ? 'profit' : 'loss';
+      const who = a.scope === 'leg' ? a.leg_label : 'the whole trade';
+      return {
+        k: 'Reached',
+        v: `${who} · ${what}`,
+        tone: a.kind === 'profit' ? 'up' : 'down',
+      };
+    }
+    const t = p.targets || {};
+    const withTargets = Number(t.legs_with_targets || 0);
+    const total = Number(t.legs_total || 0);
+    const tradeSet = typeof t.target_profit_inr === 'number' || typeof t.target_loss_inr === 'number';
+    if (withTargets > 0) {
+      return { k: 'Targets set', v: `${withTargets} of ${total} legs`, tone: '' };
+    }
+    if (tradeSet) return { k: 'Targets set', v: 'on the trade', tone: '' };
+    // Nothing set is not a failure and does not get a warning colour. It is
+    // simply the truth, and the button beside it is how he changes it.
+    return { k: 'Targets set', v: 'none yet', tone: 'muted' };
+  }
+
+  /** One band. Everything on it was read off the server; none of it is computed here. */
+  _band(p) {
+    const state = String(p.state || 'running');
+    const tone = this.bandTone(p);
+    const shut = p.market_state !== 'live';
+    const alerts = Array.isArray(p.alerts) ? p.alerts : [];
+
+    const cls = state === 'alert'
+      ? `hb ${tone === 'down' ? 'solid-down' : 'solid-up'}`
+      : state === 'quiet'
+        ? 'hb quiet'
+        : `hb tint-${tone}${shut ? '' : ' running'}`;
+
+    const chip = state === 'alert'
+      ? `<span class="hchip"><span class="hdot"></span> ${alerts[0] && alerts[0].kind === 'profit' ? 'profit target reached' : 'loss target reached'}</span>`
+      : state === 'quiet'
+        ? '<span class="hchip flat">squared off</span>'
+        : `<span class="hchip ${tone === 'down' ? 'c-down' : 'c-up'}"><span class="hdot${shut ? '' : ' pulse'}"></span> running${shut ? ' · at the close' : ''}</span>`;
+
+    const third = this._bandThird(p);
+    const legs = Number(p.legs_open || 0);
+    const closed = Number(p.legs_closed || 0);
+    const expiry = this._expiryLabel(p.expiry_date);
+    const kind = typeof p.days_held === 'number' && p.days_held >= 1 ? 'swing' : 'intraday so far';
+    const since = istTime(p.opened_at, false);
+    const meta = [
+      `${legs} leg${legs === 1 ? '' : 's'}${closed ? ` · ${closed} already out` : ''}`,
+      expiry ? `expiry ${expiry}` : null,
+      since ? `since ${since} IST` : null,
+      kind,
+      // Every panel on Home says when it was last read. A band showing money
+      // is exactly the panel where that matters most.
+      this._readStamp('livePositions'),
+      p.error ? p.error : null,
+    ].filter(Boolean).join(' · ');
+
+    const money = (k, value, klass) => `<div><div class="k">${escapeHtml(k)}</div>
+      <div class="v ${klass}">${value === null || value === undefined
+        ? '<span class="na">unavailable</span>'
+        : escapeHtml(value)}</div></div>`;
+
+    const pnl = typeof p.unrealized_pnl_inr === 'number' ? p.unrealized_pnl_inr : null;
+    const net = typeof p.net_if_exit_now_inr === 'number' ? p.net_if_exit_now_inr : null;
+
+    return `<div class="${cls}" data-band="${escapeHtml(String(p.position_id))}">
+      <div>${chip}</div>
+      <div class="t">${escapeHtml(p.strategy_name || 'Trade')}<small>${escapeHtml(meta)}</small></div>
+      ${money('Open profit / loss', pnl === null ? null : signed(pnl, { whole: true }), `hero ${pnl === null ? '' : pnl < 0 ? 'dn' : 'up'}`)}
+      ${money('Net if exited', net === null ? null : signed(net, { whole: true }), net === null ? '' : net < 0 ? 'dn' : 'up')}
+      ${money(third.k, third.v, third.tone === 'up' ? 'up' : third.tone === 'down' ? 'dn' : third.tone)}
+      <div><button class="hbtn${state === 'alert' ? ' pri' : ''}" type="button"
+        data-manage="${escapeHtml(String(p.position_id))}"
+        ${state === 'quiet' ? 'disabled' : ''}>Manage</button></div>
+    </div>`;
   }
 
   /**
-   * The one line he sees when the strip is shut. With something open it has to
-   * be worth reading on its own: how many, what they are worth now, and how
-   * much of his running-loss limit that has used.
+   * The line when nothing is running. It stays on the page, one row high, so
+   * the space does not jump about between a day with a trade and a day without.
    */
-  positionsSummary() {
-    if (this.positionsError) {
-      return `<span class="na">Open positions could not be read</span>
-        <span class="pdim">${escapeHtml(this.positionsError)}</span>`;
-    }
-    if (!Array.isArray(this.positions)) {
-      return '<span class="pdim">Reading your open positions…</span>';
-    }
-    if (!this.positions.length) {
-      return `<span>Nothing open.</span>
-        <span class="pdim">Your paper record starts clean from 8 September.</span>`;
-    }
-
-    const n = this.positions.length;
-    const parts = [`<span class="pn">${n} open</span>`];
-    const pnl = this.combinedPnl();
-    if (typeof pnl === 'number') {
-      parts.push(`<span class="pv ${pnl < 0 ? 'dn' : 'up'}">${escapeHtml(inr(pnl))}</span>`);
-    } else {
-      const why = this.livePositionsError
-        ? this.livePositionsError
-        : this.livePositions === null
-          ? 'not valued yet'
-          : 'a position could not be valued against the chain';
-      parts.push(`<span class="na">profit and loss unavailable</span>`);
-      parts.push(`<span class="pdim">${escapeHtml(why)}</span>`);
-    }
-    const usedPct = this.runningLossUsedPct();
-    if (usedPct !== null) {
-      parts.push(`<span class="pdim">running loss ${usedPct.toFixed(0)}% used</span>`);
-    }
-    return parts.join('<span class="psep">·</span>');
-  }
-
-  /** Every open position in full, drawn only when he opens the strip. */
-  positionsDetail() {
-    if (!Array.isArray(this.positions) || !this.positions.length) {
-      return `<div class="empty">Nothing open. When you take a position it appears here,
-        on the desk against your margin, and in the journal once it is closed.</div>`;
-    }
-    const liveById = new Map();
-    if (Array.isArray(this.livePositions)) {
-      for (const l of this.livePositions) liveById.set(String(l.position_id), l);
-    }
-    const rows = this.positions.map((p) => {
-      const l = liveById.get(String(p.id)) || null;
-      const pnl = l && typeof l.unrealized_pnl_inr === 'number' ? l.unrealized_pnl_inr : null;
-      const pct = l && typeof l.unrealized_pnl_pct_of_risk === 'number' ? l.unrealized_pnl_pct_of_risk : null;
-      const legs = Array.isArray(p.legs) ? p.legs.length : null;
-      const opened = String(p.opened_at || p.entry_date || '').slice(0, 10);
-      return `<tr>
-        <td>${escapeHtml(p.strategy_name || p.underlying || 'position')}
-          ${legs === null ? '' : `<i class="pdim">${legs} leg${legs === 1 ? '' : 's'}</i>`}</td>
-        <td class="n">${opened ? escapeHtml(opened) : DASH}</td>
-        <td class="n">${l && typeof l.days_remaining_to_expiry === 'number' ? escapeHtml(`${l.days_remaining_to_expiry}d`) : DASH}</td>
-        <td class="n">${typeof p.max_loss_inr === 'number' ? escapeHtml(inr(p.max_loss_inr)) : DASH}</td>
-        <td class="n">${pnl === null
-          ? '<span class="na">unavailable</span>'
-          : `<b class="${pnl < 0 ? 'dn' : 'up'}">${escapeHtml(inr(pnl))}</b>`}</td>
-        <td class="n">${pct === null ? DASH : escapeHtml(`${pct.toFixed(1)}%`)}</td>
-      </tr>`;
-    }).join('');
-
-    const notice = this.positionsNotice
-      ? `<div class="why"><b>${escapeHtml(this.positionsNotice)}</b></div>`
-      : '';
-
-    const note = this.livePositionsError
-      ? `<div class="why">Profit and loss could not be valued against the live chain. ${escapeHtml(this.livePositionsError)}</div>`
-      : `<div class="why">Profit and loss is valued leg by leg against the FYERS chain, read ${escapeHtml(this._readStamp('livePositions'))}. The last column is that figure against the position's own maximum loss. Home shows the position; it is managed on the Strategy Desk.</div>`;
-
-    return `<div class="tw"><table class="g"><thead><tr>
-        <th>Strategy</th><th style="text-align:right">Opened</th><th style="text-align:right">To expiry</th>
-        <th style="text-align:right">Max loss</th><th style="text-align:right">Unrealised</th>
-        <th style="text-align:right">Of risk</th></tr></thead>
-      <tbody>${rows}</tbody></table></div>${notice}${note}`;
+  _quietLine() {
+    const testing = !this.phase || this.phase.paper_trading_started !== true;
+    const words = testing
+      ? 'Your paper record starts clean on the day you say paper trading begins. Everything before that is a terminal test.'
+      : 'Nothing running. Your paper record is live.';
+    return `<div class="hb quiet one">
+      <span class="hchip flat">nothing running</span>
+      <span class="qtext">${escapeHtml(words)}
+        <i class="qstamp">${escapeHtml(this._readStamp('positions'))}</i></span>
+    </div>`;
   }
 
   renderPositions() {
     const host = this.container.querySelector('#home-positions');
     if (!host) return;
-    const tone = this.positionsTone();
-    const open = this.positionsExpanded;
 
-    host.innerHTML = `
-      <div class="card posstrip t-${tone}">
-        <button class="posline" id="home-positions-toggle" type="button"
-          aria-expanded="${open}" aria-controls="home-positions-body">
-          <span class="pcar" aria-hidden="true">${open ? '▾' : '▸'}</span>
-          <span class="plbl">Open positions</span>
-          <span class="psum">${this.positionsSummary()}</span>
-          <span class="r">paper · ${escapeHtml(this._readStamp('positions'))}</span>
-        </button>
-        <div class="posdet" id="home-positions-body"${open ? '' : ' hidden'}>${open ? this.positionsDetail() : ''}</div>
-      </div>`;
+    if (this.positionsError) {
+      host.innerHTML = `<div class="hb quiet one">
+        <span class="hchip flat">unavailable</span>
+        <span class="qtext"><span class="na">Your open positions could not be read, so nothing is shown rather than something wrong.</span>
+          ${escapeHtml(this.positionsError)}</span></div>`;
+      return;
+    }
+    if (!Array.isArray(this.positions)) {
+      host.innerHTML = `<div class="hb quiet one">
+        <span class="hchip flat">reading</span>
+        <span class="qtext">Reading your open positions…</span></div>`;
+      return;
+    }
+    if (!this.positions.length) {
+      host.innerHTML = this._quietLine();
+      return;
+    }
+    if (this.livePositionsError || !Array.isArray(this.livePositions)) {
+      const why = this.livePositionsError || 'not valued yet';
+      const n = this.positions.length;
+      host.innerHTML = `<div class="hb quiet one">
+        <span class="hchip flat">${n} open</span>
+        <span class="qtext"><span class="na">Profit and loss unavailable</span>, so the band shows no money rather than a wrong one.
+          ${escapeHtml(why)} <i class="qstamp">${escapeHtml(this._readStamp('positions'))}</i></span></div>`;
+      return;
+    }
 
-    const btn = host.querySelector('#home-positions-toggle');
-    if (btn) btn.addEventListener('click', () => this.togglePositions());
+    const bands = this.bandPositions();
+    host.innerHTML = bands.length
+      ? bands.map((p) => this._band(p)).join('')
+      : this._quietLine();
+
+    host.querySelectorAll('[data-manage]').forEach((btn) => {
+      btn.addEventListener('click', () => this.openManage(btn.getAttribute('data-manage')));
+    });
   }
 
   /**
-   * The Exit button that lived here from 2026-09-09 afternoon to 2026-09-09
-   * evening moved to the Strategy Desk. His words: "Home shows, Home does not
-   * manage." Squaring off happens where the payoff, the rules and the exit
-   * ticket are, not from a line on Home.
+   * MANAGE. His words: "Give a Manage button, which will open the exit modal.
+   * Over there, I can exit all directly, or I can exit one leg where the target
+   * is achieved."
+   *
+   * It opens BUILD_01's exit ticket right here on Home, for that trade. It does
+   * NOT navigate to the desk, and nothing else on Home manages a position.
    */
-  togglePositions() {
-    this.positionsExpanded = !this.positionsExpanded;
-    writePositionsExpanded(this.positionsExpanded);
-    this.renderPositions();
-    const btn = this.container.querySelector('#home-positions-toggle');
-    if (btn && typeof btn.focus === 'function') btn.focus();
+  openManage(positionId) {
+    const p = (this.livePositions || []).find((x) => String(x.position_id) === String(positionId));
+    if (!p) return;
+    const host = this.container.querySelector('#home-exit-ticket');
+    if (!host) return;
+    if (!this.exitTicket) {
+      this.exitTicket = new ExitTicket(host, {
+        onExitAll: (payload) => api.closePosition(this.exitTicket.position.position_id, payload),
+        onExitLeg: (seq, payload) => api.exitLeg(
+          this.exitTicket.position.position_id,
+          seq,
+          payload,
+          `home-exit-${this.exitTicket.position.position_id}-${seq}`,
+        ),
+        // Whatever filled, Home reads itself again rather than assuming.
+        onDone: () => { this.loadPositions(); },
+      });
+    }
+    this.exitTicket.open(p, null);
   }
 
   renderEvents() {
@@ -1051,8 +1231,17 @@ export class HomePage {
     const host = this.container.querySelector('#home-record');
     if (!host) return;
     const paper = this.book === 'paper';
+    // The date used to be written into this line: "starts clean from 8
+    // September 2026". It was a fixed string, it contradicted his correction of
+    // 2026-09-10, and it would have gone on being wrong after paper trading
+    // actually began. It reads the phase now, like the band above it.
+    const started = this.phase && this.phase.paper_trading_started
+      ? this.phase.paper_trading_started_at
+      : null;
     const note = paper
-      ? 'Your paper record starts clean from 8 September 2026. 81 build-and-test rows are quarantined and excluded from every figure here.'
+      ? (started
+        ? `Your paper record starts from ${String(started).slice(0, 10)}. Build tests and terminal tests are quarantined and excluded from every figure here.`
+        : 'Paper trading has not started. Every trade below is a terminal test: you clicked it to see how the terminal behaves. Your paper record starts clean on the day you say so.')
       : 'No real-money trades. Real execution is code-blocked: there is no order-placement code in the app at all. This book stays empty until you decide otherwise.';
 
     const why = this.recordError

@@ -169,12 +169,24 @@ describe('Home — the rebuilt page', () => {
     page.renderMoney();
     expect(container.querySelector('#home-money').textContent).toContain('nothing open');
 
-    // Something open, but /api/positions stores no margin figure on a position,
-    // so this is honestly unknown and must never render as zero.
+    // Something open that was opened before migration 021 recorded the broker
+    // margin. The figure is honestly unknown and must never render as zero.
     page.positions = [{ id: 'a1', strategy_name: 'Bear Put Spread', opened_at: '2026-09-08' }];
     page.renderMoney();
     const text = container.querySelector('#home-money').textContent;
-    expect(text).toContain('no margin figure is stored on a position');
+    expect(text).toContain('no stored margin');
+
+    // And with the broker figure stored, Home reads the SAME field the desk
+    // reads. It said unavailable while the desk showed 84,929 from the same
+    // position, which is the fault this replaces.
+    page.positions = [
+      { id: 'a1', strategy_name: 'Iron Condor', margin_required_inr: 84929.2 },
+    ];
+    page.renderMoney();
+    const agreed = container.querySelector('#home-money').textContent;
+    expect(agreed).toContain('84,929');
+    expect(agreed).toContain('same figure as the desk');
+    expect(page.marginUsed()).toBeCloseTo(84929.2, 1);
     expect(text).toContain('unavailable');
   });
 
@@ -185,7 +197,18 @@ describe('Home — the rebuilt page', () => {
     page.renderRecord();
 
     const host = container.querySelector('#home-record');
-    expect(host.textContent).toContain('81 build-and-test rows are quarantined');
+    // The line used to carry two fixed facts in its own source: "starts clean
+    // from 8 September 2026" and "81 build-and-test rows". Both were written
+    // into the page, neither was read from anything, and the first contradicted
+    // his correction of 2026-09-10. The card reads the phase now.
+    expect(host.textContent).toContain('Paper trading has not started');
+    expect(host.textContent).toContain('terminal test');
+    expect(host.textContent).not.toContain('8 September');
+    expect(host.textContent).not.toContain('81 build');
+
+    page.phase = { paper_trading_started: true, paper_trading_started_at: '2026-10-01T04:00:00Z' };
+    page.renderRecord();
+    expect(container.querySelector('#home-record').textContent).toContain('starts from 2026-10-01');
 
     page.book = 'real';
     page.renderRecord();
@@ -254,30 +277,91 @@ describe('Home — the rebuilt page', () => {
     expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ mode: 'real' }));
   });
 
-  it('collapses open positions to one muted line, and expands to the full table', () => {
+  it('goes quiet with nothing open, and dates the clean start by the phase, not by a fixed day', () => {
     const page = new HomePage(container);
     page.render();
     page.positions = [];
     page.livePositions = [];
-    page.positionsExpanded = false;
     page.renderPositions();
 
     const host = container.querySelector('#home-positions');
-    expect(host.textContent).toContain('Nothing open');
-    expect(host.textContent).toContain('paper record starts clean from 8 September');
-    // Nothing open means no colour: neither the profit nor the loss edge.
-    expect(host.innerHTML).toContain('posstrip t-flat');
-    expect(host.innerHTML).toContain('aria-expanded="false"');
-    // Shut means shut: the detail is not merely hidden, it is not rendered.
-    expect(host.innerHTML).toContain('id="home-positions-body" hidden');
+    // Muted: no colour, no blink, and no Manage to press.
+    expect(host.innerHTML).toContain('hb quiet');
+    // No colour and no breath: the class is never a running band.
+    expect(host.innerHTML).not.toMatch(/class="hb [^"]*running/);
+    expect(host.innerHTML).not.toContain('tint-');
+    expect(host.textContent).toContain('nothing running');
+    // The line used to name 8 September in the page's own source. It reads the
+    // phase now, so it cannot go on being wrong after paper trading starts.
+    expect(host.textContent).toContain('on the day you say paper trading begins');
+    expect(host.textContent).not.toContain('8 September');
 
-    page.togglePositions();
-    const opened = container.querySelector('#home-positions');
-    expect(opened.innerHTML).toContain('aria-expanded="true"');
-    expect(opened.innerHTML).not.toContain('home-positions-body" hidden');
-    expect(page.positionsExpanded).toBe(true);
-    // And it is remembered for the next visit.
-    expect(localStorage.getItem('swayam-home-positions-expanded')).toBe('1');
+    page.phase = { paper_trading_started: true, paper_trading_started_at: '2026-10-01T04:00:00Z' };
+    page.renderPositions();
+    expect(container.querySelector('#home-positions').textContent).toContain('paper record is live');
+  });
+
+  it('blinks while a trade runs, goes solid when a target is reached, and never both', () => {
+    const page = new HomePage(container);
+    page.render();
+    page.positions = [{ id: 'p1' }];
+
+    // RUNNING, and the market is open: colour from the money, and it breathes.
+    page.livePositions = [{
+      position_id: 'p1', strategy_name: 'Iron Condor', state: 'running', alerts: [],
+      legs_open: 4, legs_closed: 0, unrealized_pnl_inr: -1240, net_if_exit_now_inr: -1480,
+      market_state: 'live', targets: { legs_with_targets: 2, legs_total: 4 },
+    }];
+    page.renderPositions();
+    let host = container.querySelector('#home-positions');
+    expect(host.innerHTML).toContain('tint-down');
+    expect(host.innerHTML).toContain('running');
+    expect(host.innerHTML).not.toContain('solid-');
+    expect(host.textContent).toContain('1,240');
+    expect(host.textContent).toContain('2 of 4 legs');
+
+    // A LOSS TARGET REACHED: solid red, and the blink stops.
+    page.livePositions = [{
+      ...page.livePositions[0],
+      state: 'alert',
+      alerts: [{ scope: 'leg', sequence: 4, leg_label: '23,200 PE', kind: 'loss', level: 170, mark: 171 }],
+    }];
+    page.renderPositions();
+    host = container.querySelector('#home-positions');
+    expect(host.innerHTML).toContain('solid-down');
+    expect(host.innerHTML).not.toContain('hb tint-down running');
+    expect(host.textContent).toContain('loss target reached');
+    expect(host.textContent).toContain('23,200 PE');
+
+    // A PROFIT TARGET REACHED: solid green.
+    page.livePositions = [{
+      ...page.livePositions[0],
+      unrealized_pnl_inr: 4200,
+      net_if_exit_now_inr: 3960,
+      alerts: [{ scope: 'leg', sequence: 3, leg_label: '23,800 CE', kind: 'profit', level: 50, mark: 49 }],
+    }];
+    page.renderPositions();
+    host = container.querySelector('#home-positions');
+    expect(host.innerHTML).toContain('solid-up');
+    expect(host.textContent).toContain('profit target reached');
+  });
+
+  it('does not blink over a frozen number once the market is shut', () => {
+    const page = new HomePage(container);
+    page.render();
+    page.positions = [{ id: 'p1' }];
+    page.livePositions = [{
+      position_id: 'p1', strategy_name: 'Iron Condor', state: 'running', alerts: [],
+      legs_open: 4, unrealized_pnl_inr: 510, net_if_exit_now_inr: 380,
+      market_state: 'closing', targets: {},
+    }];
+    page.renderPositions();
+    const host = container.querySelector('#home-positions');
+    // The colour stays, because the trade is still his. The breath does not,
+    // because his profit and loss is not moving at nine in the evening.
+    expect(host.innerHTML).toContain('tint-up');
+    expect(host.innerHTML).not.toContain('hb tint-up running');
+    expect(host.textContent).toContain('at the close');
   });
 
   it('colours the strip from the live money and prints the running-loss headroom', () => {
@@ -292,10 +376,14 @@ describe('Home — the rebuilt page', () => {
     page.renderPositions();
 
     const host = container.querySelector('#home-positions');
-    expect(host.innerHTML).toContain('posstrip t-loss');
-    expect(host.textContent).toContain('2 open');
-    expect(host.textContent).toContain('1,240');
-    expect(host.textContent).toContain('running loss 13% used');
+    // One band per trade, each coloured by its own money. There is no combined
+    // figure any more, so there is nothing that can be a partial sum. Counted
+    // on the markup: the test DOM hands out a new synthetic element on every
+    // querySelector, so attribute selectors find nothing there.
+    expect(host.innerHTML.split('data-band=').length - 1).toBe(2);
+    expect(host.innerHTML).toContain('tint-down');
+    expect(host.textContent).toContain('800');
+    expect(host.textContent).toContain('440');
 
     page.livePositions = [
       { position_id: 'a1', unrealized_pnl_inr: 800 },
@@ -303,9 +391,8 @@ describe('Home — the rebuilt page', () => {
     ];
     page.renderPositions();
     const now = container.querySelector('#home-positions');
-    expect(now.innerHTML).toContain('posstrip t-profit');
-    // A profit consumes none of the running-loss cap, so no headroom is claimed.
-    expect(now.textContent).not.toContain('running loss');
+    expect(now.innerHTML).toContain('tint-up');
+    expect(now.innerHTML).not.toContain('tint-down');
   });
 
   it('never sums a partial valuation into a total that looks complete', () => {
@@ -319,10 +406,16 @@ describe('Home — the rebuilt page', () => {
     ];
     page.renderPositions();
 
-    const text = container.querySelector('#home-positions').textContent;
+    const host = container.querySelector('#home-positions');
+    // The combined figure is still null, and nothing on Home prints one.
     expect(page.combinedPnl()).toBeNull();
-    expect(text).toContain('profit and loss unavailable');
-    expect(text).not.toContain('800');
+    // Each trade answers for itself: the one that priced shows its money, the
+    // one that did not says unavailable with its reason. A partial sum is now
+    // impossible by construction rather than by a check that could be forgotten.
+    expect(host.innerHTML.split('data-band=').length - 1).toBe(2);
+    expect(host.textContent).toContain('800');
+    expect(host.textContent).toContain('unavailable');
+    expect(host.textContent).toContain('strike missing from the chain');
   });
 
   it('shows an events impact brief only on the events that have one', () => {
@@ -469,18 +562,34 @@ describe('Home shows, Home does not manage', () => {
     expect(html.indexOf('home-nifty-sidebar')).toBeLessThan(html.indexOf('id="home-positions"'));
   });
 
-  it('carries no Exit button; squaring off belongs to the desk', () => {
+  it('manages from Home through the exit ticket, without leaving Home', () => {
+    // His decision of 2026-09-10, which replaced "Home shows, Home does not
+    // manage": "Give a Manage button, which will open the exit modal. Over
+    // there, I can exit all directly, or I can exit one leg where the target
+    // is achieved." It opens the ticket here; it does not navigate to the desk.
     const page = new HomePage(container);
     page.render();
-    page.positions = [{ id: 'p1', strategy_name: 'Iron Condor', legs: [1, 2, 3, 4], max_loss_inr: 8953.75, opened_at: '2026-09-09T08:37:12+00:00' }];
-    page.livePositions = [{ position_id: 'p1', unrealized_pnl_inr: 510.25, unrealized_pnl_pct_of_risk: 5.7, days_remaining_to_expiry: 20 }];
-    page.positionsExpanded = true;
+    page.positions = [{ id: 'p1' }];
+    page.livePositions = [{
+      position_id: 'p1', strategy_name: 'Iron Condor', state: 'running', alerts: [],
+      legs_open: 4, unrealized_pnl_inr: 510.25, net_if_exit_now_inr: 380,
+      market_state: 'live', targets: {},
+      legs: [{ sequence: 1, strike: 24200, option_type: 'CE', direction: 'buy', status: 'open', bid: 30.6, ask: 30.75, entry_premium: 34.5, quantity_units: 65 }],
+    }];
     page.renderPositions();
-    const strip = container.querySelector('#home-positions').innerHTML;
-    expect(strip).toContain('Iron Condor');
-    expect(strip).not.toContain('posexit');
-    expect(strip).not.toContain('>Exit<');
-    expect(strip).toContain('managed on the Strategy Desk');
+    const host = container.querySelector('#home-positions');
+    expect(host.innerHTML).toContain('Iron Condor');
+    expect(host.innerHTML).toContain('data-manage="p1"');
+
+    page.openManage('p1');
+    expect(page.exitTicket).toBeTruthy();
+    expect(page.exitTicket.isOpen).toBe(true);
+    expect(String(page.exitTicket.position.position_id)).toBe('p1');
+
+    // A squared-off trade cannot be managed, and the button says so.
+    page.livePositions = [{ ...page.livePositions[0], state: 'quiet', legs_open: 0 }];
+    page.renderPositions();
+    expect(container.querySelector('#home-positions').innerHTML).toContain('nothing running');
   });
 
   it('re-reads positions on the live timer, so a trade appears without a reload', async () => {

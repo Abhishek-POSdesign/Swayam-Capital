@@ -107,6 +107,8 @@ export const api = {
     submitTrade('/api/execute', payload, ticketId),
   getPositions: (status = 'open') => request(`/api/positions?status=${status}`),
   getPositionsLive: () => request('/api/positions/live'),
+  // Has paper trading begun. One timestamp, set by a script only he runs.
+  getPhase: () => request('/api/phase'),
   closePosition: (positionId, payload) =>
     request(`/api/positions/${positionId}/close`, {
       method: 'POST',
@@ -139,6 +141,27 @@ export const api = {
   // it here. Same execution key rule, so a retry cannot add a leg twice.
   addLegToPosition: (positionId, payload, ticketId = 'add-leg') =>
     submitTrade(`/api/positions/${positionId}/legs`, payload, ticketId),
+  // A leg squared off on its own, inside a trade that stays open. Same
+  // execution key rule as a send: one press, one exit.
+  exitLeg: (positionId, sequence, payload, ticketId = 'exit-leg') =>
+    submitTrade(`/api/positions/${positionId}/legs/${sequence}/exit`, payload, ticketId),
+  // Close one leg and open its opposite, in one request, under one key.
+  reverseLeg: (positionId, sequence, payload, ticketId = 'reverse-leg') =>
+    submitTrade(`/api/positions/${positionId}/legs/${sequence}/reverse`, payload, ticketId),
+  // His own name for a trade, or an empty one to hand the naming back to the
+  // structure. Touches the name and nothing else.
+  renamePosition: (positionId, name) =>
+    request(`/api/positions/${positionId}/name`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    }),
+  // What he wants a trade to tell him. It moves no order, no fill and no
+  // charge; a reached target lights Home up and waits for him.
+  setPositionTargets: (positionId, payload) =>
+    request(`/api/positions/${positionId}/targets`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
   detectNakedShorts: (atTime = '15:20') =>
     request(`/api/positions/naked-shorts?at_time=${encodeURIComponent(atTime)}`),
   getSessionContextSummary: (sessionId) =>

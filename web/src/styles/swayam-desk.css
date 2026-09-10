@@ -309,18 +309,18 @@
   color: var(--fg-3); font-weight: 600;
 }
 .sw-desk .v {
-  font-family: var(--m); font-size: 24px; font-weight: 700; margin-top: 4px;
+  font-family: var(--m); font-size: 26px; font-weight: 800; margin-top: 4px;
   font-variant-numeric: tabular-nums; letter-spacing: -0.025em; line-height: 1.08;
 }
-.sw-desk .met .v { font-size: 26px; }
+.sw-desk .met .v { font-size: 30px; }
 .sw-desk .rl .v { font-size: 19px; }
 .sw-desk .v.sm { font-size: 16px; }
 /* The one accent, on the numbers that matter: Balance and the four limits on
    Home, Margin needed and Max loss on the desk. Semantic green and red keep
    their meaning and win where they apply. */
-.sw-desk .v.acc { font-size: 28px; color: var(--brand); }
+.sw-desk .v.acc { font-size: 30px; color: var(--brand); }
 .sw-desk .rl .v.acc { font-size: 22px; }
-.sw-desk .met .v.acc { font-size: 28px; }
+.sw-desk .met .v.acc { font-size: 32px; }
 .sw-desk .s { font-size: 11px; color: var(--fg-2); margin-top: 3px; }
 .sw-desk .met .s, .sw-desk .mn .s { font-family: var(--m); }
 
@@ -667,59 +667,11 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
    impact-brief popover.
    ========================================================================== */
 
-/* ---------- open positions: one full-width collapsible line ----------------
-   Its colour follows the money and nothing else: grey with nothing open, sage
-   in profit, coral in loss. There is no colour at all when there is no
-   position to colour, which is why `t-flat` sets a neutral edge rather than a
-   third hue. Sage and coral are the brand tokens, defined in both themes, so
-   the value is read rather than hardcoded. */
-.sw-desk .posstrip { margin-bottom: 12px; overflow: visible; }
-.sw-desk .posstrip .posline {
-  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
-  padding: 10px 14px; background: none; border: none; cursor: pointer;
-  font-family: var(--f); font-size: 13px; color: var(--fg);
-  border-left: 3px solid var(--line-2); border-radius: 10px;
-}
-.sw-desk .posstrip .posline:hover { background: var(--panel-2); }
-.sw-desk .posstrip .posline:focus-visible { outline: 2px solid var(--info); outline-offset: -2px; }
-.sw-desk .posstrip.t-profit .posline { border-left-color: var(--accent-sage); }
-.sw-desk .posstrip.t-loss .posline { border-left-color: var(--accent-coral); }
-.sw-desk .posstrip .pcar {
-  font-size: 10px; color: var(--fg-3); width: 12px; flex: none; line-height: 1;
-}
-.sw-desk .posstrip .plbl {
-  font-family: var(--m); font-size: 9.5px; letter-spacing: 0.09em; text-transform: uppercase;
-  color: var(--fg-3); font-weight: 600; flex: none;
-}
-.sw-desk .posstrip .psum {
-  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0;
-  color: var(--fg-2);
-}
-.sw-desk .posstrip .psum .pn { font-family: var(--m); font-weight: 600; color: var(--fg); }
-.sw-desk .posstrip .psum .pv { font-family: var(--m); font-weight: 700; font-variant-numeric: tabular-nums; }
-.sw-desk .posstrip .psum .pv.up { color: var(--accent-sage); }
-.sw-desk .posstrip .psum .pv.dn { color: var(--accent-coral); }
-.sw-desk .posstrip .psum .pdim { color: var(--fg-3); font-size: 12px; }
-.sw-desk .posstrip .psum .psep { color: var(--line-2); }
-.sw-desk .posstrip .posline > .r {
-  margin-left: auto; font-family: var(--m); font-size: 10.5px; color: var(--fg-3);
-  font-weight: 500; flex: none; padding-left: 10px;
-}
-.sw-desk .posstrip .posdet { border-top: 1px solid var(--line); }
-.sw-desk .posstrip .posdet table.g td b.up { color: var(--accent-sage); }
-.sw-desk .posstrip .posdet table.g td b.dn { color: var(--accent-coral); }
-.sw-desk .posstrip .posdet .pdim {
-  font-style: normal; color: var(--fg-3); font-family: var(--m); font-size: 10.5px;
-  margin-left: 6px;
-}
-/* The strip sits in the main column between the daily check-in and Your money,
-   and reads as one line rather than a card to lift off the page. */
-.sw-desk .posstrip:hover { transform: none; box-shadow: var(--edge), var(--shadow); }
-.sw-desk .bento-grid .posstrip { margin-bottom: 0; }
-@media (max-width: 720px) {
-  .sw-desk .posstrip .posline { flex-wrap: wrap; }
-  .sw-desk .posstrip .posline > .r { margin-left: 0; padding-left: 22px; width: 100%; }
-}
+/* The collapsible open-positions strip was REPLACED on 2026-09-11 by Home's
+   running-trade band, below. His words: "A running trade is unmistakable on
+   Home and goes quiet only when squared off." Its rules are deleted rather
+   than left behind, because dead CSS is the next agent's wrong turn. */
+
 
 /* ---------- today's caps, inside "Your money" ------------------------------
    A band, deliberately not a row of tiles: its own ground and its own heading,
@@ -903,3 +855,648 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   .xt .xt-row.h { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .xt-backdrop { transition: none; } }
+
+/* =============================================================================
+   THE POSITION AREA, THE EXIT TICKET, AND THE TITLES THAT OWN THEIR CARDS
+   docs/builds/BUILD_01_DESK_POSITION_AREA.md, sections 3.7 and 3.8.
+
+   His words, 2026-09-09, about how managing a position has to feel, which is a
+   requirement and not decoration: "Full width. Big numbers. Bold. Clearly
+   visible with required colors. Easily manageable. No cheap cross button or
+   rather dustbin button. No cheap round circle for reset, a proper reset
+   button. I must feel good while managing it."
+
+   Colour comes from the money and from nothing else. The accent is sage;
+   the banned colours are named once, at the top of this file.
+   ========================================================================== */
+
+/* -----------------------------------------------------------------------------
+   EVERY CARD TITLE CLAIMS ITS AREA. His rule, given 2026-09-10 evening:
+   "Every card on any page must be bold and large enough, or, if required,
+   colored, so that it claims or represents that it is its boundary, its card,
+   like it owns this area."
+
+   The card headings on this page were 12px, weight 600, in muted grey, which
+   is smaller and quieter than the body text underneath them. Payoff, Legs,
+   Ready-made, Strikewise IV, Rules and execution and Greeks all read as
+   captions rather than as the names of the things they head. They are now
+   16px, weight 800, in the primary ink, with the meta on the right left small
+   and muted where it belongs.
+   -------------------------------------------------------------------------- */
+.sw-desk .card > h3 {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+  padding: 13px 16px;
+}
+.sw-desk .card > h3 .r {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* -----------------------------------------------------------------------------
+   The band above the payoff when it is drawing a trade he HOLDS rather than
+   one he is building. Sage, because it is a statement about the terminal and
+   not about money.
+   -------------------------------------------------------------------------- */
+.sw-desk .loaded-band {
+  display: flex; align-items: center; gap: 11px; flex-wrap: wrap;
+  padding: 10px 16px;
+  background: rgba(125, 157, 132, .12);
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+.sw-desk .loaded-band b { font-weight: 700; }
+.sw-desk .loaded-band .fg2 { color: var(--fg-2); font-family: var(--m); font-size: 12px; }
+.sw-desk .loaded-band .r { margin-left: auto; }
+.sw-desk .c-sage { background: rgba(125, 157, 132, .18); color: var(--brand); }
+.sw-desk .c-your { background: var(--warn-bg); color: var(--warn); }
+.sw-desk .c-warn { background: var(--warn-bg); color: var(--warn); }
+.sw-desk .c-test { background: var(--info-bg); color: var(--info); }
+
+/* -----------------------------------------------------------------------------
+   The area itself: three groups, each headed so the group owns its stretch.
+   -------------------------------------------------------------------------- */
+.sw-desk .pa { margin-top: 18px; }
+.sw-desk .pa-grp {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  margin: 22px 0 10px;
+}
+.sw-desk .pa-grp h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+.sw-desk .pa-grp span { color: var(--fg-3); font-family: var(--m); font-size: 12px; }
+.sw-desk .pa-grp span b { font-weight: 700; }
+.sw-desk .pa-grp .r { margin-left: auto; }
+.sw-desk .pa-empty {
+  padding: 14px 16px; border: 1px dashed var(--line-2); border-radius: 11px;
+  color: var(--fg-2); font-size: 13.5px; background: var(--panel-2);
+}
+.sw-desk .pa-bad { border-color: var(--down); color: var(--down); background: var(--down-bg); }
+
+/* -----------------------------------------------------------------------------
+   The position card. Full width, 70 to 80 percent filled with its own
+   information, never the figures in one corner and the rest empty.
+   -------------------------------------------------------------------------- */
+.sw-desk .pos {
+  border: 1px solid var(--line-2); border-radius: 12px; overflow: hidden;
+  margin-bottom: 14px; background: var(--panel); box-shadow: var(--shadow);
+}
+.sw-desk .pos > header {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 13px 18px; border-bottom: 1px solid var(--line);
+}
+.sw-desk .pos > header h4 {
+  margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.015em;
+  display: flex; align-items: center; gap: 10px;
+}
+.sw-desk .pos > header .meta {
+  color: var(--fg-2); font-family: var(--m); font-size: 12.5px;
+  display: flex; gap: 13px; flex-wrap: wrap; align-items: center;
+}
+.sw-desk .pos > header .meta b { color: var(--fg); font-weight: 600; }
+.sw-desk .pos > header .r { margin-left: auto; display: flex; gap: 7px; flex-wrap: wrap; }
+.sw-desk .pa-rename { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+.sw-desk .pa-rename input {
+  font-family: var(--f); font-size: 14px; font-weight: 600; padding: 7px 9px;
+  border: 1px solid var(--line-2); border-radius: 7px; background: var(--panel-2);
+  color: var(--fg); min-width: 210px;
+}
+
+/* The six tiles. One row, hairline gaps, each filled to its edges. */
+.sw-desk .pos-tiles {
+  display: grid; grid-template-columns: 1.35fr 1.15fr 1fr 1fr 1fr 1fr;
+  gap: 1px; background: var(--line); border-bottom: 1px solid var(--line);
+}
+@media (max-width: 1180px) { .sw-desk .pos-tiles { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 700px)  { .sw-desk .pos-tiles { grid-template-columns: repeat(2, 1fr); } }
+.sw-desk .pos-tiles .met {
+  background: var(--panel); padding: 15px 18px; min-height: 116px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 6px;
+}
+.sw-desk .pos-tiles .met .k {
+  font-family: var(--m); font-size: 10.5px; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--fg-3); font-weight: 700;
+}
+.sw-desk .pos-tiles .met .v {
+  font-family: var(--m); font-size: 30px; font-weight: 800;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.03em; line-height: 1;
+}
+.sw-desk .pos-tiles .met .v.hero { font-size: 46px; }
+.sw-desk .pos-tiles .met .s {
+  font-size: 12.5px; color: var(--fg-2); font-family: var(--m); line-height: 1.35;
+}
+.sw-desk .pos-tiles .met .s b { color: var(--fg); font-weight: 600; }
+.sw-desk .pos-tiles .bar {
+  height: 8px; border-radius: 4px; background: var(--sunk); overflow: hidden; margin-top: 2px;
+}
+.sw-desk .pos-tiles .bar i {
+  display: block; height: 100%; background: var(--brand); border-radius: 4px;
+}
+.sw-desk .pos-tiles .bar i.hot { background: var(--down); }
+
+/* The legs. Big enough to read at a glance, and each with its own way out. */
+.sw-desk .pos-legs { padding: 2px 6px 4px; overflow-x: auto; }
+.sw-desk .pos-legs table { border-collapse: collapse; width: 100%; }
+.sw-desk .pos-legs th {
+  font-family: var(--m); font-size: 10.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg-3); font-weight: 700;
+  text-align: left; padding: 9px 11px; border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.sw-desk .pos-legs td {
+  padding: 11px; border-bottom: 1px solid var(--line); vertical-align: middle;
+  font-variant-numeric: tabular-nums; font-size: 14.5px;
+}
+.sw-desk .pos-legs tr:last-child td { border-bottom: none; }
+.sw-desk .pos-legs td.n, .sw-desk .pos-legs th.n { text-align: right; font-family: var(--m); }
+.sw-desk .pos-legs td.leg { font-family: var(--m); font-weight: 700; font-size: 17px; }
+.sw-desk .pos-legs td.big-n { font-family: var(--m); font-size: 19px; font-weight: 800; }
+.sw-desk .pos-legs td .sub {
+  display: block; font-family: var(--m); font-size: 11.5px; color: var(--fg-3);
+  font-weight: 500; margin-top: 2px;
+}
+.sw-desk .pos-legs td.act { display: flex; gap: 6px; justify-content: flex-end; white-space: nowrap; }
+.sw-desk .pos-legs tr.gone td { opacity: .6; }
+.sw-desk .pos-legs .gone-note { font-family: var(--m); font-size: 12px; color: var(--fg-3); }
+.sw-desk .pos-legs .up { color: var(--up); }
+.sw-desk .pos-legs .down { color: var(--down); }
+
+/* The inline confirm, on the card rather than in a modal: he can still see
+   the position he is acting on. */
+.sw-desk .pos-confirm {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 18px; border-top: 1px solid var(--line); background: var(--info-bg);
+  font-size: 13.5px;
+}
+.sw-desk .pos-confirm.away { background: var(--warn-bg); }
+.sw-desk .pos-confirm .what b { font-family: var(--m); font-weight: 700; }
+.sw-desk .pos-confirm .price { display: flex; gap: 7px; align-items: center; }
+.sw-desk .pos-confirm .price input {
+  width: 96px; font-family: var(--m); font-size: 14px; padding: 7px 8px;
+  border: 1px solid var(--line-2); border-radius: 6px; background: var(--panel); color: var(--fg);
+}
+.sw-desk .pos-confirm .quote {
+  font-family: var(--m); font-size: 11px; color: var(--fg-3); line-height: 1.25;
+}
+.sw-desk .pos-confirm .quote b { color: var(--fg-2); font-weight: 600; }
+.sw-desk .pos-confirm .fillnote { font-family: var(--m); font-size: 12px; max-width: 30ch; line-height: 1.3; }
+.sw-desk .pos-confirm .fillnote.ok { color: var(--up); }
+.sw-desk .pos-confirm .fillnote.away { color: var(--warn); }
+.sw-desk .pos-confirm .books { color: var(--fg-2); }
+.sw-desk .pos-confirm .books b { font-family: var(--m); }
+.sw-desk .pos-confirm .c-error { color: var(--down); font-size: 12.5px; max-width: 46ch; }
+.sw-desk .pos-confirm .go { margin-left: auto; display: flex; gap: 8px; }
+
+.sw-desk .pos-foot {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 12px 18px; border-top: 1px solid var(--line); background: var(--panel-2);
+}
+.sw-desk .pos-foot .sums { font-size: 13.5px; color: var(--fg-2); }
+.sw-desk .pos-foot .sums b { font-family: var(--m); color: var(--fg); font-weight: 700; }
+.sw-desk .pos-foot .sums b.big { font-size: 16px; }
+.sw-desk .pos-foot .sums b.up { color: var(--up); }
+.sw-desk .pos-foot .sums b.down { color: var(--down); }
+.sw-desk .pos-foot .why {
+  font-family: var(--m); font-size: 11.5px; color: var(--fg-3);
+  margin-left: auto; text-align: right; max-width: 54ch;
+}
+
+/* A trade already in the record. */
+.sw-desk .pa-closed {
+  display: grid; grid-template-columns: 1.7fr 1fr 1fr 1fr 1fr auto;
+  gap: 12px; align-items: center;
+  padding: 13px 18px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel); margin-bottom: 9px;
+}
+@media (max-width: 860px) { .sw-desk .pa-closed { grid-template-columns: 1fr 1fr; } }
+.sw-desk .pa-closed.dim { opacity: .74; }
+.sw-desk .pa-closed .k {
+  font-family: var(--m); font-size: 10.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg-3); font-weight: 700;
+}
+.sw-desk .pa-closed .v {
+  font-family: var(--m); font-size: 24px; font-weight: 800;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em; margin-top: 3px;
+}
+.sw-desk .pa-closed .v.small { font-size: 14px; font-weight: 600; }
+.sw-desk .pa-closed .v.up { color: var(--up); }
+.sw-desk .pa-closed .v.down { color: var(--down); }
+.sw-desk .pa-closed .t { font-size: 17px; font-weight: 700; }
+.sw-desk .pa-closed .t small {
+  display: block; font-family: var(--m); font-size: 11.5px; color: var(--fg-2);
+  font-weight: 500; margin-top: 3px;
+}
+.sw-desk .pa-closed .chips { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+.sw-desk .pa-earlier[hidden] { display: none; }
+
+/* -----------------------------------------------------------------------------
+   The exit ticket. The entry ticket's shape, reversed, with two more money
+   columns because getting out is where the charges land.
+   -------------------------------------------------------------------------- */
+.xt2 { width: min(1340px, 100%); }
+.sw-desk .xt2 .xt-row,
+.xt2 .xt-row {
+  grid-template-columns: 34px 62px 128px 68px 118px 206px 126px 96px 92px 92px 100px;
+  gap: 7px;
+}
+/* Narrower than the desk itself, so it still reads rather than wrapping. */
+@media (max-width: 1380px) {
+  .xt2 .xt-legs { overflow-x: auto; }
+  .sw-desk .xt2 .xt-row, .xt2 .xt-row { min-width: 1180px; }
+}
+.xt2 .xt-legs { padding: 6px 10px; }
+.xt2 .fillnote.away { color: var(--warn); }
+.xt2 .fillnote.ok { color: var(--up); }
+.xt2 .xt-pricenote {
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  padding: 11px 18px; border-top: 1px solid var(--line);
+  background: var(--warn-bg); color: var(--fg); font-size: 13.5px;
+}
+.xt2 .kv b.hero { font-size: 32px; font-weight: 800; }
+.xt2 .kv b.quiet { font-family: var(--f); font-weight: 500; font-size: 12.5px; color: var(--fg-2); }
+.xt2 .kv select, .xt2 .kv input[type="text"] {
+  font-family: var(--f); font-size: 13.5px; padding: 6px 8px;
+  border: 1px solid var(--line-2); border-radius: 6px; background: var(--panel); color: var(--fg);
+}
+.xt2 .kv input[type="text"] { width: 230px; }
+.xt2 td.n, .xt2 .n { text-align: right; font-family: var(--m); }
+.xt2 .big-n { font-family: var(--m); font-size: 17px; font-weight: 800; }
+.xt2 .up { color: var(--up); }
+.xt2 .down { color: var(--down); }
+
+/* A proper Reset and a proper dustbin: the icon carries the word beside it,
+   never a bare circle or a bare cross. */
+.sw-desk .btn svg, .xt2 .btn svg { width: 14px; height: 14px; }
+
+/* =============================================================================
+   THE OPTION CHAIN, screen 6 of the mockup.
+   docs/builds/BUILD_04_OPTION_CHAIN.md.
+
+   He used it against a live market on 2026-09-10 and it built him a real
+   trade. It is also, in his words, unusable while it fights his scroll. What
+   follows is the reading of it: the at-the-money row banded in sage so he can
+   find his place, a strike with no trade today in grey with its stale price
+   struck through, and Buy and Sell as controls he can hit rather than letters
+   that appear on hover.
+   ========================================================================== */
+
+.ocm { width: min(1360px, 96vw); }
+
+.ocm .ocm-h {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 16px; border-bottom: 1px solid var(--line); cursor: grab;
+}
+.ocm .ocm-h h4 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
+.ocm .ocm-h .r { margin-left: auto; display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+
+/* The two expiries he compares, weekly and monthly, each carrying its own
+   days to run so the choice is informed rather than remembered. */
+.ocm .ocm-exp { display: inline-flex; border: 1px solid var(--line-2); border-radius: 9px; overflow: hidden; }
+.ocm .ocm-exp button {
+  border: none; background: var(--panel-2); color: var(--fg-2);
+  font-family: var(--f); font-size: 13.5px; font-weight: 700;
+  padding: 7px 13px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+}
+.ocm .ocm-exp button small {
+  font-family: var(--m); font-size: 10.5px; font-weight: 500; color: var(--fg-3);
+}
+.ocm .ocm-exp button.on { background: var(--fg); color: var(--panel); }
+.ocm .ocm-exp button.on small { color: var(--panel); opacity: .75; }
+
+/* The six figures above the table, as tiles, exactly as the position card
+   does them. */
+.ocm .ocm-tiles {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px;
+  background: var(--line); border-bottom: 1px solid var(--line);
+}
+@media (max-width: 1100px) { .ocm .ocm-tiles { grid-template-columns: repeat(3, 1fr); } }
+.ocm .ocm-tiles .met {
+  background: var(--panel); padding: 12px 15px; min-height: 92px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 5px;
+}
+.ocm .ocm-tiles .met .k {
+  font-family: var(--m); font-size: 10.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg-3); font-weight: 700;
+}
+.ocm .ocm-tiles .met .v {
+  font-family: var(--m); font-size: 26px; font-weight: 800;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.03em; line-height: 1;
+}
+.ocm .ocm-tiles .met .s { font-size: 12px; color: var(--fg-2); font-family: var(--m); line-height: 1.35; }
+.ocm .ocm-tiles .met .s b { color: var(--fg); font-weight: 600; }
+
+.ocm .ocm-scroll { max-height: 56vh; overflow: auto; border-top: 1px solid var(--line); }
+.ocm .ocm-t { border-collapse: separate; border-spacing: 0; width: 100%; font-family: var(--m); }
+.ocm .ocm-t th {
+  position: sticky; top: 0; z-index: 2; background: var(--panel);
+  font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--fg-3); font-weight: 700; padding: 9px 10px;
+  border-bottom: 2px solid var(--line-2); white-space: nowrap; text-align: left;
+}
+.ocm .ocm-t th.n { text-align: right; }
+.ocm .ocm-t th.side {
+  text-align: center; font-size: 12px; color: var(--fg-2);
+  background: var(--panel-2); letter-spacing: 0.1em;
+}
+.ocm .ocm-t th.strike { text-align: center; }
+.ocm .ocm-t td {
+  padding: 8px 8px; border-bottom: 1px solid var(--line);
+  font-size: 14.5px; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.ocm .ocm-t td.n { text-align: right; }
+
+/* The price, and the book he would actually trade against, beneath it. */
+.ocm .ocm-t td.px { font-size: 18px; font-weight: 800; text-align: right; }
+.ocm .ocm-t td.px small {
+  display: block; font-size: 11px; font-weight: 500; color: var(--fg-3); margin-top: 1px;
+}
+.ocm .ocm-t td.px.up { color: var(--up); }
+.ocm .ocm-t td.px.down { color: var(--down); }
+
+/* A STRIKE WITH NO TRADE TODAY. Muted, with the real book kept and the stale
+   last trade struck through so it cannot be read as a price. */
+.ocm .ocm-t td.dead { color: var(--fg-3); }
+.ocm .ocm-t td.px.dead { font-size: 14px; font-weight: 600; color: var(--fg-3); }
+.ocm .ocm-t td.px.dead em { font-style: normal; font-weight: 700; }
+.ocm .ocm-t td.px.dead s {
+  display: block; font-size: 11px; font-weight: 500; opacity: .65; margin-top: 1px;
+}
+
+/* Open interest, with the wall drawn behind the figure. */
+.ocm .ocm-t td.oi { position: relative; min-width: 94px; }
+.ocm .ocm-t td.oi i.bar {
+  position: absolute; left: 0; top: 5px; bottom: 5px; z-index: 0;
+  border-radius: 3px; opacity: .9;
+}
+.ocm .ocm-t td.oi i.bar.ce { background: var(--down-bg); }
+.ocm .ocm-t td.oi i.bar.pe { background: var(--up-bg); }
+.ocm .ocm-t td.oi span { position: relative; z-index: 1; }
+.ocm .ocm-t td.up { color: var(--up); }
+.ocm .ocm-t td.down { color: var(--down); }
+.ocm .ocm-t td.muted { color: var(--fg-3); font-size: 13px; }
+
+.ocm .ocm-t td.strike {
+  text-align: center; font-size: 18px; font-weight: 800; min-width: 108px;
+  background: var(--panel-2);
+  border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+}
+.ocm .ocm-t td.strike .pill {
+  display: block; margin: 3px auto 0; width: max-content;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+  background: var(--brand); color: #fff; border-radius: 4px; padding: 2px 7px;
+}
+
+/* In the money, on the correct side. */
+.ocm .ocm-t tr.itm-ce td.ce { background: var(--sunk); }
+.ocm .ocm-t tr.itm-pe td.pe { background: var(--sunk); }
+
+/* THE AT-THE-MONEY ROW. Sage, because it is a fact about the market and not
+   about his money: colour from the money is reserved for the money. */
+.ocm .ocm-t tr.atm td {
+  background: rgba(125, 157, 132, .16) !important;
+  border-top: 2px solid var(--brand); border-bottom: 2px solid var(--brand);
+}
+.ocm .ocm-t tr.atm td.strike { background: var(--brand) !important; color: #fff; }
+
+/* BUY AND SELL AS BUTTONS. His standing rule: no cheap icon, and nothing that
+   only appears when the mouse happens to be in the right place. */
+.ocm .ocm-t td.act { white-space: nowrap; display: flex; gap: 5px; }
+.ocm .ocbtn {
+  font-family: var(--f); font-size: 12.5px; font-weight: 700;
+  border-radius: 7px; padding: 6px 9px; cursor: pointer;
+  border: 1.5px solid; background: transparent; min-width: 44px;
+}
+.ocm .ocbtn.B { color: var(--up); border-color: var(--up); }
+.ocm .ocbtn.B:hover:not(:disabled) { background: var(--up); color: #fff; }
+.ocm .ocbtn.S { color: var(--down); border-color: var(--down); }
+.ocm .ocbtn.S:hover:not(:disabled) { background: var(--down); color: #fff; }
+.ocm .ocbtn:disabled { opacity: .3; cursor: not-allowed; }
+
+.ocm .ocm-foot {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 10px 16px; border-top: 1px solid var(--line);
+  font-family: var(--m); font-size: 11.5px; color: var(--fg-3);
+}
+.ocm .ocm-foot b { color: var(--fg-2); }
+.ocm .ocm-foot .r { margin-left: auto; text-align: right; }
+
+/* =============================================================================
+   HOME'S RUNNING-TRADE BAND, THE TARGETS MODAL, THE CROSSHAIR READOUT
+   docs/builds/BUILD_02_HOME_TARGETS_AND_READING.md, sections 3.2 to 3.6.
+
+   His three states, in his own words of 2026-09-10, after he corrected a
+   first reading that had them backwards:
+
+     BLINKING  the trade is running. "Very light blinking, so that it always
+               attracts attention that my profit and losses are running."
+     SOLID     green or red. A target he set was reached, on a leg or on the
+               trade, profit or loss. It stops blinking and it needs him.
+     MUTED     nothing open, or squared off. "No blink, no color."
+
+   The colour comes from the money and from nothing else. There is no third
+   hue and no status palette: sage when he is up, coral when he is down, and
+   the card's own ground when there is nothing to colour.
+   ========================================================================== */
+
+.sw-desk .hb {
+  display: grid;
+  grid-template-columns: auto 1.4fr 1fr 1fr 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 20px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-card, 16px);
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+  margin-bottom: 10px;
+}
+.sw-desk .hb:last-child { margin-bottom: 0; }
+
+/* Running: the ground takes the money's colour. */
+.sw-desk .hb.tint-up { background: var(--up-bg); border-color: var(--up); }
+.sw-desk .hb.tint-down { background: var(--down-bg); border-color: var(--down); }
+
+/* The breath. About two and a half seconds a cycle: a ring that swells and
+   fades, never a flash, and never anything that moves the layout. */
+.sw-desk .hb.running { animation: sw-breathe 2.4s ease-in-out infinite; }
+@keyframes sw-breathe {
+  0%, 100% { box-shadow: var(--shadow-card); }
+  50% { box-shadow: 0 0 0 5px var(--up-bg), var(--shadow-card); }
+}
+.sw-desk .hb.tint-down.running { animation-name: sw-breathe-down; }
+@keyframes sw-breathe-down {
+  0%, 100% { box-shadow: var(--shadow-card); }
+  50% { box-shadow: 0 0 0 5px var(--down-bg), var(--shadow-card); }
+}
+/* Motion he cannot use is replaced by a state he can see, never removed and
+   left saying nothing. */
+@media (prefers-reduced-motion: reduce) {
+  .sw-desk .hb.running { animation: none; outline: 2px solid currentColor; outline-offset: 2px; }
+  .sw-desk .hdot.pulse { animation: none; }
+}
+
+/* Alert: solid, white text, and it does NOT breathe. */
+.sw-desk .hb.solid-up { background: var(--up); border-color: var(--up); color: #fff; }
+.sw-desk .hb.solid-down { background: var(--down); border-color: var(--down); color: #fff; }
+.sw-desk .hb.solid-up .k, .sw-desk .hb.solid-down .k,
+.sw-desk .hb.solid-up .t small, .sw-desk .hb.solid-down .t small { color: rgba(255, 255, 255, 0.82); }
+.sw-desk .hb.solid-up .v, .sw-desk .hb.solid-down .v,
+.sw-desk .hb.solid-up .v.up, .sw-desk .hb.solid-up .v.dn,
+.sw-desk .hb.solid-down .v.up, .sw-desk .hb.solid-down .v.dn { color: #fff; }
+.sw-desk .hb.solid-up .hchip, .sw-desk .hb.solid-down .hchip { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.sw-desk .hb.solid-up .hbtn, .sw-desk .hb.solid-down .hbtn { background: #fff; color: #101116; border-color: #fff; }
+.sw-desk .hb.solid-up .na, .sw-desk .hb.solid-down .na { color: rgba(255, 255, 255, 0.75); }
+
+/* Quiet: the card's own ground, muted text, nothing raised. */
+.sw-desk .hb.quiet { background: var(--panel); border-color: var(--line); box-shadow: none; color: var(--fg-3); }
+.sw-desk .hb.quiet .v, .sw-desk .hb.quiet .t { color: var(--fg-3); }
+.sw-desk .hb.one { grid-template-columns: auto 1fr; padding: 12px 20px; }
+.sw-desk .hb .qtext { font-size: 13px; color: var(--fg-2); }
+
+.sw-desk .hb .k {
+  font-family: var(--m); font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--fg-3); font-weight: 700;
+}
+.sw-desk .hb .v {
+  font-family: var(--m); font-size: 26px; font-weight: 800; letter-spacing: -0.025em;
+  margin-top: 3px; font-variant-numeric: tabular-nums; line-height: 1.05;
+}
+/* The figure his eye should land on first. */
+.sw-desk .hb .v.hero { font-size: 40px; }
+.sw-desk .hb .v.up { color: var(--up); }
+.sw-desk .hb .v.dn { color: var(--down); }
+.sw-desk .hb .v.muted { color: var(--fg-3); font-size: 19px; }
+.sw-desk .hb .t { font-size: 19px; font-weight: 800; min-width: 0; }
+.sw-desk .hb .t small {
+  display: block; font-family: var(--m); font-size: 12px; color: var(--fg-2);
+  font-weight: 500; margin-top: 3px;
+}
+
+.sw-desk .hchip {
+  font-family: var(--m); font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 5px 9px; border-radius: 4px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--panel-2); color: var(--fg-2);
+}
+.sw-desk .hchip.c-up { background: var(--up-bg); color: var(--up); }
+.sw-desk .hchip.c-down { background: var(--down-bg); color: var(--down); }
+.sw-desk .hchip.flat { background: var(--panel-2); color: var(--fg-3); }
+.sw-desk .hdot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: inline-block; }
+.sw-desk .hdot.pulse { animation: sw-dot 1.6s ease-in-out infinite; }
+@keyframes sw-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+.sw-desk .hbtn {
+  font-family: var(--f); font-size: 13.5px; font-weight: 600; border-radius: 8px;
+  padding: 10px 16px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--line-2); background: var(--panel); color: var(--fg);
+}
+.sw-desk .hbtn:hover:not(:disabled) { border-color: var(--fg-3); }
+.sw-desk .hbtn.pri { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.sw-desk .hbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+.sw-desk .hbtn:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+
+@media (max-width: 980px) {
+  .sw-desk .hb { grid-template-columns: 1fr 1fr; }
+  .sw-desk .hb.one { grid-template-columns: auto 1fr; }
+}
+
+/* Margin used carries rule 4's share, so the tile answers "how much of my
+   ceiling is that?" without him going to the desk to find out. */
+.sw-desk .mbar {
+  height: 7px; border-radius: 4px; background: var(--panel-2); overflow: hidden; margin-top: 6px;
+  border: 1px solid var(--line);
+}
+.sw-desk .mbar i { display: block; height: 100%; background: var(--accent-sage); border-radius: 4px; }
+
+/* ---------- a reached target, on the position card, one line and no more --- */
+.sw-desk .pa-reached {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  padding: 10px 20px; border-bottom: 1px solid var(--line);
+  font-family: var(--m); font-size: 13.5px; font-weight: 700;
+}
+.sw-desk .pa-reached.up { background: var(--up-bg); color: var(--up); }
+.sw-desk .pa-reached.down { background: var(--down-bg); color: var(--down); }
+.sw-desk .pa-reached span { margin-left: auto; font-weight: 500; font-size: 11.5px; color: var(--fg-3); }
+
+/* The Targets button: sage, because it is his own intention rather than an
+   action on the market. */
+.sw-desk .btn.tgt { border-color: var(--accent-sage); color: var(--accent-sage); background: var(--accent-sage-tint); }
+.sw-desk .btn.tgt:hover:not(:disabled) { background: var(--accent-sage-tint-hover); }
+
+/* ---------- the targets modal --------------------------------------------- */
+.tg-backdrop {
+  position: fixed; inset: 0; z-index: 960; background: rgba(6, 8, 8, 0.55);
+  display: flex; align-items: flex-start; justify-content: center; padding: 40px 14px; overflow: auto;
+}
+.tg {
+  background: var(--panel); border: 1px solid var(--line-2); border-radius: 14px;
+  width: min(820px, 100%); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  color: var(--fg); font-family: var(--f);
+}
+.tg .tg-h { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tg .tg-h h2 { margin: 0; font-size: 18px; font-weight: 800; }
+.tg .tg-h .r { margin-left: auto; }
+.tg .tg-hint { padding: 12px 20px; color: var(--fg-2); font-size: 13px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+.tg .tw { overflow-x: auto; }
+.tg table.tg-t { width: 100%; border-collapse: collapse; }
+.tg table.tg-t th {
+  font-family: var(--m); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--fg-3); font-weight: 700; text-align: left; padding: 10px 12px;
+  border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.tg table.tg-t td { padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; font-size: 14px; }
+.tg table.tg-t td.n { text-align: right; font-family: var(--m); font-variant-numeric: tabular-nums; }
+.tg table.tg-t td.n small { display: block; font-size: 10.5px; color: var(--fg-3); }
+.tg table.tg-t td small { display: block; font-family: var(--m); font-size: 11px; color: var(--fg-3); font-weight: 500; margin-top: 2px; }
+.tg .tg-leg { font-family: var(--m); font-size: 16px; font-weight: 800; }
+.tg .bs { font-family: var(--m); font-size: 11px; font-weight: 700; border-radius: 4px; padding: 5px 8px; display: inline-block; min-width: 54px; text-align: center; }
+.tg .bs.B { background: var(--up-bg); color: var(--up); }
+.tg .bs.S { background: var(--down-bg); color: var(--down); }
+.tg input[type='number'] {
+  width: 112px; font-family: var(--m); font-size: 16px; font-weight: 700;
+  background: var(--panel-2); color: var(--fg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 8px 9px; font-variant-numeric: tabular-nums;
+}
+.tg input[type='number']:focus-visible { outline: 2px solid var(--info); outline-offset: 1px; }
+.tg .tg-means { font-family: var(--m); font-size: 11.5px; line-height: 1.35; color: var(--fg-2); }
+.tg .tg-means .up { color: var(--up); font-weight: 700; }
+.tg .tg-means .down { color: var(--down); font-weight: 700; }
+.tg .na { color: var(--fg-3); font-style: italic; }
+.tg tr.tg-trade td { background: var(--panel-2); }
+.tg .up { color: var(--up); } .tg .down { color: var(--down); }
+.tg .tg-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 14px 20px; border-top: 1px solid var(--line); background: var(--panel-2); }
+.tg .tg-actions .why { font-family: var(--m); font-size: 11px; color: var(--fg-3); margin-left: auto; max-width: 52ch; text-align: right; }
+.tg .tg-refused { margin: 12px 20px 0; padding: 10px 14px; border: 1px solid var(--down); border-radius: 8px; background: var(--down-bg); font-size: 13px; }
+.tg .tg-saved { margin: 12px 20px 0; padding: 10px 14px; border: 1px solid var(--accent-sage); border-radius: 8px; background: var(--accent-sage-tint); font-size: 13px; }
+@media (max-width: 720px) {
+  .tg table.tg-t td.tg-means, .tg table.tg-t th:last-child { display: none; }
+  .tg input[type='number'] { width: 90px; }
+}
+
+/* ---------- the payoff crosshair's readout -------------------------------- */
+.sw-desk .chartwrap { position: relative; }
+.sw-desk .payoff-readout {
+  position: absolute; top: 10px; right: 12px;
+  background: var(--panel); border: 1px solid var(--line-2); border-radius: 9px;
+  padding: 9px 13px; font-family: var(--m); font-size: 12.5px; min-width: 232px;
+  box-shadow: var(--shadow-card); pointer-events: none;
+  display: grid; grid-template-columns: auto auto; gap: 3px 14px; align-items: center;
+}
+.sw-desk .payoff-readout .k {
+  color: var(--fg-3); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700;
+}
+.sw-desk .payoff-readout .v { font-weight: 800; font-size: 17px; text-align: right; font-variant-numeric: tabular-nums; }
+.sw-desk .payoff-readout .v.small { font-size: 13.5px; font-weight: 600; }
+.sw-desk .payoff-readout .v.up { color: var(--up); }
+.sw-desk .payoff-readout .v.down { color: var(--down); }
+.sw-desk .payoff-readout .v.na { color: var(--fg-3); font-style: italic; font-weight: 500; }
+.sw-desk .pay { cursor: crosshair; }
+.sw-desk .hb .qstamp { font-family: var(--m); font-size: 11px; color: var(--fg-3); font-style: normal; margin-left: 8px; }

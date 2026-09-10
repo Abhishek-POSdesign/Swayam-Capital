@@ -108,10 +108,35 @@ def _require_reachable_vault(base: Path) -> Path:
     return base
 
 
-def get_journal_dir(vault_path: Optional[Path] = None) -> Path:
-    """Returns the path to the 04 - Journal directory in the vault, ensuring it exists."""
+# Notes written before he says paper trading has begun go in their own room.
+TERMINAL_TESTS_SUBFOLDER = "Terminal tests"
+
+
+def journal_rel_dir(terminal_test: bool = False) -> str:
+    """The vault-relative folder a note of this kind belongs in."""
+    base = "02 - Projects/Trading/04 - Journal"
+    return f"{base}/{TERMINAL_TESTS_SUBFOLDER}" if terminal_test else base
+
+
+def get_journal_dir(vault_path: Optional[Path] = None, terminal_test: bool = False) -> Path:
+    """The folder this note belongs in, created inside a vault that already exists.
+
+    `terminal_test` puts the note in `04 - Journal/Terminal tests/` instead of
+    the journal folder itself. His correction of 2026-09-10: everything the
+    terminal has recorded so far was a click to see how it behaves, not a trade
+    he planned, and his paper record has to start clean on the day he says.
+
+    THE PHASE IS PASSED IN, NOT READ HERE, on purpose. This module writes files
+    into his Second Brain and nothing else; giving it a database read of its own
+    would put a network call inside the one code path that must never surprise
+    anybody. The callers that open trades already read the phase for the
+    position's `provenance`, and they hand the same answer down here, so the row
+    and the note can never disagree about what a trade was.
+    """
     base = _require_reachable_vault(vault_path or _default_vault_base())
     journal_dir = base / "02 - Projects" / "Trading" / "04 - Journal"
+    if terminal_test:
+        journal_dir = journal_dir / TERMINAL_TESTS_SUBFOLDER
     journal_dir.mkdir(parents=True, exist_ok=True)
     return journal_dir
 
@@ -142,6 +167,7 @@ def write_new_trade_journal(
     filename_override: Optional[str] = None,
     notice: Optional[str] = None,
     opened_at: Optional[str] = None,
+    terminal_test: bool = False,
 ) -> str:
     """Writes a new trade journal markdown note to Obsidian Second Brain.
 
@@ -174,7 +200,7 @@ def write_new_trade_journal(
     Raises:
         JournalWriteError: If target file already exists or write fails.
     """
-    journal_dir = get_journal_dir(vault_path)
+    journal_dir = get_journal_dir(vault_path, terminal_test=terminal_test)
     now = datetime.now()
     date_str = now.strftime("%Y-%m-%d")
     if filename_override:
@@ -274,6 +300,11 @@ def write_new_trade_journal(
 
     breakeven_str = ", ".join([f"{b:,.0f}" for b in breakevens]) if breakevens else "None"
 
+    # WHAT THIS TRADE WAS, on the face of the note. A terminal test is a real
+    # fill with real charges that he took to see how the terminal behaves, and
+    # it does not belong in the record his paper results are judged against.
+    provenance_value = "terminal_test" if terminal_test else "live"
+
     content = f"""---
 trade_id: {position_id}
 date: {date_str}
@@ -281,6 +312,7 @@ strategy: {strategy_name}
 underlying: {underlying}
 status: open
 mode: paper
+provenance: {provenance_value}
 ---
 
 # {date_str} — Trade #{seq_str} — {strategy_name}
@@ -345,7 +377,7 @@ mode: paper
     except Exception as e:
         raise JournalWriteError(f"Failed to write journal to {target_path}: {e}") from e
 
-    rel_path = f"02 - Projects/Trading/04 - Journal/{filename}"
+    rel_path = f"{journal_rel_dir(terminal_test)}/{filename}"
     return rel_path
 
 
@@ -414,6 +446,104 @@ The trade now holds {structure_after.get('legs_count', '—')} legs. Net debit/c
         target_path.write_text(content, encoding="utf-8")
     except Exception as e:
         raise JournalWriteError(f"Failed to append leg block to {target_path}: {e}") from e
+    return target_path
+
+
+def append_leg_exit_block(
+    journal_rel_path: str,
+    closed_at: str,
+    leg: dict[str, Any],
+    close_reason: Optional[str] = None,
+    notes: Optional[str] = None,
+    opened_leg: Optional[dict[str, Any]] = None,
+    structure_after: Optional[dict[str, Any]] = None,
+    vault_path: Optional[Path] = None,
+) -> Path:
+    """Records ONE leg squared off inside a trade that is still running.
+
+    His own sheet has "Initial Position Legs", then "Trade Adjustments", then
+    "Booked Orders / Exits", often on different days. A leg exited on its own
+    is the middle one, not the last: the trade is not closed and must not get
+    an Exit block, which is what the record reads as squared off.
+
+    A reverse writes the same block with the opposite leg named beneath it,
+    because it is one decision and reads as one.
+    """
+    base_vault = _require_reachable_vault(vault_path or _default_vault_base())
+    target_path = base_vault / journal_rel_path
+    if not target_path.exists():
+        raise JournalWriteError(f"Target journal file does not exist: {target_path}")
+    content = target_path.read_text(encoding="utf-8")
+
+    contracts = int(leg.get("quantity_lots", 1) or 1) * int(leg.get("lot_size", 0) or 0)
+    exit_ltp = leg.get("exit_ltp")
+    net = leg.get("net_pnl_inr")
+    gross = leg.get("gross_pnl_inr")
+    side_hit = leg.get("exit_side_hit") or "—"
+
+    row = (
+        f"| {leg.get('sequence', '—')} | {float(leg.get('strike', 0)):,.0f} | {leg.get('option_type')} | "
+        f"{str(leg.get('direction', '')).upper()} | {leg.get('quantity_lots', 1)} | "
+        f"{str(leg.get('exit_order_type') or '—').lower()} | "
+        f"₹{float(leg.get('entry_premium', 0.0)):,.2f} | "
+        f"₹{float(leg.get('exit_premium', 0.0)):,.2f} | {side_hit} | "
+        f"{('₹' + format(float(exit_ltp), ',.2f')) if exit_ltp is not None else '—'} | "
+        f"{_charge_cell(leg.get('exit_charges_inr'))} | "
+        f"{_charge_cell(gross, signed=True)} | {_charge_cell(net, signed=True)} |"
+    )
+
+    opened_line = ""
+    if opened_leg:
+        opened_line = (
+            f"\nReversed: {str(opened_leg.get('direction', '')).upper()} "
+            f"{float(opened_leg.get('strike', 0)):,.0f} {opened_leg.get('option_type')} "
+            f"opened at ₹{float(opened_leg.get('entry_premium', 0.0)):,.2f} "
+            f"on the {opened_leg.get('side_hit') or '—'}, "
+            f"charges {_charge_cell(opened_leg.get('entry_charges_inr'))}, "
+            f"as leg {opened_leg.get('sequence', '—')} of the same trade.\n"
+        )
+
+    after = structure_after or {}
+    if after.get("all_closed"):
+        holding_line = "Every leg is now closed, so the trade is closed and its result is in the record."
+    else:
+        bes = after.get("breakevens") or []
+        be_text = ", ".join(f"{float(b):,.0f}" for b in bes) if bes else "none"
+        margin = after.get("margin_required_inr")
+        holding_line = (
+            f"The trade stays open with {after.get('legs_count', '—')} leg(s). "
+            f"Max loss ₹{float(after.get('max_loss_inr') or 0):,.0f}, "
+            f"max profit ₹{float(after.get('max_profit_inr') or 0):,.0f}, "
+            f"breakeven(s) {be_text}, broker margin "
+            f"{('₹' + format(float(margin), ',.0f')) if margin is not None else 'unavailable'}."
+        )
+
+    reason_line = f"Reason: {close_reason}." if close_reason else ""
+    note_line = f"\n\n> {notes}" if notes else ""
+
+    block = f"""### Leg squared off — {_ist_stamp(closed_at)}
+
+| # | Strike | Type | Held | Lots | Order | Entry | Exit | Side | Traded | Exit charges | Gross | Net |
+|:---:|---:|:---:|:---:|:---:|:---:|---:|---:|:---:|---:|---:|---:|---:|
+{row}
+
+{contracts} units. {reason_line} {holding_line}{opened_line}{note_line}
+
+"""
+
+    heading = "## Adjustments"
+    exit_idx = content.find("\n## Exit")
+    if exit_idx == -1:
+        content = content.rstrip() + "\n\n---\n\n" + (heading + "\n\n" if heading not in content else "") + block
+    elif heading in content:
+        content = content[:exit_idx] + "\n" + block + content[exit_idx:].lstrip("\n")
+    else:
+        content = content[:exit_idx] + "\n" + heading + "\n\n" + block + "---\n" + content[exit_idx:].lstrip("\n")
+
+    try:
+        target_path.write_text(content, encoding="utf-8")
+    except Exception as e:
+        raise JournalWriteError(f"Failed to append leg exit block to {target_path}: {e}") from e
     return target_path
 
 

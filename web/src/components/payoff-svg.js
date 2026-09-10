@@ -45,13 +45,22 @@ export class PayoffSvgComponent {
       reason: null,
     };
     this._dragging = false;
+    // What the last render drew, so the crosshair can answer without redrawing
+    // anything. Null until the first successful render.
+    this._geo = null;
   }
 
   init() {
     if (!this.container) return;
     this.container.innerHTML =
-      `<div class="chartwrap"><svg class="pay" id="payoff-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"></svg></div>`;
+      `<div class="chartwrap"><svg class="pay" id="payoff-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"></svg>
+        <div class="payoff-readout" id="payoff-readout" hidden aria-hidden="true">
+          <span class="k">NIFTY</span><span class="v small" id="payoff-ro-s"></span>
+          <span class="k">At expiry</span><span class="v" id="payoff-ro-e"></span>
+          <span class="k">Today</span><span class="v small" id="payoff-ro-t"></span>
+        </div></div>`;
     this._bindDrag();
+    this._bindCrosshair();
     this.render();
   }
 
@@ -102,12 +111,16 @@ export class PayoffSvgComponent {
 
     if (!on.length) {
       svg.innerHTML = this._message('Load a strategy to draw its payoff');
+      this._geo = null;
+      this._hideCrosshair();
       return;
     }
     if (!spot || !lotSize) {
       svg.innerHTML = this._message(
         reason || (!spot ? 'No live NIFTY price, so the payoff cannot be placed' : 'Contract size not confirmed by the server yet'),
       );
+      this._geo = null;
+      this._hideCrosshair();
       return;
     }
 
@@ -123,6 +136,8 @@ export class PayoffSvgComponent {
       const expiryPnl = pnlAt(legs, S, 0, opts);
       if (expiryPnl === null) {
         svg.innerHTML = this._message('A leg has no price yet, so there is nothing to draw');
+        this._geo = null;
+        this._hideCrosshair();
         return;
       }
       pts.push([S, expiryPnl]);
@@ -201,9 +216,144 @@ export class PayoffSvgComponent {
       ? `<text x="${L + 86}" y="${TOP + 11}" fill="var(--info)" font-family="var(--m)" font-size="10">— ${away === 0 ? 'today' : `in ${away}d`}</text>`
       : `<text x="${L + 86}" y="${TOP + 11}" fill="var(--fg-3)" font-family="var(--m)" font-size="10">on-date curve unavailable, no measured IV</text>`;
 
+    // The crosshair's elements, drawn once and then only moved. Nothing on a
+    // timer and nothing about hovering may ever call render() again.
+    g += `<g id="pay-cross" style="display:none" pointer-events="none">
+      <line id="pay-cross-x" y1="${TOP}" y2="${H - BOT}" stroke="var(--fg-3)" stroke-width="1" stroke-dasharray="3 3"/>
+      <line id="pay-cross-y" x1="${L}" x2="${W - R}" stroke="var(--fg-3)" stroke-width="1" stroke-dasharray="3 3"/>
+      <circle id="pay-cross-de" r="4.5" fill="var(--fg)" stroke="var(--panel)" stroke-width="2"/>
+      <circle id="pay-cross-dt" r="4.5" fill="var(--info)" stroke="var(--panel)" stroke-width="2"/>
+      <rect id="pay-cross-xb" y="${H - BOT + 4}" width="74" height="18" rx="4" fill="var(--fg)"/>
+      <text id="pay-cross-xt" y="${H - BOT + 17}" text-anchor="middle" fill="var(--bg)" font-family="var(--m)" font-size="11" font-weight="700"></text>
+      <rect id="pay-cross-yb" x="2" width="60" height="18" rx="4" fill="var(--fg)"/>
+      <text id="pay-cross-yt" x="32" text-anchor="middle" fill="var(--bg)" font-family="var(--m)" font-size="11" font-weight="700"></text>
+    </g>`;
+
     svg.innerHTML = g;
+    // Everything the crosshair needs to answer a hover, captured from the
+    // render that just happened. Held rather than recomputed so a mouse moving
+    // across the graph costs no maths beyond the two curve points it asks for.
+    this._geo = { lo, hi, X, Y, T, opts, legs, targetCurveOk };
+    this._hideCrosshair();
     const { unlimited } = unlimitedFlags(legs);
     if (this.options.onRendered) this.options.onRendered({ unlimited, targetCurveOk });
+  }
+
+  /**
+   * THE CROSSHAIR. His words, 2026-09-10: "When I hover the mouse around the
+   * payoff graph, it must have a crosshair... the vertical line will have the
+   * Nifty level, and the horizontal line will have my profit and loss. Without
+   * moving any component."
+   *
+   * "Without moving any component" is the whole design. This handler NEVER
+   * calls render(). It sets attributes on elements the last render already put
+   * in the SVG, and toggles one overlay. So the curves, the target marker, the
+   * breakevens, the drag and both sliders are exactly where they were, and a
+   * mouse crossing the graph cannot cost a repaint.
+   *
+   * THE DRAG STILL WINS. While the pointer is down the crosshair hides and
+   * gets out of the way, because dragging the target is the thing he meant to
+   * do and a line following his finger would only be noise.
+   */
+  _bindCrosshair() {
+    const svg = this._svg();
+    if (!svg || typeof svg.addEventListener !== 'function') return;
+
+    svg.addEventListener('pointermove', (ev) => {
+      if (this._dragging) { this._hideCrosshair(); return; }
+      this._moveCrosshair(ev);
+    });
+    svg.addEventListener('pointerleave', () => this._hideCrosshair());
+    svg.addEventListener('pointerdown', () => this._hideCrosshair());
+  }
+
+  _readout() {
+    return this.container ? this.container.querySelector('#payoff-readout') : null;
+  }
+
+  _hideCrosshair() {
+    const svg = this._svg();
+    const g = svg && svg.querySelector ? svg.querySelector('#pay-cross') : null;
+    if (g && g.setAttribute) g.setAttribute('style', 'display:none');
+    const ro = this._readout();
+    if (ro) ro.hidden = true;
+  }
+
+  /**
+   * The pointer moved. Reads the NIFTY level under it, computes both curves at
+   * that level from the SAME maths the curves were drawn with, and writes the
+   * answers into elements that already exist.
+   */
+  _moveCrosshair(ev) {
+    const svg = this._svg();
+    const geo = this._geo;
+    if (!svg || !geo) return;
+    const g = svg.querySelector ? svg.querySelector('#pay-cross') : null;
+    const ro = this._readout();
+    if (!g) return;
+
+    const rect = typeof svg.getBoundingClientRect === 'function' ? svg.getBoundingClientRect() : null;
+    if (!rect || !rect.width) return;
+    const clientX = ev.touches && ev.touches[0] ? ev.touches[0].clientX : ev.clientX;
+    const x = ((clientX - rect.left) / rect.width) * W;
+    if (x < L || x > W - R) { this._hideCrosshair(); return; }
+
+    // Levels read in fives, the way a strike ladder does.
+    const level = Math.round((geo.lo + ((x - L) / (W - L - R)) * (geo.hi - geo.lo)) / 5) * 5;
+    const atExpiry = pnlAt(geo.legs, level, 0, geo.opts);
+    if (atExpiry === null) { this._hideCrosshair(); return; }
+    const today = geo.targetCurveOk ? pnlAt(geo.legs, level, geo.T, geo.opts) : null;
+
+    const px = geo.X(level);
+    const py = geo.Y(atExpiry);
+
+    const set = (sel, attrs) => {
+      const el = g.querySelector ? g.querySelector(sel) : null;
+      if (!el || !el.setAttribute) return null;
+      Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+      return el;
+    };
+
+    g.setAttribute('style', '');
+    set('#pay-cross-x', { x1: px.toFixed(1), x2: px.toFixed(1) });
+    set('#pay-cross-y', { y1: py.toFixed(1), y2: py.toFixed(1) });
+    set('#pay-cross-de', { cx: px.toFixed(1), cy: py.toFixed(1) });
+
+    const dotT = g.querySelector ? g.querySelector('#pay-cross-dt') : null;
+    if (dotT && dotT.setAttribute) {
+      if (today === null) dotT.setAttribute('style', 'display:none');
+      else {
+        dotT.setAttribute('style', '');
+        dotT.setAttribute('cx', px.toFixed(1));
+        dotT.setAttribute('cy', geo.Y(today).toFixed(1));
+      }
+    }
+
+    set('#pay-cross-xb', { x: (px - 37).toFixed(1) });
+    const xt = set('#pay-cross-xt', { x: px.toFixed(1) });
+    if (xt) xt.textContent = num(level);
+
+    set('#pay-cross-yb', { y: (py - 9).toFixed(1) });
+    const yt = set('#pay-cross-yt', { y: (py + 4).toFixed(1) });
+    if (yt) yt.textContent = inr(Math.round(atExpiry));
+
+    if (ro) {
+      ro.hidden = false;
+      const put = (sel, text, tone) => {
+        const el = ro.querySelector ? ro.querySelector(sel) : null;
+        if (!el) return;
+        el.textContent = text;
+        if (tone !== undefined) el.className = tone;
+      };
+      const toneOf = (v) => (v > 0 ? 'v up' : v < 0 ? 'v down' : 'v');
+      put('#payoff-ro-s', num(level), 'v small');
+      put('#payoff-ro-e', inr(Math.round(atExpiry)), toneOf(atExpiry));
+      put(
+        '#payoff-ro-t',
+        today === null ? 'unavailable' : inr(Math.round(today)),
+        today === null ? 'v small na' : `${toneOf(today)} small`,
+      );
+    }
   }
 
   _message(text) {

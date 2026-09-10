@@ -24,6 +24,9 @@ import { OvernightBlockModalComponent } from '../components/overnight-block-moda
 import { OptionChainModalComponent } from '../components/option-chain-modal.js';
 import { ExecutionTicket } from '../components/execution-ticket.js';
 import { DataHealthStrip } from '../components/data-health-strip.js';
+import { PositionArea } from '../components/position-area.js';
+import { ExitTicket } from '../components/exit-ticket.js';
+import { TargetsModal } from '../components/targets-modal.js';
 import {
   maxLossProfit,
   breakevens,
@@ -44,6 +47,10 @@ const REQUOTE_CLOSED_MS = 60000;
 
 /** A price he typed himself carries this source and is never overwritten. */
 const OWN_PRICE = 'your own limit price';
+/** A leg loaded from a position he HOLDS, priced at the fill it actually got. */
+const FILLED_PRICE = 'the fill this leg actually got';
+/** Whether this leg's price belongs to him rather than to the last quote. */
+const priceIsHis = (leg) => leg && (leg.priceSource === OWN_PRICE || leg.priceSource === FILLED_PRICE);
 
 /** 1 to 20 lots as a dropdown: he asked for this rather than plus and minus buttons so no width goes on stepper chrome. */
 function lotOptions(current) {
@@ -136,6 +143,9 @@ export class StrategyBuilderPage {
     /** Contract size. Server-resolved only; 65 is never assumed and 75 never sent. */
     this.lotSize = null;
     this.lotSizeSource = null;
+    // True while the size above came off a loaded position rather than the
+    // server's contract-master confirmation.
+    this.lotSizeFromPosition = false;
 
     this.expiries = [];
     this.expiry = null;
@@ -192,6 +202,29 @@ export class StrategyBuilderPage {
     this.marginUsedNote = '';
     this.cronTimer = null;
     this.safetyWarning = null;
+
+    /**
+     * The position area below the payoff, and the ticket that gets him out.
+     * docs/builds/BUILD_01_DESK_POSITION_AREA.md. On 2026-09-10 he held a
+     * four-leg condor and could not see it, manage it or exit it from here.
+     */
+    this.positionArea = null;
+    this.exitTicket = null;
+    this.targetsModal = null;
+
+    /**
+     * The open trade drawn on the payoff when he has not loaded anything else.
+     * Null means the desk is his to build on, which a preset or the chain
+     * restores.
+     */
+    this.loadedFrom = null;
+    // The payoff draws a trade he HOLDS when he has not loaded anything.
+    // docs/PLAN.md 2.12.5 item 4. Once per visit: pressing "Clear and build
+    // new" means the desk stays empty, so it counts as having happened.
+    this._autoLoadedOnce = false;
+
+    /** The open trade a newly executed leg should JOIN, rather than opening a new one. */
+    this.joinTrade = null;
   }
 
   _resolveSessionId() {
@@ -409,6 +442,7 @@ export class StrategyBuilderPage {
 
               <div class="card">
                 <h3>Payoff <span class="r">drag the graph, or use the sliders</span></h3>
+                <div id="payoff-loaded-band"></div>
                 <div id="payoff-chart-mount"></div>
                 <div class="sliders">
                   <div class="sl">
@@ -448,10 +482,19 @@ export class StrategyBuilderPage {
               </div>
             </div>
           </div>
+
+          <!-- THE POSITION AREA. His words, 2026-09-09: "at the strategy desk
+               itself, the bottom area below the payoff graph and execution
+               should be dedicated to open position, close position for the
+               day, and everything for the positions." Full width, below both
+               columns rather than inside either one. -->
+          <div id="position-area-mount"></div>
         </div>
 
         <div id="overnight-modal-container"></div>
         <div id="execution-ticket-mount"></div>
+        <div id="exit-ticket-mount"></div>
+        <div id="targets-mount"></div>
       </div>
     `;
 
@@ -497,9 +540,215 @@ export class StrategyBuilderPage {
       });
     }
 
+    const areaHost = this.container.querySelector('#position-area-mount');
+    if (areaHost && !this.positionArea) {
+      this.positionArea = new PositionArea(areaHost, {
+        fetchOpen: () => api.getPositionsLive(),
+        fetchClosed: () => api.getPositions('closed'),
+        onExitAll: (p) => this.openExitTicket(p, null),
+        onExitLeg: (p, seq) => this.openExitTicket(p, seq),
+        onExitLegNow: (p, seq, payload) =>
+          api.exitLeg(p.position_id, seq, payload, `exit-${p.position_id}-${seq}`),
+        onReverseLeg: (p, seq, payload) =>
+          api.reverseLeg(p.position_id, seq, payload, `reverse-${p.position_id}-${seq}`),
+        onAddLeg: (p) => this.addLegToOpenTrade(p),
+        onShowOnPayoff: (p) => this.loadFromPosition(p),
+        onOpenRead: (open) => this.autoLoadOpenTrade(open),
+        onRename: (p, name) => api.renamePosition(p.position_id, name),
+        onTargets: (p) => this.openTargets(p),
+      });
+      this.positionArea.init();
+    }
+
+    const exitHost = this.container.querySelector('#exit-ticket-mount');
+    if (exitHost && !this.exitTicket) {
+      this.exitTicket = new ExitTicket(exitHost, {
+        onExitAll: (payload) => api.closePosition(this.exitTicket.position.position_id, payload),
+        onExitLeg: (seq, payload) => api.exitLeg(
+          this.exitTicket.position.position_id,
+          seq,
+          payload,
+          `exit-${this.exitTicket.position.position_id}-${seq}`,
+        ),
+        onDone: () => this.afterExit(),
+      });
+    }
+
+    const targetsHost = this.container.querySelector('#targets-mount');
+    if (targetsHost && !this.targetsModal) {
+      this.targetsModal = new TargetsModal(targetsHost, {
+        onSave: async (positionId, payload) => {
+          const res = await api.setPositionTargets(positionId, payload);
+          // Read the trade back, so what the card and Home show is what the
+          // database now holds rather than what the browser hoped it saved.
+          if (this.positionArea) await this.positionArea.refresh();
+          return res;
+        },
+      });
+    }
+
     this.renderPresets();
     this.bindControls();
     this.renderAll();
+  }
+
+  /** Opens the Targets modal for one trade. It cannot move money. */
+  openTargets(position) {
+    if (!this.targetsModal) return;
+    this.targetsModal.open(position);
+  }
+
+  /** Opens the exit ticket for one leg, or for every open leg. */
+  openExitTicket(position, sequence) {
+    if (!this.exitTicket) return;
+    this.exitTicket.open(position, sequence);
+  }
+
+  /** After anything fills, everything on the desk reads itself again. */
+  async afterExit() {
+    if (this.positionArea) await this.positionArea.refresh();
+    await this.refreshPositions();
+    if (this.loadedFrom && this.positionArea) {
+      const still = this.positionArea.positionById(this.loadedFrom.position_id);
+      if (still) this.loadFromPosition(still);
+      else this.clearLoadedPosition();
+    }
+  }
+
+  /**
+   * Adds a leg to a trade that is already open, through the ticket he knows.
+   *
+   * The leg joins THAT trade rather than opening a new one, which is the
+   * campaign model of docs/PLAN.md 2.11 and the path "execute one by one"
+   * already uses.
+   */
+  addLegToOpenTrade(position) {
+    this.joinTrade = position;
+    this.executeNote = `The next leg you execute joins trade #${String(position.position_id).slice(0, 8)}, ${position.strategy_name}, instead of opening a new one. Build it on the left and press Execute.`;
+    this.renderExecute();
+    const rail = this.container.querySelector('#strategy-left-rail');
+    if (rail && rail.scrollIntoView) rail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /**
+   * Draws a trade he is HOLDING on the payoff, from its stored fills.
+   *
+   * His decision of 2026-09-10, docs/PLAN.md 2.12.5 item 4: the payoff shows
+   * the open trade when no new structure is loaded. The legs come off the
+   * position at the prices they were actually filled at, so the curve is HIS
+   * trade rather than a fresh one at today's prices.
+   */
+  loadFromPosition(position) {
+    if (!position) return;
+    const open = (position.legs || []).filter((l) => String(l.status || 'open') !== 'closed');
+    if (!open.length) return;
+
+    this.legs = open.map((l) => ({
+      on: true,
+      bs: ['buy', 'long'].includes(String(l.direction).toLowerCase()) ? 'B' : 'S',
+      strike: Number(l.strike),
+      type: String(l.option_type).toUpperCase(),
+      lots: Number(l.quantity_lots || 1),
+      price: typeof l.entry_premium === 'number' ? l.entry_premium : null,
+      priceSource: FILLED_PRICE,
+    }));
+    this.baseLots = this.legs.map((l) => l.lots);
+    this.strategyName = position.strategy_name || null;
+    this.loadedFrom = position;
+    if (position.expiry_date) this.expiry = position.expiry_date;
+
+    // THE CONTRACT SIZE COMES OFF THE TRADE'S OWN LEGS.
+    //
+    // A position he already holds was filled at a known lot size and stored it
+    // on every leg. Waiting for the chain to confirm a size we already have
+    // left the desk saying "lot unconfirmed" after hours, and with no size
+    // there is no payoff, no margin, no max loss and no breakevens: his own
+    // open trade drew nothing.
+    //
+    // Every open leg must agree. If they disagree, or any leg has no stored
+    // size, nothing is set and the server's confirmation still governs, because
+    // a size taken from one leg would misprice the rest. It is NEVER 65 or 75
+    // by default; that number changed in January 2026.
+    const sizes = open.map((l) => Number(l.lot_size)).filter((n) => Number.isFinite(n) && n > 0);
+    if (sizes.length === open.length && new Set(sizes).size === 1) {
+      this.lotSize = sizes[0];
+      this.lotSizeSource = "stored on this trade's own legs, as it was filled";
+      this.lotSizeFromPosition = true;
+    }
+
+    this.renderAll();
+  }
+
+  /**
+   * Draws what he HOLDS, by itself, when he has not loaded anything.
+   *
+   * docs/PLAN.md 2.12.5 item 4: "The payoff graph shows the open trade when no
+   * new structure is loaded." Having to press a button to see his own position
+   * is what made the desk feel empty after hours.
+   *
+   * It fires ONCE a visit and only onto an empty desk. Loading a preset or the
+   * chain fills the desk, so nothing is overwritten; pressing "Clear and build
+   * new" counts as having happened, so a clear means clear.
+   */
+  autoLoadOpenTrade(open) {
+    if (this._autoLoadedOnce) return;
+    if (this.loadedFrom) return;
+    if (Array.isArray(this.legs) && this.legs.length) return;
+    if (!Array.isArray(open) || !open.length) return;
+
+    const running = open.filter((p) => Number(p.legs_open || 0) > 0);
+    if (!running.length) return;
+    // The one he opened most recently is the one he is thinking about.
+    const latest = running.slice().sort(
+      (a, b) => String(b.opened_at || '').localeCompare(String(a.opened_at || '')),
+    )[0];
+
+    this._autoLoadedOnce = true;
+    this.loadFromPosition(latest);
+  }
+
+  /** Back to an empty desk he can build on. */
+  clearLoadedPosition() {
+    this.loadedFrom = null;
+    this.legs = [];
+    this.baseLots = [];
+    this.strategyName = null;
+    // A clear means clear. Without this the auto-load would put the trade
+    // straight back on the next five-second read.
+    this._autoLoadedOnce = true;
+    // The contract size came off that trade's own legs, so it goes with it and
+    // the server confirms the next one.
+    if (this.lotSizeFromPosition) {
+      this.lotSize = null;
+      this.lotSizeSource = null;
+      this.lotSizeFromPosition = false;
+    }
+    this.renderAll();
+  }
+
+  /**
+   * The sage band above the payoff, saying what is drawn and where it came
+   * from, so a trade he holds is never mistaken for one he is building.
+   */
+  renderLoadedBand() {
+    const host = this.container.querySelector('#payoff-loaded-band');
+    if (!host) return;
+    const p = this.loadedFrom;
+    if (!p) {
+      host.innerHTML = '';
+      return;
+    }
+    const legs = (p.legs || []).filter((l) => String(l.status || 'open') !== 'closed').length;
+    host.innerHTML = `<div class="loaded-band">
+      <span class="chip c-sage">open trade</span>
+      <b>${escapeHtml(p.strategy_name || 'Trade')} #${escapeHtml(String(p.position_id).slice(0, 8))}</b>
+      <span class="fg2">${legs} leg${legs === 1 ? '' : 's'} · ${escapeHtml(p.expiry_date || '')} · loaded from your position, not a preset</span>
+      <span class="r"><button class="btn sm" type="button" id="clear-loaded">Clear and build new</button></span>
+    </div>`;
+    const clear = host.querySelector('#clear-loaded');
+    if (clear && clear.addEventListener) {
+      clear.addEventListener('click', () => this.clearLoadedPosition());
+    }
   }
 
   /**
@@ -734,6 +983,10 @@ export class StrategyBuilderPage {
   async loadPreset(name) {
     const shape = PRESETS[name];
     if (!shape) return;
+    // Loading a preset clears the trade drawn from his position: from here on
+    // the desk is a structure he is building, not one he is holding.
+    this.loadedFrom = null;
+    this.joinTrade = null;
     if (!this.spot) {
       this.executeNote = 'No live NIFTY price, so strikes cannot be placed at the money. Nothing was loaded.';
       this.renderExecute();
@@ -759,6 +1012,7 @@ export class StrategyBuilderPage {
   }
 
   addLeg() {
+    this.loadedFrom = null;
     const atm = this.atmStrike();
     if (atm === null) {
       this.executeNote = 'No live NIFTY price, so a new leg has no strike to sit on.';
@@ -783,6 +1037,10 @@ export class StrategyBuilderPage {
     if (!leg || !this.expiry) return;
     // His own limit price is his. A quote never overwrites it.
     if (leg.priceSource === OWN_PRICE && opts.render === false) return;
+    // A leg loaded from a position he holds keeps the price it was FILLED at,
+    // so the payoff stays his trade rather than drifting onto today's prices.
+    // The quote still runs: its bid and ask are what the ticket reads.
+    const keepPrice = priceIsHis(leg) ? { price: leg.price, source: leg.priceSource } : null;
     try {
       const q = await api.getOptionQuote({ strike: leg.strike, expiry: this.expiry, type: leg.type });
       if (q && q.available && typeof q.ltp === 'number') {
@@ -815,6 +1073,10 @@ export class StrategyBuilderPage {
       leg.price = null;
       leg.priceSource = (err && err.message) || 'quote unavailable';
     }
+    if (keepPrice) {
+      leg.price = keepPrice.price;
+      leg.priceSource = keepPrice.source;
+    }
     this.pricesReadAt = new Date().toISOString();
     if (opts.render === false) return;
     this.renderLegs();
@@ -846,6 +1108,9 @@ export class StrategyBuilderPage {
         onAddLeg: (leg) => this.addLegFromChain(leg),
         getExpiry: () => this.expiry,
         getSpot: () => this.spot,
+        // THE ONE CLOCK. The panel may not print LIVE on its own authority;
+        // this is what /api/market/data-health told the desk.
+        getMarketState: () => this.dataState,
         refreshMs: this.requoteMs,
       });
     }
@@ -1119,6 +1384,9 @@ export class StrategyBuilderPage {
           if (first && typeof first.lot_size === 'number' && first.lot_size > 0) {
             this.lotSize = first.lot_size;
             this.lotSizeSource = 'FYERS contract master, resolved server-side';
+            // The server has now confirmed it, so it no longer belongs to the
+            // loaded trade and clearing that trade must not take it away.
+            this.lotSizeFromPosition = false;
           }
         } catch (err) {
           this.preview = null;
@@ -1154,6 +1422,7 @@ export class StrategyBuilderPage {
 
   renderRight() {
     this.renderMetrics();
+    this.renderLoadedBand();
     this.renderSliders();
     this.renderChart();
     this.renderGreeks();
@@ -1165,7 +1434,9 @@ export class StrategyBuilderPage {
     const cap = this.capital || {};
     return [
       { label: 'NIFTY 50', value: num(this.spot, 2), raw: this.spot, note: this.spotAt ? `tick ${istTime(this.spotAt) || ''}`.trim() : this.spotFreshness || '' },
-      { label: 'Lot', value: this.lotSize === null ? null : String(this.lotSize), note: this.lotSize === null ? 'server has not confirmed it' : 'contract master' },
+      // Where the size came from, said rather than assumed: the contract
+      // master, or the loaded trade's own stored legs.
+      { label: 'Lot', value: this.lotSize === null ? null : String(this.lotSize), note: this.lotSize === null ? 'server has not confirmed it' : (this.lotSizeFromPosition ? "this trade's stored legs" : 'contract master') },
       { label: 'Expiry', value: this.expiry || null },
       { label: 'Balance', value: inr(cap.risk_capital_inr), note: cap.source ? 'FYERS funds()' : '' },
       { label: 'Running loss cap', value: inr(cap.primary_risk_cap_inr), note: '1%' },
@@ -1246,7 +1517,7 @@ export class StrategyBuilderPage {
           </select>
           <select class="lots" data-i="${i}" data-f="lots" aria-label="Lots">${lotOptions(l.lots)}</select>
           <input value="${l.price === null ? '' : l.price.toFixed(2)}" data-i="${i}" data-f="price"
-                 class="${l.priceSource === OWN_PRICE ? 'own' : ''}${flashFor(this._flash, `price-${i}-${l.strike}-${l.type}`, l.price)}"
+                 class="${priceIsHis(l) ? 'own' : ''}${flashFor(this._flash, `price-${i}-${l.strike}-${l.type}`, l.price)}"
                  inputmode="decimal" placeholder="—" title="${escapeHtml(l.priceSource || '')}" aria-label="Price">
           <button class="trash" data-i="${i}" data-f="del" type="button" aria-label="Delete leg" title="Delete leg">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -1765,6 +2036,24 @@ export class StrategyBuilderPage {
    * leg and sendNextLeg() adds each later one to the same trade.
    */
   async sendTicket(legs, mode) {
+    // He pressed "Add a leg" on an open position, so these legs join THAT
+    // trade through the add-leg path instead of opening a new one.
+    if (this.joinTrade && this.joinTrade.position_id) {
+      const id = this.joinTrade.position_id;
+      let last = null;
+      for (let i = 0; i < legs.length; i += 1) {
+        last = await api.addLegToPosition(
+          id, { leg: legs[i], current_spot: this.spot }, `join-${id}-${i}-${legs[i].strike}-${legs[i].option_type}`,
+        );
+      }
+      this.joinTrade = null;
+      this.executeNote = `Added to trade #${String(id).slice(0, 8)}. It is one trade, with its shape changed.`;
+      await this.refreshPositions();
+      if (this.positionArea) await this.positionArea.refresh();
+      this.renderExecute();
+      return { ...(last || {}), position_id: id, joined: true };
+    }
+
     const res = await api.executeMultiLeg({
       strategy_name: this.strategyName || 'Custom',
       underlying: 'NIFTY',
@@ -1799,6 +2088,18 @@ export class StrategyBuilderPage {
   }
 
   destroy() {
+    if (this.positionArea) {
+      this.positionArea.destroy();
+      this.positionArea = null;
+    }
+    if (this.exitTicket) {
+      this.exitTicket.destroy();
+      this.exitTicket = null;
+    }
+    if (this.targetsModal) {
+      this.targetsModal.destroy();
+      this.targetsModal = null;
+    }
     if (this._serverTimer) {
       clearTimeout(this._serverTimer);
       this._serverTimer = null;

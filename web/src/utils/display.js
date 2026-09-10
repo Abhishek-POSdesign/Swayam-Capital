@@ -16,6 +16,17 @@ export function inr(v) {
   return `${v < 0 ? '-' : ''}₹${Math.round(Math.abs(v)).toLocaleString('en-IN')}`;
 }
 
+/**
+ * Rupees to the paisa. Charges are the reason this exists: his FY 2025-26 was
+ * a gross of +6,109 turned into a net of -86,299 by 92,408 of costs, so a
+ * charge of 27.18 rounded to 27 hides the very thing he needs to watch.
+ * Null-safe, like every helper here: missing means unavailable.
+ */
+export function inrExact(v) {
+  if (!isNum(v)) return null;
+  return `${v < 0 ? '-' : ''}₹${Math.abs(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 /** A plain number with Indian grouping. */
 export function num(v, decimals = 0) {
   if (!isNum(v)) return null;

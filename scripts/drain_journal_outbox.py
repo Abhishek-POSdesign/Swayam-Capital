@@ -46,6 +46,8 @@ load_dotenv(ROOT_DIR / ".env")
 from swayam.api.journal_writer import (
     append_leg_block,  # noqa: E402
     append_exit_block,
+    append_leg_exit_block,
+    _default_vault_base,
     write_new_trade_journal,
 )
 from swayam.config import settings  # noqa: E402
@@ -181,6 +183,37 @@ def cmd_drain(dry_run: bool) -> int:
                 print(f"  FAILED       {label}: {exc}")
             continue
 
+        # A LEG SQUARED OFF inside a trade that is STILL RUNNING. It appends an
+        # Adjustments line, never an Exit block, because the trade is not
+        # closed. Like add_leg, its note path is resolved now rather than at
+        # queue time, because the entry note may be ahead of it in this queue.
+        if row["kind"] == "leg_exit":
+            if dry_run:
+                print(f"  would append {label}")
+                skipped += 1
+                continue
+            try:
+                note_path = _resolve_note_path(pid)
+                if not note_path:
+                    raise RuntimeError("the entry note has not been written yet; run again after it lands")
+                target = append_leg_exit_block(
+                    journal_rel_path=note_path,
+                    closed_at=payload["closed_at"],
+                    leg=payload["leg"],
+                    close_reason=payload.get("close_reason"),
+                    notes=payload.get("notes"),
+                    opened_leg=payload.get("opened_leg"),
+                    structure_after=payload.get("structure_after") or {},
+                )
+                _mark_done(row["id"], note_path)
+                _mark_position(pid, "written")
+                print(f"  appended     {target}")
+                written += 1
+            except Exception as exc:
+                _mark_attempt(row, str(exc))
+                print(f"  FAILED       {label}: {exc}")
+            continue
+
         if row["kind"] == "close":
             if dry_run:
                 print(f"  would append {label}")
@@ -189,8 +222,44 @@ def cmd_drain(dry_run: bool) -> int:
             try:
                 from datetime import datetime
 
+                # THE PATH IS RESOLVED NOW, NOT READ OFF THE PAYLOAD.
+                #
+                # A close queued while the entry note was still pending was
+                # stored with `awaiting_entry_note` and NO path at all, because
+                # there was no note to name at the time. Reading
+                # payload["journal_rel_path"] raised KeyError on every single
+                # drain and the row retried for ever. Two rows sat in exactly
+                # that state, for 03a1b63d and 8030ed03.
+                note_path = payload.get("journal_rel_path") or _resolve_note_path(pid)
+                if not note_path:
+                    raise RuntimeError("the entry note has not been written yet; run again after it lands")
+
+                # AND THE NOTE MAY ALREADY BE COMPLETE. When this script writes
+                # an entry note for a trade that has since closed it appends the
+                # exit immediately, through _append_exit_if_already_closed. That
+                # is how both stuck rows got their Exit block. Appending again
+                # would put a SECOND Exit into his real journal note, so an exit
+                # that is already there means the row is done, not that there is
+                # work to do.
+                if _note_already_has_exit(note_path):
+                    _mark_done(row["id"], note_path)
+                    _mark_position(pid, "written")
+                    print(f"  already done {note_path} (the exit is already in the note)")
+                    skipped += 1
+                    continue
+
+                # The result as a percentage of capital is read live, the same
+                # way the close route reads it, rather than from a payload key
+                # that a queued close never carried. No balance, no percentage,
+                # and it says so instead of inventing one.
+                margin_base = payload.get("margin_base_inr")
+                if margin_base is None:
+                    from swayam.services import capital as capital_service
+
+                    margin_base = capital_service.get_capital().risk_capital_inr
+
                 target = append_exit_block(
-                    journal_rel_path=payload["journal_rel_path"],
+                    journal_rel_path=note_path,
                     closed_at=datetime.fromisoformat(payload["closed_at"]),
                     close_reason=payload["close_reason"],
                     notes=payload.get("notes"),
@@ -199,10 +268,10 @@ def cmd_drain(dry_run: bool) -> int:
                     charges_inr=payload["charges_inr"],
                     net_pnl_inr=payload["net_pnl_inr"],
                     max_loss_inr=payload["max_loss_inr"],
-                    margin_base_inr=payload["margin_base_inr"],
+                    margin_base_inr=margin_base,
                     holding_days=payload["holding_days"],
                 )
-                _mark_done(row["id"], payload["journal_rel_path"])
+                _mark_done(row["id"], note_path)
                 _mark_position(pid, "written")
                 print(f"  appended     {target}")
                 written += 1
@@ -216,6 +285,7 @@ def cmd_drain(dry_run: bool) -> int:
             skipped += 1
             continue
 
+        row_provenance = _row_provenance(pid)
         try:
             rel_path = write_new_trade_journal(
                 position_id=pid,
@@ -227,6 +297,11 @@ def cmd_drain(dry_run: bool) -> int:
                 # moment the drainer ran, which for trades 02 and 03 of
                 # 2026-09-09 was 16:57, after the close.
                 opened_at=payload.get("opened_at"),
+                # The row already knows what this trade was. The drainer never
+                # re-decides it: a note written weeks later must land where the
+                # trade it describes says it belongs, not where today's phase
+                # would put a new one.
+                terminal_test=str(row_provenance or "").lower() == "terminal_test",
             )
             db.client.table("swayam_journal_entries").insert(
                 {
@@ -284,6 +359,51 @@ def _mark_position(position_id: str, status: str) -> None:
     db.client.table("swayam_positions").update({"journal_status": status}).eq(
         "id", position_id
     ).execute()
+
+
+def _note_already_has_exit(rel_path: str, vault_base: Optional[Path] = None) -> bool:
+    """Whether this note already carries an Exit block.
+
+    Read from the note itself rather than from a status field. "Verify by
+    invoking, never by reading a status": on 2026-09-08 three things had never
+    once worked while something downstream reported success.
+
+    A note that cannot be read at all is NOT treated as complete. Saying "no
+    work to do" because the vault was unreachable would lose the exit silently,
+    which is the exact failure this whole branch exists to fix.
+    """
+    try:
+        base = vault_base or _default_vault_base()
+        path = Path(base) / rel_path
+        if not path.exists():
+            return False
+        return "\n## Exit" in path.read_text(encoding="utf-8")
+    except Exception as exc:  # noqa: BLE001
+        print(f"  could not read {rel_path} to check for an exit: {exc}")
+        return False
+
+
+def _row_provenance(position_id: str) -> Optional[str]:
+    """What the position row says this trade was: live, terminal_test, build_test.
+
+    The drainer never decides this for itself. A note written days after the
+    trade must land where the TRADE says it belongs, not where today's phase
+    would put a new one, or a note could move rooms because he started paper
+    trading in between.
+    """
+    try:
+        rows = (
+            db.client.table("swayam_positions")
+            .select("provenance")
+            .eq("id", position_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        return rows[0].get("provenance") if rows else None
+    except Exception:
+        return None
 
 
 def _resolve_note_path(position_id: str) -> Optional[str]:

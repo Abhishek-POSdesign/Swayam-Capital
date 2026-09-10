@@ -29,7 +29,7 @@ trickiest piece, resting orders, is left aside for its own chat.
 
 | Build | Documents, read in this order | Branch | What it is |
 |---|---|---|---|
-| **A** | `BUILD_01_DESK_POSITION_AREA.md`, then `BUILD_02_HOME_TARGETS_AND_READING.md`, then `BUILD_04_OPTION_CHAIN.md` | `feature/swayam-build-a-desk-home-chain-042` | The position area on the desk, the exit ticket, the campaign model, the name from the legs, click-to-load, the drainer fault; then Home's running-trade band and its states, targets, Manage from Home, the crosshair, the terminal-test phase, the big-number pass; then the option chain. **Built in that order, handed off once at the end**, with a short progress note in the chat after each of the three parts. Migrations 022 and 023 |
+| **A** | `BUILD_01_DESK_POSITION_AREA.md` **DONE**, `BUILD_04_OPTION_CHAIN.md` **DONE**, `BUILD_02_HOME_TARGETS_AND_READING.md` **DONE** | `feature/swayam-build-a-desk-home-chain-042` | The position area on the desk, the exit ticket, the campaign model, the name from the legs, click-to-load, the drainer fault; then Home's running-trade band and its states, targets, Manage from Home, the crosshair, the terminal-test phase, the big-number pass; then the option chain. **Built in that order, handed off once at the end**, with a short progress note in the chat after each of the three parts. Migrations 022 and 023 |
 | **B** | `BUILD_03_RESTING_ORDERS.md` | `feature/swayam-build03-resting-orders-044` | A limit away from the book rests as an open order, entry and exit, with a watcher, Modify and Cancel, expiry at the bell. **After Build A is merged.** Migration 024 |
 
 The option chain's look is judged by eye, so the main chat supplies its mockup
@@ -40,6 +40,26 @@ The mockup every build is held to: https://claude.ai/code/artifact/ef242a22-59a7
 (**Swayam Position Area**, 10 September evening). It is built on his real open
 condor 7cd4d017 marked at the 15:26 IST closing book. **The build must look
 like it.** Not "inspired by": identical in hierarchy, sizes and placement.
+
+## WHERE BUILD A IS, 2026-09-10
+
+**ALL THREE PARTS ARE BUILT, verified on the running system in both themes,
+and pushed. Build A is one pull request and it is open.** Nothing is merged,
+so nothing is live until he clicks Merge.
+
+**MIGRATIONS 022 AND 023 ARE NOT APPLIED.** He applies both, together, before
+merging. Until 023 is applied the Targets modal refuses to save and says so,
+the phase reads "paper trading has not started", and everything else works.
+
+**The order changed once, on his instruction:** part three was built before
+part two because he approved the option chain's mockup while part two was
+still unstarted. The chain depends on neither of the others, so it cost
+nothing.
+
+**Two scripts he runs himself, not a build and not an agent:**
+`scripts\mark_terminal_tests.py` (dry by default) marks the trades he clicked
+to test the terminal, and `scripts\start_paper_trading.py` declares the day
+paper trading begins. **The second must not be run until he says so.**
 
 ## Rules every builder follows. They are in each prompt too.
 
@@ -52,7 +72,11 @@ that day, with proof. An honest gap is welcome; an overstatement is not.
 money, is big, bold where it matters, coloured where it matters. Informative
 text is small and muted. A card is 70 to 80 percent filled with its information,
 never the figures in one corner and the rest empty. Colour comes from the money
-only. A dustbin for delete, a proper Reset button, never a cheap cross or a
+only. **And his addition of that evening: every card on any page must have a
+title bold and large enough, and coloured if it needs to be, so that the card
+claims the area it occupies.** The card headings were 12px, weight 600, in
+muted grey, quieter than the body beneath them; they are 16px, weight 800, in
+the primary ink from 2026-09-10. A dustbin for delete, a proper Reset button, never a cheap cross or a
 small round icon. No purple, lilac or violet; the accent is sage.
 
 **What must not break.** `docs/PLAN.md` §2.12.3, all seven lines. The payoff

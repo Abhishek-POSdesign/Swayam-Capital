@@ -25,14 +25,27 @@ from datetime import date, datetime, timezone
 import uuid
 from typing import Any, Optional
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 import logging
 from decimal import Decimal
 
-from swayam.api.journal_writer import append_leg_block, write_new_trade_journal
+from swayam.api.journal_writer import (
+    append_leg_block,
+    append_leg_exit_block,
+    write_new_trade_journal,
+)
 from swayam.services.charges import (
     ChargeScheduleUnavailable,
     charge_for_leg,
+    opposite,
     side_from_direction,
+)
+from swayam.services.exit_refusal import reword_if_his_price
+from swayam.services.structure_name import (
+    is_open as leg_is_open,
+    name_from_legs,
+    open_legs,
+    resolve_name,
 )
 from swayam.services.execution_safety import (
     DuplicateExecution,
@@ -48,6 +61,7 @@ from swayam.services.fills import (
     Fill,
     FillRefused,
     LegQuote,
+    exit_side_of,
     quote_leg,
     resolve_fill,
     spread_cost_inr,
@@ -70,6 +84,7 @@ from swayam.services import capital as capital_service
 from swayam.services.capital import CapitalUnavailable
 from swayam.services.contract_master import ContractMasterUnavailable, get_lot_size
 from swayam.services.margin import MarginLeg, try_get_margin
+from swayam.services.phase import provenance_for_new_position
 
 logger = logging.getLogger(__name__)
 
@@ -573,9 +588,31 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
 
     # Step 4: Insert to database FIRST — no silent failure, no orphan file
     expiry_date_val = str(min(l.expiry_date for l in req.legs))
+    # THE NAME COMES FROM THE LEGS, NOT FROM THE PRESET HE LOADED FIRST.
+    # docs/builds/BUILD_01_DESK_POSITION_AREA.md section 3.2. His condor was
+    # stored as "Short Strangle" because the strangle preset had been loaded
+    # before he changed his mind, and the name stayed. He had no part in it.
+    structure_name = name_from_legs(legs_dict)
+    # Read the phase ONCE for this send, so the row and its note cannot
+    # disagree about what this trade was.
+    new_provenance = provenance_for_new_position()
+    is_terminal_test = new_provenance == "terminal_test"
     db_record = {
         "id": position_id,
-        "strategy_name": req.strategy_name,
+        # name_source is NOT written here on purpose. Migration 022 gives the
+        # column a default of 'structure', so a deploy that reaches the live
+        # site before he has run the migration still opens trades instead of
+        # failing on a column that is not there yet. Only the rename route
+        # writes it, and by then the migration is applied.
+        "strategy_name": structure_name,
+        # WHAT THIS TRADE IS, in his words. Paper trading has not started, so
+        # everything the terminal records today is a terminal test: real fills
+        # and real charges, but a click to see how the terminal behaves rather
+        # than a trade he planned. Read fresh from swayam_phase on every send,
+        # never cached, so the first trade after he runs start_paper_trading.py
+        # is written 'live'. The column has defaulted to 'live' since migration
+        # 017 and is plain text, so this is safe to write before 023 is applied.
+        "provenance": new_provenance,
         "underlying": req.underlying,
         "expiry_date": expiry_date_val,
         "legs": legs_dict,
@@ -628,6 +665,9 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
             current_spot=spot_at_entry,
             margin_base_inr=margin_base_inr,
             opened_at=opened_at,
+            # Same answer the row was written with, so the note lands in
+            # "Terminal tests" for exactly the trades the row calls tests.
+            terminal_test=is_terminal_test,
         )
     except Exception as e:
         # A note is not a trade. The vault is unreachable from Cloud Run (no
@@ -867,8 +907,14 @@ def _add_leg_inner(position_id: str, req: AddLegRequest, idem_key: Optional[str]
     margin = _margin_for(combined_reqs, underlying)
     charges_so_far = round(float(pos.get("charges_inr") or 0.0) + float(leg["entry_charges_inr"]), 2)
 
+    legs_after = stored_legs + [leg]
     update = {
-        "legs": stored_legs + [leg],
+        "legs": legs_after,
+        # A straddle that gains two wings IS a condor from that moment. The
+        # name follows unless he typed one of his own.
+        "strategy_name": resolve_name(
+            legs_after, name_source=pos.get("name_source"), current_name=pos.get("strategy_name")
+        ),
         "expiry_date": str(min(l.expiry_date for l in combined_reqs)),
         "net_debit_credit_inr": curve.net_debit_credit_inr,
         "max_loss_inr": curve.max_loss_inr,
@@ -943,6 +989,573 @@ def _add_leg_inner(position_id: str, req: AddLegRequest, idem_key: Optional[str]
             + ("" if journal_status == "written" else " The note is queued for the vault.")
         ),
     }
+    if idem_key:
+        complete_execution(idem_key, position_id, response)
+    return response
+
+
+# ---------------------------------------------------- exit a leg, reverse a leg
+#
+# A TRADE IS A CAMPAIGN, NOT A LEG. His rule, 2026-09-08: "Every leg that I
+# square off will have its own profit/loss added, and every new leg I add will
+# be considered in the same trade. Once I close all the legs or I say 'the
+# trade is closed', then only the trade is closed."
+#
+# Until this build the only way out was to close everything at once, so a
+# condor whose call side had done its work could not be half unwound. That is
+# not how he trades. His own words, 2026-09-08: "In options, you have to
+# manage the trade... if you don't manage, you won't survive."
+
+
+class ExitLegRequest(BaseModel):
+    """How to get out of ONE leg of an open trade."""
+
+    order_type: str = Field(default="MARKET", description="MARKET or LIMIT")
+    limit_price: Optional[float] = None
+    close_reason: str = Field(
+        default="manual",
+        description="Trigger: 'target_hit', 'stop_hit', 'time_exit', 'manual'",
+    )
+    notes: Optional[str] = None
+    idempotency_key: Optional[str] = None
+
+
+def _find_open_leg(legs: list[dict[str, Any]], sequence: int) -> tuple[int, dict[str, Any]]:
+    """The leg with this sequence number, if it is still open.
+
+    Sequence is what the leg was given when it was filled, and it does not
+    shift when another leg closes. A stale browser asking to exit a leg that
+    has already gone gets a plain answer rather than closing the wrong one.
+    """
+    for index, leg in enumerate(legs):
+        if int(leg.get("sequence") or (index + 1)) == int(sequence):
+            if not leg_is_open(leg):
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Leg {sequence} is already closed"
+                        + (f", at {float(leg['exit_premium']):,.2f}" if leg.get("exit_premium") else "")
+                        + ". Refresh the position area to see what is still open."
+                    ),
+                )
+            return index, leg
+    raise HTTPException(status_code=404, detail=f"This trade has no leg {sequence}.")
+
+
+def _exit_charge(direction: str, price: float, contracts: int, on: date) -> float:
+    """What getting out of this leg costs, on its own side, at its own price."""
+    try:
+        cost = charge_for_leg(
+            side=opposite(side_from_direction(direction)),
+            price_per_unit=Decimal(str(price)),
+            quantity_units=contracts,
+            on=on,
+        )
+    except ChargeScheduleUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "This leg cannot be charged, so its result would be unknown and "
+                f"nothing was sent. {exc}"
+            ),
+        ) from exc
+    return float(cost.total_inr)
+
+
+def _fill_the_exit(
+    *,
+    leg: dict[str, Any],
+    underlying: str,
+    order_type: str,
+    limit_price: Optional[float],
+) -> tuple[Fill, LegQuote]:
+    """Fills one leg REVERSED, by exactly the rule the entry used.
+
+    A leg he bought is sold at the bid; a leg he sold is bought back at the
+    ask. `services/fills.py` decides, unchanged. All this adds is the wording
+    when the refusal is about his price rather than about the market.
+    """
+    direction = str(leg.get("direction", "buy")).lower()
+    exit_direction = exit_side_of(direction)
+    strike = float(leg.get("strike", 0.0))
+    opt_type = str(leg.get("option_type", "CE")).upper()
+    label = f"{exit_direction.upper()} {strike:,.0f} {opt_type}"
+
+    quote = quote_leg(
+        strike=strike,
+        expiry=str(leg.get("expiry_date") or ""),
+        option_type=opt_type,
+        underlying=underlying,
+    )
+    side_price = quote.ask if exit_direction == "buy" else quote.bid
+    try:
+        return resolve_fill(
+            direction=exit_direction,
+            order_type=order_type,
+            limit_price=limit_price,
+            quote=quote,
+            leg_label=label,
+        ), quote
+    except FillRefused as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": f"Not exited. {label} could not be filled.",
+                "refused_legs": [{
+                    "leg": label,
+                    "reason": reword_if_his_price(
+                        str(exc),
+                        direction=exit_direction,
+                        order_type=order_type,
+                        book_is_tradeable=quote.tradeable,
+                        side_price=side_price,
+                        limit_price=limit_price,
+                    ),
+                    "market": exc.market,
+                    "your_price": limit_price,
+                }],
+            },
+        ) from exc
+
+
+def _close_the_leg(
+    leg: dict[str, Any],
+    *,
+    fill: Fill,
+    contracts: int,
+    closed_at: datetime,
+    opened_on: date,
+) -> dict[str, Any]:
+    """The leg with its own exit, its own charges and its own result on it."""
+    direction = str(leg.get("direction", "buy")).lower()
+    is_buy = direction in ("buy", "long")
+    entry_prem = float(leg.get("entry_premium", 0.0) or 0.0)
+    exit_prem = float(fill.price)
+    exit_direction = exit_side_of(direction)
+
+    gross = ((exit_prem - entry_prem) * contracts) if is_buy else ((entry_prem - exit_prem) * contracts)
+    exit_charges = _exit_charge(direction, exit_prem, contracts, closed_at.date())
+
+    # What getting in cost. Recorded on the leg since 2026-09-09; rebuilt from
+    # the schedule in force on the day it opened for anything older. Rebuilt is
+    # not invented, and the leg says which it was.
+    recorded_entry = leg.get("entry_charges_inr")
+    if recorded_entry is None:
+        entry_charges = float(
+            charge_for_leg(
+                side=side_from_direction(direction),
+                price_per_unit=Decimal(str(entry_prem)),
+                quantity_units=contracts,
+                on=opened_on,
+            ).total_inr
+        )
+        entry_source = "rebuilt from the schedule in force at entry"
+    else:
+        entry_charges = float(recorded_entry)
+        entry_source = "recorded when the leg was opened"
+
+    return {
+        **dict(leg),
+        "status": "closed",
+        "closed_at": closed_at.isoformat(),
+        "exit_premium": exit_prem,
+        "exit_side_hit": fill.side_hit,
+        "exit_ltp": fill.ltp_at_fill,
+        "exit_order_type": fill.order_type,
+        "exit_limit_price": fill.limit_price,
+        "exit_fill_basis": fill.basis,
+        "exit_how": fill.how,
+        "exit_spread_cost_inr": spread_cost_inr(exit_direction, exit_prem, fill.ltp_at_fill, contracts),
+        "entry_charges_inr": round(entry_charges, 2),
+        "entry_charges_source": entry_source,
+        "exit_charges_inr": round(exit_charges, 2),
+        "gross_pnl_inr": round(gross, 2),
+        "net_pnl_inr": round(gross - entry_charges - exit_charges, 2),
+    }
+
+
+def _structure_after(
+    legs: list[dict[str, Any]],
+    pos: dict[str, Any],
+    underlying: str,
+    spot: Optional[float],
+) -> dict[str, Any]:
+    """What he holds once the legs have changed: the curve and the margin.
+
+    Only OPEN legs are in it, because that is what he is still carrying. When
+    nothing is left open there is no structure to price, and this says so
+    rather than pricing an empty one.
+    """
+    still_open = open_legs(legs)
+    if not still_open:
+        return {"legs_count": 0, "all_closed": True}
+
+    reqs = [
+        LegRequest(
+            strike=float(l["strike"]),
+            option_type=str(l["option_type"]),
+            direction=str(l["direction"]),
+            quantity_lots=int(l.get("quantity_lots", 1) or 1),
+            entry_premium=float(l.get("entry_premium") or 0.0),
+            expiry_date=str(l.get("expiry_date") or pos.get("expiry_date")),
+        )
+        for l in still_open
+    ]
+    compute_req = StrategyComputeRequest(
+        strategy_name=pos.get("strategy_name", "Custom"),
+        underlying=underlying,
+        legs=reqs,
+        current_spot=spot or (float(pos.get("spot_at_entry") or 0.0) or None),
+    )
+    spread, iv_map, _ = build_spread_from_request(compute_req)
+    curve = compute_payoff_curve(
+        spread=spread,
+        current_spot=compute_req.current_spot,
+        current_iv_per_leg=iv_map,
+        as_of_date=date.today(),
+    )
+    margin = _margin_for(reqs, underlying)
+    return {
+        "legs_count": len(still_open),
+        "all_closed": False,
+        "expiry_date": str(min(r.expiry_date for r in reqs)),
+        "net_debit_credit_inr": curve.net_debit_credit_inr,
+        "max_loss_inr": curve.max_loss_inr,
+        "max_profit_inr": curve.max_profit_inr,
+        "breakevens": list(curve.breakevens),
+        "margin_required_inr": margin["margin_required_inr"],
+        "margin_quoted_at": margin["margin_quoted_at"],
+        "margin_source": margin["margin_source"],
+    }
+
+
+def _note_the_leg_exit(position_id: str, pos: dict[str, Any], payload: dict[str, Any]) -> str:
+    """The Adjustments line for a leg that went on its own.
+
+    A NOTE IS NOT A TRADE. If the vault cannot be reached the block queues and
+    HIS ACTION STILL SUCCEEDS. That was settled on the entry side by migration
+    019 and on the exit side on 2026-09-09; it holds here from the first day.
+    """
+    journal_path = pos.get("journal_path")
+    try:
+        if not journal_path:
+            raise RuntimeError("the entry note has not landed yet")
+        append_leg_exit_block(journal_rel_path=journal_path, **payload)
+        return "written"
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Leg exit note for %s went to the outbox: %s", position_id[:8], exc)
+        status = "pending"
+        if not queue_journal_note(
+            position_id=position_id, payload=payload, kind="leg_exit", error=str(exc)
+        ):
+            status = "failed"
+        mark_journal_status(position_id, status)
+        return status
+
+
+def _apply_leg_exit(
+    position_id: str,
+    sequence: int,
+    req: ExitLegRequest,
+    *,
+    reverse: bool,
+) -> dict[str, Any]:
+    """Exits one leg, and on a reverse opens the opposite leg in the same breath."""
+    client = db.client
+    try:
+        res = client.table("swayam_positions").select("*").eq("id", position_id).execute()
+        pos = res.data[0] if res.data else None
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not read position {position_id}: {exc}") from exc
+    if pos is None:
+        raise HTTPException(status_code=404, detail=f"Position '{position_id}' not found.")
+    if pos.get("status") != "open":
+        raise HTTPException(
+            status_code=400,
+            detail="This trade is closed. Nothing on it can be exited or reversed.",
+        )
+    if str(pos.get("mode", "paper")).lower() == "real":
+        raise HTTPException(status_code=403, detail="Real execution disabled until Phase 2 begins.")
+
+    underlying = str(pos.get("underlying") or "NIFTY")
+    stored_legs: list[dict[str, Any]] = list(pos.get("legs") or [])
+    index, leg = _find_open_leg(stored_legs, sequence)
+
+    stored_lot = leg.get("lot_size")
+    if not stored_lot:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "This leg has no recorded contract size, so it cannot be valued. "
+                "It needs reconciling rather than guessing."
+            ),
+        )
+    contracts = int(leg.get("quantity_lots", 1) or 1) * int(stored_lot)
+
+    closed_at = datetime.now(timezone.utc)
+    try:
+        opened_on = datetime.fromisoformat(
+            str(pos.get("opened_at") or closed_at.isoformat()).replace("Z", "+00:00")
+        ).date()
+    except Exception:
+        opened_on = closed_at.date()
+
+    fill, exit_quote = _fill_the_exit(
+        leg=leg,
+        underlying=underlying,
+        order_type=(req.order_type or "MARKET").upper(),
+        limit_price=req.limit_price,
+    )
+    closed_leg = _close_the_leg(
+        leg, fill=fill, contracts=contracts, closed_at=closed_at, opened_on=opened_on
+    )
+
+    legs_after = list(stored_legs)
+    legs_after[index] = closed_leg
+
+    # A REVERSE IS AN EXIT AND THE OPPOSITE LEG, IN ONE REQUEST. Two fills, two
+    # charge lines, one execution key. It is how a short call that has run
+    # against him becomes a long one without two separate presses.
+    opened_leg: Optional[dict[str, Any]] = None
+    if reverse:
+        flipped = LegRequest(
+            strike=float(leg["strike"]),
+            option_type=str(leg["option_type"]),
+            direction=exit_side_of(str(leg.get("direction", "buy"))),
+            quantity_lots=int(leg.get("quantity_lots", 1) or 1),
+            expiry_date=str(leg.get("expiry_date") or pos.get("expiry_date")),
+            order_type="MARKET",
+        )
+        try:
+            new_fill, _quote = _fill_for(flipped, underlying)
+        except FillRefused as exc:
+            # The exit has NOT been written yet, so nothing is half done.
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": (
+                        "Not reversed, and nothing was sent. The leg was not closed either, "
+                        "because a reverse is both halves or neither."
+                    ),
+                    "refused_legs": [{"leg": _leg_label(flipped), "reason": str(exc), "market": exc.market}],
+                },
+            ) from exc
+        flipped.entry_premium = new_fill.price
+        opened_leg = flipped.model_dump()
+        opened_leg["lot_size"] = int(stored_lot)
+        opened_leg["sequence"] = max(
+            [int(l.get("sequence") or 0) for l in legs_after] or [0]
+        ) + 1
+        opened_leg["order_type"] = new_fill.order_type
+        opened_leg["limit_price"] = new_fill.limit_price
+        opened_leg["fill_basis"] = new_fill.basis
+        opened_leg["ltp_at_fill"] = new_fill.ltp_at_fill
+        opened_leg["bid_at_fill"] = new_fill.bid_at_fill
+        opened_leg["ask_at_fill"] = new_fill.ask_at_fill
+        opened_leg["filled_at"] = new_fill.filled_at
+        opened_leg["side_hit"] = new_fill.side_hit
+        opened_leg["status"] = "open"
+        opened_leg["spread_cost_inr"] = spread_cost_inr(
+            opened_leg["direction"], new_fill.price, new_fill.ltp_at_fill, contracts
+        )
+        opened_leg["reversed_from_sequence"] = int(sequence)
+        opened_leg["added_at"] = closed_at.isoformat()
+        _charge_entry(opened_leg, contracts, closed_at.date())
+        legs_after.append(opened_leg)
+
+    structure = _structure_after(legs_after, pos, underlying, exit_quote.spot)
+    charges_so_far = round(
+        float(pos.get("charges_inr") or 0.0)
+        + float(closed_leg["exit_charges_inr"])
+        + (float(opened_leg["entry_charges_inr"]) if opened_leg else 0.0),
+        2,
+    )
+
+    # If that was the last open leg, the TRADE closes, exactly as
+    # close_position closes it: one result row, summed over every leg,
+    # including the ones squared off days earlier.
+    if structure.get("all_closed"):
+        from swayam.api.routes.positions import close_trade_from_legs
+
+        closed = close_trade_from_legs(
+            position_id=position_id,
+            pos=pos,
+            legs_after=legs_after,
+            closed_at=closed_at,
+            close_reason=req.close_reason,
+            notes=req.notes,
+        )
+        # The whole-trade close answers with its own response model. The leg
+        # routes answer with a plain object, so it is unwrapped here rather
+        # than two shapes leaking out of one button.
+        result = closed.model_dump() if hasattr(closed, "model_dump") else dict(closed)
+        result["last_leg"] = True
+        result["legs_open"] = 0
+        result["legs_closed"] = len(legs_after)
+        result["fill"] = _exit_fill_record(sequence, closed_leg, fill)
+        result["message"] = (
+            f"That was the last leg. Trade #{position_id[:8]} is closed and its "
+            f"result is in the record: "
+            f"{'a profit of ' if float(result.get('realized_pnl_inr') or 0) >= 0 else 'a loss of '}"
+            f"Rs {abs(float(result.get('realized_pnl_inr') or 0)):,.2f} after "
+            f"Rs {float(result.get('total_charges_inr') or 0):,.2f} of charges."
+        )
+        return result
+
+    update: dict[str, Any] = {
+        "legs": legs_after,
+        "charges_inr": charges_so_far,
+        # The name follows what is still open, unless he named it himself.
+        "strategy_name": resolve_name(
+            legs_after, name_source=pos.get("name_source"), current_name=pos.get("strategy_name")
+        ),
+    }
+    for key in (
+        "expiry_date", "net_debit_credit_inr", "max_loss_inr", "max_profit_inr",
+        "margin_required_inr", "margin_quoted_at", "margin_source",
+    ):
+        if key in structure:
+            update[key] = structure[key]
+    if "breakevens" in structure:
+        update["breakeven_points"] = structure["breakevens"]
+        update["risk_at_entry_inr"] = structure["max_loss_inr"]
+
+    try:
+        client.table("swayam_positions").update(update).eq("id", position_id).execute()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "The leg was filled but the trade could not be updated, so nothing "
+                f"was recorded. {exc}"
+            ),
+        ) from exc
+
+    from swayam.api.routes.positions import _local_paper_positions
+    for p in _local_paper_positions:
+        if str(p.get("id")) == position_id:
+            p.update(update)
+
+    journal_status = _note_the_leg_exit(position_id, pos, {
+        "closed_at": closed_at.isoformat(),
+        "leg": closed_leg,
+        "opened_leg": opened_leg,
+        "close_reason": req.close_reason,
+        "notes": req.notes,
+        "structure_after": structure,
+    })
+
+    return {
+        "position_id": position_id,
+        "status": "leg_exited" if not reverse else "leg_reversed",
+        "last_leg": False,
+        "journal_status": journal_status,
+        "fill": _exit_fill_record(sequence, closed_leg, fill),
+        "opened_fill": (
+            _fill_record(
+                int(opened_leg["sequence"]),
+                LegRequest(
+                    strike=float(opened_leg["strike"]),
+                    option_type=str(opened_leg["option_type"]),
+                    direction=str(opened_leg["direction"]),
+                    quantity_lots=int(opened_leg["quantity_lots"]),
+                    expiry_date=str(opened_leg["expiry_date"]),
+                ),
+                new_fill,
+                int(stored_lot),
+                opened_leg,
+            )
+            if opened_leg
+            else None
+        ),
+        "strategy_name": update["strategy_name"],
+        "legs_open": structure.get("legs_count", 0),
+        "legs_closed": len(legs_after) - structure.get("legs_count", 0),
+        "charges_inr": charges_so_far,
+        **{k: v for k, v in structure.items() if k not in ("all_closed",)},
+        "message": (
+            f"{'Reversed' if reverse else 'Exited'} {str(closed_leg.get('direction','')).upper()} "
+            f"{float(closed_leg['strike']):,.0f} {closed_leg['option_type']}: {fill.how}. "
+            f"That leg booked {'a profit of ' if closed_leg['net_pnl_inr'] >= 0 else 'a loss of '}"
+            f"Rs {abs(closed_leg['net_pnl_inr']):,.2f} after charges. "
+            f"The trade stays open with {structure.get('legs_count', 0)} leg"
+            f"{'' if structure.get('legs_count', 0) == 1 else 's'}."
+            + ("" if journal_status == "written" else " The note is queued for the vault.")
+        ),
+    }
+
+
+def _exit_fill_record(sequence: int, closed_leg: dict[str, Any], fill: Fill) -> dict[str, Any]:
+    """One line describing what the exit actually did."""
+    return {
+        "sequence": sequence,
+        "direction": exit_side_of(str(closed_leg.get("direction", "buy"))).upper(),
+        "strike": closed_leg.get("strike"),
+        "option_type": closed_leg.get("option_type"),
+        "expiry_date": closed_leg.get("expiry_date"),
+        "quantity_lots": closed_leg.get("quantity_lots"),
+        "lot_size": closed_leg.get("lot_size"),
+        "order_type": fill.order_type,
+        "limit_price": fill.limit_price,
+        "fill_price": fill.price,
+        "side_hit": fill.side_hit,
+        "ltp_at_fill": fill.ltp_at_fill,
+        "how": fill.how,
+        "spread_cost_inr": closed_leg.get("exit_spread_cost_inr"),
+        "exit_charges_inr": closed_leg.get("exit_charges_inr"),
+        "gross_pnl_inr": closed_leg.get("gross_pnl_inr"),
+        "net_pnl_inr": closed_leg.get("net_pnl_inr"),
+    }
+
+
+@router.post("/api/positions/{position_id}/legs/{sequence}/exit")
+def exit_one_leg(position_id: str, sequence: int, req: ExitLegRequest) -> dict[str, Any]:
+    """Squares off ONE leg of an open trade. The trade stays open behind it.
+
+    The leg is filled reversed by the same rule the entry used, charged on its
+    own side at its own price, and its result is written on the leg. The
+    structure, the name and the broker margin are recomputed for what is still
+    open. Only when the last open leg goes does the trade close and one result
+    row get written.
+    """
+    return _claimed(position_id, sequence, req, reverse=False)
+
+
+@router.post("/api/positions/{position_id}/legs/{sequence}/reverse")
+def reverse_one_leg(position_id: str, sequence: int, req: ExitLegRequest) -> dict[str, Any]:
+    """Closes one leg and opens the opposite one, in a single request.
+
+    Two fills, two charge lines, one execution key. Both halves or neither: if
+    the opposite leg cannot be filled, the first leg is not closed either.
+    """
+    return _claimed(position_id, sequence, req, reverse=True)
+
+
+def _claimed(position_id: str, sequence: int, req: ExitLegRequest, *, reverse: bool) -> dict[str, Any]:
+    """One press, one exit. The execution key here does what it does at entry."""
+    idem_key = req.idempotency_key
+    if idem_key:
+        try:
+            claim_execution(idem_key, {
+                "position_id": position_id,
+                "sequence": sequence,
+                "reverse": reverse,
+                **req.model_dump(mode="json"),
+            })
+        except ReplayedExecution as replay:
+            return replay.response
+        except DuplicateExecution as clash:
+            raise HTTPException(status_code=409, detail=str(clash)) from clash
+    try:
+        response = _apply_leg_exit(position_id, sequence, req, reverse=reverse)
+    except HTTPException:
+        if idem_key:
+            abandon_execution(idem_key, "leg exit failed")
+        raise
+    except Exception as exc:
+        if idem_key:
+            abandon_execution(idem_key, str(exc))
+        raise
     if idem_key:
         complete_execution(idem_key, position_id, response)
     return response

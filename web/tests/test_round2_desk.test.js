@@ -326,11 +326,14 @@ describe('The option chain panel', () => {
     await new Promise((r) => setTimeout(r, 0));
     const html = modal.el.innerHTML;
     expect(api.getOptionChain).toHaveBeenCalledWith('2026-09-29', 30);
-    expect(html).toContain('class="atm"');
+    // The row now also carries which side is in the money, so the class
+    // list is longer than it was. It is still the marked row.
+    expect(html).toContain('class="atm');
+    expect(html).toContain('itm-pe');
     expect(html).toContain('>23,650<');
     expect(html).toContain('Put-call ratio');
     expect(html).toContain('1.50');
-    expect(html).toContain('60,00,000'); // total call OI
+    expect(html).toContain('60.0 L'); // total call OI, in lakhs as he reads it
     expect(html).toContain('Max pain');
     expect(html).toContain('23,600');
     expect(html).toContain('11.0%'); // IV solved server-side
@@ -338,8 +341,8 @@ describe('The option chain panel', () => {
     expect(html).toContain('bar pe');
     // Calls are left of the strike, puts to its right.
     const row = html.slice(html.indexOf('data-strike="23600"'), html.indexOf('data-strike="23650"'));
-    expect(row.indexOf('data-type="CE"')).toBeLessThan(row.indexOf('k-strike'));
-    expect(row.indexOf('k-strike')).toBeLessThan(row.indexOf('data-type="PE"'));
+    expect(row.indexOf('data-type="CE"')).toBeLessThan(row.indexOf('class="strike"'));
+    expect(row.indexOf('class="strike"')).toBeLessThan(row.indexOf('data-type="PE"'));
     modal.close();
   });
 
@@ -362,7 +365,12 @@ describe('The option chain panel', () => {
     expect(modal.addLeg('B', 23700, 'CE')).toBe(false);
     expect(added.length).toBe(2);
     const html = modal.el.innerHTML;
-    expect(html).toContain('data-strike="23700" data-type="CE" disabled title="no traded price for this strike, so it cannot be added"');
+    // A strike with no trade TODAY is the test now, not a missing last
+    // price: open interest and a last trade both survive from earlier
+    // sessions, and on 2026-09-10 that showed him 1,575.95 in live ink
+    // against a book of 670.95 to 705.40. Volume is what is today's.
+    expect(html).toContain('data-strike="23700" data-type="CE" disabled title="No trade today. The book is shown; it cannot be added for a fill."');
+    expect(html).toContain('no trade today');
     expect(html).not.toContain('data-strike="23600" data-type="CE" disabled');
     modal.close();
   });
