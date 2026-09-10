@@ -259,3 +259,113 @@ def test_the_drainer_knows_how_to_finish_a_close_note():
 
     assert 'row["kind"] == "close"' in text
     assert "append_exit_block(" in text
+
+
+# ---------------------------------------------------------------------------
+# ONE CLOSE, ONE RESULT — now that a leg can close on its own.
+#
+# Build A part one. A trade is a campaign: legs may be squared off on
+# different days, and the trade closes when the LAST one does. That gave the
+# result row a second author, `close_trade_from_legs`, called both by this
+# route and by the single-leg exit. Two authors is exactly how a trade came to
+# be recorded twice on 2026-09-09, so the rule is tested from both ends.
+# ---------------------------------------------------------------------------
+
+ALL_LEGS_CLOSED = {
+    **OPEN_POSITION,
+    "id": "pos-lastleg-1",
+    "legs": [
+        {
+            **OPEN_POSITION["legs"][0],
+            "sequence": 1,
+            "status": "closed",
+            "closed_at": "2026-09-11T05:00:00Z",
+            "exit_premium": 210.0,
+            "exit_side_hit": "bid",
+            "exit_charges_inr": 30.11,
+            "gross_pnl_inr": 3900.0,
+            "net_pnl_inr": 3844.67,
+        },
+        {
+            **OPEN_POSITION["legs"][1],
+            "sequence": 2,
+            "status": "closed",
+            "closed_at": "2026-09-12T05:00:00Z",
+            "exit_premium": 95.0,
+            "exit_side_hit": "ask",
+            "exit_charges_inr": 28.40,
+            "gross_pnl_inr": -975.0,
+            "net_pnl_inr": -1035.42,
+        },
+    ],
+}
+
+
+def _close_from_legs(store):
+    from datetime import datetime, timezone
+
+    from swayam.api.routes.positions import close_trade_from_legs
+
+    with (
+        patch("swayam.api.routes.positions.db", store),
+        patch("swayam.api.routes.positions.append_exit_block"),
+        patch("swayam.api.routes.positions.queue_journal_note", return_value=True),
+        patch("swayam.api.routes.positions.mark_journal_status"),
+    ):
+        return close_trade_from_legs(
+            position_id="pos-lastleg-1",
+            pos=store.position,
+            legs_after=store.position["legs"],
+            closed_at=datetime(2026, 9, 12, 5, 0, tzinfo=timezone.utc),
+            close_reason="manual",
+            notes=None,
+        )
+
+
+def test_the_last_leg_closing_writes_exactly_one_result():
+    """Legs squared off on different days still make ONE row, summed."""
+    store = FakeStore()
+    store.position = dict(ALL_LEGS_CLOSED)
+
+    result = _close_from_legs(store)
+
+    rows = store.inserts.get("swayam_trade_history", [])
+    assert len(rows) == 1, "one trade, one result row"
+    # 3,900.00 minus 975.00 gross, less every charge on both legs.
+    assert result.gross_pnl_inr == pytest.approx(2925.0, abs=0.01)
+    assert result.total_charges_inr == pytest.approx(25.22 + 30.11 + 32.02 + 28.40, abs=0.01)
+    assert result.realized_pnl_inr == pytest.approx(
+        result.gross_pnl_inr - result.total_charges_inr, abs=0.01
+    )
+    assert len(rows[0]["exit_legs"]) == 2
+
+
+def test_the_last_leg_does_not_write_a_second_result_either():
+    """The same guard the whole-trade close has, from the other door."""
+    store = FakeStore(prior_result=True)
+    store.position = dict(ALL_LEGS_CLOSED)
+
+    _close_from_legs(store)
+
+    assert store.inserts.get("swayam_trade_history", []) == [], (
+        "his record would have counted one trade twice"
+    )
+    assert any(u.get("status") == "closed" for u in store.updates.get("swayam_positions", []))
+
+
+def test_a_leg_with_no_recorded_result_stops_the_close_rather_than_guessing():
+    """No fake data. A figure that cannot be read refuses; it is never a zero."""
+    from fastapi import HTTPException
+
+    store = FakeStore()
+    broken = dict(ALL_LEGS_CLOSED)
+    broken["legs"] = [dict(broken["legs"][0]), dict(broken["legs"][1])]
+    broken["legs"][1].pop("gross_pnl_inr")
+    store.position = broken
+
+    with pytest.raises(HTTPException) as caught:
+        _close_from_legs(store)
+
+    assert caught.value.status_code == 422
+    assert "reconciling" in str(caught.value.detail)
+    assert store.inserts.get("swayam_trade_history", []) == []

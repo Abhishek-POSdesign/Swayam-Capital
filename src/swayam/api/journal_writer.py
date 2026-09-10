@@ -417,6 +417,104 @@ The trade now holds {structure_after.get('legs_count', '—')} legs. Net debit/c
     return target_path
 
 
+def append_leg_exit_block(
+    journal_rel_path: str,
+    closed_at: str,
+    leg: dict[str, Any],
+    close_reason: Optional[str] = None,
+    notes: Optional[str] = None,
+    opened_leg: Optional[dict[str, Any]] = None,
+    structure_after: Optional[dict[str, Any]] = None,
+    vault_path: Optional[Path] = None,
+) -> Path:
+    """Records ONE leg squared off inside a trade that is still running.
+
+    His own sheet has "Initial Position Legs", then "Trade Adjustments", then
+    "Booked Orders / Exits", often on different days. A leg exited on its own
+    is the middle one, not the last: the trade is not closed and must not get
+    an Exit block, which is what the record reads as squared off.
+
+    A reverse writes the same block with the opposite leg named beneath it,
+    because it is one decision and reads as one.
+    """
+    base_vault = _require_reachable_vault(vault_path or _default_vault_base())
+    target_path = base_vault / journal_rel_path
+    if not target_path.exists():
+        raise JournalWriteError(f"Target journal file does not exist: {target_path}")
+    content = target_path.read_text(encoding="utf-8")
+
+    contracts = int(leg.get("quantity_lots", 1) or 1) * int(leg.get("lot_size", 0) or 0)
+    exit_ltp = leg.get("exit_ltp")
+    net = leg.get("net_pnl_inr")
+    gross = leg.get("gross_pnl_inr")
+    side_hit = leg.get("exit_side_hit") or "—"
+
+    row = (
+        f"| {leg.get('sequence', '—')} | {float(leg.get('strike', 0)):,.0f} | {leg.get('option_type')} | "
+        f"{str(leg.get('direction', '')).upper()} | {leg.get('quantity_lots', 1)} | "
+        f"{str(leg.get('exit_order_type') or '—').lower()} | "
+        f"₹{float(leg.get('entry_premium', 0.0)):,.2f} | "
+        f"₹{float(leg.get('exit_premium', 0.0)):,.2f} | {side_hit} | "
+        f"{('₹' + format(float(exit_ltp), ',.2f')) if exit_ltp is not None else '—'} | "
+        f"{_charge_cell(leg.get('exit_charges_inr'))} | "
+        f"{_charge_cell(gross, signed=True)} | {_charge_cell(net, signed=True)} |"
+    )
+
+    opened_line = ""
+    if opened_leg:
+        opened_line = (
+            f"\nReversed: {str(opened_leg.get('direction', '')).upper()} "
+            f"{float(opened_leg.get('strike', 0)):,.0f} {opened_leg.get('option_type')} "
+            f"opened at ₹{float(opened_leg.get('entry_premium', 0.0)):,.2f} "
+            f"on the {opened_leg.get('side_hit') or '—'}, "
+            f"charges {_charge_cell(opened_leg.get('entry_charges_inr'))}, "
+            f"as leg {opened_leg.get('sequence', '—')} of the same trade.\n"
+        )
+
+    after = structure_after or {}
+    if after.get("all_closed"):
+        holding_line = "Every leg is now closed, so the trade is closed and its result is in the record."
+    else:
+        bes = after.get("breakevens") or []
+        be_text = ", ".join(f"{float(b):,.0f}" for b in bes) if bes else "none"
+        margin = after.get("margin_required_inr")
+        holding_line = (
+            f"The trade stays open with {after.get('legs_count', '—')} leg(s). "
+            f"Max loss ₹{float(after.get('max_loss_inr') or 0):,.0f}, "
+            f"max profit ₹{float(after.get('max_profit_inr') or 0):,.0f}, "
+            f"breakeven(s) {be_text}, broker margin "
+            f"{('₹' + format(float(margin), ',.0f')) if margin is not None else 'unavailable'}."
+        )
+
+    reason_line = f"Reason: {close_reason}." if close_reason else ""
+    note_line = f"\n\n> {notes}" if notes else ""
+
+    block = f"""### Leg squared off — {_ist_stamp(closed_at)}
+
+| # | Strike | Type | Held | Lots | Order | Entry | Exit | Side | Traded | Exit charges | Gross | Net |
+|:---:|---:|:---:|:---:|:---:|:---:|---:|---:|:---:|---:|---:|---:|---:|
+{row}
+
+{contracts} units. {reason_line} {holding_line}{opened_line}{note_line}
+
+"""
+
+    heading = "## Adjustments"
+    exit_idx = content.find("\n## Exit")
+    if exit_idx == -1:
+        content = content.rstrip() + "\n\n---\n\n" + (heading + "\n\n" if heading not in content else "") + block
+    elif heading in content:
+        content = content[:exit_idx] + "\n" + block + content[exit_idx:].lstrip("\n")
+    else:
+        content = content[:exit_idx] + "\n" + heading + "\n\n" + block + "---\n" + content[exit_idx:].lstrip("\n")
+
+    try:
+        target_path.write_text(content, encoding="utf-8")
+    except Exception as e:
+        raise JournalWriteError(f"Failed to append leg exit block to {target_path}: {e}") from e
+    return target_path
+
+
 def append_exit_block(
     journal_rel_path: str,
     closed_at: datetime,

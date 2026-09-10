@@ -903,3 +903,275 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   .xt .xt-row.h { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .xt-backdrop { transition: none; } }
+
+/* =============================================================================
+   THE POSITION AREA, THE EXIT TICKET, AND THE TITLES THAT OWN THEIR CARDS
+   docs/builds/BUILD_01_DESK_POSITION_AREA.md, sections 3.7 and 3.8.
+
+   His words, 2026-09-09, about how managing a position has to feel, which is a
+   requirement and not decoration: "Full width. Big numbers. Bold. Clearly
+   visible with required colors. Easily manageable. No cheap cross button or
+   rather dustbin button. No cheap round circle for reset, a proper reset
+   button. I must feel good while managing it."
+
+   Colour comes from the money and from nothing else. The accent is sage;
+   the banned colours are named once, at the top of this file.
+   ========================================================================== */
+
+/* -----------------------------------------------------------------------------
+   EVERY CARD TITLE CLAIMS ITS AREA. His rule, given 2026-09-10 evening:
+   "Every card on any page must be bold and large enough, or, if required,
+   colored, so that it claims or represents that it is its boundary, its card,
+   like it owns this area."
+
+   The card headings on this page were 12px, weight 600, in muted grey, which
+   is smaller and quieter than the body text underneath them. Payoff, Legs,
+   Ready-made, Strikewise IV, Rules and execution and Greeks all read as
+   captions rather than as the names of the things they head. They are now
+   16px, weight 800, in the primary ink, with the meta on the right left small
+   and muted where it belongs.
+   -------------------------------------------------------------------------- */
+.sw-desk .card > h3 {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+  padding: 13px 16px;
+}
+.sw-desk .card > h3 .r {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* -----------------------------------------------------------------------------
+   The band above the payoff when it is drawing a trade he HOLDS rather than
+   one he is building. Sage, because it is a statement about the terminal and
+   not about money.
+   -------------------------------------------------------------------------- */
+.sw-desk .loaded-band {
+  display: flex; align-items: center; gap: 11px; flex-wrap: wrap;
+  padding: 10px 16px;
+  background: rgba(125, 157, 132, .12);
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+.sw-desk .loaded-band b { font-weight: 700; }
+.sw-desk .loaded-band .fg2 { color: var(--fg-2); font-family: var(--m); font-size: 12px; }
+.sw-desk .loaded-band .r { margin-left: auto; }
+.sw-desk .c-sage { background: rgba(125, 157, 132, .18); color: var(--brand); }
+.sw-desk .c-your { background: var(--warn-bg); color: var(--warn); }
+.sw-desk .c-warn { background: var(--warn-bg); color: var(--warn); }
+.sw-desk .c-test { background: var(--info-bg); color: var(--info); }
+
+/* -----------------------------------------------------------------------------
+   The area itself: three groups, each headed so the group owns its stretch.
+   -------------------------------------------------------------------------- */
+.sw-desk .pa { margin-top: 18px; }
+.sw-desk .pa-grp {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  margin: 22px 0 10px;
+}
+.sw-desk .pa-grp h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+.sw-desk .pa-grp span { color: var(--fg-3); font-family: var(--m); font-size: 12px; }
+.sw-desk .pa-grp span b { font-weight: 700; }
+.sw-desk .pa-grp .r { margin-left: auto; }
+.sw-desk .pa-empty {
+  padding: 14px 16px; border: 1px dashed var(--line-2); border-radius: 11px;
+  color: var(--fg-2); font-size: 13.5px; background: var(--panel-2);
+}
+.sw-desk .pa-bad { border-color: var(--down); color: var(--down); background: var(--down-bg); }
+
+/* -----------------------------------------------------------------------------
+   The position card. Full width, 70 to 80 percent filled with its own
+   information, never the figures in one corner and the rest empty.
+   -------------------------------------------------------------------------- */
+.sw-desk .pos {
+  border: 1px solid var(--line-2); border-radius: 12px; overflow: hidden;
+  margin-bottom: 14px; background: var(--panel); box-shadow: var(--shadow);
+}
+.sw-desk .pos > header {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 13px 18px; border-bottom: 1px solid var(--line);
+}
+.sw-desk .pos > header h4 {
+  margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.015em;
+  display: flex; align-items: center; gap: 10px;
+}
+.sw-desk .pos > header .meta {
+  color: var(--fg-2); font-family: var(--m); font-size: 12.5px;
+  display: flex; gap: 13px; flex-wrap: wrap; align-items: center;
+}
+.sw-desk .pos > header .meta b { color: var(--fg); font-weight: 600; }
+.sw-desk .pos > header .r { margin-left: auto; display: flex; gap: 7px; flex-wrap: wrap; }
+.sw-desk .pa-rename { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+.sw-desk .pa-rename input {
+  font-family: var(--f); font-size: 14px; font-weight: 600; padding: 7px 9px;
+  border: 1px solid var(--line-2); border-radius: 7px; background: var(--panel-2);
+  color: var(--fg); min-width: 210px;
+}
+
+/* The six tiles. One row, hairline gaps, each filled to its edges. */
+.sw-desk .pos-tiles {
+  display: grid; grid-template-columns: 1.35fr 1.15fr 1fr 1fr 1fr 1fr;
+  gap: 1px; background: var(--line); border-bottom: 1px solid var(--line);
+}
+@media (max-width: 1180px) { .sw-desk .pos-tiles { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 700px)  { .sw-desk .pos-tiles { grid-template-columns: repeat(2, 1fr); } }
+.sw-desk .pos-tiles .met {
+  background: var(--panel); padding: 15px 18px; min-height: 116px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 6px;
+}
+.sw-desk .pos-tiles .met .k {
+  font-family: var(--m); font-size: 10.5px; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--fg-3); font-weight: 700;
+}
+.sw-desk .pos-tiles .met .v {
+  font-family: var(--m); font-size: 30px; font-weight: 800;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.03em; line-height: 1;
+}
+.sw-desk .pos-tiles .met .v.hero { font-size: 46px; }
+.sw-desk .pos-tiles .met .s {
+  font-size: 12.5px; color: var(--fg-2); font-family: var(--m); line-height: 1.35;
+}
+.sw-desk .pos-tiles .met .s b { color: var(--fg); font-weight: 600; }
+.sw-desk .pos-tiles .bar {
+  height: 8px; border-radius: 4px; background: var(--sunk); overflow: hidden; margin-top: 2px;
+}
+.sw-desk .pos-tiles .bar i {
+  display: block; height: 100%; background: var(--brand); border-radius: 4px;
+}
+.sw-desk .pos-tiles .bar i.hot { background: var(--down); }
+
+/* The legs. Big enough to read at a glance, and each with its own way out. */
+.sw-desk .pos-legs { padding: 2px 6px 4px; overflow-x: auto; }
+.sw-desk .pos-legs table { border-collapse: collapse; width: 100%; }
+.sw-desk .pos-legs th {
+  font-family: var(--m); font-size: 10.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg-3); font-weight: 700;
+  text-align: left; padding: 9px 11px; border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.sw-desk .pos-legs td {
+  padding: 11px; border-bottom: 1px solid var(--line); vertical-align: middle;
+  font-variant-numeric: tabular-nums; font-size: 14.5px;
+}
+.sw-desk .pos-legs tr:last-child td { border-bottom: none; }
+.sw-desk .pos-legs td.n, .sw-desk .pos-legs th.n { text-align: right; font-family: var(--m); }
+.sw-desk .pos-legs td.leg { font-family: var(--m); font-weight: 700; font-size: 17px; }
+.sw-desk .pos-legs td.big-n { font-family: var(--m); font-size: 19px; font-weight: 800; }
+.sw-desk .pos-legs td .sub {
+  display: block; font-family: var(--m); font-size: 11.5px; color: var(--fg-3);
+  font-weight: 500; margin-top: 2px;
+}
+.sw-desk .pos-legs td.act { display: flex; gap: 6px; justify-content: flex-end; white-space: nowrap; }
+.sw-desk .pos-legs tr.gone td { opacity: .6; }
+.sw-desk .pos-legs .gone-note { font-family: var(--m); font-size: 12px; color: var(--fg-3); }
+.sw-desk .pos-legs .up { color: var(--up); }
+.sw-desk .pos-legs .down { color: var(--down); }
+
+/* The inline confirm, on the card rather than in a modal: he can still see
+   the position he is acting on. */
+.sw-desk .pos-confirm {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 18px; border-top: 1px solid var(--line); background: var(--info-bg);
+  font-size: 13.5px;
+}
+.sw-desk .pos-confirm.away { background: var(--warn-bg); }
+.sw-desk .pos-confirm .what b { font-family: var(--m); font-weight: 700; }
+.sw-desk .pos-confirm .price { display: flex; gap: 7px; align-items: center; }
+.sw-desk .pos-confirm .price input {
+  width: 96px; font-family: var(--m); font-size: 14px; padding: 7px 8px;
+  border: 1px solid var(--line-2); border-radius: 6px; background: var(--panel); color: var(--fg);
+}
+.sw-desk .pos-confirm .quote {
+  font-family: var(--m); font-size: 11px; color: var(--fg-3); line-height: 1.25;
+}
+.sw-desk .pos-confirm .quote b { color: var(--fg-2); font-weight: 600; }
+.sw-desk .pos-confirm .fillnote { font-family: var(--m); font-size: 12px; max-width: 30ch; line-height: 1.3; }
+.sw-desk .pos-confirm .fillnote.ok { color: var(--up); }
+.sw-desk .pos-confirm .fillnote.away { color: var(--warn); }
+.sw-desk .pos-confirm .books { color: var(--fg-2); }
+.sw-desk .pos-confirm .books b { font-family: var(--m); }
+.sw-desk .pos-confirm .c-error { color: var(--down); font-size: 12.5px; max-width: 46ch; }
+.sw-desk .pos-confirm .go { margin-left: auto; display: flex; gap: 8px; }
+
+.sw-desk .pos-foot {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 12px 18px; border-top: 1px solid var(--line); background: var(--panel-2);
+}
+.sw-desk .pos-foot .sums { font-size: 13.5px; color: var(--fg-2); }
+.sw-desk .pos-foot .sums b { font-family: var(--m); color: var(--fg); font-weight: 700; }
+.sw-desk .pos-foot .sums b.big { font-size: 16px; }
+.sw-desk .pos-foot .sums b.up { color: var(--up); }
+.sw-desk .pos-foot .sums b.down { color: var(--down); }
+.sw-desk .pos-foot .why {
+  font-family: var(--m); font-size: 11.5px; color: var(--fg-3);
+  margin-left: auto; text-align: right; max-width: 54ch;
+}
+
+/* A trade already in the record. */
+.sw-desk .pa-closed {
+  display: grid; grid-template-columns: 1.7fr 1fr 1fr 1fr 1fr auto;
+  gap: 12px; align-items: center;
+  padding: 13px 18px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel); margin-bottom: 9px;
+}
+@media (max-width: 860px) { .sw-desk .pa-closed { grid-template-columns: 1fr 1fr; } }
+.sw-desk .pa-closed.dim { opacity: .74; }
+.sw-desk .pa-closed .k {
+  font-family: var(--m); font-size: 10.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg-3); font-weight: 700;
+}
+.sw-desk .pa-closed .v {
+  font-family: var(--m); font-size: 24px; font-weight: 800;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em; margin-top: 3px;
+}
+.sw-desk .pa-closed .v.small { font-size: 14px; font-weight: 600; }
+.sw-desk .pa-closed .v.up { color: var(--up); }
+.sw-desk .pa-closed .v.down { color: var(--down); }
+.sw-desk .pa-closed .t { font-size: 17px; font-weight: 700; }
+.sw-desk .pa-closed .t small {
+  display: block; font-family: var(--m); font-size: 11.5px; color: var(--fg-2);
+  font-weight: 500; margin-top: 3px;
+}
+.sw-desk .pa-closed .chips { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+.sw-desk .pa-earlier[hidden] { display: none; }
+
+/* -----------------------------------------------------------------------------
+   The exit ticket. The entry ticket's shape, reversed, with two more money
+   columns because getting out is where the charges land.
+   -------------------------------------------------------------------------- */
+.sw-desk .xt2 .xt-row,
+.xt2 .xt-row {
+  grid-template-columns: 40px 66px 140px 74px 132px 224px 140px 104px 96px 96px 104px;
+}
+.xt2 .xt-legs { padding: 6px 10px; }
+.xt2 .fillnote.away { color: var(--warn); }
+.xt2 .fillnote.ok { color: var(--up); }
+.xt2 .xt-pricenote {
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  padding: 11px 18px; border-top: 1px solid var(--line);
+  background: var(--warn-bg); color: var(--fg); font-size: 13.5px;
+}
+.xt2 .kv b.hero { font-size: 32px; font-weight: 800; }
+.xt2 .kv b.quiet { font-family: var(--f); font-weight: 500; font-size: 12.5px; color: var(--fg-2); }
+.xt2 .kv select, .xt2 .kv input[type="text"] {
+  font-family: var(--f); font-size: 13.5px; padding: 6px 8px;
+  border: 1px solid var(--line-2); border-radius: 6px; background: var(--panel); color: var(--fg);
+}
+.xt2 .kv input[type="text"] { width: 230px; }
+.xt2 td.n, .xt2 .n { text-align: right; font-family: var(--m); }
+.xt2 .big-n { font-family: var(--m); font-size: 17px; font-weight: 800; }
+.xt2 .up { color: var(--up); }
+.xt2 .down { color: var(--down); }
+
+/* A proper Reset and a proper dustbin: the icon carries the word beside it,
+   never a bare circle or a bare cross. */
+.sw-desk .btn svg, .xt2 .btn svg { width: 14px; height: 14px; }

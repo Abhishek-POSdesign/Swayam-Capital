@@ -40,7 +40,7 @@ describe('the fill preview mirrors the exchange', () => {
   it('a buy limit below the ask does not fill, and says where the ask is', () => {
     const f = previewFill({ bs: 'B', price: 82.2, bid: 81.9, ask: 82.45 }, { mode: 'LIMIT', limit: 80 });
     expect(f.ok).toBe(false);
-    expect(f.how).toContain('would not fill now');
+    expect(f.how).toContain('your price, not a rule');
     expect(f.how).toContain('ask is 82.45');
   });
   it('a limit through the market fills at the market, which is better than his limit', () => {
@@ -88,7 +88,7 @@ describe('the execution ticket', () => {
     t.setLimit(i, '80');
     const { blocked } = t.totals();
     expect(blocked).toEqual(['BUY 24,000 CE']);
-    expect(host.innerHTML).toContain('would not fill now');
+    expect(host.innerHTML).toContain('your price, not a rule');
     expect(host.innerHTML).toContain('data-xt="send-all" disabled');
     expect(host.innerHTML).toContain('data-xt="send-one" disabled');
     expect(host.innerHTML).toContain('Move it, press Reset, or switch it to market');

@@ -54,7 +54,9 @@ export function previewFill(leg, state) {
   const limit = state.limit;
   if (typeof limit !== 'number' || !(limit > 0)) return { ok: false, price: null, how: 'type a limit price, or press Reset' };
   const marketable = leg.bs === 'B' ? limit >= market : limit <= market;
-  if (!marketable) return { ok: false, price: null, how: `would not fill now · ${side} is ${px(market)}` };
+  // HIS PRICE, NOT A RULE. The words matter: on 2026-09-10 a refusal at his
+  // own limit read to him as the hedge rule blocking the trade.
+  if (!marketable) return { ok: false, away: true, price: null, how: `your price, not a rule · the ${side} is ${px(market)}` };
   const better = Math.abs(market - limit) >= 0.005;
   return { ok: true, price: market, how: better ? `limit ${px(limit)} · fills at the ${side} ${px(market)}, better` : `limit ${px(limit)} · fills at the ${side}` };
 }
@@ -376,6 +378,17 @@ export class ExecutionTicket {
     const cap = s.capital || {};
     const ceiling = typeof cap.deployable_margin_ceiling_inr === 'number' ? cap.deployable_margin_ceiling_inr : null;
     const charges = typeof p.entry_charges_total_inr === 'number' ? p.entry_charges_total_inr : null;
+    // The amber band. Never red, and never a rule tile: this is a statement
+    // about a price he chose, which he can change in one keystroke.
+    const awayHtml = t.blocked.length
+      ? `<div class="xt-pricenote">
+          <span class="chip c-your">your price, not a rule</span>
+          <span>${escapeHtml(t.blocked.join(', '))} ${t.blocked.length === 1 ? 'is' : 'are'} away from the book, so ${t.blocked.length === 1 ? 'it' : 'they'} would not fill now.
+          Nothing is blocking this trade: entry is never gated by a rule. Move the price, press Reset, or switch to market.
+          Resting orders, which would let it wait for the book, arrive in the next build.</span>
+        </div>`
+      : '';
+
     const refusedHtml = this.refused.length
       ? `<div class="xt-refused"><b>${escapeHtml(this.error || 'Nothing was sent.')}</b><ul>${this.refused.map((r) => `<li><b>${escapeHtml(r.leg)}</b> · ${escapeHtml(r.reason)}</li>`).join('')}</ul></div>`
       : this.error ? `<div class="xt-refused"><b>Not executed.</b> ${escapeHtml(this.error)}</div>` : '';
@@ -401,13 +414,14 @@ export class ExecutionTicket {
         </div>
         <div class="rules xt-rules">${this.options.rulesHtml ? this.options.rulesHtml() : ''}</div>
       </div>
+      ${awayHtml}
       <div class="xt-actions">
         <button class="btn pri" type="button" data-xt="send-all" ${t.blocked.length || shut ? 'disabled' : ''}>Execute all legs</button>
         <button class="btn" type="button" data-xt="send-one" ${t.blocked.length || shut ? 'disabled' : ''}>Execute one by one</button>
         <span class="why">${shut
           ? escapeHtml(shut)
           : t.blocked.length
-            ? escapeHtml(`${t.blocked.join(', ')} would not fill at that price. Move it, press Reset, or switch it to market.`)
+            ? escapeHtml(`Your price, not a rule: ${t.blocked.join(', ')} would not fill at that price. Move it, press Reset, or switch it to market.`)
             : 'buys go first by default, that is what earns the hedged margin · one press, one trade · a buy pays the ask, a sell gets the bid'}</span>
       </div>`;
   }

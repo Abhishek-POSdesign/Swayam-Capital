@@ -24,6 +24,8 @@ import { OvernightBlockModalComponent } from '../components/overnight-block-moda
 import { OptionChainModalComponent } from '../components/option-chain-modal.js';
 import { ExecutionTicket } from '../components/execution-ticket.js';
 import { DataHealthStrip } from '../components/data-health-strip.js';
+import { PositionArea } from '../components/position-area.js';
+import { ExitTicket } from '../components/exit-ticket.js';
 import {
   maxLossProfit,
   breakevens,
@@ -192,6 +194,24 @@ export class StrategyBuilderPage {
     this.marginUsedNote = '';
     this.cronTimer = null;
     this.safetyWarning = null;
+
+    /**
+     * The position area below the payoff, and the ticket that gets him out.
+     * docs/builds/BUILD_01_DESK_POSITION_AREA.md. On 2026-09-10 he held a
+     * four-leg condor and could not see it, manage it or exit it from here.
+     */
+    this.positionArea = null;
+    this.exitTicket = null;
+
+    /**
+     * The open trade drawn on the payoff when he has not loaded anything else.
+     * Null means the desk is his to build on, which a preset or the chain
+     * restores.
+     */
+    this.loadedFrom = null;
+
+    /** The open trade a newly executed leg should JOIN, rather than opening a new one. */
+    this.joinTrade = null;
   }
 
   _resolveSessionId() {
@@ -409,6 +429,7 @@ export class StrategyBuilderPage {
 
               <div class="card">
                 <h3>Payoff <span class="r">drag the graph, or use the sliders</span></h3>
+                <div id="payoff-loaded-band"></div>
                 <div id="payoff-chart-mount"></div>
                 <div class="sliders">
                   <div class="sl">
@@ -448,10 +469,18 @@ export class StrategyBuilderPage {
               </div>
             </div>
           </div>
+
+          <!-- THE POSITION AREA. His words, 2026-09-09: "at the strategy desk
+               itself, the bottom area below the payoff graph and execution
+               should be dedicated to open position, close position for the
+               day, and everything for the positions." Full width, below both
+               columns rather than inside either one. -->
+          <div id="position-area-mount"></div>
         </div>
 
         <div id="overnight-modal-container"></div>
         <div id="execution-ticket-mount"></div>
+        <div id="exit-ticket-mount"></div>
       </div>
     `;
 
@@ -497,9 +526,136 @@ export class StrategyBuilderPage {
       });
     }
 
+    const areaHost = this.container.querySelector('#position-area-mount');
+    if (areaHost && !this.positionArea) {
+      this.positionArea = new PositionArea(areaHost, {
+        fetchOpen: () => api.getPositionsLive(),
+        fetchClosed: () => api.getPositions('closed'),
+        onExitAll: (p) => this.openExitTicket(p, null),
+        onExitLeg: (p, seq) => this.openExitTicket(p, seq),
+        onExitLegNow: (p, seq, payload) =>
+          api.exitLeg(p.position_id, seq, payload, `exit-${p.position_id}-${seq}`),
+        onReverseLeg: (p, seq, payload) =>
+          api.reverseLeg(p.position_id, seq, payload, `reverse-${p.position_id}-${seq}`),
+        onAddLeg: (p) => this.addLegToOpenTrade(p),
+        onShowOnPayoff: (p) => this.loadFromPosition(p),
+        onRename: (p, name) => api.renamePosition(p.position_id, name),
+      });
+      this.positionArea.init();
+    }
+
+    const exitHost = this.container.querySelector('#exit-ticket-mount');
+    if (exitHost && !this.exitTicket) {
+      this.exitTicket = new ExitTicket(exitHost, {
+        onExitAll: (payload) => api.closePosition(this.exitTicket.position.position_id, payload),
+        onExitLeg: (seq, payload) => api.exitLeg(
+          this.exitTicket.position.position_id,
+          seq,
+          payload,
+          `exit-${this.exitTicket.position.position_id}-${seq}`,
+        ),
+        onDone: () => this.afterExit(),
+      });
+    }
+
     this.renderPresets();
     this.bindControls();
     this.renderAll();
+  }
+
+  /** Opens the exit ticket for one leg, or for every open leg. */
+  openExitTicket(position, sequence) {
+    if (!this.exitTicket) return;
+    this.exitTicket.open(position, sequence);
+  }
+
+  /** After anything fills, everything on the desk reads itself again. */
+  async afterExit() {
+    if (this.positionArea) await this.positionArea.refresh();
+    await this.refreshPositions();
+    if (this.loadedFrom && this.positionArea) {
+      const still = this.positionArea.positionById(this.loadedFrom.position_id);
+      if (still) this.loadFromPosition(still);
+      else this.clearLoadedPosition();
+    }
+  }
+
+  /**
+   * Adds a leg to a trade that is already open, through the ticket he knows.
+   *
+   * The leg joins THAT trade rather than opening a new one, which is the
+   * campaign model of docs/PLAN.md 2.11 and the path "execute one by one"
+   * already uses.
+   */
+  addLegToOpenTrade(position) {
+    this.joinTrade = position;
+    this.executeNote = `The next leg you execute joins trade #${String(position.position_id).slice(0, 8)}, ${position.strategy_name}, instead of opening a new one. Build it on the left and press Execute.`;
+    this.renderExecute();
+    const rail = this.container.querySelector('#strategy-left-rail');
+    if (rail && rail.scrollIntoView) rail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /**
+   * Draws a trade he is HOLDING on the payoff, from its stored fills.
+   *
+   * His decision of 2026-09-10, docs/PLAN.md 2.12.5 item 4: the payoff shows
+   * the open trade when no new structure is loaded. The legs come off the
+   * position at the prices they were actually filled at, so the curve is HIS
+   * trade rather than a fresh one at today's prices.
+   */
+  loadFromPosition(position) {
+    if (!position) return;
+    const open = (position.legs || []).filter((l) => String(l.status || 'open') !== 'closed');
+    if (!open.length) return;
+
+    this.legs = open.map((l) => ({
+      on: true,
+      bs: ['buy', 'long'].includes(String(l.direction).toLowerCase()) ? 'B' : 'S',
+      strike: Number(l.strike),
+      type: String(l.option_type).toUpperCase(),
+      lots: Number(l.quantity_lots || 1),
+      price: typeof l.entry_premium === 'number' ? l.entry_premium : null,
+      priceSource: 'the fill this leg actually got',
+    }));
+    this.baseLots = this.legs.map((l) => l.lots);
+    this.strategyName = position.strategy_name || null;
+    this.loadedFrom = position;
+    if (position.expiry_date) this.expiry = position.expiry_date;
+    this.renderAll();
+  }
+
+  /** Back to an empty desk he can build on. */
+  clearLoadedPosition() {
+    this.loadedFrom = null;
+    this.legs = [];
+    this.baseLots = [];
+    this.strategyName = null;
+    this.renderAll();
+  }
+
+  /**
+   * The sage band above the payoff, saying what is drawn and where it came
+   * from, so a trade he holds is never mistaken for one he is building.
+   */
+  renderLoadedBand() {
+    const host = this.container.querySelector('#payoff-loaded-band');
+    if (!host) return;
+    const p = this.loadedFrom;
+    if (!p) {
+      host.innerHTML = '';
+      return;
+    }
+    const legs = (p.legs || []).filter((l) => String(l.status || 'open') !== 'closed').length;
+    host.innerHTML = `<div class="loaded-band">
+      <span class="chip c-sage">open trade</span>
+      <b>${escapeHtml(p.strategy_name || 'Trade')} #${escapeHtml(String(p.position_id).slice(0, 8))}</b>
+      <span class="fg2">${legs} leg${legs === 1 ? '' : 's'} · ${escapeHtml(p.expiry_date || '')} · loaded from your position, not a preset</span>
+      <span class="r"><button class="btn sm" type="button" id="clear-loaded">Clear and build new</button></span>
+    </div>`;
+    const clear = host.querySelector('#clear-loaded');
+    if (clear && clear.addEventListener) {
+      clear.addEventListener('click', () => this.clearLoadedPosition());
+    }
   }
 
   /**
@@ -734,6 +890,10 @@ export class StrategyBuilderPage {
   async loadPreset(name) {
     const shape = PRESETS[name];
     if (!shape) return;
+    // Loading a preset clears the trade drawn from his position: from here on
+    // the desk is a structure he is building, not one he is holding.
+    this.loadedFrom = null;
+    this.joinTrade = null;
     if (!this.spot) {
       this.executeNote = 'No live NIFTY price, so strikes cannot be placed at the money. Nothing was loaded.';
       this.renderExecute();
@@ -759,6 +919,7 @@ export class StrategyBuilderPage {
   }
 
   addLeg() {
+    this.loadedFrom = null;
     const atm = this.atmStrike();
     if (atm === null) {
       this.executeNote = 'No live NIFTY price, so a new leg has no strike to sit on.';
@@ -1154,6 +1315,7 @@ export class StrategyBuilderPage {
 
   renderRight() {
     this.renderMetrics();
+    this.renderLoadedBand();
     this.renderSliders();
     this.renderChart();
     this.renderGreeks();
@@ -1765,6 +1927,24 @@ export class StrategyBuilderPage {
    * leg and sendNextLeg() adds each later one to the same trade.
    */
   async sendTicket(legs, mode) {
+    // He pressed "Add a leg" on an open position, so these legs join THAT
+    // trade through the add-leg path instead of opening a new one.
+    if (this.joinTrade && this.joinTrade.position_id) {
+      const id = this.joinTrade.position_id;
+      let last = null;
+      for (let i = 0; i < legs.length; i += 1) {
+        last = await api.addLegToPosition(
+          id, { leg: legs[i], current_spot: this.spot }, `join-${id}-${i}-${legs[i].strike}-${legs[i].option_type}`,
+        );
+      }
+      this.joinTrade = null;
+      this.executeNote = `Added to trade #${String(id).slice(0, 8)}. It is one trade, with its shape changed.`;
+      await this.refreshPositions();
+      if (this.positionArea) await this.positionArea.refresh();
+      this.renderExecute();
+      return { ...(last || {}), position_id: id, joined: true };
+    }
+
     const res = await api.executeMultiLeg({
       strategy_name: this.strategyName || 'Custom',
       underlying: 'NIFTY',
@@ -1799,6 +1979,14 @@ export class StrategyBuilderPage {
   }
 
   destroy() {
+    if (this.positionArea) {
+      this.positionArea.destroy();
+      this.positionArea = null;
+    }
+    if (this.exitTicket) {
+      this.exitTicket.destroy();
+      this.exitTicket = null;
+    }
     if (this._serverTimer) {
       clearTimeout(this._serverTimer);
       this._serverTimer = null;
