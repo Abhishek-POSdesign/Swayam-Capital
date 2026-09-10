@@ -1148,9 +1148,16 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
    The exit ticket. The entry ticket's shape, reversed, with two more money
    columns because getting out is where the charges land.
    -------------------------------------------------------------------------- */
+.xt2 { width: min(1340px, 100%); }
 .sw-desk .xt2 .xt-row,
 .xt2 .xt-row {
-  grid-template-columns: 40px 66px 140px 74px 132px 224px 140px 104px 96px 96px 104px;
+  grid-template-columns: 34px 62px 128px 68px 118px 206px 126px 96px 92px 92px 100px;
+  gap: 7px;
+}
+/* Narrower than the desk itself, so it still reads rather than wrapping. */
+@media (max-width: 1380px) {
+  .xt2 .xt-legs { overflow-x: auto; }
+  .sw-desk .xt2 .xt-row, .xt2 .xt-row { min-width: 1180px; }
 }
 .xt2 .xt-legs { padding: 6px 10px; }
 .xt2 .fillnote.away { color: var(--warn); }

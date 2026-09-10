@@ -451,6 +451,18 @@ class PositionResponse(BaseModel):
     fill_basis: Optional[str] = None
     spot_at_entry: Optional[float] = None
 
+    # THE RESULT, for a position that is closed. It lives in
+    # swayam_trade_history, not on the position row, so it is joined on when
+    # this endpoint is asked for closed trades. None on an open one, and None
+    # on a closed one whose result cannot be read, which says unavailable
+    # rather than zero.
+    closed_at: Optional[str] = None
+    close_reason: Optional[str] = None
+    gross_pnl_inr: Optional[float] = None
+    total_charges_inr: Optional[float] = None
+    realized_pnl_inr: Optional[float] = None
+    holding_days: Optional[int] = None
+
 
 # ---------------------------------------------------------------------------
 # Journal and Lesson Ledger Models (BUILD-11)

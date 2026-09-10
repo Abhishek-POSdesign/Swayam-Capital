@@ -46,6 +46,10 @@ const REQUOTE_CLOSED_MS = 60000;
 
 /** A price he typed himself carries this source and is never overwritten. */
 const OWN_PRICE = 'your own limit price';
+/** A leg loaded from a position he HOLDS, priced at the fill it actually got. */
+const FILLED_PRICE = 'the fill this leg actually got';
+/** Whether this leg's price belongs to him rather than to the last quote. */
+const priceIsHis = (leg) => leg && (leg.priceSource === OWN_PRICE || leg.priceSource === FILLED_PRICE);
 
 /** 1 to 20 lots as a dropdown: he asked for this rather than plus and minus buttons so no width goes on stepper chrome. */
 function lotOptions(current) {
@@ -615,7 +619,7 @@ export class StrategyBuilderPage {
       type: String(l.option_type).toUpperCase(),
       lots: Number(l.quantity_lots || 1),
       price: typeof l.entry_premium === 'number' ? l.entry_premium : null,
-      priceSource: 'the fill this leg actually got',
+      priceSource: FILLED_PRICE,
     }));
     this.baseLots = this.legs.map((l) => l.lots);
     this.strategyName = position.strategy_name || null;
@@ -944,6 +948,10 @@ export class StrategyBuilderPage {
     if (!leg || !this.expiry) return;
     // His own limit price is his. A quote never overwrites it.
     if (leg.priceSource === OWN_PRICE && opts.render === false) return;
+    // A leg loaded from a position he holds keeps the price it was FILLED at,
+    // so the payoff stays his trade rather than drifting onto today's prices.
+    // The quote still runs: its bid and ask are what the ticket reads.
+    const keepPrice = priceIsHis(leg) ? { price: leg.price, source: leg.priceSource } : null;
     try {
       const q = await api.getOptionQuote({ strike: leg.strike, expiry: this.expiry, type: leg.type });
       if (q && q.available && typeof q.ltp === 'number') {
@@ -975,6 +983,10 @@ export class StrategyBuilderPage {
     } catch (err) {
       leg.price = null;
       leg.priceSource = (err && err.message) || 'quote unavailable';
+    }
+    if (keepPrice) {
+      leg.price = keepPrice.price;
+      leg.priceSource = keepPrice.source;
     }
     this.pricesReadAt = new Date().toISOString();
     if (opts.render === false) return;
@@ -1408,7 +1420,7 @@ export class StrategyBuilderPage {
           </select>
           <select class="lots" data-i="${i}" data-f="lots" aria-label="Lots">${lotOptions(l.lots)}</select>
           <input value="${l.price === null ? '' : l.price.toFixed(2)}" data-i="${i}" data-f="price"
-                 class="${l.priceSource === OWN_PRICE ? 'own' : ''}${flashFor(this._flash, `price-${i}-${l.strike}-${l.type}`, l.price)}"
+                 class="${priceIsHis(l) ? 'own' : ''}${flashFor(this._flash, `price-${i}-${l.strike}-${l.type}`, l.price)}"
                  inputmode="decimal" placeholder="—" title="${escapeHtml(l.priceSource || '')}" aria-label="Price">
           <button class="trash" data-i="${i}" data-f="del" type="button" aria-label="Delete leg" title="Delete leg">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

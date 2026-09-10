@@ -32,6 +32,21 @@ const px = (v) => (isNum(v) ? v.toFixed(2) : '—');
 const legName = (l) => `${num(l.strike)} ${l.option_type}`;
 const EARLIER_KEY = 'swayam-desk-earlier-open';
 
+/**
+ * The trading day an instant belongs to, in IST, as YYYY-MM-DD.
+ *
+ * Everything in the record is stored in UTC. His day is an IST day, and the
+ * two are five and a half hours apart, so the date has to be converted rather
+ * than sliced off the front of the timestamp.
+ */
+export function istDay(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  // en-CA gives YYYY-MM-DD, which sorts and compares as a plain string.
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+}
+
 /** A signed rupee figure, or null so `orNA` can say unavailable. */
 /**
  * A signed rupee figure.  is for the six big tiles, where a hero
@@ -171,9 +186,9 @@ export class PositionArea {
       return;
     }
 
-    const todayISO = new Date().toISOString().slice(0, 10);
-    const closedToday = this.closed.filter((p) => String(p.closed_at || '').slice(0, 10) === todayISO);
-    const earlier = this.closed.filter((p) => String(p.closed_at || '').slice(0, 10) !== todayISO);
+    const today = istDay(new Date().toISOString());
+    const closedToday = this.closed.filter((p) => istDay(p.closed_at) === today);
+    const earlier = this.closed.filter((p) => istDay(p.closed_at) !== today);
 
     this.host.innerHTML = `<div class="pa">
       ${this._openSection()}
@@ -227,8 +242,9 @@ export class PositionArea {
       return `<b>LIVE${at ? ` · ${at}` : ''}</b>`;
     }
     if (p.market_state === 'unavailable') return '<b>no live data</b>';
+    // The market closed at 15:30; this is when the last book was READ.
     const at = istTime(p.read_at, false);
-    return `<b>at the close${at ? ` ${at}` : ''}</b>`;
+    return `<b>at the close</b>${at ? ` · book read ${at}` : ''}`;
   }
 
   _card(p) {
@@ -472,7 +488,7 @@ export class PositionArea {
   _closedRow(t, dim) {
     const tradedPrice = t.fill_basis === 'traded_price';
     const when = istTime(t.closed_at, false);
-    const day = String(t.closed_at || '').slice(0, 10);
+    const day = istDay(t.closed_at) || 'date unrecorded';
     return `<div class="pa-closed ${dim ? 'dim' : ''}">
       <div class="t">${escapeHtml(t.strategy_name || 'Trade')}
         <small>${escapeHtml(dim ? day : `closed ${when || ''}`)}${t.close_reason ? ` · ${escapeHtml(String(t.close_reason).replace(/_/g, ' '))}` : ''} · #${escapeHtml(String(t.id || t.position_id || '').slice(0, 8))}</small></div>

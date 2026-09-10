@@ -33,21 +33,36 @@ def client():
 
 
 def _make_mock_chain(spot=24800.0, ltp_24850_pe=220.0, ltp_24100_pe=40.0):
+    """A chain with a real book on it.
+
+    Every quote carries a bid and an ask, because since Build A the position is
+    marked at the side he would actually GET rather than at the last trade. A
+    chain with only a traded price is a chain nothing can be marked against,
+    and there is a test below that says exactly that.
+    """
     return {
         "underlyingValue": spot,
         "optionsChain": [
             {
                 "strike_price": 24850.0,
                 "put_ltp": ltp_24850_pe,
+                "put_bid": ltp_24850_pe - 1.0,
+                "put_ask": ltp_24850_pe + 1.0,
                 "put_iv": 0.16,
                 "call_ltp": 120.0,
+                "call_bid": 119.0,
+                "call_ask": 121.0,
                 "call_iv": 0.14,
             },
             {
                 "strike_price": 24100.0,
                 "put_ltp": ltp_24100_pe,
+                "put_bid": ltp_24100_pe - 0.5,
+                "put_ask": ltp_24100_pe + 0.5,
                 "put_iv": 0.18,
                 "call_ltp": 600.0,
+                "call_bid": 599.0,
+                "call_ask": 601.0,
                 "call_iv": 0.15,
             },
         ],
@@ -75,6 +90,7 @@ def _make_sample_position(pos_id="pos-test-123"):
                 "quantity_lots": 1,
                 "lot_size": 75,
                 "entry_premium": 180.0,
+                "entry_charges_inr": 30.11,
                 "expiry_date": "2026-09-11",
             },
             {
@@ -84,19 +100,33 @@ def _make_sample_position(pos_id="pos-test-123"):
                 "quantity_lots": 1,
                 "lot_size": 75,
                 "entry_premium": 60.0,
+                "entry_charges_inr": 12.44,
                 "expiry_date": "2026-09-11",
             },
         ],
     }
 
 
-def test_positions_live_computes_correct_pnl(client):
-    """Verifies live P&L matches exact manual math:
+def test_positions_live_marks_each_leg_at_the_side_he_would_get(client):
+    """The mark is the price he could actually trade at, not the last trade.
 
-    Entry: Buy 1x75 @ 180 (cost 13,500), Sell 1x75 @ 60 (credit 4,500) -> Net debit = -9,000
-    Live:  Long leg LTP 220 (val +16,500), Short leg LTP 40 (val -3,000) -> Total value = +13,500
-    Unrealized P&L = +13,500 - (-9,000) = +4,500
-    % of risk = 4,500 / 9,000 = 50.0%
+    UNTIL BUILD A this test asserted a P&L of 4,500, computed from the traded
+    prices of 220.00 and 40.00. That was nobody's price: to get out of the long
+    put he has to SELL it, at the bid, and to get out of the short put he has to
+    BUY it back, at the ask. The old figure was a profit he could not have
+    realised, and the exit already filled the other way (services/fills.py
+    reversed), so the screen and the fill disagreed.
+
+    Now, on a book of 219.00 / 221.00 and 39.50 / 40.50:
+
+      long  24,850 PE, bought at 180.00, marked at the BID 219.00
+            (219.00 - 180.00) x 75 = +2,925.00
+      short 24,100 PE, sold at 60.00, marked at the ASK 40.50
+            (60.00 - 40.50) x 75 = +1,462.50
+
+      gross                                        +4,387.50
+      as a share of the 9,000 max loss              0.4875
+      position value  219.00 x 75 - 40.50 x 75     +13,387.50
     """
     sample_pos = _make_sample_position()
 
@@ -122,12 +152,94 @@ def test_positions_live_computes_correct_pnl(client):
     assert item["position_id"] == "pos-test-123"
     assert item["error"] is None
 
-    # Expected value: (220 - 40) * 75 = 180 * 75 = 13,500
-    # Unrealized P&L = 13,500 - (-9,000) = 4,500
-    expected_pnl = 4500.0
-    assert abs(item["unrealized_pnl_inr"] - expected_pnl) < 1.0
-    assert abs(item["unrealized_pnl_pct_of_risk"] - 0.5) < 0.01
-    assert item["current_position_value_inr"] == 13500.0
+    assert abs(item["unrealized_pnl_inr"] - 4387.50) < 1.0
+    assert abs(item["unrealized_pnl_pct_of_risk"] - 0.4875) < 0.01
+    assert abs(item["current_position_value_inr"] - 13387.50) < 1.0
+
+    # Each leg says WHICH side of the book its mark came from, so the card can
+    # print it and he can see that the figure is the one he would get.
+    legs = {(l["strike"], l["option_type"]): l for l in item["legs"]}
+    long_leg = legs[(24850.0, "PE")]
+    short_leg = legs[(24100.0, "PE")]
+    assert long_leg["mark_side"] == "bid"
+    assert long_leg["mark"] == 219.0
+    assert short_leg["mark_side"] == "ask"
+    assert short_leg["mark"] == 40.5
+    # The traded price is kept beside it, as history rather than as the mark.
+    assert long_leg["current_ltp"] == 220.0
+
+    # And the round trip is costed: what was paid to get in, and what getting
+    # out would cost right now at these marks.
+    assert item["charges_in_inr"] == pytest.approx(30.11 + 12.44, abs=0.01)
+    assert item["charges_out_now_inr"] > 0
+    assert item["net_if_exit_now_inr"] == pytest.approx(
+        item["unrealized_pnl_inr"] - item["charges_in_inr"] - item["charges_out_now_inr"], abs=0.01
+    )
+    assert item["net_if_exit_now_inr"] < item["unrealized_pnl_inr"], "charges only ever take"
+
+
+def test_a_leg_with_no_book_cannot_be_marked_and_says_so(client):
+    """A traded price is not a substitute for a book. No bid, no mark."""
+    sample_pos = _make_sample_position()
+    no_book = {
+        "underlyingValue": 24800.0,
+        "optionsChain": [
+            {"strike_price": 24850.0, "put_ltp": 220.0, "put_iv": 0.16},
+            {"strike_price": 24100.0, "put_ltp": 40.0, "put_bid": 39.5, "put_ask": 40.5, "put_iv": 0.18},
+        ],
+    }
+
+    with (
+        patch("swayam.api.routes.positions.db") as mock_db,
+        patch("swayam.api.routes.positions.fyers_client") as mock_fyers,
+    ):
+        mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+            sample_pos
+        ]
+        mock_fyers.get_option_chain.return_value = no_book
+        mock_fyers.get_nifty_spot.return_value = 24800.0
+
+        resp = client.get("/api/positions/live")
+
+    assert resp.status_code == 200
+    item = resp.json()[0]
+    assert item["unrealized_pnl_inr"] is None
+    assert "bid is not published" in item["error"]
+    # And the leg that could not be marked names itself.
+    bad = [l for l in item["legs"] if l.get("error")]
+    assert bad and bad[0]["strike"] == 24850.0
+
+
+def test_a_missing_entry_charge_hides_the_cost_but_not_the_profit(client):
+    """His trades opened before 2026-09-09 record no charges on their legs.
+
+    The profit is still perfectly readable; only what the round trip cost is
+    not. Blanking the profit as well would hide a figure that IS known behind
+    one that is not.
+    """
+    sample_pos = _make_sample_position()
+    for leg in sample_pos["legs"]:
+        leg.pop("entry_charges_inr", None)
+
+    with (
+        patch("swayam.api.routes.positions.db") as mock_db,
+        patch("swayam.api.routes.positions.fyers_client") as mock_fyers,
+    ):
+        mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+            sample_pos
+        ]
+        mock_fyers.get_option_chain.return_value = _make_mock_chain()
+        mock_fyers.get_nifty_spot.return_value = 24800.0
+
+        resp = client.get("/api/positions/live")
+
+    assert resp.status_code == 200
+    item = resp.json()[0]
+    assert item["error"] is None
+    assert abs(item["unrealized_pnl_inr"] - 4387.50) < 1.0, "the profit is known"
+    assert item["net_if_exit_now_inr"] is None, "what it costs to get out is not"
+    assert item["charges_in_inr"] is None
+    assert "no recorded entry charges" in item["charges_unavailable_reason"]
 
 
 def test_positions_live_handles_missing_strike_cleanly(client):
@@ -135,12 +247,16 @@ def test_positions_live_handles_missing_strike_cleanly(client):
     sample_pos = _make_sample_position()
 
     # Create chain missing the 24100 strike
+    # The 24,850 leg has a full book; the 24,100 strike is simply not there, so
+    # the missing STRIKE is the only fault this test is about.
     incomplete_chain = {
         "underlyingValue": 24800.0,
         "optionsChain": [
             {
                 "strike_price": 24850.0,
                 "put_ltp": 220.0,
+                "put_bid": 219.0,
+                "put_ask": 221.0,
                 "put_iv": 0.16,
             }
         ],
@@ -163,13 +279,21 @@ def test_positions_live_handles_missing_strike_cleanly(client):
     item = data[0]
 
     assert item["unrealized_pnl_inr"] is None
-    assert item["error"] == "strike_not_in_current_chain"
-    # The missing leg has error flagged
+    # The position states the reason in words he can read, and the LEG keeps
+    # the machine-readable code beside it.
+    assert item["error"] == "a leg is not in the current chain"
     missing_leg = [l for l in item["legs"] if l.get("strike") == 24100.0][0]
     assert missing_leg.get("error") == "strike_not_in_current_chain"
 
 
-def test_positions_live_raises_503_when_fyers_unreachable(client):
+def test_a_position_the_feed_cannot_price_is_marked_rather_than_blanking_the_page(client):
+    """One bad trade must not take the whole position area down with it.
+
+    UNTIL BUILD A this raised 503 for the ENTIRE reply, so a single position on
+    an expiry FYERS would not serve left him looking at nothing at all. His
+    instruction of 2026-09-10 evening: mark that one unavailable with the
+    reason and still show the rest.
+    """
     sample_pos = _make_sample_position()
 
     with (
@@ -183,8 +307,48 @@ def test_positions_live_raises_503_when_fyers_unreachable(client):
 
         resp = client.get("/api/positions/live")
 
-    assert resp.status_code == 503
-    assert "FYERS chain unreachable" in resp.json()["detail"]
+    assert resp.status_code == 200
+    item = resp.json()[0]
+    assert item["position_id"] == "pos-test-123"
+    assert item["unrealized_pnl_inr"] is None
+    assert item["net_if_exit_now_inr"] is None
+    assert "FYERS chain unreachable" in item["error"]
+    # The trade itself is still described, so he can see WHAT he cannot price.
+    assert item["strategy_name"]
+    assert len(item["legs"]) == 2
+
+
+def test_one_unpriceable_position_does_not_blank_the_others(client):
+    """The whole point of valuing each position on its own."""
+    good = _make_sample_position("pos-good-1")
+    bad = _make_sample_position("pos-bad-1")
+    bad["expiry_date"] = "2026-12-31"
+    for leg in bad["legs"]:
+        leg["expiry_date"] = "2026-12-31"
+
+    def chain_for(underlying, expiry=None):
+        if str(expiry) == "2026-12-31":
+            raise RuntimeError("FYERS has no chain for that expiry")
+        return _make_mock_chain()
+
+    with (
+        patch("swayam.api.routes.positions.db") as mock_db,
+        patch("swayam.api.routes.positions._get_cached_option_chain", side_effect=chain_for),
+        patch("swayam.api.routes.positions.fyers_client") as mock_fyers,
+    ):
+        mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+            good, bad
+        ]
+        mock_fyers.get_nifty_spot.return_value = 24800.0
+
+        resp = client.get("/api/positions/live")
+
+    assert resp.status_code == 200
+    data = {p["position_id"]: p for p in resp.json()}
+    assert len(data) == 2
+    assert data["pos-good-1"]["unrealized_pnl_inr"] is not None, "the good one still shows its money"
+    assert data["pos-bad-1"]["unrealized_pnl_inr"] is None
+    assert data["pos-bad-1"]["error"]
 
 
 def test_positions_live_empty_when_no_positions(client):

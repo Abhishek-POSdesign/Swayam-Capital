@@ -344,7 +344,14 @@ export class ExitTicket {
       const el = this.host.querySelector(opts.keepFocus);
       if (el && el.focus) {
         el.focus();
-        if (el.setSelectionRange && el.value) el.setSelectionRange(el.value.length, el.value.length);
+        // Only a text-like input has a selection. A number input throws.
+        try {
+          if (el.type !== 'number' && el.setSelectionRange && el.value) {
+            el.setSelectionRange(el.value.length, el.value.length);
+          }
+        } catch (_) {
+          /* the caret is a convenience, never a reason to break the ticket */
+        }
       }
     }
   }
@@ -354,7 +361,7 @@ export class ExitTicket {
     const live = p.market_state === 'live';
     const chip = live
       ? `<span class="chip c-live">LIVE · ${escapeHtml(istTime(p.read_at) || '')}</span>`
-      : `<span class="chip c-na">${escapeHtml(p.market_state === 'unavailable' ? 'NO LIVE DATA' : `AT THE CLOSE${p.read_at ? ` · ${istTime(p.read_at, false)}` : ''}`)}</span>`;
+      : `<span class="chip c-na">${escapeHtml(p.market_state === 'unavailable' ? 'NO LIVE DATA' : `AT THE CLOSE${p.read_at ? ` · BOOK READ ${istTime(p.read_at, false)}` : ''}`)}</span>`;
     return `<header class="xt-h"><div><h2>${escapeHtml(title)}</h2><div class="sub">${escapeHtml(sub)}</div></div>
       <div class="r">${chip}${this.phase === 'ticket' ? '<button class="btn sm" type="button" data-x="close">Back</button>' : ''}</div></header>`;
   }

@@ -139,6 +139,9 @@ class LivePositionResponse(BaseModel):
     days_remaining_to_expiry: int
     journal_path: Optional[str] = None
 
+    # Why the cost of the round trip could not be read, when the profit could.
+    charges_unavailable_reason: Optional[str] = None
+
     # live | closing. Nothing may print LIVE unless this says live.
     market_state: str = "closing"
     read_at: Optional[str] = None
@@ -415,6 +418,33 @@ def _ids_the_database_knows(ids: set[str]) -> set[str]:
         return set()
 
 
+def _results_for(positions: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """The recorded result of each of these trades, by position id.
+
+    One trade has one result row, so the newest wins if a row were ever
+    duplicated; the close path forbids that, and this does not paper over it.
+    A database that cannot be read gives an empty map, and every figure then
+    says unavailable rather than zero.
+    """
+    ids = [str(p.get("id")) for p in positions if p.get("id")]
+    if not ids:
+        return {}
+    try:
+        res = (
+            db.client.table("swayam_trade_history")
+            .select("position_id,closed_at,close_reason,realized_pnl_inr,total_charges_inr,holding_days")
+            .in_("position_id", ids)
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Could not read the recorded results for these positions: %s", exc)
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for row in res.data or []:
+        out[str(row.get("position_id"))] = row
+    return out
+
+
 @router.get("/api/positions", response_model=list[PositionResponse])
 def get_positions(status: str = Query(default="open")) -> list[PositionResponse]:
     """Returns list of positions with current unrealized P&L."""
@@ -449,10 +479,27 @@ def get_positions(status: str = Query(default="open")) -> list[PositionResponse]
         if local_pos.get("status") == status:
             positions_data.append(local_pos)
 
+    # A CLOSED TRADE CARRIES ITS RESULT. One query for all of them rather than
+    # one per row, because the desk asks for this list every few seconds.
+    results_by_id = _results_for(positions_data) if status == "closed" else {}
+
     results: list[PositionResponse] = []
     for p in positions_data:
+        outcome = results_by_id.get(str(p.get("id")), {})
+        net = _opt_float(outcome.get("realized_pnl_inr"))
+        charges = _opt_float(outcome.get("total_charges_inr"))
         results.append(
             PositionResponse(
+                closed_at=str(outcome["closed_at"]) if outcome.get("closed_at") else p.get("closed_at"),
+                close_reason=outcome.get("close_reason") or p.get("exit_reason"),
+                realized_pnl_inr=net,
+                total_charges_inr=charges,
+                # The net IS the gross less the charges, so adding them back is
+                # exact rather than a reconstruction.
+                gross_pnl_inr=(round(net + charges, 2) if net is not None and charges is not None else None),
+                holding_days=(
+                    int(outcome["holding_days"]) if outcome.get("holding_days") is not None else None
+                ),
                 id=str(p.get("id")),
                 strategy_name=p.get("strategy_name", "Unknown Strategy"),
                 underlying=p.get("underlying", "NIFTY"),
@@ -662,7 +709,12 @@ def _value_one_position(
     current_position_value = 0.0
     charges_in_total = 0.0
     charges_out_total = 0.0
+    # TWO DIFFERENT FAILURES, KEPT APART. A leg that cannot be marked makes
+    # the PROFIT unknown. A leg with no recorded entry charge makes only the
+    # COST of the round trip unknown, and the profit is still perfectly
+    # readable. Every position opened before 2026-09-09 is in the second state.
     unpriced_reason: Optional[str] = None
+    charges_reason: Optional[str] = None
     enriched_legs: list[dict[str, Any]] = []
     spread_legs: list[Leg] = []
     iv_map: dict[Leg, float] = {}
@@ -687,13 +739,18 @@ def _value_one_position(
             gross = _opt_float(leg.get("gross_pnl_inr"))
             entry_ch = _opt_float(leg.get("entry_charges_inr"))
             exit_ch = _opt_float(leg.get("exit_charges_inr"))
-            if gross is None or entry_ch is None or exit_ch is None:
+            if gross is None:
                 unpriced_reason = (
                     unpriced_reason
-                    or "a closed leg has no recorded result, so the trade cannot be totalled"
+                    or "a leg closed earlier has no recorded result, so the trade cannot be totalled"
                 )
             else:
                 unrealized_pnl_total += gross
+            if entry_ch is None or exit_ch is None:
+                charges_reason = charges_reason or (
+                    "a leg closed earlier has no recorded charges"
+                )
+            else:
                 charges_in_total += entry_ch
                 charges_out_total += exit_ch
             enriched_legs.append(leg_copy)
@@ -766,16 +823,20 @@ def _value_one_position(
                 ).total_inr
             )
         except ChargeScheduleUnavailable as exc:
-            unpriced_reason = unpriced_reason or f"exit charges cannot be computed: {exc}"
+            charges_reason = charges_reason or f"exit charges cannot be computed: {exc}"
 
         entry_charges = _opt_float(leg.get("entry_charges_inr"))
         if entry_charges is None:
-            unpriced_reason = unpriced_reason or (
-                "a leg has no recorded entry charges, so the net after costs is unknown"
+            # Opened before charges were recorded per leg, on 2026-09-09. The
+            # profit is still known; only what the round trip costs is not.
+            charges_reason = charges_reason or (
+                "a leg has no recorded entry charges, so the cost of the round trip is unknown"
             )
         else:
             charges_in_total += entry_charges
-        if exit_charges_now is not None:
+        if exit_charges_now is None:
+            charges_reason = charges_reason or "an exit charge could not be computed"
+        else:
             charges_out_total += exit_charges_now
 
         current_position_value += leg_val
@@ -847,26 +908,30 @@ def _value_one_position(
     days_held = _days_held(opened_at_str)
     days_remaining = _days_to_expiry(expiry_val)
 
-    # THE TOTALS. Either every open leg is marked and every charge is known,
-    # or the trade's totals are unavailable with the reason. A sum missing one
-    # leg is not a smaller profit, it is a wrong one.
+    # THE TOTALS, kept apart because two different things can be missing.
     if unpriced_reason is not None:
+        # A leg could not be marked, so the profit itself is unknown. A sum
+        # missing one leg is not a smaller profit, it is a wrong one.
         unrealized: Optional[float] = None
-        net_if_exit_now: Optional[float] = None
-        charges_in: Optional[float] = None
-        charges_out: Optional[float] = None
         position_value: Optional[float] = None
         unrealized_pct: Optional[float] = None
     else:
         unrealized = round(unrealized_pnl_total, 2)
+        position_value = round(current_position_value, 2)
+        unrealized_pct = round(unrealized / max_loss, 4) if max_loss > 0 else 0.0
+
+    if unpriced_reason is not None or charges_reason is not None:
+        # The profit may be known while the cost of the round trip is not.
+        charges_in: Optional[float] = None
+        charges_out: Optional[float] = None
+        net_if_exit_now: Optional[float] = None
+    else:
         charges_in = round(charges_in_total, 2)
         charges_out = round(charges_out_total, 2)
         # "the actual profit that will come into my account after exiting",
         # his words of 2026-09-10: gross, less what getting in cost, less what
         # getting out would cost at these marks.
         net_if_exit_now = round(unrealized_pnl_total - charges_in_total - charges_out_total, 2)
-        position_value = round(current_position_value, 2)
-        unrealized_pct = round(unrealized / max_loss, 4) if max_loss > 0 else 0.0
 
     # Rule 1: the running loss against 1% of the balance read fresh this
     # session. Headroom is what is left before it bites. A profit uses none of
@@ -880,8 +945,13 @@ def _value_one_position(
         rule4_ceiling = capital.deployable_margin_ceiling_inr
         if rule4_ceiling is None:
             rule_reason = rule_reason or capital.ceiling_unavailable_reason
-        if net_if_exit_now is not None:
-            running_loss = max(0.0, -net_if_exit_now)
+        # Rule 1 is measured against what he would actually be left with. If
+        # the charges cannot be read, the running loss falls back to the gross,
+        # which understates it slightly and is stated as such rather than
+        # skipped: a headroom he cannot see is worse than a cautious one.
+        running_basis = net_if_exit_now if net_if_exit_now is not None else unrealized
+        if running_basis is not None:
+            running_loss = max(0.0, -running_basis)
             rule1_headroom = round(max(0.0, rule1_cap - running_loss), 2)
 
     return LivePositionResponse(
@@ -924,6 +994,7 @@ def _value_one_position(
         market_state=market_state,
         read_at=read_at,
         error=unpriced_reason,
+        charges_unavailable_reason=charges_reason,
     )
 
 
