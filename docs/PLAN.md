@@ -1785,6 +1785,131 @@ losses of his intraday era to that rather than to his method. His words:
 
 ---
 
+#### 2.17.7 THE TWO ROLES. Settled by him 2026-09-10 night, the first AI partner chat.
+
+**There are two different things and they must not be confused.**
+
+**The TRADING PARTNER lives in the terminal.** It is Gemini today and may be
+any model tomorrow; that is his decision and it may change. So the partner is
+not a model. It is a **system**: a shape, a memory, a set of jobs and refusals
+that any capable model can be dropped into. His words:
+
+> "You give a system a shape so that I can put any intelligent model.
+> Definitely, I will put the intelligent one, and it will become my partner."
+
+**The MENTOR lives in a Claude chat.** That is what the AI partner chat IS.
+"You cannot be in the terminal. You are here in Claude. Who are you? You are a
+creator, a mentor, a trainer." The mentor designs the partner, monitors it,
+corrects it, feeds it, redesigns it as the terminal matures, and keeps these
+documents current so a new chat resurrects with the current knowledge. The
+mentor never claims to be the partner and never trades.
+
+**What "partner" means, in his words, in his order.**
+
+> "Trading is a lonely business. A partner that talks at every level."
+
+1. **Backtesting.** "Help me with backtesting because I cannot have the world
+   knowledge. I have my knowledge and my experience. The AI in the terminal will
+   bring the world knowledge and structure it. Correct me where I'm wrong.
+   Advise me and suggest to me what makes my backtesting easy."
+2. **Then the market view.** Make it easy.
+3. **Then trade execution.** Make it easy.
+4. **Then the journal.** Make it easy.
+
+**The partner's ONE goal, and what it is NOT.**
+
+> "It's not to make me profitable. If that is possible, anybody can hire and
+> become profitable. It's not to make me disciplined, which only I can do, but
+> just to be with me everywhere, like a partner, like a co-founder, like a
+> colleague."
+
+Any design that measures the partner by his profit, or that appoints it the
+guardian of his discipline, has misread him. It is measured by whether he is
+alone at the desk.
+
+**How the mentor works.** "First of all, we will see what we have so far. If we
+need to correct anything, we will correct it. We will fix it, and we will move
+on, step by step." The terminal is at half stage, so the plan will be tweaked
+many times and that is the mentor's job, not a failure. And because a chat
+fills, **the mentor keeps this section and `docs/SUCCESSOR_AI_PARTNER.md`
+current every session**, so that clearing the chat and pasting the prompt
+again loses nothing.
+
+---
+
+#### 2.17.8 What the mentor found on first reading, 2026-09-10 night. Verified, not remembered.
+
+Read: every document the prompt names, the vault Method files, his rules
+one-pager, his journey and brief, the swing trade notes, the Hougaard note, and
+the terminal's AI code: `src/swayam/ai/persona/trading_partner.py`,
+`context_builder.py`, `memory.py`, `router.py`, `grounded.py`, the AI routes and
+migrations 002, 005, 006, 013. Then the live database, read only.
+
+1. **The partner that exists today is running on a stale version of him.** His
+   one-pager (2026-09-08) deleted the reward-to-risk floor, the no-single-leg
+   rule, one entry per day, the 3% fuse, the alcohol lockout and sleep-based
+   sizing. The vault Method files still carry every one, and
+   `assemble_context()` feeds them to the model every turn (`_format_rules_for_ai`
+   prints per-trade, daily and weekly caps, the alcohol lockout and the sleep
+   sizing). The hard-wired persona still says "never recommend a naked long"
+   and "point him back to the one trade per day rule". It reads the first 3,000
+   characters of the Personal Trading Brief, which still calls the AI an
+   eliminator. **Nothing tells the model which document wins.** This is the
+   layer-2 problem of §2.17.4 made concrete: his own record contradicts itself
+   and the partner cannot tell constitution from history.
+2. **The existing memory is essentially empty. There is nothing to protect;
+   design fresh.** Live counts on 2026-09-10 night: `swayam_ai_messages` 25,
+   `swayam_ai_conversations` 106, `swayam_ai_notebook` 0,
+   `swayam_ai_pinned_decisions` 0, `swayam_ai_session_summaries` 3,
+   `swayam_lessons` 3. `swayam_ai_usage_daily`: 15 requests in total,
+   estimated ₹6.20 in the life of the terminal.
+3. **106 conversations against 25 messages** means a conversation row is
+   created on page load. Small, but it is a page-load write. Check before
+   assuming; fix when the partner is rebuilt.
+4. **The live site cannot see the vault** (§2.13). Anything written into the
+   vault as layer 3 is invisible to the in-terminal partner until the mirror
+   exists. It reads Method files frozen at build time. "The findings live in
+   the vault" is half a design until they also reach the database.
+5. **The chat has no daily cap.** Only grounded search is capped
+   (`SWAYAM_AI_DAILY_GROUNDED_CAP`, default 8). A cap on the partner is a design
+   decision still open.
+6. **The partner is READ-ONLY today** and cannot write a finding anywhere. The
+   lesson ledger is the one exception, auto-written at close by
+   `routes/lessons.py`; three exist.
+
+---
+
+#### 2.17.9 Open, and waiting on him. Updated 2026-09-10 night.
+
+- **Which of his documents is constitution and which is history.** The mentor's
+  recommendation: the one-pager and `ROADMAP.md` are constitution; the 3 Sept
+  Method files are history until he re-ratifies them, and the partner reads
+  them labelled as history. He can walk them rule by rule in this chat, or mark
+  the set superseded and let the constitution grow from the one-pager and the
+  findings. The mentor leans to the second, from his own words of 2026-09-10:
+  "My future, I will be writing by my own hand."
+- **The five questions from the prompt**, with where the mentor leans, so he
+  has something to push against. Not yet discussed with him.
+  - *Refusals:* it refuses to name a trade to take, to score its own idea, to
+    state a number it cannot trace, and to change any rule, size or cap. A
+    refusal always says what it will do instead. A refusal with no exit is what
+    stopped him trading twice on 2026-09-09.
+  - *Across days:* not by remembering chat. By reading three things every time
+    it wakes: his story, his current constitution, the findings ledger. Chat
+    memory is for the day and the open trade, and compacts into those three.
+  - *The vault:* it reads the trading project and the day's daily log. Never
+    finances, his wife's records, tax detail, or Atlas beyond that day. The
+    list is written down and it is the list.
+  - *Correction:* a dated line in the findings ledger, in his words, that
+    outranks anything the partner inferred. The hardest question in the chat.
+  - *Cost and cap:* real spend so far is ₹6.20 total, so the cap is set from
+    what he wants, not from what it has cost.
+- **The next session's first job, in his words:** "we will see what we have so
+  far." Audit the existing partner against §2.17.7 and list what is right,
+  what is wrong, what changes, what is fixed. Then step by step.
+
+---
+
 ## 3. THE BIG ONE, AFTER THE ABOVE
 
 ### Multi-expiry valuation, so calendars work — BRIEFED. `docs/CALENDAR_BUILD_BRIEF.md`
