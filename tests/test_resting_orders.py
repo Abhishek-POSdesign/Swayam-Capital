@@ -516,16 +516,71 @@ def test_a_resting_fill_carries_the_orders_own_execution_key(fake_db):
     assert seen == [f"rest-{order['id']}"], "the key is the order's own, once"
 
 
-@pytest.mark.fake_db
-@pytest.mark.real_fills
-def test_a_market_that_moved_away_leaves_the_order_resting_and_changes_nothing(fake_db):
-    """Between the watcher looking and the fill path re-reading, prices move.
+# ---------------------------------------- the book moves away under the watcher
+#
+# THE BUG THIS SET OF THREE EXISTS FOR, found by the main chat 2026-09-11.
+#
+# The watcher re-sends a claimed order down the same path a leg he pressed Send
+# on takes. Since Build B that path RESTS a limit the book has not reached. So
+# when the market moved away between the watcher seeing his price and the fill
+# path re-reading the book, the re-send wrote a SECOND resting order for the
+# same leg, answered with no position and no fills, and the watcher marked the
+# original order FILLED on an empty fill.
+#
+# A duplicate in his book, and an order shown as filled that never was.
+#
+# The fix is at the source: the watcher comes in through the *_now functions,
+# which cannot rest, so a moved-away book raises the price refusal and the
+# order is released back to resting untouched. One test per path, and each
+# asserts all three things: the order is resting again, there is no second
+# order, and nothing was written to his record.
 
-    Nothing happened, so the order goes back to waiting rather than failing.
-    This is ordinary, not a fault, and it must never mark an order dead.
-    """
+
+def _moved_away_quote():
+    """A book that has slipped back past his price since the watcher looked."""
     from swayam.services.fills import LegQuote
 
+    return LegQuote(ltp=108.0, bid=108.40, ask=108.60, spot=23389.25,
+                    state="live", market_open=True, as_of=None)
+
+
+def _assert_untouched(fake_db, order, *, what):
+    """The three things that must be true after a move away, every time."""
+    orders = fake_db.rows["swayam_orders"]
+    assert len(orders) == 1, f"{what}: a second order was written for the same leg"
+    assert orders[0]["id"] == order["id"]
+    assert orders[0]["status"] == book.RESTING, f"{what}: it must go on waiting"
+    assert orders[0].get("fill") is None, f"{what}: nothing filled, so there is no fill"
+    assert orders[0].get("filled_at") is None
+    assert fake_db.inserted_into("swayam_positions") == [], f"{what}: nothing was opened"
+    assert fake_db.inserted_into("swayam_trade_history") == [], f"{what}: no result row"
+
+
+def _open_trade(fake_db, position_id="pos-condor-1"):
+    """One open trade with one leg, enough for add-a-leg and for an exit."""
+    fake_db.rows["swayam_positions"] = [{
+        "id": position_id,
+        "strategy_name": "Short Call",
+        "underlying": "NIFTY",
+        "status": "open",
+        "mode": "paper",
+        "expiry_date": EXPIRY,
+        "opened_at": "2026-09-10T08:15:00Z",
+        "charges_inr": 37.98,
+        "journal_path": None,
+        "legs": [{
+            "sequence": 1, "direction": "sell", "strike": 23800.0, "option_type": "CE",
+            "quantity_lots": 1, "lot_size": 65, "entry_premium": 109.15,
+            "entry_charges_inr": 37.98, "expiry_date": EXPIRY, "side_hit": "bid",
+        }],
+    }]
+    return position_id
+
+
+@pytest.mark.fake_db
+@pytest.mark.real_fills
+def test_an_entry_whose_book_moved_away_rests_again_and_writes_no_second_order(fake_db):
+    """The path the bug was found on."""
     order = book.place([book.NewOrder(
         kind=book.ENTRY,
         leg=_leg(direction="sell", strike=23500.0, opt="CE"),
@@ -534,10 +589,7 @@ def test_a_market_that_moved_away_leaves_the_order_resting_and_changes_nothing(f
         group_id=str(uuid.uuid4()),
     )])[0]
 
-    # The bid fell back below his price before the fill path read it.
-    gone = LegQuote(ltp=108.0, bid=108.40, ask=108.60, spot=23389.25,
-                    state="live", market_open=True, as_of=None)
-
+    gone = _moved_away_quote()
     with (
         patch("swayam.api.routes.execution.quote_leg", side_effect=lambda **kw: gone),
         patch("swayam.services.fills.quote_leg", side_effect=lambda **kw: gone),
@@ -545,6 +597,96 @@ def test_a_market_that_moved_away_leaves_the_order_resting_and_changes_nothing(f
     ):
         assert order_watcher.fill_now(order) is False
 
-    assert fake_db.inserted_into("swayam_positions") == [], "nothing was opened"
-    row = [r for r in fake_db.rows["swayam_orders"] if r["id"] == order["id"]][0]
-    assert row["status"] == book.RESTING, "it goes on waiting"
+    _assert_untouched(fake_db, order, what="entry")
+
+
+@pytest.mark.fake_db
+@pytest.mark.real_fills
+def test_an_add_leg_whose_book_moved_away_rests_again_and_writes_no_second_order(fake_db):
+    """The same, on a leg joining a trade he already holds."""
+    position_id = _open_trade(fake_db)
+    order = book.place([book.NewOrder(
+        kind=book.ADD_LEG,
+        leg=_leg(direction="sell", strike=23500.0, opt="CE"),
+        limit_price=111.0,
+        position_id=position_id,
+        band=_band(),
+        group_id=str(uuid.uuid4()),
+    )])[0]
+
+    gone = _moved_away_quote()
+    with (
+        patch("swayam.api.routes.execution.quote_leg", side_effect=lambda **kw: gone),
+        patch("swayam.services.fills.quote_leg", side_effect=lambda **kw: gone),
+        patch.object(order_watcher, "_spot_for", return_value=23389.25),
+    ):
+        assert order_watcher.fill_now(order) is False
+
+    _assert_untouched(fake_db, order, what="add a leg")
+    assert len(fake_db.rows["swayam_positions"][0]["legs"]) == 1, "the trade did not gain a leg"
+
+
+@pytest.mark.fake_db
+@pytest.mark.real_fills
+def test_an_exit_whose_book_moved_away_rests_again_and_leaves_the_leg_open(fake_db):
+    """The same, on the way OUT, which is where it would cost him most.
+
+    A leg wrongly marked exited is a leg he believes he is out of and is not.
+    """
+    from swayam.services.fills import LegQuote
+
+    position_id = _open_trade(fake_db)
+    order = book.place([book.NewOrder(
+        kind=book.EXIT_ALL_LEG,
+        leg={**_leg(direction="buy", strike=23800.0, opt="CE"), "sequence": 1},
+        limit_price=95.0,
+        position_id=position_id,
+        band=_band(),
+        group_id=str(uuid.uuid4()),
+    )])[0]
+
+    # Buying back the sold call needs the ask at 95.00 or below; it is 98.75.
+    gone = LegQuote(ltp=109.4, bid=98.60, ask=98.75, spot=23389.25,
+                    state="live", market_open=True, as_of=None)
+
+    with (
+        patch("swayam.api.routes.execution.quote_leg", side_effect=lambda **kw: gone),
+        patch("swayam.services.fills.quote_leg", side_effect=lambda **kw: gone),
+        patch("swayam.api.routes.execution.append_leg_exit_block") as note,
+        patch("swayam.api.routes.execution.queue_journal_note", return_value=True),
+        patch("swayam.api.routes.execution.mark_journal_status"),
+    ):
+        assert order_watcher.fill_now(order) is False
+
+    _assert_untouched(fake_db, order, what="exit")
+    leg = fake_db.rows["swayam_positions"][0]["legs"][0]
+    assert leg.get("status") in (None, "open"), "the leg is still open"
+    assert leg.get("exit_premium") is None, "nothing was booked on it"
+    note.assert_not_called()
+
+
+@pytest.mark.fake_db
+@pytest.mark.real_fills
+def test_an_answer_with_no_trade_and_no_fill_is_never_read_as_a_fill(fake_db):
+    """The second lock, in case a path ever answers emptily again.
+
+    This is the exact shape the bug produced: a reply carrying no position and
+    no fills. It must put the order back to resting, never mark it filled.
+    """
+    order = book.place([book.NewOrder(
+        kind=book.ENTRY,
+        leg=_leg(direction="sell", strike=23500.0, opt="CE"),
+        limit_price=111.0,
+        band=_band(),
+        group_id=str(uuid.uuid4()),
+    )])[0]
+
+    empty = {"position_id": None, "status": "resting", "fills": [],
+             "resting": [{"leg": "SELL 23,500 CE"}]}
+    with (
+        patch("swayam.api.routes.execution.execute_trade_now", return_value=empty),
+        patch.object(order_watcher, "_spot_for", return_value=23389.25),
+    ):
+        assert order_watcher.fill_now(order) is False
+
+    _assert_untouched(fake_db, order, what="an empty answer")

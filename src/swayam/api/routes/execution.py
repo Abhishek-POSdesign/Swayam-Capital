@@ -637,9 +637,32 @@ def execute_multi_leg(req: ExecuteRequest) -> dict[str, Any]:
     return execute_trade(req)
 
 
+# WHY THERE ARE TWO DOORS INTO THE SAME TRADE, from 2026-09-11.
+#
+# Since Build B a limit the book has not reached RESTS instead of refusing.
+# That is right when HE presses Send. It is very wrong when the WATCHER
+# re-sends an order that is already resting: the market can move away between
+# the watcher seeing his price and the fill path re-reading the book, and a
+# path that rests would then write a SECOND order for the same leg, answer
+# with no position and no fills, and let the watcher mark the original filled
+# on an empty fill. A duplicate in his book and an order shown as filled that
+# never was.
+#
+# So the watcher comes in through `*_now`, which means FILL NOW OR REFUSE.
+# A moved-away book raises the price refusal exactly as it did before this
+# build, and the watcher releases the order back to resting, which is what its
+# _PriceMovedAway path always intended.
+#
+# `allow_resting` is a keyword on the INNER functions only. It is never a
+# field on a request model and never a query parameter, so no browser can ask
+# for it either way.
+
+
 @router.post("/api/execute")
 def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
     """Executes a trade in paper mode with strict Method rule gating.
+
+    A leg whose limit the book has not reached RESTS as an open order.
 
     Raises:
         HTTPException(403): If mode == 'real' (broker execution disabled in Phase 1).
@@ -647,6 +670,20 @@ def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
         HTTPException(422): If a leg cannot be filled honestly. Nothing is written.
         HTTPException(500): If database or journal writer fails.
     """
+    return _execute_claimed(req, allow_resting=True)
+
+
+def execute_trade_now(req: ExecuteRequest) -> dict[str, Any]:
+    """The same trade, but FILL NOW OR REFUSE. For the watcher, and only it.
+
+    Nothing rests here. A limit the book has not reached raises the price
+    refusal, so an order that is already resting stays resting rather than
+    breeding a second one.
+    """
+    return _execute_claimed(req, allow_resting=False)
+
+
+def _execute_claimed(req: ExecuteRequest, *, allow_resting: bool) -> dict[str, Any]:
     if req.mode.lower() == "real":
         raise HTTPException(
             status_code=403,
@@ -668,7 +705,7 @@ def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
             raise HTTPException(status_code=409, detail=str(clash)) from clash
 
     try:
-        return _execute_trade_inner(req, idem_key)
+        return _execute_trade_inner(req, idem_key, allow_resting=allow_resting)
     except HTTPException:
         if idem_key:
             abandon_execution(idem_key, "execution failed")
@@ -679,7 +716,9 @@ def execute_trade(req: ExecuteRequest) -> dict[str, Any]:
         raise
 
 
-def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[str, Any]:
+def _execute_trade_inner(
+    req: ExecuteRequest, idem_key: Optional[str], *, allow_resting: bool = True
+) -> dict[str, Any]:
     """The trade itself. Wrapped by execute_trade, which owns the key."""
     # Step 1: Pre-trade rule audit gate, at the prices on the ticket. Entry is
     # never blocked by a rule; a failing check is recorded, not enforced.
@@ -715,7 +754,9 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
     # with no live price does not fill at all.
     # BUILD B: a leg whose limit the book has not reached does not refuse the
     # ticket any more. It comes back in `to_rest` and becomes an open order.
-    filled, spot_from_quotes, to_rest = _fill_all(req.legs, req.underlying, rest_away=True)
+    filled, spot_from_quotes, to_rest = _fill_all(
+        req.legs, req.underlying, rest_away=allow_resting
+    )
 
     # ONE PRESS, ONE GROUP. When nothing fills, every leg rests as an entry
     # order and the FIRST of them to fill opens the trade; the rest join it
@@ -1133,6 +1174,11 @@ def _execute_trade_inner(req: ExecuteRequest, idem_key: Optional[str]) -> dict[s
 
 # ---------------------------------------------------------------- add a leg
 
+def add_leg_now(position_id: str, req: AddLegRequest) -> dict[str, Any]:
+    """One leg onto an open trade, FILL NOW OR REFUSE. For the watcher only."""
+    return _add_leg_claimed(position_id, req, allow_resting=False)
+
+
 @router.post("/api/positions/{position_id}/legs")
 def add_leg_to_position(position_id: str, req: AddLegRequest) -> dict[str, Any]:
     """Adds one leg to a trade that is already open. The trade keeps its identity.
@@ -1147,6 +1193,10 @@ def add_leg_to_position(position_id: str, req: AddLegRequest) -> dict[str, Any]:
     what he now holds. An adjustment block goes on the trade's note, or to the
     outbox when the vault cannot be reached.
     """
+    return _add_leg_claimed(position_id, req, allow_resting=True)
+
+
+def _add_leg_claimed(position_id: str, req: AddLegRequest, *, allow_resting: bool) -> dict[str, Any]:
     idem_key = req.idempotency_key
     if idem_key:
         try:
@@ -1156,7 +1206,7 @@ def add_leg_to_position(position_id: str, req: AddLegRequest) -> dict[str, Any]:
         except DuplicateExecution as clash:
             raise HTTPException(status_code=409, detail=str(clash)) from clash
     try:
-        return _add_leg_inner(position_id, req, idem_key)
+        return _add_leg_inner(position_id, req, idem_key, allow_resting=allow_resting)
     except HTTPException:
         if idem_key:
             abandon_execution(idem_key, "add leg failed")
@@ -1167,7 +1217,9 @@ def add_leg_to_position(position_id: str, req: AddLegRequest) -> dict[str, Any]:
         raise
 
 
-def _add_leg_inner(position_id: str, req: AddLegRequest, idem_key: Optional[str]) -> dict[str, Any]:
+def _add_leg_inner(
+    position_id: str, req: AddLegRequest, idem_key: Optional[str], *, allow_resting: bool = True
+) -> dict[str, Any]:
     client = db.client
     try:
         res = client.table("swayam_positions").select("*").eq("id", position_id).execute()
@@ -1191,7 +1243,7 @@ def _add_leg_inner(position_id: str, req: AddLegRequest, idem_key: Optional[str]
     # BUILD B: if his limit is away from the book it rests on THIS trade
     # instead of refusing, which is what "execute one by one" needs: a leg
     # that rests counts as sent, and the next leg can still be sent.
-    filled, spot_from_quote, to_rest = _fill_all([req.leg], underlying, rest_away=True)
+    filled, spot_from_quote, to_rest = _fill_all([req.leg], underlying, rest_away=allow_resting)
     if not filled:
         resting = _rest_them(
             to_rest,
@@ -1665,6 +1717,7 @@ def _apply_leg_exit(
     req: ExitLegRequest,
     *,
     reverse: bool,
+    allow_resting: bool = True,
 ) -> dict[str, Any]:
     """Exits one leg, and on a reverse opens the opposite leg in the same breath."""
     client = db.client
@@ -1712,7 +1765,7 @@ def _apply_leg_exit(
             underlying=underlying,
             order_type=(req.order_type or "MARKET").upper(),
             limit_price=req.limit_price,
-            rest_away=True,
+            rest_away=allow_resting,
         )
     except _ExitShouldRest as waiting:
         # HIS PRICE ON THE WAY OUT. The leg is not closed, the trade is
@@ -1980,7 +2033,18 @@ def reverse_one_leg(position_id: str, sequence: int, req: ExitLegRequest) -> dic
     return _claimed(position_id, sequence, req, reverse=True)
 
 
-def _claimed(position_id: str, sequence: int, req: ExitLegRequest, *, reverse: bool) -> dict[str, Any]:
+def exit_leg_now(position_id: str, sequence: int, req: ExitLegRequest, *, reverse: bool) -> dict[str, Any]:
+    """The same exit, but FILL NOW OR REFUSE. For the watcher, and only it.
+
+    Nothing rests here. If the book has moved away since the watcher looked,
+    the price refusal comes back and the order it came from stays resting.
+    """
+    return _claimed(position_id, sequence, req, reverse=reverse, allow_resting=False)
+
+
+def _claimed(
+    position_id: str, sequence: int, req: ExitLegRequest, *, reverse: bool, allow_resting: bool = True
+) -> dict[str, Any]:
     """One press, one exit. The execution key here does what it does at entry."""
     idem_key = req.idempotency_key
     if idem_key:
@@ -1996,7 +2060,9 @@ def _claimed(position_id: str, sequence: int, req: ExitLegRequest, *, reverse: b
         except DuplicateExecution as clash:
             raise HTTPException(status_code=409, detail=str(clash)) from clash
     try:
-        response = _apply_leg_exit(position_id, sequence, req, reverse=reverse)
+        response = _apply_leg_exit(
+            position_id, sequence, req, reverse=reverse, allow_resting=allow_resting
+        )
     except HTTPException:
         if idem_key:
             abandon_execution(idem_key, "leg exit failed")

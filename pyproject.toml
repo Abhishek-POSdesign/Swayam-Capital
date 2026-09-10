@@ -49,6 +49,7 @@ markers = [
     "live_db: UNGUARDED live database access. Writes land in Abhishek's real record. Do not use.",
     "real_vault: UNGUARDED writes into his live Obsidian vault. Twenty-six fake trades reached it this way. Do not use.",
     "real_fills: uses the real fill path (live chain quote) instead of the market-at-his-price stand-in",
+    "real_fyers: UNGUARDED calls to the live broker. Spends his FYERS request budget and depends on the market being open. Do not use.",
 ]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

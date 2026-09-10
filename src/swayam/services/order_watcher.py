@@ -237,6 +237,35 @@ class _PriceMovedAway(RuntimeError):
     """The market was at his price and was not there any more. Nothing happened."""
 
 
+def _must_be_a_fill(response: dict[str, Any], *, position_id: str, fills: list[Any]) -> None:
+    """Refuse to call anything a fill unless a trade and a fill actually exist.
+
+    ADDED 2026-09-11, from the main chat's review, and it is the difference
+    between a bookkeeping bug and a lie about his money.
+
+    Before this, the watcher re-sent an order down a path that could REST it.
+    When the book had moved away in the meantime, that path wrote a second
+    order for the same leg and answered with no position and no fills, and the
+    watcher then marked the original order FILLED, with an empty fill. A
+    duplicate in his book, and an order shown as filled that never was.
+
+    The re-send can no longer rest, so this cannot happen. It stays because an
+    empty answer must never again be read as a fill: it puts the order back to
+    resting, exactly where it was, and nothing is written.
+    """
+    resting = response.get("resting") or []
+    if resting or str(response.get("status") or "") == "resting":
+        raise _PriceMovedAway(
+            "The book moved away before this could fill, so nothing was sent and "
+            "the order is still waiting."
+        )
+    if not position_id or not fills:
+        raise _PriceMovedAway(
+            "Nothing filled: the answer carried no trade and no fill, so the order "
+            "is still waiting and nothing was written."
+        )
+
+
 def _plain(exc: Exception) -> str:
     """A refusal in words, out of whatever shape it arrived in."""
     from fastapi import HTTPException
@@ -302,7 +331,7 @@ def _fill_entry(order: dict[str, Any]) -> bool:
     that trade rather than opening more of their own.
     """
     from swayam.api.models_api import ExecuteRequest
-    from swayam.api.routes.execution import execute_trade
+    from swayam.api.routes.execution import execute_trade_now
 
     order_id = str(order.get("id"))
     leg = order.get("leg") or {}
@@ -324,13 +353,19 @@ def _fill_entry(order: dict[str, Any]) -> bool:
         idempotency_key=f"rest-{order_id}",
     )
     try:
-        response = execute_trade(req)
+        response = execute_trade_now(req)
     except Exception as exc:
         _raise_if_price(exc)
         raise
 
     position_id = str(response.get("position_id") or "")
     fills = response.get("fills") or []
+    # NO TRADE, NO FILL. `execute_trade_now` cannot rest, so this should be
+    # unreachable; it is here because the alternative, if it ever were
+    # reachable, is an order marked filled on an empty fill, which is a lie
+    # about his money. Anything short of a real position AND a real fill puts
+    # the order back to resting untouched.
+    _must_be_a_fill(response, position_id=position_id, fills=fills)
     book.mark_filled(
         order_id,
         fill=(fills[0] if fills else {}),
@@ -361,7 +396,7 @@ def _opened_sibling(order: dict[str, Any]) -> Optional[str]:
 def _fill_add_leg(order: dict[str, Any]) -> bool:
     """It joins a trade that is already open, the way "execute one by one" does."""
     from swayam.api.models_api import AddLegRequest
-    from swayam.api.routes.execution import add_leg_to_position
+    from swayam.api.routes.execution import add_leg_now
 
     order_id = str(order.get("id"))
     position_id = str(order.get("position_id") or "")
@@ -374,12 +409,13 @@ def _fill_add_leg(order: dict[str, Any]) -> bool:
         idempotency_key=f"rest-{order_id}",
     )
     try:
-        response = add_leg_to_position(position_id, req)
+        response = add_leg_now(position_id, req)
     except Exception as exc:
         _raise_if_price(exc)
         raise
 
     fill = response.get("fill") or {}
+    _must_be_a_fill(response, position_id=position_id, fills=[fill] if fill else [])
     book.mark_filled(
         order_id,
         fill=fill,
@@ -395,7 +431,7 @@ def _fill_add_leg(order: dict[str, Any]) -> bool:
 
 def _fill_exit(order: dict[str, Any]) -> bool:
     """It squares off, or reverses, one leg of a trade he holds."""
-    from swayam.api.routes.execution import ExitLegRequest, exit_one_leg, reverse_one_leg
+    from swayam.api.routes.execution import ExitLegRequest, exit_leg_now
 
     order_id = str(order.get("id"))
     leg = order.get("leg") or {}
@@ -411,16 +447,19 @@ def _fill_exit(order: dict[str, Any]) -> bool:
         notes=leg.get("notes"),
         idempotency_key=f"rest-{order_id}",
     )
-    call = reverse_one_leg if order.get("kind") == book.REVERSE else exit_one_leg
     try:
-        response = call(position_id, int(sequence), req)
+        response = exit_leg_now(
+            position_id, int(sequence), req, reverse=(order.get("kind") == book.REVERSE)
+        )
     except Exception as exc:
         _raise_if_price(exc)
         raise
 
+    fill = response.get("fill") or {}
+    _must_be_a_fill(response, position_id=position_id, fills=[fill] if fill else [])
     book.mark_filled(
         order_id,
-        fill=(response.get("fill") or {}),
+        fill=fill,
         result={
             "position_id": position_id,
             "sequence": int(sequence),
