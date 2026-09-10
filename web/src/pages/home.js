@@ -667,10 +667,49 @@ export class HomePage {
         <h3>Options, weekly <span class="r">chain · ${escapeHtml(this._readStamp('snapshot'))}</span></h3>
         ${this._kv('India VIX', num(f.india_vix, 2))}
         ${this._kv('Put-call ratio', num(f.weekly_pcr, 2))}
-        ${this._kv('Max pain', num(f.max_pain, 0))}
+        ${this._maxPainRow(f)}
         ${this._kv('Days to weekly expiry', this._dte(f.weekly_dte))}
         ${this._kv('Days to monthly expiry', this._dte(f.monthly_dte))}
       </div>`;
+  }
+
+  /**
+   * Max pain, saying WHICH EXPIRY it belongs to.
+   *
+   * docs/PLAN.md 2.12.5 item 9. On 2026-09-10 this card read 23,500 while
+   * the desk's option chain read 24,000, and neither said which expiry it
+   * meant. Both were right: this one is computed from the WEEKLY chain in
+   * nifty_snapshot.py, and the desk computes it for whatever expiry is
+   * selected there, which is usually the monthly.
+   *
+   * With no expiry to name it with, the figure is not shown at all. An
+   * unlabelled max pain is exactly what confused the two screens.
+   */
+  _maxPainRow(f) {
+    const label = this._expiryLabel(f && f.weekly_expiry);
+    if (!label) {
+      return this._kv(
+        'Max pain',
+        null,
+        null,
+        'the expiry it belongs to is unavailable, and an unlabelled max pain is what confused this card and the option chain',
+      );
+    }
+    return this._kv(
+      `Max pain, ${label} weekly`,
+      num(f.max_pain, 0),
+      null,
+      'the option chain on the desk shows it for the expiry selected there',
+    );
+  }
+
+  /** "15 Sep" from an ISO date, the way every expiry reads on the desk. */
+  _expiryLabel(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+    if (!m) return null;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[Number(m[2]) - 1];
+    return month ? `${Number(m[3])} ${month}` : null;
   }
 
   _money(k, formatted, sub, colour, accent = false) {

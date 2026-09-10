@@ -1019,6 +1019,9 @@ export class StrategyBuilderPage {
         onAddLeg: (leg) => this.addLegFromChain(leg),
         getExpiry: () => this.expiry,
         getSpot: () => this.spot,
+        // THE ONE CLOCK. The panel may not print LIVE on its own authority;
+        // this is what /api/market/data-health told the desk.
+        getMarketState: () => this.dataState,
         refreshMs: this.requoteMs,
       });
     }

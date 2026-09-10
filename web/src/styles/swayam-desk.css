@@ -1182,3 +1182,156 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 /* A proper Reset and a proper dustbin: the icon carries the word beside it,
    never a bare circle or a bare cross. */
 .sw-desk .btn svg, .xt2 .btn svg { width: 14px; height: 14px; }
+
+/* =============================================================================
+   THE OPTION CHAIN, screen 6 of the mockup.
+   docs/builds/BUILD_04_OPTION_CHAIN.md.
+
+   He used it against a live market on 2026-09-10 and it built him a real
+   trade. It is also, in his words, unusable while it fights his scroll. What
+   follows is the reading of it: the at-the-money row banded in sage so he can
+   find his place, a strike with no trade today in grey with its stale price
+   struck through, and Buy and Sell as controls he can hit rather than letters
+   that appear on hover.
+   ========================================================================== */
+
+.ocm { width: min(1360px, 96vw); }
+
+.ocm .ocm-h {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 16px; border-bottom: 1px solid var(--line); cursor: grab;
+}
+.ocm .ocm-h h4 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
+.ocm .ocm-h .r { margin-left: auto; display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+
+/* The two expiries he compares, weekly and monthly, each carrying its own
+   days to run so the choice is informed rather than remembered. */
+.ocm .ocm-exp { display: inline-flex; border: 1px solid var(--line-2); border-radius: 9px; overflow: hidden; }
+.ocm .ocm-exp button {
+  border: none; background: var(--panel-2); color: var(--fg-2);
+  font-family: var(--f); font-size: 13.5px; font-weight: 700;
+  padding: 7px 13px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+}
+.ocm .ocm-exp button small {
+  font-family: var(--m); font-size: 10.5px; font-weight: 500; color: var(--fg-3);
+}
+.ocm .ocm-exp button.on { background: var(--fg); color: var(--panel); }
+.ocm .ocm-exp button.on small { color: var(--panel); opacity: .75; }
+
+/* The six figures above the table, as tiles, exactly as the position card
+   does them. */
+.ocm .ocm-tiles {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px;
+  background: var(--line); border-bottom: 1px solid var(--line);
+}
+@media (max-width: 1100px) { .ocm .ocm-tiles { grid-template-columns: repeat(3, 1fr); } }
+.ocm .ocm-tiles .met {
+  background: var(--panel); padding: 12px 15px; min-height: 92px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 5px;
+}
+.ocm .ocm-tiles .met .k {
+  font-family: var(--m); font-size: 10.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg-3); font-weight: 700;
+}
+.ocm .ocm-tiles .met .v {
+  font-family: var(--m); font-size: 26px; font-weight: 800;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.03em; line-height: 1;
+}
+.ocm .ocm-tiles .met .s { font-size: 12px; color: var(--fg-2); font-family: var(--m); line-height: 1.35; }
+.ocm .ocm-tiles .met .s b { color: var(--fg); font-weight: 600; }
+
+.ocm .ocm-scroll { max-height: 56vh; overflow: auto; border-top: 1px solid var(--line); }
+.ocm .ocm-t { border-collapse: separate; border-spacing: 0; width: 100%; font-family: var(--m); }
+.ocm .ocm-t th {
+  position: sticky; top: 0; z-index: 2; background: var(--panel);
+  font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--fg-3); font-weight: 700; padding: 9px 10px;
+  border-bottom: 2px solid var(--line-2); white-space: nowrap; text-align: left;
+}
+.ocm .ocm-t th.n { text-align: right; }
+.ocm .ocm-t th.side {
+  text-align: center; font-size: 12px; color: var(--fg-2);
+  background: var(--panel-2); letter-spacing: 0.1em;
+}
+.ocm .ocm-t th.strike { text-align: center; }
+.ocm .ocm-t td {
+  padding: 8px 8px; border-bottom: 1px solid var(--line);
+  font-size: 14.5px; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.ocm .ocm-t td.n { text-align: right; }
+
+/* The price, and the book he would actually trade against, beneath it. */
+.ocm .ocm-t td.px { font-size: 18px; font-weight: 800; text-align: right; }
+.ocm .ocm-t td.px small {
+  display: block; font-size: 11px; font-weight: 500; color: var(--fg-3); margin-top: 1px;
+}
+.ocm .ocm-t td.px.up { color: var(--up); }
+.ocm .ocm-t td.px.down { color: var(--down); }
+
+/* A STRIKE WITH NO TRADE TODAY. Muted, with the real book kept and the stale
+   last trade struck through so it cannot be read as a price. */
+.ocm .ocm-t td.dead { color: var(--fg-3); }
+.ocm .ocm-t td.px.dead { font-size: 14px; font-weight: 600; color: var(--fg-3); }
+.ocm .ocm-t td.px.dead em { font-style: normal; font-weight: 700; }
+.ocm .ocm-t td.px.dead s {
+  display: block; font-size: 11px; font-weight: 500; opacity: .65; margin-top: 1px;
+}
+
+/* Open interest, with the wall drawn behind the figure. */
+.ocm .ocm-t td.oi { position: relative; min-width: 94px; }
+.ocm .ocm-t td.oi i.bar {
+  position: absolute; left: 0; top: 5px; bottom: 5px; z-index: 0;
+  border-radius: 3px; opacity: .9;
+}
+.ocm .ocm-t td.oi i.bar.ce { background: var(--down-bg); }
+.ocm .ocm-t td.oi i.bar.pe { background: var(--up-bg); }
+.ocm .ocm-t td.oi span { position: relative; z-index: 1; }
+.ocm .ocm-t td.up { color: var(--up); }
+.ocm .ocm-t td.down { color: var(--down); }
+.ocm .ocm-t td.muted { color: var(--fg-3); font-size: 13px; }
+
+.ocm .ocm-t td.strike {
+  text-align: center; font-size: 18px; font-weight: 800; min-width: 108px;
+  background: var(--panel-2);
+  border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+}
+.ocm .ocm-t td.strike .pill {
+  display: block; margin: 3px auto 0; width: max-content;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+  background: var(--brand); color: #fff; border-radius: 4px; padding: 2px 7px;
+}
+
+/* In the money, on the correct side. */
+.ocm .ocm-t tr.itm-ce td.ce { background: var(--sunk); }
+.ocm .ocm-t tr.itm-pe td.pe { background: var(--sunk); }
+
+/* THE AT-THE-MONEY ROW. Sage, because it is a fact about the market and not
+   about his money: colour from the money is reserved for the money. */
+.ocm .ocm-t tr.atm td {
+  background: rgba(125, 157, 132, .16) !important;
+  border-top: 2px solid var(--brand); border-bottom: 2px solid var(--brand);
+}
+.ocm .ocm-t tr.atm td.strike { background: var(--brand) !important; color: #fff; }
+
+/* BUY AND SELL AS BUTTONS. His standing rule: no cheap icon, and nothing that
+   only appears when the mouse happens to be in the right place. */
+.ocm .ocm-t td.act { white-space: nowrap; display: flex; gap: 5px; }
+.ocm .ocbtn {
+  font-family: var(--f); font-size: 12.5px; font-weight: 700;
+  border-radius: 7px; padding: 6px 9px; cursor: pointer;
+  border: 1.5px solid; background: transparent; min-width: 44px;
+}
+.ocm .ocbtn.B { color: var(--up); border-color: var(--up); }
+.ocm .ocbtn.B:hover:not(:disabled) { background: var(--up); color: #fff; }
+.ocm .ocbtn.S { color: var(--down); border-color: var(--down); }
+.ocm .ocbtn.S:hover:not(:disabled) { background: var(--down); color: #fff; }
+.ocm .ocbtn:disabled { opacity: .3; cursor: not-allowed; }
+
+.ocm .ocm-foot {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 10px 16px; border-top: 1px solid var(--line);
+  font-family: var(--m); font-size: 11.5px; color: var(--fg-3);
+}
+.ocm .ocm-foot b { color: var(--fg-2); }
+.ocm .ocm-foot .r { margin-left: auto; text-align: right; }
