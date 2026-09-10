@@ -802,6 +802,23 @@ from the chain the natural way to build a structure.
 
 ---
 
+**BUILT, 2026-09-11: BUILD A PARTS ONE AND THREE.** On branch
+`feature/swayam-build-a-desk-home-chain-042`, pushed, **not merged and no pull
+request yet, so none of it is live.** Part one is the position area, the exit
+ticket, the campaign model, the name from the open legs, click-to-load on the
+payoff, and the drainer's close branch. Part three is the option chain: the
+scroll kept by painting only on a shape change, a strike with no trade today
+greyed with its stale price struck through and unaddable, the at-the-money row
+banded and centred, Buy and Sell as buttons, four figures a side, and max pain
+naming its expiry on the chain and on Home. **Part two, Home's band and its
+states, targets, Manage from Home, the crosshair, the terminal-test phase and
+the big-number pass, is the only part left**; the chat that finishes it starts
+at `docs/builds/BUILD_02_HOME_TARGETS_AND_READING.md` section 0. Migrations
+022 and 023 are both unapplied and he applies them together before merging.
+Verified on the running system in both themes: Python 616 passing, JavaScript
+299 passing, his journal folder 6 notes before and after, zero console errors.
+The one Python failure is a stale mock that fails identically on `main`.
+
 **SUPERSEDED THE SAME EVENING. PR 3 is now TWO BUILDS in `docs/builds/`,
 his decision of 2026-09-10 evening, corrected late that night from four to
 two:** Build A, one chat, one branch, one pull request, is the position area,
