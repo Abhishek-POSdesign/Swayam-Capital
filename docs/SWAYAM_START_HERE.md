@@ -85,10 +85,25 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: BUILD A COMPLETE, ALL THREE PARTS, 2026-09-10
+### Latest first: BUILD A LIVE AND PROVEN IN HIS WINDOW, 2026-09-11
 
-**On a branch with an open pull request, NOT merged, so none of this is
-live.** Branch `feature/swayam-build-a-desk-home-chain-042`, cut from `main`
+`docs/PLAN.md` §2.12.8 has the full account; the vault log
+`00 - Developer Logs/SESSION_LOG_2026-09-11.md` the narrative.
+
+| | |
+|---|---|
+| **Merged and live** | Build A (#65), the marking-script fix (#66), his first review round (#67), the AI partner chat's documents (#68, #69). Migrations 022, 023 and 024 applied. Live revision built from main |
+| **Proven on the live market** | The band, targets reached, the crosshair, the chain holding his scroll, the card's figures, and a hedged dummy opened and closed through the new exit ticket with its note completed by the drainer |
+| **⚠️ Broke, top three** | A naked leg cannot be recorded (infinity stored as max loss); FYERS 429 after 15:00 because Build A quotes legs outside the chain feed; entry blocked by a rule with the plan chip on "carrying overnight". All to the polish chat's round one |
+| **The record** | Five closed trades marked `terminal_test`, notes moved to `04 - Journal/Terminal tests/` (six there now with today's dummy). **The journal folder holds ONE note**, the open condor's. Check it before and after every test run |
+| **Two builder chats open** | The polish chat in the primary folder, branch `feature/swayam-polish-round2-047`, round one fixes then round two the Atlas-inspired look with a mockup first. Build B, resting orders, done and reviewed (695 passing), in worktree `.claude/worktrees/nifty-resting-orders-074c38` with its own venv, opens its pull request on his word |
+| **Merge order** | Build B, then polish round one, then round two |
+| **Still to write** | Build C, cloud hygiene, from his cost chat's audit: images, three regions, the SIGABRT, the double-written bucket, the nightly backup |
+| His PC | Windows Smart App Control was blocking every Python from 17:39 on the 10th; he turned it off on the 10th night |
+
+### Earlier: BUILD A COMPLETE, ALL THREE PARTS, 2026-09-10
+
+**Merged the same night as #65; see the entry above.** Branch `feature/swayam-build-a-desk-home-chain-042`, cut from `main`
 at the merge of pull request #63.
 
 **All three parts are built and verified on the running system in both
