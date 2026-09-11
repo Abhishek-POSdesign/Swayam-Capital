@@ -1619,10 +1619,25 @@ export class StrategyBuilderPage {
     const bes = breakevens(this.legs, opts);
     const bal = this.capital && typeof this.capital.risk_capital_inr === 'number' ? this.capital.risk_capital_inr : null;
 
-    // Margin needed is the broker's number or nothing. It is never modelled here.
-    const need = this.preview && typeof this.preview.margin_required_inr === 'number'
+    // MARGIN NEEDED is the broker's number or nothing. It is never modelled here.
+    //
+    // But a trade he ALREADY HOLDS was priced by the broker once, and that
+    // figure is stored on its row. After hours the broker will not price a
+    // basket, so this said "unavailable" beside a position whose margin the
+    // terminal knows perfectly well. His words, 2026-09-11: "it must show the
+    // last margin it has seen with us... the last recorded."
+    //
+    // So the live quote wins, the stored one stands in for a LOADED position,
+    // and the tile says which of the two it is. Nothing is modelled and nothing
+    // is invented: with neither, it still says unavailable.
+    const liveNeed = this.preview && typeof this.preview.margin_required_inr === 'number'
       ? this.preview.margin_required_inr
       : null;
+    const storedNeed = this.loadedFrom && typeof this.loadedFrom.margin_required_inr === 'number'
+      ? this.loadedFrom.margin_required_inr
+      : null;
+    const need = liveNeed !== null ? liveNeed : storedNeed;
+    const needIsStored = liveNeed === null && storedNeed !== null;
     const free = this.marginFree();
     const fits = need !== null && free !== null ? need <= free : null;
 
@@ -1640,6 +1655,8 @@ export class StrategyBuilderPage {
 
     const marginSub = need === null
       ? (this.previewError || (this.preview && this.preview.margin_unavailable_reason) || 'the broker has not priced this basket')
+      : needIsStored
+        ? 'last recorded for this trade · not a live quote'
       : free === null
         ? 'free margin unknown until positions and the ceiling are read'
         : fits
@@ -1648,7 +1665,7 @@ export class StrategyBuilderPage {
 
     host.innerHTML =
       this._met('Margin needed', need === null ? null : inr(need), marginSub,
-        need === null ? 'var(--fg-3)' : fits === null ? null : fits ? 'var(--up)' : 'var(--down)', need, true) +
+        need === null || needIsStored ? 'var(--fg-2)' : fits === null ? null : fits ? 'var(--up)' : 'var(--down)', need, true) +
       this._met('Margin used', this.marginUsed === null ? null : inr(this.marginUsed),
         this.capital && typeof this.capital.deployable_margin_ceiling_inr === 'number'
           ? `of ${inr(this.capital.deployable_margin_ceiling_inr)} ceiling`

@@ -185,7 +185,7 @@ describe('Home — the rebuilt page', () => {
     page.renderMoney();
     const agreed = container.querySelector('#home-money').textContent;
     expect(agreed).toContain('84,929');
-    expect(agreed).toContain('same figure as the desk');
+    expect(agreed).toContain('across 1 open position');
     expect(page.marginUsed()).toBeCloseTo(84929.2, 1);
     expect(text).toContain('unavailable');
   });
@@ -201,8 +201,7 @@ describe('Home — the rebuilt page', () => {
     // from 8 September 2026" and "81 build-and-test rows". Both were written
     // into the page, neither was read from anything, and the first contradicted
     // his correction of 2026-09-10. The card reads the phase now.
-    expect(host.textContent).toContain('Paper trading has not started');
-    expect(host.textContent).toContain('terminal test');
+    expect(host.textContent).toContain('Test trading');
     expect(host.textContent).not.toContain('8 September');
     expect(host.textContent).not.toContain('81 build');
 
@@ -293,7 +292,8 @@ describe('Home — the rebuilt page', () => {
     expect(host.textContent).toContain('nothing running');
     // The line used to name 8 September in the page's own source. It reads the
     // phase now, so it cannot go on being wrong after paper trading starts.
-    expect(host.textContent).toContain('on the day you say paper trading begins');
+    expect(host.textContent).toContain('Test trading');
+    expect(host.textContent).toContain('starts clean on the day you say');
     expect(host.textContent).not.toContain('8 September');
 
     page.phase = { paper_trading_started: true, paper_trading_started_at: '2026-10-01T04:00:00Z' };
@@ -319,6 +319,9 @@ describe('Home — the rebuilt page', () => {
     expect(host.innerHTML).not.toContain('solid-');
     expect(host.textContent).toContain('1,240');
     expect(host.textContent).toContain('2 of 4 legs');
+    // The name owns the corner and the chip sits beside it, the way the CLOSED
+    // chip sits beside NIFTY 50. It used to have the first column to itself.
+    expect(host.innerHTML.indexOf('Iron Condor')).toBeLessThan(host.innerHTML.indexOf('hchip'));
 
     // A LOSS TARGET REACHED: solid red, and the blink stops.
     page.livePositions = [{
@@ -330,7 +333,7 @@ describe('Home — the rebuilt page', () => {
     host = container.querySelector('#home-positions');
     expect(host.innerHTML).toContain('solid-down');
     expect(host.innerHTML).not.toContain('hb tint-down running');
-    expect(host.textContent).toContain('loss target reached');
+    expect(host.textContent).toContain('loss target hit');
     expect(host.textContent).toContain('23,200 PE');
 
     // A PROFIT TARGET REACHED: solid green.
@@ -343,7 +346,7 @@ describe('Home — the rebuilt page', () => {
     page.renderPositions();
     host = container.querySelector('#home-positions');
     expect(host.innerHTML).toContain('solid-up');
-    expect(host.textContent).toContain('profit target reached');
+    expect(host.textContent).toContain('profit target hit');
   });
 
   it('does not blink over a frozen number once the market is shut', () => {
@@ -357,10 +360,13 @@ describe('Home — the rebuilt page', () => {
     }];
     page.renderPositions();
     const host = container.querySelector('#home-positions');
-    // The colour stays, because the trade is still his. The breath does not,
-    // because his profit and loss is not moving at nine in the evening.
-    expect(host.innerHTML).toContain('tint-up');
-    expect(host.innerHTML).not.toContain('hb tint-up running');
+    // A SHUT MARKET GETS ITS OWN COLOUR. His correction, 2026-09-11: green
+    // means a profit is running and red means a loss is running, so a frozen
+    // figure must wear neither. The band goes calm and says so; the figures
+    // themselves keep their green and red, because the money did what it did.
+    expect(host.innerHTML).toContain('hb shut');
+    expect(host.innerHTML).not.toContain('tint-up');
+    expect(host.innerHTML).not.toContain('running');
     expect(host.textContent).toContain('at the close');
   });
 
@@ -370,8 +376,8 @@ describe('Home — the rebuilt page', () => {
     page.capital = CAPITAL; // 1% running-loss cap of 9,710.02
     page.positions = [{ id: 'a1' }, { id: 'a2' }];
     page.livePositions = [
-      { position_id: 'a1', unrealized_pnl_inr: -800 },
-      { position_id: 'a2', unrealized_pnl_inr: -440 },
+      { position_id: 'a1', unrealized_pnl_inr: -800, market_state: 'live' },
+      { position_id: 'a2', unrealized_pnl_inr: -440, market_state: 'live' },
     ];
     page.renderPositions();
 
@@ -386,8 +392,8 @@ describe('Home — the rebuilt page', () => {
     expect(host.textContent).toContain('440');
 
     page.livePositions = [
-      { position_id: 'a1', unrealized_pnl_inr: 800 },
-      { position_id: 'a2', unrealized_pnl_inr: 440 },
+      { position_id: 'a1', unrealized_pnl_inr: 800, market_state: 'live' },
+      { position_id: 'a2', unrealized_pnl_inr: 440, market_state: 'live' },
     ];
     page.renderPositions();
     const now = container.querySelector('#home-positions');

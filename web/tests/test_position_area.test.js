@@ -109,6 +109,46 @@ async function rendered(open, closed, options) {
   return { area, host, html: host.innerHTML };
 }
 
+// ------------------------------------------------- the listener that piled up
+
+describe('the area binds its clicks once, however often it redraws', () => {
+  it('never attaches a second listener to the host', async () => {
+    // THE BUG THIS LOCKS OUT, found on his machine 2026-09-11.
+    //
+    // `render()` called `_bind()`, and `_bind()` attached a click listener to
+    // `this.host`. render replaces the host CONTENTS but never the host, so
+    // every redraw added another listener to the same element. Every listener
+    // that fired called `act()`, which called `render()`, which added another.
+    //
+    // Measured in a real browser before the fix: one click on Show ran `act`
+    // once, the next twice, then four times, then eight. Doubling. His words:
+    // "the earlier trades collapse and open button hangs itself, and this also
+    // hangs the whole website. I will have to reopen the website if I use that
+    // button once."
+    //
+    // The five-second refresh timer redraws too, so the listeners piled up
+    // merely by leaving the desk open beside a running trade.
+    const { area, host } = mount();
+
+    let clickListeners = 0;
+    const realAdd = host.addEventListener ? host.addEventListener.bind(host) : null;
+    host.addEventListener = (type, fn) => {
+      if (type === 'click') clickListeners += 1;
+      return realAdd ? realAdd(type, fn) : undefined;
+    };
+
+    await area.refresh();
+    expect(clickListeners).toBe(1);
+
+    // Six more redraws, the way the timer and every button press cause them.
+    for (let i = 0; i < 6; i += 1) area.render();
+    expect(clickListeners).toBe(1);
+
+    await area.refresh();
+    expect(clickListeners).toBe(1);
+  });
+});
+
 // --------------------------------------------------------------- helpers
 
 describe('the helpers refuse to invent a number', () => {
