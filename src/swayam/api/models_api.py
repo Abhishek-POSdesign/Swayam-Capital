@@ -328,8 +328,11 @@ class PayoffCurveResponse(BaseModel):
     points: list[PayoffPointResponse]
     breakevens: list[float]
     max_profit_inr: float
-    max_loss_inr: float
-    rr_implied: float
+    # NULL MEANS NO CEILING, and the screen prints the word unlimited. It never
+    # means "not computed": a figure that could not be worked out is a failure
+    # and the request is refused.
+    max_loss_inr: Optional[float] = None
+    rr_implied: Optional[float] = None
     net_debit_credit_inr: float
 
 
@@ -435,7 +438,12 @@ class PositionResponse(BaseModel):
     underlying: str
     legs: list[dict[str, Any]]
     net_debit_credit_inr: float
-    max_loss_inr: float
+    # NULL MEANS NO CEILING. Found by sweeping after the review of Round 1b:
+    # /api/positions answers with this model, and a required float here would
+    # have rejected a naked trade outright -- taking the whole open-positions
+    # list down with it, on Home and on the desk, not just that one row.
+    max_loss_inr: Optional[float] = None
+    max_loss_unbounded_reason: Optional[str] = None
     max_profit_inr: float
     breakeven_points: list[float]
     status: str

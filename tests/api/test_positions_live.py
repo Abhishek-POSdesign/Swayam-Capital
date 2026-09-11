@@ -11,6 +11,8 @@ Verifies:
 
 import pytest
 from unittest.mock import MagicMock, patch
+
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from swayam.api.main import app
@@ -133,11 +135,15 @@ def test_positions_live_marks_each_leg_at_the_side_he_would_get(client):
     with (
         patch("swayam.api.routes.positions.db") as mock_db,
         patch("swayam.api.routes.positions.fyers_client") as mock_fyers,
+        # Round 1b: the live valuation reads api/chain_feed.py now, so the
+        # chain is stubbed at this route's own door rather than at the
+        # broker client, which it no longer calls itself.
+        patch("swayam.api.routes.positions._get_cached_option_chain") as mock_chain_door,
     ):
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             sample_pos
         ]
-        mock_fyers.get_option_chain.return_value = _make_mock_chain(
+        mock_chain_door.return_value = mock_fyers.get_option_chain.return_value = _make_mock_chain(
             spot=24800.0, ltp_24850_pe=220.0, ltp_24100_pe=40.0
         )
         mock_fyers.get_nifty_spot.return_value = 24800.0
@@ -192,11 +198,15 @@ def test_a_leg_with_no_book_cannot_be_marked_and_says_so(client):
     with (
         patch("swayam.api.routes.positions.db") as mock_db,
         patch("swayam.api.routes.positions.fyers_client") as mock_fyers,
+        # Round 1b: the live valuation reads api/chain_feed.py now, so the
+        # chain is stubbed at this route's own door rather than at the
+        # broker client, which it no longer calls itself.
+        patch("swayam.api.routes.positions._get_cached_option_chain") as mock_chain_door,
     ):
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             sample_pos
         ]
-        mock_fyers.get_option_chain.return_value = no_book
+        mock_chain_door.return_value = mock_fyers.get_option_chain.return_value = no_book
         mock_fyers.get_nifty_spot.return_value = 24800.0
 
         resp = client.get("/api/positions/live")
@@ -224,11 +234,15 @@ def test_a_missing_entry_charge_hides_the_cost_but_not_the_profit(client):
     with (
         patch("swayam.api.routes.positions.db") as mock_db,
         patch("swayam.api.routes.positions.fyers_client") as mock_fyers,
+        # Round 1b: the live valuation reads api/chain_feed.py now, so the
+        # chain is stubbed at this route's own door rather than at the
+        # broker client, which it no longer calls itself.
+        patch("swayam.api.routes.positions._get_cached_option_chain") as mock_chain_door,
     ):
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             sample_pos
         ]
-        mock_fyers.get_option_chain.return_value = _make_mock_chain()
+        mock_chain_door.return_value = mock_fyers.get_option_chain.return_value = _make_mock_chain()
         mock_fyers.get_nifty_spot.return_value = 24800.0
 
         resp = client.get("/api/positions/live")
@@ -265,11 +279,15 @@ def test_positions_live_handles_missing_strike_cleanly(client):
     with (
         patch("swayam.api.routes.positions.db") as mock_db,
         patch("swayam.api.routes.positions.fyers_client") as mock_fyers,
+        # Round 1b: the live valuation reads api/chain_feed.py now, so the
+        # chain is stubbed at this route's own door rather than at the
+        # broker client, which it no longer calls itself.
+        patch("swayam.api.routes.positions._get_cached_option_chain") as mock_chain_door,
     ):
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             sample_pos
         ]
-        mock_fyers.get_option_chain.return_value = incomplete_chain
+        mock_chain_door.return_value = mock_fyers.get_option_chain.return_value = incomplete_chain
         mock_fyers.get_nifty_spot.return_value = 24800.0
 
         resp = client.get("/api/positions/live")
@@ -299,10 +317,21 @@ def test_a_position_the_feed_cannot_price_is_marked_rather_than_blanking_the_pag
     with (
         patch("swayam.api.routes.positions.db") as mock_db,
         patch("swayam.api.routes.positions.fyers_client") as mock_fyers,
+        # Round 1b: the live valuation reads api/chain_feed.py now, so the
+        # chain is stubbed at this route's own door rather than at the
+        # broker client, which it no longer calls itself.
+        patch("swayam.api.routes.positions._get_cached_option_chain") as mock_chain_door,
     ):
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             sample_pos
         ]
+        # What the real door raises when the feed has nothing: the route
+        # wraps the broker error itself, so stubbing the door means the
+        # stub has to raise the wrapped form rather than the raw one.
+        mock_chain_door.side_effect = HTTPException(
+            status_code=503,
+            detail="Cannot compute live P&L: FYERS chain unreachable. Try again in a moment.",
+        )
         mock_fyers.get_option_chain.side_effect = RuntimeError("FYERS connection timeout")
 
         resp = client.get("/api/positions/live")
@@ -333,6 +362,8 @@ def test_one_unpriceable_position_does_not_blank_the_others(client):
 
     with (
         patch("swayam.api.routes.positions.db") as mock_db,
+        # This one already stubs the route's own door, per expiry, which is
+        # exactly where Round 1b moved the chain read to.
         patch("swayam.api.routes.positions._get_cached_option_chain", side_effect=chain_for),
         patch("swayam.api.routes.positions.fyers_client") as mock_fyers,
     ):
@@ -367,11 +398,15 @@ def test_positions_live_caching_within_5_seconds(client):
     with (
         patch("swayam.api.routes.positions.db") as mock_db,
         patch("swayam.api.routes.positions.fyers_client") as mock_fyers,
+        # Round 1b: the live valuation reads api/chain_feed.py now, so the
+        # chain is stubbed at this route's own door rather than at the
+        # broker client, which it no longer calls itself.
+        patch("swayam.api.routes.positions._get_cached_option_chain") as mock_chain_door,
     ):
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             sample_pos
         ]
-        mock_fyers.get_option_chain.return_value = _make_mock_chain()
+        mock_chain_door.return_value = mock_fyers.get_option_chain.return_value = _make_mock_chain()
         mock_fyers.get_nifty_spot.return_value = 24800.0
 
         # Call 1
@@ -386,7 +421,7 @@ def test_positions_live_caching_within_5_seconds(client):
         # Two calls on the FIRST request: one resolves the expiry to a FYERS
         # epoch, one reads the chain. The second request adds none, which is
         # what the five-second cache is for.
-        assert mock_fyers.get_option_chain.call_count == 2
+        assert mock_chain_door.call_count == 2
 
 
 def test_positions_live_holding_days_calculation(client):
@@ -398,11 +433,15 @@ def test_positions_live_holding_days_calculation(client):
     with (
         patch("swayam.api.routes.positions.db") as mock_db,
         patch("swayam.api.routes.positions.fyers_client") as mock_fyers,
+        # Round 1b: the live valuation reads api/chain_feed.py now, so the
+        # chain is stubbed at this route's own door rather than at the
+        # broker client, which it no longer calls itself.
+        patch("swayam.api.routes.positions._get_cached_option_chain") as mock_chain_door,
     ):
         mock_db.client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
             sample_pos
         ]
-        mock_fyers.get_option_chain.return_value = _make_mock_chain()
+        mock_chain_door.return_value = mock_fyers.get_option_chain.return_value = _make_mock_chain()
         mock_fyers.get_nifty_spot.return_value = 24800.0
 
         resp = client.get("/api/positions/live")

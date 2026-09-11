@@ -144,6 +144,41 @@ def loss_is_unbounded(spread: Spread) -> bool:
     return net_call_quantity(spread) < 0
 
 
+def unbounded_loss_reason(spread: Spread) -> Optional[str]:
+    """Why this structure's loss has no ceiling, in words, or None.
+
+    ROUND 1b, FAULT 0a, from his live test of 11 September 2026. A sold call
+    filled at the broker and then could not be recorded: "Out of range float
+    values are not JSON compliant". `math.inf` is the honest answer for a net
+    short call and it must stay; what it needed was somewhere to go other than
+    a numeric column. Storage now writes NULL and stores this sentence beside
+    it, so a row read back years from now says WHY it is null rather than
+    leaving anyone to guess between unbounded and unknown.
+    """
+    if not loss_is_unbounded(spread):
+        return None
+    return (
+        "net short calls: above the highest strike the loss has no ceiling, "
+        "so there is no worst case at expiry to record"
+    )
+
+
+def bounded_or_none(value: Optional[float]) -> Optional[float]:
+    """A number a database column can hold, or None when it is not finite.
+
+    The one place infinity is turned into an absence. Every path that stores or
+    returns a risk figure goes through this, so no column and no JSON reply can
+    be handed an `Infinity` again.
+    """
+    if value is None:
+        return None
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if (math.isinf(out) or math.isnan(out)) else out
+
+
 def compute_max_profit_loss(
     spread: Spread,
     spot_range: Optional[tuple[float, float]] = None,
@@ -269,14 +304,31 @@ def compute_payoff_curve(
     max_profit, max_loss = compute_max_profit_loss(spread, spot_range=(low_spot, high_spot))
     net_debit_credit = compute_net_debit_credit(spread)
 
-    rr_implied = (max_profit / max_loss) if max_loss > 0.0 else float("inf")
+    # The SAME fault as the maximum loss, one line further on. A structure with
+    # no possible loss made this `Infinity`, and it travels into the record
+    # beside max_loss_inr. There is no reward-to-risk ratio when there is no
+    # risk, and None says that; a number here would be an invention.
+    # THERE IS NO REWARD-TO-RISK RATIO WITHOUT A RISK TO DIVIDE BY.
+    #
+    # Two ways there is none. A structure that cannot lose gives a division by
+    # zero, which used to be `Infinity` and travelled into the record beside
+    # the maximum loss. And a structure whose loss has NO CEILING gives
+    # profit/inf = 0.0, which is worse than useless: "R:R implied 0.00" reads
+    # as a measured ratio on a naked short when the truth is that the
+    # denominator does not exist. Both are None, and the note says so in words.
+    rr_implied = None if (math.isinf(max_loss) or max_loss <= 0.0) else (max_profit / max_loss)
+    rr_implied = bounded_or_none(rr_implied)
 
     return PayoffCurve(
         spot_range=(low_spot, high_spot),
         points=tuple(points),
         breakevens=breakevens,
         max_profit_inr=max_profit,
-        max_loss_inr=max_loss,
+        # The curve hands out a figure a column and a JSON reply can both hold.
+        # `compute_max_profit_loss` still answers `math.inf`, which is the true
+        # answer and is what `loss_is_unbounded` and the screens read; it simply
+        # stops here rather than travelling into the record.
+        max_loss_inr=bounded_or_none(max_loss),
         rr_implied=rr_implied,
         net_debit_credit_inr=net_debit_credit,
     )
