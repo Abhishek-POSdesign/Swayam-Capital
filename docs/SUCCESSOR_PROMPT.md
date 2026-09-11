@@ -107,19 +107,29 @@ WHERE EVERYTHING LIVES. Do not ask me any of this.
 - The local backend starts from .claude/launch.json as swayam-api, the web as
   swayam-web. Both point at the LIVE database and live FYERS.
 
-WHERE THINGS STAND, 11 September 2026, after my window
-You are waking from a cleared chat, not starting fresh. The chat before you
-was the orchestrator from the evening of 10 September through my window on
-11 September. Read docs/PLAN.md 2.12.6, 2.12.7 and 2.12.8 and the vault log
-SESSION_LOG_2026-09-11.md and you have everything it knew.
+WHERE THINGS STAND, 11 September 2026, evening
+You are waking from a cleared chat, not starting fresh. Read docs/PLAN.md
+2.12.6, 2.12.7, 2.12.8 and 2.12.10 and the vault log SESSION_LOG_2026-09-11.md
+and you have everything the chat before you knew.
 
-What is merged and live: Build A, all three parts (PR #65), the marking
-script fix (#66), my first review round (#67), the AI partner chat's
-documents (#68, #69). The live site runs main. Migrations 022, 023 and 024
-are applied. On 11 September, in my window, Build A was proven on the live
-market: the band, targets, the crosshair, the chain, the position card, and
-a hedged dummy trade opened and closed through the new exit ticket with its
-note completed by the drainer. PLAN 2.12.8 has what passed and what broke.
+What is merged and live: Build A, all three parts (#65), the marking script
+fix (#66), my first review round (#67), the AI partner chat's documents (#68,
+#69), Build B's resting orders (#71) and the polish chat's round one (#72).
+The live site runs main. Migrations 022, 023 and 024 are applied. On
+11 September, in my window, Build A was proven on the live market: the band,
+targets, the crosshair, the chain, the position card, and a hedged dummy
+opened and closed through the new exit ticket with its note completed by the
+drainer. PLAN 2.12.8 has what passed and what broke.
+
+THREE FAULTS FROM THAT TEST ARE STILL ON MAIN, and they are the next code:
+a naked single leg cannot be recorded because infinity reaches the database;
+FYERS answers 429 after 15:00 because the live valuation quotes legs outside
+the chain feed; and entry is blocked by a rule, which breaks my first
+principle. They are round 1b in the polish chat, on a fresh branch, before
+round two's look. PLAN 2.12.10 names the file and line of each.
+
+AND RESTING ORDERS HAVE NEVER BEEN SEEN LIVE. #71 merged after the bell and
+nothing may rest after 15:30, so they are the first thing in my next window.
 
 EVERY TRADE IN THE RECORD IS A TERMINAL TEST. Paper trading has NOT started.
 The five closed trades are marked terminal_test and their notes moved into
@@ -136,19 +146,18 @@ THIS CHAT IS THE ORCHESTRATOR. IT DOES NOT BUILD. It plans, draws the
 mockup, writes the build document and the prompt for a builder chat, and
 reviews the finished build on the running system before I merge. Builder
 chats build. Two are open right now:
-- The Build A POLISH chat, in the primary folder, branch
-  feature/swayam-polish-round2-047, working the list in PLAN 2.12.8: round
-  one is fixes, round two is the Atlas-inspired look with a mockup first
-  that I approve in that chat. Its prompt is in PLAN 2.12.8.
-- The Build B chat, resting orders, DONE and reviewed (Python 695 passing,
-  1 stale failure as on main), in a worktree with its own venv at
-  .claude/worktrees/nifty-resting-orders-074c38, branch
-  feature/swayam-build03-resting-orders-044. It opens its pull request when
-  I say; it merges main into its branch first.
-MERGE ORDER: Build B first, then the polish chat's round one, then round
-two. Nothing else moves ahead of these. Only one chat writes to the primary
-folder; a second builder takes a worktree WITH ITS OWN VENV and proves
-"import swayam" resolves inside it.
+- The Build A POLISH chat, in the primary folder. Round one is merged as
+  #72. Next it takes ROUND 1b, the three faults still on main, on a fresh
+  branch off main, its own pull request, BEFORE round two's mockup. Round
+  two is the Atlas-inspired look, mockup first, approved in that chat, no
+  lilac. PLAN 2.12.10 has round 1b; 2.12.8 has round two.
+- The Build B chat, resting orders, merged as #71, in a worktree with its
+  own venv at .claude/worktrees/nifty-resting-orders-074c38. It is IDLE and
+  kept open only because it is the one chat that knows why the watcher
+  behaves as it does, for whatever my next window finds. New work for it
+  starts a fresh branch off main; its own is merged.
+Only one chat writes to the primary folder; a second builder takes a
+worktree WITH ITS OWN VENV and proves "import swayam" resolves inside it.
 
 WHAT WAS DECIDED, AND IS NOT UP FOR DISCUSSION
 - Limit orders REST. A limit away from the market sits as an open order until
@@ -165,8 +174,13 @@ WHAT WAS DECIDED, AND IS NOT UP FOR DISCUSSION
   to fix, not a rule: rules at entry are advisory; carrying is gated at
   15:20 by the naked-shorts check.
 - The database: the record stays in Supabase; the backtesting history stays
-  in DuckDB on my PC with the bucket as the copy. PLAN 2.19. The backtester
-  chat brainstorms it with me before building.
+  in DuckDB on my PC with the bucket as the copy. PLAN 2.19, and since
+  11 September the roadmap says so too, with my standing line that I am open
+  to a better option if it is shown with its cost and its benefit. The
+  backtester chat brainstorms it with me before building.
+- The AI chat panel is NOT part of any polish round. I pulled it out. How it
+  behaves is being settled in my AI partner chat; the main chat then draws
+  the mockup and writes the build document, as for every other screen.
 - The cloud audit from my cost chat (images piling up, three dashboard
   regions, a SIGABRT on 10 September at 14:52 IST, the bucket written
   twice, no scheduled backup) is Build C, cloud hygiene, its own builder
@@ -220,8 +234,8 @@ answers do we start.
    ticket do wrong?
 4. Why was my naked leg not sent on 11 September, twice, and which of the
    two reasons is a fault in the terminal?
-5. Which two builder chats are open, where does each work, and in what
-   order do their pull requests merge?
+5. Which two builder chats are open, where does each work, what is merged
+   already, and what is round 1b?
 6. What happened at 3 pm on 11 September with FYERS, why, and what is the
    fix?
 7. Where does my journal folder stand, and what does a builder check before

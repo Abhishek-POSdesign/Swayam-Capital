@@ -1285,6 +1285,71 @@ ignores documents-only merges; three `swayam-dashboard` regions of which
 each file twice (flat and nested paths) by design, to be reduced to one;
 the nightly backup (§2.6). AI spend to date ₹6.20; BigQuery unused.
 
+### 2.12.10 WHERE IT STANDS AFTER #71 AND #72, AND WHAT ROUND 1b IS. Written by the main chat, 2026-09-11 evening.
+
+**Merged today, in this order, each with its green tick before the next:**
+Build B, resting orders, **#71 at 15:47 IST**, and the polish chat's round
+one, **#72 at 16:33 IST**. `main` carries both. Nothing else is open.
+
+**What #72 actually delivered.** His own nine-item review list from the live
+test, minus the AI chat panel, which he pulled out into a round of its own.
+Home's band no longer colours a reached target by the sign of the open profit,
+which is why a profit target on one leg painted solid red while the trade was
+down ₹16. The Targets box refuses a number on the wrong side of the entry. The
+chain lists every expiry, nearest first, so a calendar's far leg can be picked
+at last. A loaded open trade is judged by the server, **and that exposed a
+fault nobody had reported: rule 4 double counted an open trade's own margin,
+reading ₹1,69,626 where the truth was ₹84,697.** The condor's chip reads the
+phase instead of its row. Pages open at their top. The advances figure stops
+overflowing. The explanatory prose is gone. Python 703 passing, JavaScript 348.
+
+**⚠️ THE THREE FAULTS FROM HIS LIVE TEST ARE STILL ON `main`.** They were
+written for the polish chat as items 0a, 0b and 0c and **the prompt carrying
+them was never pasted**, so round one was his own list only. Verified in the
+merged code on 2026-09-11, not inferred:
+
+| | The fault | Where it lives today |
+|---|---|---|
+| 0a | A naked single leg cannot be recorded. `options_math/payoff.py` returns `math.inf` for a net short call or put and the execute path writes that to the database, which refuses it | `payoff.py` lines 153 to 193, and the execute path's `max_loss_inr` writes in `routes/execution.py`. `validation.py` line 96 already handles it correctly; storage does not |
+| 0b | FYERS refused requests from 15:00 with code 429 and it cost him one refused exit | `routes/positions.py` lines 267 and 279 call `fyers_client.get_option_chain` directly, outside `api/chain_feed.py`, while the pages poll every five seconds |
+| 0c | Entry was blocked by a rule, which breaks his first principle | `routes/validation.py`, the `overnight_carry` check is `blocking=True`, so the plan chip on "carrying overnight" stops a naked leg at the ticket |
+
+**Round 1b is those three and nothing else**, in the same polish chat because
+it holds Build A's code, on a fresh branch `feature/swayam-polish-round1b-049`
+off `main` because its own branch is merged, as its own pull request, **before
+round two's mockup.** Entry is never blocked: at entry every check is advisory
+and shown; carrying is gated at 15:20 by the naked-shorts check; exiting or
+adding a leg to a trade he already holds is never blocked by the time of day,
+while a fresh single-leg entry after about 15:15 may be.
+
+**Round 1b also asks that chat for something that is not code.** He has told it
+how he wants the AI chat panel to behave, in that chat and nowhere else. It
+writes that out as a plain block he can copy, in his words where it has them,
+and builds none of it. He pastes it here, the main chat turns it into a mockup
+and a build document, and it is built by whoever he is advised to give it to.
+
+**The test list for his next window, in priority order.**
+
+1. **Resting orders, Build B.** Merged after the bell, so they have never
+   existed on a live screen: nothing may rest after 15:30. A sell limit above
+   the book, watched, modified, then filled when the book comes to it.
+2. **A naked single leg**, only if round 1b has merged. Without it, it fails
+   the same two ways it failed on 11 September.
+3. **The carried condor:** the band, rule 4 counted once at about ₹84,697, and
+   the two targets he saved.
+4. **The 429 watch from 15:00**, read afterwards from the Cloud Run logs, which
+   costs him none of his window.
+
+**Build C, cloud hygiene, is still the main chat's to write**, and his framing
+of 2026-09-11 is the shape it takes: "whenever money is required, do not hold
+if the money provides real value. Otherwise, we'll cut it." So the document
+separates what is waste from what is capability, and never asks him to approve
+a saving that costs him something. Waste today: the untagged images, two dead
+`swayam-dashboard` regions, the recorder writing every file twice. Capability
+he is missing: the nightly backup, §2.6. His reason for urgency is that the
+real bill has not arrived yet, and the backtesting and AI work is what will
+bring it.
+
 ### 2.18 THE TRADE JOURNAL PAGE. To be planned WITH him, in its own discussion. Not started.
 
 Opened by him on 2026-09-10 after seeing the page with six real rows. Do not
@@ -2501,11 +2566,17 @@ on his disk:**
    than any hosted database would be over the network. Cost of the bucket
    copy: about a rupee or two a month.
 3. **This overturns §2.15.6**, which designed four `swayam_*` Postgres tables
-   for the history, and **`ROADMAP.md` §1 gate 7 and §3 milestone 2**, which
-   say "loading into Postgres". They should read: loaded on his PC in DuckDB
-   from the Parquet files, with the bucket as the copy. **The §2.15.6 change is
-   the backtester chat's to make with him. The roadmap line needs his
-   explicit yes in the main chat before it is edited.**
+   for the history, and **`ROADMAP.md` §1 gate 7 and §3**, which said "loading
+   into Postgres". They read: loaded on his PC in DuckDB from the Parquet
+   files, with the bucket as the copy. **The roadmap was edited on 2026-09-11
+   with his explicit yes, given in the main chat:** "I wanted to update the
+   plan because I think we discussed, and this is the only way and the best way
+   to do it: keeping my data in DuckDB on my PC. It will save me money and
+   space." **His standing condition, in his words, and it is now in the
+   roadmap:** "keep a remark that I am always open to listening to advice. If
+   there are better options, I'm all ears." A better option may be put to him
+   at any time with its cost and its benefit named; it is never adopted without
+   him. **The §2.15.6 change is still the backtester chat's to make with him.**
 4. **Sharing the free project with the business apps is fine for now** at
    15 MB. The risks were never size: no staging (the guards cover it) and one
    app touching another's tables (the `swayam_` prefix and scoped queries

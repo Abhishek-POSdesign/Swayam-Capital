@@ -85,7 +85,22 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: BUILD A LIVE AND PROVEN IN HIS WINDOW, 2026-09-11
+### Latest first: BOTH PULL REQUESTS MERGED, AND THREE FAULTS STILL OPEN, 2026-09-11 evening
+
+`docs/PLAN.md` §2.12.10 has the full account, including the next window's test
+list in priority order.
+
+| | |
+|---|---|
+| **Merged today** | Build B, resting orders, **#71 at 15:47 IST**. The polish chat's round one, **#72 at 16:33 IST**. `main` carries both. No pull request is open |
+| **What #72 fixed** | His nine-item review list minus the AI panel. Home's band no longer colours a reached target from the sign of the open profit; the Targets box refuses a number on the wrong side of the entry; the chain lists every expiry; a loaded open trade is judged. **And it caught a fault nobody had reported: rule 4 double counted an open trade's own margin, ₹1,69,626 against a true ₹84,697** |
+| **⚠️ THREE FAULTS FROM THE LIVE TEST ARE STILL ON `main`** | A naked leg cannot be recorded (infinity stored as max loss); FYERS 429 after 15:00 because the live valuation quotes legs outside the chain feed; entry blocked by a rule. **The prompt carrying them was never pasted into the polish chat.** They are round 1b, branch `feature/swayam-polish-round1b-049`, before round two's mockup |
+| **⚠️ RESTING ORDERS HAVE NEVER BEEN SEEN LIVE** | #71 merged after the bell, and nothing may rest after 15:30. First item in his next window |
+| **The roadmap was edited with his explicit yes** | The backtesting history lives in DuckDB on his PC with the bucket as the copy, not Postgres. §1 gate 7 and §3. His standing condition is recorded there: he stays open to a better option, shown with its cost and its benefit. `PLAN.md` §2.19 |
+| **The AI chat panel** | Pulled out of round one by him. Its behaviour is being settled in his AI partner chat; round 1b asks the polish chat to write out what he has already told it, for him to paste to the main chat, which then draws the mockup and writes the build |
+| **Still to write** | Build C, cloud hygiene. His rule for it: pay without argument for value, cut everything else |
+
+### Earlier: BUILD A LIVE AND PROVEN IN HIS WINDOW, 2026-09-11
 
 `docs/PLAN.md` §2.12.8 has the full account; the vault log
 `00 - Developer Logs/SESSION_LOG_2026-09-11.md` the narrative.

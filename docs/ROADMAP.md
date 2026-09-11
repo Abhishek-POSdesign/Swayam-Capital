@@ -12,6 +12,11 @@
 > proven. That week is why every milestone below is a condition proven on the
 > running system, never a session's report, and never a date.
 >
+> Edited with his explicit approval on 2026-09-11: §1 horizon 1 gate 7 and §3,
+> where the backtesting history lives. It is DuckDB on his PC with the bucket as
+> the copy, not Postgres. He authorised the edit in the main chat in those words
+> and added that he stays open to a better option if one is shown to him.
+>
 > Edited with his explicit approval on 2026-09-10 night: §3 milestones 1 and 2
 > and the two §2 rows for the recorder and backtesting, after the backtesting
 > chat's findings and his correction that his past trades are experience, not
@@ -91,8 +96,10 @@ added and squared off inside one identity.
 5. The option chain used against a live market to build a structure.
 6. The recorder records real spot and implied volatility, not zeros, so data
    for backtesting accumulates from now (PLAN §2.10).
-7. The backtesting foundation exists: a data source chosen and loading into
-   Postgres. See §3.
+7. The backtesting foundation exists: a data source chosen, and the history
+   loaded on his PC in DuckDB from the Parquet files it already is, with the
+   Google bucket as the copy. **His decision of 2026-09-11**, replacing
+   "loading into Postgres". See §3 and PLAN §2.19.
 
 **Not in horizon 1:** calendars (his decision when), real money, any order
 code. The AI chapter's learning loops run manually, as his vault says for
@@ -221,8 +228,19 @@ strategies according to the time I am available to take a trade, according to
 my capital and my risk appetite. I will build my custom strategies that I am
 going to apply in paper testing as well as for real money."
 
+**Where that data actually lives, his decision of 2026-09-11, which revises the
+word "Postgres" in his own words above.** The market history stays on his PC as
+Parquet files queried by DuckDB, with the Google bucket as the copy. The
+terminal's record — trades, journal, results — stays in hosted Postgres, because
+the live site must reach it. His reasons: money and disk space. His standing
+condition, in his words: **"I am always open to listening to advice. If there
+are better options, I'm all ears."** So a better option may be put to him at any
+time, with its cost and its benefit named; it may not be adopted without him.
+PLAN §2.19 has the full reasoning and what the backtester chat must still
+brainstorm with him.
+
 **What it must be, therefore:** a backtester over sourced historical NIFTY
-options data, held in his Postgres, that tests **his** structures under **his**
+options data, held in DuckDB on his PC, that tests **his** structures under **his**
 constraints: entries only in his window (about 14:00 to 15:30 IST), his
 capital, his four rules, charges per leg from the real charge engine, fills at
 the bid and ask, and the near-expiry square-off habit for calendars. Not a
