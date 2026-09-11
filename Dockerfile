@@ -29,6 +29,10 @@ RUN pip install --no-cache-dir -e .
 # `data/` is otherwise a local cache and is not copied.
 COPY data/nse_holidays_2026.json data/nifty50_constituents.json ./data/
 
+# The baseline schema, needed by the nightly backup job, which refuses to write
+# a schema-less backup. 118 KB for the whole folder; the image does not notice.
+COPY migrations/ ./migrations/
+
 # Copy built frontend assets from Stage 1
 COPY --from=frontend-builder /app/web/dist ./web/dist
 

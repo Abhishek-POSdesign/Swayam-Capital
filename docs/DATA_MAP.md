@@ -127,18 +127,19 @@ gcloud run revisions list --service=swayam-dashboard --region=asia-southeast1 --
 
 ## 7. LIVE FIGURES
 
-**Not yet automated.** The nightly local task that refreshes this block is part
-of the outstanding half of Build C. Until it runs, these figures were read by
-hand on **11 September 2026, late evening**:
+Refreshed automatically by `scripts/nightly_local.py` on **11 September 2026, 22:23 India Standard Time**.
+Anything it could not read says so, with the reason. No stale number is
+left standing here.
 
 | | |
 |---|---|
-| Newest backup of my record | 11 September 2026, 13:18 UTC. 19 tables, 883 rows, the open condor inside it |
-| Backups older than that | One, from 7 September |
-| Recorder data | 3 trading days, about 1.3 MB a day |
-| Backtest history on my PC | 631 MB |
-| Build images | 19 |
+| Newest backup of my record | 2026-09-11T16-46-46Z, 19 tables, 900 rows |
+| Older backups kept | 2, oldest 2026-09-07T17-12-15Z |
+| Recorder data | 3 trading days, 11.4 MB total |
+| Backtest history on my PC | unavailable — data/history not present on this machine |
+| Backtest history copied to the bucket | not yet copied |
+| Build images | 22 |
 | Live site versions | 20 |
-| Open trades | 1, the condor `7cd4d017` |
+| Open trades | 1, `7cd4d017` |
 
 <!-- END LIVE FIGURES -->
