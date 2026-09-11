@@ -790,18 +790,32 @@ export class HomePage {
     const bal = typeof cap.risk_capital_inr === 'number' ? cap.risk_capital_inr : null;
     // Rule 2's cap is 2% of the same live balance. Rules 1 and 3 come back named.
     const gapCap = bal === null ? null : bal * 0.02;
-    const one = (k, value, sub) =>
+    // ONE BAND, ONE GROUND, and the rule folded behind its own percentage.
+    //
+    // His words on the mockup, 2026-09-11: the percentage sits just after the
+    // figure, small and muted, and the sentence it used to carry appears when
+    // his mouse is on it. The percentage stays on screen because the
+    // percentage IS the rule; "exit, no debate" is the explanation of it.
+    //
+    // Reachable by keyboard as well: the hint is focusable, so tabbing to it
+    // shows the same sentence a hover does.
+    const one = (k, value, pct, said) =>
       `<div class="cap"><div class="ck">${escapeHtml(k)}</div>
-        <div class="cv">${value === null || value === undefined ? '<span class="na">unavailable</span>' : escapeHtml(value)}</div>
-        <div class="cs">${escapeHtml(sub)}</div></div>`;
+        <div class="cvrow">
+          <span class="cv">${value === null || value === undefined ? '<span class="na">unavailable</span>' : escapeHtml(value)}</span>
+          ${pct ? `<span class="hint" tabindex="0"><span class="cpc">${escapeHtml(pct)}</span><span class="more">${escapeHtml(said)}</span></span>` : ''}
+        </div>
+        ${pct ? '' : `<div class="cs">${escapeHtml(said)}</div>`}</div>`;
 
     return `<div class="caps">
       <div class="capsh">Today's caps<i>a percentage of the balance above, never a stored number</i></div>
       <div class="capsr">
-        ${one('1 · Running loss', inr(cap.primary_risk_cap_inr), '1% · exit, no debate')}
-        ${one('2 · Overnight gap', inr(gapCap), '2% · at twice the average daily move')}
-        ${one('3 · Black swan', inr(cap.black_swan_fuse_inr), '5% · worst case at expiry')}
-        ${one('4 · Margin ceiling', inr(cap.deployable_margin_ceiling_inr), cap.ceiling_unavailable_reason || '2x cash equivalent')}
+        ${one('1 · Running loss', inr(cap.primary_risk_cap_inr), '1%', 'Exit, no debate. One percent of the balance read live this session.')}
+        ${one('2 · Overnight gap', inr(gapCap), '2%', 'Tested at twice the average daily move over the last 20 sessions.')}
+        ${one('3 · Black swan', inr(cap.black_swan_fuse_inr), '5%', 'The worst case at expiry, not a likely one.')}
+        ${cap.ceiling_unavailable_reason
+          ? one('4 · Margin ceiling', inr(cap.deployable_margin_ceiling_inr), null, cap.ceiling_unavailable_reason)
+          : one('4 · Margin ceiling', inr(cap.deployable_margin_ceiling_inr), '2×', 'Twice the cash equivalent. Rule 4.')}
       </div>
     </div>`;
   }

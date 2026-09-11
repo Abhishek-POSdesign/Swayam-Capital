@@ -31,6 +31,26 @@ import { ordersSection } from './orders-panel.js';
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const px = (v) => (isNum(v) ? v.toFixed(2) : '—');
 const legName = (l) => `${num(l.strike)} ${l.option_type}`;
+
+/**
+ * A short label that keeps its sentence behind it until he asks for it.
+ *
+ * HIS INSTRUCTION, 2026-09-11: "when I put my mouse on the number they should
+ * appear, and when I remove my mouse they should disappear... if you think
+ * something is really important and should be visible, then I am okay with
+ * that, but not everything."
+ *
+ * So each tile keeps ONE short line of fact on screen, and the sentence that
+ * explains it folds behind this. It is a real element rather than a `title`
+ * attribute, so it can be styled for both themes, and it is focusable, so the
+ * keyboard reaches what the mouse reaches.
+ *
+ * `label` may contain markup the caller has already escaped; `said` never does.
+ */
+export function hint(label, said) {
+  return `<span class="hint" tabindex="0"><span class="s">${label}</span>` +
+    `<span class="more">${escapeHtml(said)}</span></span>`;
+}
 const EARLIER_KEY = 'swayam-desk-earlier-open';
 
 /**
@@ -440,18 +460,22 @@ export class PositionArea {
       <div class="met">
         <div class="k">Open profit / loss</div>
         <div class="v hero ${tone(p.unrealized_pnl_inr)}">${orNA(signed(p.unrealized_pnl_inr, { whole: true }), p.error)}</div>
-        <div class="s">marked at the price you would get · ${this._freshness(p)}</div>
+        <div class="s">${this._freshness(p)} · ${hint('how it is marked',
+          'Marked at the price you would actually get: a bought leg at the bid, a sold leg at the ask.')}</div>
       </div>
       <div class="met">
         <div class="k">Net if you exit now</div>
         <div class="v ${tone(p.net_if_exit_now_inr)}">${orNA(signed(p.net_if_exit_now_inr, { whole: true }), p.error)}</div>
-        <div class="s">after <b>${orNA(inrExact(isNum(p.charges_in_inr) && isNum(p.charges_out_now_inr) ? p.charges_in_inr + p.charges_out_now_inr : null))}</b> of charges both ways<br>
-          in ${orNA(inrExact(p.charges_in_inr))} · out ${orNA(inrExact(p.charges_out_now_inr))}</div>
+        <div class="s">in ${orNA(inrExact(p.charges_in_inr))} · out ${orNA(inrExact(p.charges_out_now_inr))} · ${hint(
+          `${orNA(inrExact(isNum(p.charges_in_inr) && isNum(p.charges_out_now_inr) ? p.charges_in_inr + p.charges_out_now_inr : null))} both ways`,
+          'Charges already paid on the way in, plus what it would cost to get out at these prices.')}</div>
       </div>
       <div class="met">
         <div class="k">Rule 1 headroom</div>
         <div class="v ${isNum(p.rule1_headroom_inr) && p.rule1_headroom_inr <= 0 ? 'down' : 'up'}">${orNA(inr(p.rule1_headroom_inr), p.rules_unavailable_reason)}</div>
-        <div class="s">${isNum(p.net_if_exit_now_inr) && p.net_if_exit_now_inr >= 0 ? 'no loss running' : 'running loss counted'} · cap 1% of the live balance${isNum(p.rule1_cap_inr) ? `, ${inr(p.rule1_cap_inr)}` : ''}</div>
+        <div class="s">${isNum(p.rule1_cap_inr) ? `of ${inr(p.rule1_cap_inr)}` : 'cap unavailable'} · ${hint(
+          isNum(p.net_if_exit_now_inr) && p.net_if_exit_now_inr >= 0 ? 'no loss running' : 'running loss counted',
+          'One percent of the live balance. A running loss eats this headroom; a running profit does not add to it.')}</div>
         <div class="bar"><i class="${rule1Used > 0 ? 'hot' : ''}" style="width:${rule1Used.toFixed(0)}%"></i></div>
       </div>
       <div class="met">
@@ -459,20 +483,24 @@ export class PositionArea {
         <div class="v down">${unbounded ? 'Unlimited' : orNA(inr(p.max_loss_inr))}</div>
         <div class="s">${unbounded
           ? escapeHtml(p.max_loss_unbounded_reason || 'no worst case at expiry')
-          : `at expiry${isNum(maxLossPct) ? ` · ${maxLossPct.toFixed(2)}% of balance` : ''}`}<br>max profit <b class="up">${orNA(inr(p.max_profit_inr))}</b></div>
+          : `at expiry · ${hint(isNum(maxLossPct) ? `${maxLossPct.toFixed(2)}% of balance` : 'of your balance',
+              `Max profit on this structure is ${orNA(inr(p.max_profit_inr))}.`)}`}</div>
       </div>
       <div class="met fact blue">
         <div class="k">Margin</div>
         <div class="v">${orNA(inr(p.margin_required_inr), p.margin_source)}</div>
-        <div class="s">${escapeHtml(isNum(p.margin_required_inr) ? 'FYERS, stored on the row' : (p.margin_source || 'not stored on this row'))}<br>
-          rule 4: <b>${isNum(rule4Share) ? `${rule4Share.toFixed(0)}%` : '—'}</b> of ${orNA(inr(p.rule4_ceiling_inr), p.rules_unavailable_reason)}</div>
+        <div class="s">${escapeHtml(isNum(p.margin_required_inr) ? 'FYERS, on the row' : (p.margin_source || 'not stored on this row'))} · ${hint(
+          isNum(rule4Share) ? `${rule4Share.toFixed(0)}% of rule 4` : 'rule 4 unavailable',
+          `${orNA(inr(p.margin_required_inr))} of the ${orNA(inr(p.rule4_ceiling_inr), p.rules_unavailable_reason)} ceiling.`)}</div>
         <div class="bar"><i style="width:${isNum(rule4Share) ? Math.min(100, rule4Share).toFixed(0) : 0}%"></i></div>
       </div>
       <div class="met fact amber">
         <div class="k">NIFTY</div>
         <div class="v">${orNA(num(p.current_spot, 2))}</div>
-        <div class="s">${isNum(move) ? `<b class="${tone(move)}">${move >= 0 ? '+' : '−'}${num(Math.abs(move), 2)}</b> since entry at ${num(p.spot_at_entry, 2)}` : 'no spot at entry stored on this row'}<br>
-          ${bes.length ? `breakevens ${bes.map((b) => num(b, 0)).join(' · ')}` : 'breakevens unavailable'}</div>
+        <div class="s">${isNum(move) ? `<b class="${tone(move)}">${move >= 0 ? '+' : '−'}${num(Math.abs(move), 2)}</b> since entry` : 'no spot at entry stored on this row'} · ${
+          bes.length
+            ? hint('breakevens', `${bes.map((b) => num(b, 0)).join(' and ')}. Entry was at ${num(p.spot_at_entry, 2)}.`)
+            : 'breakevens unavailable'}</div>
       </div>
     </div>`;
   }
