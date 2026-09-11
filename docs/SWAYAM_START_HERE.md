@@ -85,7 +85,23 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: BOTH PULL REQUESTS MERGED, AND THREE FAULTS STILL OPEN, 2026-09-11 evening
+### Latest first: THE THREE FAULTS ARE FIXED, AND THREE BUILDS ARE PLANNED, 2026-09-11 night
+
+`docs/PLAN.md` §2.20 has the decisions; `docs/builds/` has the three documents.
+
+| | |
+|---|---|
+| **Merged today** | Build B resting orders (#71), polish round one (#72), the docs (#73) and **polish round 1b (#74)**, which fixed the three faults from his live test |
+| **What the review of #74 caught** | Round 1b made a naked trade recordable, and that exposed four more places assuming the maximum loss was a number. **The close route crashed on a naked trade and the exit note would have printed a result as 0.00% of a risk that had no ceiling.** Both fixed in the same pull request, with a lifecycle test and `scripts/prove_naked_trade.py` |
+| **⚠️ Still unproven** | A real naked leg, a resting order filling from the book, and a target reached on a live mark. **All three need his window** |
+| **Two public copies of the dashboard, DELETED** | `asia-east1` and `asia-south1` held 4 September builds with no sign-in and his real Supabase and FYERS secrets. Closed, then deleted, 2026-09-11 night. **The live site was never exposed:** it is the `asia-southeast1` service and its Identity-Aware Proxy was on throughout, checked by loading the domain before and after |
+| **⚠️ One leftover for him to run** | `gcloud beta run domain-mappings delete --domain=swayam.abhisheksikka.com --region=asia-east1 --project=swayam-capital`. A dead claim on his domain from the deleted Taiwan copy |
+| **Why his terminal looks harsh, measured** | His four accents are already Atlas's to the hex. **The grounds were never copied**: `#101116` cold blue-black against Atlas's warm `#1a1a1a`, and a light-theme sage of `#15803d` against Atlas's `#6f8f65`. `BUILD_06` §0 |
+| **The three builds now planned** | **C, cloud hygiene** (`BUILD_05`) to his cost chat in a worktree; **round two, the look** (`BUILD_06`) to the same polish chat in the primary folder; **the AI panel** (`BUILD_07`) to a fresh chat after round two merges |
+| **The mockup both are held to** | https://claude.ai/code/artifact/f3efa90c-c57d-4dba-bd00-924b3c04ee04 Interactive, approved by him |
+| **⚠️ His record has no backup since 7 September** | Six trades, the open condor, four migrations and every target are in no backup. `BUILD_05` §2.6 turns the nightly backup on: the bucket keeps the history, **his vault keeps the last thirty nights**, his decision |
+
+### Earlier: BOTH PULL REQUESTS MERGED, AND THREE FAULTS OPEN, 2026-09-11 evening
 
 `docs/PLAN.md` §2.12.10 has the full account, including the next window's test
 list in priority order.

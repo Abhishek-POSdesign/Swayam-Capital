@@ -36,6 +36,32 @@ The option chain's look is judged by eye, so the main chat supplies its mockup
 into Build A's chat while the builder is on the desk and Home; the builder
 starts the chain only when that mockup is in hand.
 
+## THE THREE BUILDS AFTER A AND B. Ordered 2026-09-11 night.
+
+Build A and Build B are merged, and so are the two polish rounds that followed
+his live test: #65, #71, #72, #74. These three are what is planned now.
+
+| Build | Document | Whose chat | When |
+|---|---|---|---|
+| **C, cloud hygiene** | `BUILD_05_CLOUD_HYGIENE.md` | His **Google Cloud cost chat**, which already did the audit | **Now, in a worktree with its own venv**, because the polish chat holds the primary folder |
+| **Round two, the look** | `BUILD_06_THE_LOOK.md` | The **same polish chat** that built rounds one and 1b | **Now, in the primary folder** |
+| **The AI panel** | `BUILD_07_AI_PANEL.md` | A **fresh chat** | **After round two is merged**, so it inherits the corrected colours instead of being built twice |
+
+**The two running now cannot collide, and here is the one rule that keeps them
+apart.** Round two changes colours across every page. Cloud hygiene is almost
+entirely outside the repository. **Their only possible overlap is Home**, where
+cloud hygiene adds the last-backup age. **That one line belongs to BUILD_05 and
+round two does not touch it**; everything else on Home belongs to round two and
+cloud hygiene does not touch it. Named in both documents.
+
+**The second chat takes a worktree WITH ITS OWN VENV** and proves
+`import swayam` resolves inside it before a single test runs, exactly as Build B
+did. Only one session ever writes to the primary folder.
+
+**The palette both of them are held to** is the AI panel mockup, which shows his
+real page furniture in Atlas's tokens in both themes:
+https://claude.ai/code/artifact/f3efa90c-c57d-4dba-bd00-924b3c04ee04
+
 The mockup every build is held to: https://claude.ai/code/artifact/ef242a22-59a7-4752-8aa4-91d59393c5d5
 (**Swayam Position Area**, 10 September evening). It is built on his real open
 condor 7cd4d017 marked at the 15:26 IST closing book. **The build must look
