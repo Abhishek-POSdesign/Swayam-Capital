@@ -332,8 +332,20 @@ def test_execute_endpoint_best_effort_dispatch_on_success():
          patch("swayam.api.routes.execution.write_new_trade_journal") as mock_j, \
          patch("swayam.api.routes.execution.dispatch", side_effect=Exception("Dispatch exploded!")) as mock_dispatch:
 
-        mock_audit.return_value = MagicMock(passed=True, model_dump=lambda: {})
-        mock_spread.return_value = (MagicMock(), {})
+        mock_audit.return_value = MagicMock(passed=True, checks=[], model_dump=lambda: {})
+        # THREE VALUES, because that is what the real function returns.
+        #
+        # `build_spread_from_request` answers (Spread, Leg->IV, Leg->iv_available).
+        # The third was added when the desk had to tell a measured volatility
+        # from a substituted one, every real caller was updated, and this mock
+        # was left behind returning two. The route unpacked three and raised
+        # `ValueError: not enough values to unpack (expected 3, got 2)` before
+        # it reached the dispatch this test is actually about.
+        #
+        # THE TEST WAS NEVER WRONG ABOUT THE APP. It has been reported as "the
+        # one long-standing failure" for weeks, which is exactly how a real red
+        # hides: everyone learns to skip that line.
+        mock_spread.return_value = (MagicMock(), {}, {})
         mock_curve.return_value = MagicMock(
             max_loss_inr=5000, max_profit_inr=10000, rr_implied=2.0, net_debit_credit_inr=5000, breakevens=[24800]
         )
