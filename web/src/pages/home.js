@@ -24,7 +24,6 @@
 import { api } from '../api.js';
 import { MarketTickerComponent } from '../components/market-ticker.js';
 import { RitualStripComponent } from '../components/ritual-strip.js';
-import { ChatSurfaceComponent } from '../components/chat-surface.js';
 import { SoFarTodayCardComponent } from '../components/so-far-today-card.js';
 import { PwaInstallPromptComponent } from '../components/pwa-install-prompt.js';
 import { DataHealthStrip } from '../components/data-health-strip.js';
@@ -266,7 +265,20 @@ export class HomePage {
                 <div class="span-12" id="home-money"></div>
                 <div class="span-6" id="home-record"></div>
                 <div class="span-6" id="home-events"></div>
-                <div class="span-12" id="home-ai"></div>
+                <!-- "SO FAR TODAY". BUILD_07, and this is the big change.
+                     HIS DECISION, 11 September 2026: "On the homepage, remove
+                     this on-page chat area. It is not required now because I'm
+                     getting a floating chat that I can move and resize."
+
+                     ⚠️ REMOVING THE ZONE REMOVED A SURFACE AND NEVER A ROW.
+                     Every conversation he has ever had is still in the database
+                     and the floating panel's History opens all of them.
+
+                     The summary card used to be mounted INSIDE the chat
+                     component's own slot, so deleting the chat naively would
+                     have deleted the summary with it. It is mounted here now,
+                     in its own place on the page. -->
+                <div class="span-12" id="home-today"></div>
               </div>
             </main>
           </div>
@@ -299,26 +311,17 @@ export class HomePage {
       this.ritual.init();
     }
 
-    // The AI chat is kept exactly as it is. It is mounted, not redesigned.
-    const aiHost = this.container.querySelector('#home-ai');
-    if (aiHost) {
-      this.aiBriefComponent = new ChatSurfaceComponent(aiHost, {
-        onOpenSettings: () => this.options.onOpenSettings && this.options.onOpenSettings(),
-        onNavigateStrategy: (dest) => {
-          if (this.options.onNavigateStrategy) this.options.onNavigateStrategy(dest);
-          else if (typeof window !== 'undefined') window.location.href = dest;
-        },
-      });
-      this.aiBriefComponent.init();
-
-      // So Far Today now lives at the top of the AI panel, above the
-      // conversation. Manual button, 60-minute cache, daily cap — it must never
-      // fire on page load, and init() only reads the cache status.
-      const slot = aiHost.querySelector('#chat-top-slot');
-      if (slot) {
-        this.soFarTodayComponent = new SoFarTodayCardComponent(slot);
-        this.soFarTodayComponent.init();
-      }
+    // "So far today", now a card of its own rather than a passenger inside a
+    // chat that no longer exists on this page.
+    //
+    // HIS COST RULE IS UNCHANGED AND IT IS NOT NEGOTIABLE: a manual button, a
+    // 60-minute cache, a daily cap, NEVER on page load. init() only READS the
+    // day's saved row from the database, which costs nothing and calls no
+    // model. Nothing here may ever be made to generate on load.
+    const todayHost = this.container.querySelector('#home-today');
+    if (todayHost) {
+      this.soFarTodayComponent = new SoFarTodayCardComponent(todayHost);
+      this.soFarTodayComponent.init();
     }
   }
 

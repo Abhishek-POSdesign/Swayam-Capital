@@ -107,7 +107,7 @@ describe('One mark, in the header, only', () => {
   });
 });
 
-describe('So Far Today: a voice, a collapse, and the same cost gate', () => {
+describe('So Far Today: a voice, a manual Hide, and the same cost gate', () => {
   let container;
   beforeEach(() => {
     setupTestDOM();
@@ -126,37 +126,55 @@ describe('So Far Today: a voice, a collapse, and the same cost gate', () => {
     const card = new SoFarTodayCardComponent(container);
     await card.init();
     expect(gen).not.toHaveBeenCalled();
-    expect(container.textContent).toContain('Generate Summary');
+    expect(container.textContent).toContain('Generate');
 
     await card.generate(false);
     expect(gen).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain('NIFTY held 23,600');
-    expect(container.innerHTML).toContain('btn-collapse-so-far');
+    expect(container.innerHTML).toContain('btn-hide-so-far');
     expect(container.innerHTML).toContain('sft-tools');
-    expect(container.textContent).toContain('Calls today: 1/8');
+    expect(container.textContent).toContain('1 of 8 today');
   });
 
-  it('starts collapsed for the rest of the day once it has been generated and expanded', async () => {
+  // HIS DECISION, 12 September 2026. The card used to hide itself for the rest
+  // of the IST day once he had expanded it, remembered in localStorage. The
+  // mockup he approved says the summary STAYS until he presses Generate again,
+  // and he ruled for the mockup: the clarity pass's folding rule is for
+  // explanations, and the summary is content he has paid for.
+  it('never hides itself: the summary stays until he generates it again', async () => {
     vi.spyOn(api, 'getSoFarToday').mockResolvedValue({
       has_data: true, text: 'Already generated earlier today.', sources: [], generated_at: new Date().toISOString(),
       age_minutes: 12, call_count_today: 2, daily_cap: 8, cap_reached: false,
     });
     const first = new SoFarTodayCardComponent(container);
     await first.init();
-    // Not yet expanded today: shown in full.
-    expect(first.state.collapsed).toBe(false);
+    expect(first.state.hidden).toBe(false);
     expect(container.textContent).toContain('Already generated earlier today');
 
-    first.toggleCollapsed(); // he hides it
+    first.toggleHidden(); // he hides it himself
     expect(container.textContent).not.toContain('Already generated earlier today');
-    first.toggleCollapsed(); // and expands it once: remembered for today
+    first.toggleHidden(); // and shows it again
     expect(container.textContent).toContain('Already generated earlier today');
 
+    // A fresh load shows it. Nothing was remembered, and nothing in
+    // localStorage may make it start hidden.
     const second = new SoFarTodayCardComponent(container);
     await second.init();
-    expect(second.state.collapsed).toBe(true);
-    expect(container.textContent).not.toContain('Already generated earlier today');
-    expect(container.textContent).toContain('Show');
+    expect(second.state.hidden).toBe(false);
+    expect(container.textContent).toContain('Already generated earlier today');
+  });
+
+  // A summary written three hours ago is still today's summary and is still
+  // shown. The 60-minute rule is about SPENDING and lives on the POST.
+  it('shows a summary older than the cache window rather than emptying the card', async () => {
+    vi.spyOn(api, 'getSoFarToday').mockResolvedValue({
+      has_data: true, text: 'Written this morning.', sources: [], generated_at: new Date().toISOString(),
+      age_minutes: 185, call_count_today: 1, daily_cap: 8, cap_reached: false,
+    });
+    const card = new SoFarTodayCardComponent(container);
+    await card.init();
+    expect(container.textContent).toContain('Written this morning');
+    expect(container.textContent).toContain('3 hours ago');
   });
 });
 

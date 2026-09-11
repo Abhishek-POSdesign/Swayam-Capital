@@ -26,9 +26,10 @@ describe('BUILD-11.9 Home Snapshot Components', () => {
       const card = new SoFarTodayCardComponent(container);
       await card.init();
 
-      expect(container.textContent).toContain('SO FAR TODAY');
-      expect(container.textContent).toContain('Generate Summary');
-      expect(container.textContent).toContain('Calls today: 0/8');
+      expect(container.textContent).toContain('So far today');
+      expect(container.textContent).toContain('Generate');
+      expect(container.textContent).toContain('0 of 8 today');
+      // THE COST GATE. Nothing on this page may call the model on load.
       expect(genSpy).not.toHaveBeenCalled();
     });
 
@@ -55,8 +56,9 @@ describe('BUILD-11.9 Home Snapshot Components', () => {
       expect(container.textContent).toContain('24,900 resistance');
       expect(container.textContent).toContain('Bear Put Spread');
       expect(container.textContent).toContain('Moneycontrol Live');
-      expect(container.textContent).toContain('Calls today: 1/8');
-      expect(container.textContent).toContain('Generated Just now');
+      expect(container.textContent).toContain('1 of 8 today');
+      // The stamp says when it was written and that it stays put.
+      expect(container.textContent).toContain('it stays until you generate it again');
     });
 
     it('disables button when daily cap of 8 calls is reached', async () => {
@@ -71,8 +73,8 @@ describe('BUILD-11.9 Home Snapshot Components', () => {
       await card.init();
 
       expect(container.innerHTML).toContain('disabled');
-      expect(container.textContent).toContain('Daily cap reached');
-      expect(container.textContent).toContain('Calls today: 8/8');
+      expect(container.textContent).toContain('Cap reached for today');
+      expect(container.textContent).toContain('8 of 8 today');
     });
   });
 

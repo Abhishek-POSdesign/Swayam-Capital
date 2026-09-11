@@ -7,6 +7,7 @@ import { api } from './api.js';
 import { ActiveTradesComponent } from './components/active-trades.js';
 import { AIChatPanel } from './components/ai-chat.js';
 import { AIFloatingLauncher } from './components/ai-launcher.js';
+import { AIPanelFrame } from './components/ai-panel-frame.js';
 import { initHeader, updateHeaderSpot } from './components/header.js';
 import { renderRulePanel } from './components/rule-panel.js';
 import { SpotWebSocketClient } from './modules/ws-client.js';
@@ -25,6 +26,7 @@ class SwayamApp {
     this.homePage = null;
     this.aiChat = null;
     this.aiLauncher = null;
+    this.aiFrame = null;
     this.settingsDrawer = null;
     const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     if (urlParams && urlParams.get('notrans') === '1') {
@@ -181,8 +183,11 @@ class SwayamApp {
     // 6. Ensure correct view is displayed based on current route
     this.navigateTo(this.currentPage, false);
 
-    // 7. Auto-open AI drawer if requested via ?ai=open
-    if (urlParams && urlParams.get('ai') === 'open') {
+    // 7. Auto-open the AI panel if he arrived with ?ai=open
+    const wantsAI =
+      (urlParams && urlParams.get('ai') === 'open') ||
+      (typeof window !== 'undefined' && window.__swayamOpenAIPanel === true);
+    if (wantsAI) {
       this.openAIDrawer();
     }
   }
@@ -215,22 +220,31 @@ class SwayamApp {
     }
   }
 
+  /**
+   * THE FLOATING AI PANEL. BUILD_07.
+   *
+   * `ai-chat.js` renders the conversation into the shell, then `AIPanelFrame`
+   * takes over the shell's geometry: drag, eight resize handles, detach and
+   * attach, shrink to the bar, and close. The order matters, because the chat
+   * rewrites the shell's innerHTML and would otherwise strip the handles.
+   *
+   * The panel starts CLOSED and opens small, wherever he last left it.
+   */
   async initAIDrawer() {
     const aiContainer = document.getElementById('ai-sidebar-container');
     if (aiContainer) {
       this.aiChat = new AIChatPanel(aiContainer);
       await this.aiChat.init();
 
-      // Add a close drawer button in the header of the drawer if not present
-      const drawerHeader = aiContainer.querySelector('.ai-panel__header');
-      if (drawerHeader && !aiContainer.querySelector('#btn-close-ai-drawer')) {
-        const btnClose = document.createElement('button');
-        btnClose.id = 'btn-close-ai-drawer';
-        btnClose.innerHTML = '✕';
-        btnClose.style.cssText = 'background: transparent; border: none; color: var(--dl-fg-2); font-size: 1rem; cursor: pointer; padding: 4px 8px;';
-        btnClose.addEventListener('click', () => this.closeAIDrawer());
-        drawerHeader.appendChild(btnClose);
-      }
+      this.aiFrame = new AIPanelFrame(aiContainer, {
+        // The panel closes itself from its own cross, so the launcher has to
+        // hear about it from the panel and not only from this class.
+        onClose: () => {
+          this.isAIDrawerOpen = false;
+          this._showLauncher(true);
+        },
+      });
+      this.aiFrame.mount();
     }
 
     this.aiLauncher = new AIFloatingLauncher({
@@ -239,38 +253,38 @@ class SwayamApp {
     this.aiLauncher.init();
   }
 
+  /**
+   * Opening the panel does NOTHING to the page. No class, no margin, no
+   * reflow, and no resize event to make the payoff graph redraw, because
+   * nothing behind the panel has moved. That whole apparatus was deleted in
+   * BUILD_07 on his instruction and must not come back.
+   */
   openAIDrawer() {
-    const drawer = document.getElementById('ai-sidebar-container');
-    if (drawer) {
-      drawer.style.right = '0px';
-      try { document.body.classList.add('ai-panel-open'); } catch (_) {}
-      this.isAIDrawerOpen = true;
-      setTimeout(() => {
-        if (typeof window !== 'undefined') window.dispatchEvent(new Event('resize'));
-        if (this.strategyPage?.payoffChart) this.strategyPage.payoffChart.retheme();
-      }, 250);
-    }
+    if (this.aiFrame) this.aiFrame.open();
+    this.isAIDrawerOpen = true;
+    this._showLauncher(false);
   }
 
   closeAIDrawer() {
-    const drawer = document.getElementById('ai-sidebar-container');
-    if (drawer) {
-      drawer.style.right = '-450px';
-      try { document.body.classList.remove('ai-panel-open'); } catch (_) {}
-      this.isAIDrawerOpen = false;
-      setTimeout(() => {
-        if (typeof window !== 'undefined') window.dispatchEvent(new Event('resize'));
-        if (this.strategyPage?.payoffChart) this.strategyPage.payoffChart.retheme();
-      }, 250);
-    }
+    if (this.aiFrame) this.aiFrame.close();
+    this.isAIDrawerOpen = false;
+    this._showLauncher(true);
   }
 
   toggleAIDrawer() {
-    if (this.isAIDrawerOpen) {
-      this.closeAIDrawer();
-    } else {
-      this.openAIDrawer();
+    if (this.aiFrame) {
+      this.aiFrame.toggle();
+      this.isAIDrawerOpen = this.aiFrame.isOpen;
+      this._showLauncher(!this.isAIDrawerOpen);
+      return;
     }
+    this.isAIDrawerOpen = false;
+  }
+
+  /** The button that opens the partner is furniture under an open partner. */
+  _showLauncher(show) {
+    const orb = document.getElementById('floating-ai-launcher-btn');
+    if (orb) orb.hidden = !show;
   }
 
   navigateTo(page, updateHistory = true) {

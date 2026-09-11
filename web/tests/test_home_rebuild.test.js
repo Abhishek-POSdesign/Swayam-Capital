@@ -65,8 +65,10 @@ describe('Home — the rebuilt page', () => {
     expect(container.querySelector('#home-nifty-sidebar')).not.toBeNull();
     expect(html.indexOf('home-ticker')).toBeLessThan(html.indexOf('home-ritual'));
     expect(html.indexOf('home-ritual')).toBeLessThan(html.indexOf('home-nifty-sidebar'));
-    // The AI panel is the last thing in the right column; So Far Today lives inside it.
-    expect(html.indexOf('home-record')).toBeLessThan(html.indexOf('home-ai'));
+    // BUILD_07: the on-page chat is gone and "So far today" is the last card
+    // in the right column, in its own place rather than inside the chat.
+    expect(html.indexOf('home-record')).toBeLessThan(html.indexOf('home-today'));
+    expect(html).not.toContain('home-ai');
   });
 
   it('exposes niftyChart.retheme, which main.js calls on every route change', () => {
