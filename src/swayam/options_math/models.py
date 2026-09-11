@@ -113,6 +113,9 @@ class PayoffCurve:
     points: tuple[PayoffPoint, ...]
     breakevens: tuple[float, ...]
     max_profit_inr: float
-    max_loss_inr: float
-    rr_implied: float
+    # NONE MEANS NO CEILING, never "not computed". A net short call position
+    # has no worst case at expiry, and `math.inf` in a numeric column is what
+    # stopped a naked leg being recorded at all on 11 September 2026.
+    max_loss_inr: Optional[float]
+    rr_implied: Optional[float]
     net_debit_credit_inr: float

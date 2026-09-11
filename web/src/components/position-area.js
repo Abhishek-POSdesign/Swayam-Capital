@@ -411,6 +411,10 @@ export class PositionArea {
     const rule4Share = isNum(p.margin_required_inr) && isNum(p.rule4_ceiling_inr) && p.rule4_ceiling_inr > 0
       ? (p.margin_required_inr / p.rule4_ceiling_inr) * 100
       : null;
+    // A LOSS WITH NO CEILING. The row stores null and says why, so the tile
+    // prints the word rather than "unavailable", which would read as a figure
+    // the terminal failed to fetch instead of a fact about the structure.
+    const unbounded = !isNum(p.max_loss_inr) && !!p.max_loss_unbounded_reason;
     const maxLossPct = isNum(p.max_loss_inr) && isNum(p.rule1_cap_inr) && p.rule1_cap_inr > 0
       ? (p.max_loss_inr / (p.rule1_cap_inr * 100)) * 100
       : null;
@@ -437,8 +441,10 @@ export class PositionArea {
       </div>
       <div class="met">
         <div class="k">Max loss</div>
-        <div class="v down">${orNA(inr(p.max_loss_inr))}</div>
-        <div class="s">at expiry${isNum(maxLossPct) ? ` · ${maxLossPct.toFixed(2)}% of balance` : ''}<br>max profit <b class="up">${orNA(inr(p.max_profit_inr))}</b></div>
+        <div class="v down">${unbounded ? 'Unlimited' : orNA(inr(p.max_loss_inr))}</div>
+        <div class="s">${unbounded
+          ? escapeHtml(p.max_loss_unbounded_reason || 'no worst case at expiry')
+          : `at expiry${isNum(maxLossPct) ? ` · ${maxLossPct.toFixed(2)}% of balance` : ''}`}<br>max profit <b class="up">${orNA(inr(p.max_profit_inr))}</b></div>
       </div>
       <div class="met">
         <div class="k">Margin</div>

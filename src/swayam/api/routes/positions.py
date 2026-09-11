@@ -108,7 +108,12 @@ class LivePositionResponse(BaseModel):
     expiry_date: Optional[str] = None
     legs: list[dict[str, Any]]
     entry_debit_credit_inr: float
-    max_loss_inr: float
+    # NONE MEANS NO CEILING, and the card prints the word unlimited. Coercing
+    # it to 0.0 was the real danger of fault 0a: a naked short would have read
+    # "max loss zero", which is the most reassuring wrong number this terminal
+    # could possibly show.
+    max_loss_inr: Optional[float] = None
+    max_loss_unbounded_reason: Optional[str] = None
     max_profit_inr: float
     breakevens: list[float] = []
     current_spot: Optional[float] = None
@@ -230,59 +235,52 @@ class ClosePositionResponse(BaseModel):
 # Helper: Option Chain Fetch with 5s caching
 # ---------------------------------------------------------------------------
 
-def _get_cached_option_chain(underlying: str, expiry: Optional[str] = None) -> dict[str, Any]:
-    """Fetches option chain from FYERS with a 5-second cache to avoid hitting rate limits."""
-    cache_key = f"{underlying}_{expiry or 'all'}"
-    now = time.time()
 
-    if cache_key in _chain_cache:
-        entry = _chain_cache[cache_key]
-        if (now - entry["timestamp"]) < 5.0:
-            return entry["data"]
+def _get_cached_option_chain(underlying: str, expiry: Optional[str] = None) -> dict[str, Any]:
+    """The chain for a position's expiry, READ FROM THE SHARED FEED.
+
+    FAULT 0b of his live test, 11 September 2026. FYERS began refusing from
+    about 15:00 with code 429, "request limit reached", and it cost him a
+    refused exit at the one time of day he is at the screen.
+
+    This function used to call `fyers_client.get_option_chain` itself, twice:
+    once at strike_count=2 to resolve the expiry epoch, once at 40 for the
+    chain, behind a five-second cache. His pages poll every FIVE seconds, so
+    that cache had almost always just expired when the next poll arrived and
+    nearly every poll became a live broker call. `api/chain_feed.py` was built
+    on 8 September for exactly this, after the same thing happened then, and
+    this path was simply never moved onto it.
+
+    Now it registers interest and reads whatever the feed last fetched. One
+    call per expiry per interval however many browsers, tabs, positions or
+    legs are watching, shared with the option chain panel and with Build B's
+    order watcher, which already ride the feed. When FYERS refuses, the feed
+    stands back and keeps the last real chain with its true age attached
+    rather than hammering a broker that is saying no.
+
+    Nothing here invents a price. A feed with no chain at all raises, and the
+    caller says unavailable with the reason, exactly as before.
+    """
+    # Imported here rather than at module scope: market.py imports from this
+    # module, and a top-level import either way closes the circle.
+    from swayam.api.routes.market import WIDE_CHAIN_STRIKES, epoch_for, fetch_chain_cached
+
+    symbol = _FYERS_INDEX_SYMBOLS.get(str(underlying).upper(), str(underlying))
 
     try:
-        # THIS CALL HAD NEVER WORKED ONCE. It passed the position's underlying,
-        # the word "NIFTY", where FYERS wants a symbol, and an ISO date where it
-        # wants an expiry epoch. FYERS answered "Please provide a valid symbol",
-        # so /api/positions/live raised 503 every single time and his open
-        # position showed "profit and loss unavailable". Proven against live
-        # FYERS on 2026-09-09.
-        from swayam.api.routes.market import resolve_expiry_epoch
-
-        symbol = _FYERS_INDEX_SYMBOLS.get(str(underlying).upper(), str(underlying))
-
-        # Resolving the epoch costs one small extra call, so it is best effort:
-        # if it cannot be resolved we ask for the chain without one rather than
-        # refusing outright. The symbol is the part that was actually fatal.
         epoch: Optional[str] = None
         if expiry:
-            cache_key_epoch = f"{symbol}|{expiry}"
-            cached = _expiry_epoch_cache.get(cache_key_epoch)
-            if cached and (now - cached[1]) < 600.0:
-                epoch = cached[0]
-            else:
-                try:
-                    # One small call, cached for ten minutes, because the desk
-                    # polls positions and the FYERS request budget is finite.
-                    base = fyers_client.get_option_chain(underlying=symbol, strike_count=2)
-                    epoch = resolve_expiry_epoch(base, str(expiry))
-                    if epoch:
-                        _expiry_epoch_cache[cache_key_epoch] = (epoch, now)
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning("Could not resolve the expiry epoch for %s: %s", expiry, exc)
+            # The date-to-epoch mapping, remembered for ten minutes, so this
+            # does not re-read a chain every five seconds to learn a fact that
+            # changes once a week.
+            epoch = epoch_for(symbol, str(expiry))
             if not epoch:
                 logger.warning(
                     "FYERS did not list an expiry on %s; reading the chain without one.",
                     expiry,
                 )
 
-        raw_chain = fyers_client.get_option_chain(
-            underlying=symbol,
-            strike_count=40,
-            timestamp=epoch,
-        )
-        _chain_cache[cache_key] = {"data": raw_chain, "timestamp": now}
-        return raw_chain
+        return fetch_chain_cached(symbol, WIDE_CHAIN_STRIKES, epoch)
     except Exception as e:
         logger.error("FYERS option chain query failed for %s (%s): %s", underlying, expiry, e)
         raise HTTPException(
@@ -544,7 +542,8 @@ def get_positions(status: str = Query(default="open")) -> list[PositionResponse]
                 underlying=p.get("underlying", "NIFTY"),
                 legs=p.get("legs", []),
                 net_debit_credit_inr=float(p.get("net_debit_credit_inr", 0.0)),
-                max_loss_inr=float(p.get("max_loss_inr", 0.0)),
+                max_loss_inr=_opt_float(p.get("max_loss_inr")),
+                max_loss_unbounded_reason=p.get("max_loss_unbounded_reason"),
                 max_profit_inr=float(p.get("max_profit_inr", 0.0)),
                 breakeven_points=p.get("breakeven_points", []),
                 status=p.get("status", "open"),
@@ -736,7 +735,8 @@ def _unpriced_position(
         expiry_date=str(expiry_val) if expiry_val else None,
         legs=[dict(l) for l in legs],
         entry_debit_credit_inr=float(pos.get("net_debit_credit_inr") or 0.0),
-        max_loss_inr=float(pos.get("max_loss_inr") or 0.0),
+        max_loss_inr=_opt_float(pos.get("max_loss_inr")),
+        max_loss_unbounded_reason=pos.get("max_loss_unbounded_reason"),
         max_profit_inr=float(pos.get("max_profit_inr") or 0.0),
         breakevens=list(pos.get("breakeven_points") or []),
         margin_required_inr=_opt_float(pos.get("margin_required_inr")),
@@ -773,7 +773,8 @@ def _value_one_position(
     opened_at_str = str(pos.get("opened_at", datetime.now(timezone.utc).isoformat()))
     all_legs: list[dict[str, Any]] = list(pos.get("legs") or [])
     entry_debit_credit = float(pos.get("net_debit_credit_inr") or 0.0)
-    max_loss = float(pos.get("max_loss_inr") or 0.0)
+    max_loss = _opt_float(pos.get("max_loss_inr"))
+    max_loss_unbounded_reason = pos.get("max_loss_unbounded_reason")
     max_profit = float(pos.get("max_profit_inr") or 0.0)
     journal_path = pos.get("journal_path")
 
@@ -1069,6 +1070,7 @@ def _value_one_position(
         legs=enriched_legs,
         entry_debit_credit_inr=entry_debit_credit,
         max_loss_inr=max_loss,
+        max_loss_unbounded_reason=max_loss_unbounded_reason,
         max_profit_inr=max_profit,
         breakevens=list(pos.get("breakeven_points") or []),
         current_spot=spot,

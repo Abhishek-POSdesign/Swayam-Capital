@@ -328,8 +328,11 @@ class PayoffCurveResponse(BaseModel):
     points: list[PayoffPointResponse]
     breakevens: list[float]
     max_profit_inr: float
-    max_loss_inr: float
-    rr_implied: float
+    # NULL MEANS NO CEILING, and the screen prints the word unlimited. It never
+    # means "not computed": a figure that could not be worked out is a failure
+    # and the request is refused.
+    max_loss_inr: Optional[float] = None
+    rr_implied: Optional[float] = None
     net_debit_credit_inr: float
 
 

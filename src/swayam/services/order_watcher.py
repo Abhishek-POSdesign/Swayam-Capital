@@ -115,15 +115,20 @@ def _chain_for(underlying: str, expiry: str) -> tuple[Optional[float], dict[tupl
     Returns the spot, a (strike, type) -> quote lookup, and the feed's own
     state for that reading: live, delayed, closing or unavailable.
     """
-    from swayam.api.routes.market import fetch_chain_snapshot, resolve_expiry_epoch
+    from swayam.api.routes.market import WIDE_CHAIN_STRIKES, epoch_for, fetch_chain_snapshot
     from swayam.api.routes.positions import _FYERS_INDEX_SYMBOLS, _build_chain_lookup
 
     symbol = _FYERS_INDEX_SYMBOLS.get(str(underlying).upper(), "NSE:NIFTY50-INDEX")
-    base = fetch_chain_snapshot(symbol, 50)
-    snap = base
-    epoch = resolve_expiry_epoch(base.data or {}, str(expiry)) if base.data else None
-    if epoch:
-        snap = fetch_chain_snapshot(symbol, 50, epoch)
+    # THE SAME KEY EVERYTHING ELSE READS, so the watcher costs no extra FYERS
+    # call of its own, and the expiry's epoch is remembered rather than looked
+    # up again on every pass. The watcher still sees exactly the 50 strikes it
+    # saw before, which matters because a resting order can sit well away from
+    # the money.
+    epoch = epoch_for(symbol, str(expiry)) if expiry else None
+    # Without an epoch the nearest expiry's wide chain is the honest fallback,
+    # at full width.
+    snap = fetch_chain_snapshot(symbol, WIDE_CHAIN_STRIKES, epoch) if epoch \
+        else fetch_chain_snapshot(symbol, WIDE_CHAIN_STRIKES)
     if snap.data is None:
         return None, {}, "unavailable"
     spot, lookup = _build_chain_lookup(snap.data)

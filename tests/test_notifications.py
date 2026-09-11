@@ -265,17 +265,37 @@ def test_handle_cron_unknown_job():
 # 6. Endpoint Integration: Execution & Close Events
 # =====================================================================
 
-def test_execute_endpoint_dispatches_rule_violation_on_block():
+def test_execute_endpoint_dispatches_rule_violation_but_does_not_block():
+    """A failing check is RECORDED, never enforced.
+
+    ROUND 1b, FAULT 0c, from his live test of 11 September 2026: "Entry was
+    blocked by a rule." The execute path raised 400 the moment any blocking
+    check failed, and the overnight carry test was blocking, so with the plan
+    chip on "carrying overnight" a naked leg could not be sent at all.
+
+    His rule, settled 8 September: entry is NEVER blocked, including a naked or
+    half-built structure, because converting a straddle into a condor has to
+    pass through states no gate would allow. Only CARRYING is gated, at 15:20,
+    by the naked-shorts check on what he actually holds.
+
+    So the event is still dispatched -- the record must know he entered against
+    a failing check -- and the trade is no longer refused for it. The send here
+    gets as far as the fill, which is a different gate entirely.
+    """
     from fastapi.testclient import TestClient
     from swayam.api.main import app
 
     client = TestClient(app)
     with patch("swayam.api.routes.execution.audit_strategy_rules") as mock_audit, \
          patch("swayam.api.routes.execution.dispatch") as mock_dispatch:
-        mock_audit.return_value = MagicMock(
-            passed=False,
-            checks=[MagicMock(model_dump=lambda: {"rule": "blast_radius", "verdict": "FAIL", "note": "Exceeds 5%"})],
+        # `verdict` is set on the mock itself now, not only inside model_dump.
+        # The old code reached the dispatch through `passed`; the new code reads
+        # the verdict of each check, which is the thing that actually failed.
+        failing_check = MagicMock(
+            verdict="FAIL",
+            model_dump=lambda: {"rule": "blast_radius", "verdict": "FAIL", "note": "Exceeds 5%"},
         )
+        mock_audit.return_value = MagicMock(passed=False, checks=[failing_check])
 
         payload = {
             "strategy_name": "Test Rogue",
@@ -292,7 +312,9 @@ def test_execute_endpoint_dispatches_rule_violation_on_block():
             "mode": "paper",
         }
         resp = client.post("/api/execute", json=payload)
-        assert resp.status_code == 400
+        # NOT 400. A rule does not stop an entry any more. Whatever answer the
+        # fill stage gives, it is not "Strategy violates Method rules".
+        assert "violates Method rules" not in resp.text
         mock_dispatch.assert_called_once()
         assert mock_dispatch.call_args[0][0] == "rule_violation"
 

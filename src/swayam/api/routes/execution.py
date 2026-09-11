@@ -85,6 +85,7 @@ from swayam.api.models_api import (
     StrategyComputeRequest,
 )
 from swayam.api.routes.strategy import build_spread_from_request
+from swayam.options_math.payoff import unbounded_loss_reason
 from swayam.api.routes.validation import audit_strategy_rules
 from swayam.db import db
 from swayam.notifications.events import dispatch
@@ -723,27 +724,33 @@ def _execute_trade_inner(
     # Step 1: Pre-trade rule audit gate, at the prices on the ticket. Entry is
     # never blocked by a rule; a failing check is recorded, not enforced.
     validation = audit_strategy_rules(req)
-    if not validation.passed:
-        failing = [c.model_dump() for c in validation.checks if c.verdict == "FAIL"]
+    # A FAILING CHECK IS RECORDED, NOT ENFORCED. This comment said exactly that
+    # while the code four lines below raised a 400 and refused the trade, and
+    # that contradiction cost him an entry on 11 September: with the plan chip
+    # on "carrying overnight", a naked leg could not be sent at all.
+    #
+    # His rule, settled 8 September and repeated since: entry is NEVER blocked,
+    # including a naked or half-built structure, because converting a straddle
+    # into a condor has to pass through states no gate would allow. Only
+    # CARRYING is gated, and the 15:20 naked-shorts check is what gates it, on
+    # what he actually holds rather than on a structure he has not sent.
+    #
+    # The failing checks are still computed, still returned on the reply, still
+    # drawn on the desk, and still dispatched as an event so the record knows he
+    # entered against one.
+    failing = [c.model_dump() for c in validation.checks if c.verdict == "FAIL"]
+    if failing:
         failing_reasons = ", ".join([f"{c.get('rule')}: {c.get('note', '')}" for c in failing])
-        rule_id_val = failing[0].get("rule") if failing else "method_rule"
+        rule_id_val = failing[0].get("rule")
         try:
             dispatch("rule_violation", {
                 "rule_id": rule_id_val,
-                "rule_name": rule_id_val.replace("_", " ").title(),
+                "rule_name": str(rule_id_val).replace("_", " ").title(),
                 "attempted_action": f"Execute {req.strategy_name}",
                 "reason": failing_reasons,
             })
         except Exception as exc:
             logger.warning("Could not dispatch rule_violation event: %s", exc)
-
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": "Trade execution blocked: Strategy violates Method rules.",
-                "failing_checks": failing,
-            },
-        )
 
     # Step 2: FILL every leg against the live market, or refuse the lot.
     #
@@ -823,6 +830,12 @@ def _execute_trade_inner(
         current_iv_per_leg=iv_map,
         as_of_date=date.today(),
     )
+    # WHY THE MAXIMUM LOSS MAY BE ABSENT. A net short call position has no
+    # worst case at expiry, so the figure stored is NULL and this sentence
+    # goes with it. Fault 0a of his live test, 11 September 2026: the
+    # infinity used to travel into the column and the trade was lost after
+    # the fills had already happened.
+    unbounded_reason = unbounded_loss_reason(spread)
     pos_greeks = compute_position_greeks(
         spread=spread,
         current_spot=spot_at_entry,
@@ -885,6 +898,7 @@ def _execute_trade_inner(
         "legs": legs_dict,
         "payoff_curve": {
             "max_loss_inr": curve.max_loss_inr,
+            "max_loss_unbounded_reason": unbounded_reason,
             "max_profit_inr": curve.max_profit_inr,
             "rr_implied": curve.rr_implied,
             "net_debit_credit_inr": curve.net_debit_credit_inr,
@@ -949,6 +963,7 @@ def _execute_trade_inner(
         "legs": legs_dict,
         "net_debit_credit_inr": curve.net_debit_credit_inr,
         "max_loss_inr": curve.max_loss_inr,
+        "max_loss_unbounded_reason": unbounded_reason,
         "max_profit_inr": curve.max_profit_inr,
         "breakeven_points": list(curve.breakevens),
         "risk_at_entry_inr": curve.max_loss_inr,
@@ -970,10 +985,32 @@ def _execute_trade_inner(
             f"leg_order={req.leg_order}" if req.leg_order else None,
         ])) or None,
     }
+    # THE REASON COLUMN IS ONLY WRITTEN WHEN THERE IS A REASON, so a deploy
+    # that reaches the live site before migration 025 has been applied still
+    # opens every bounded trade exactly as before. The same guard migration 022
+    # earned for name_source. Only a structure with no ceiling on its loss
+    # needs the column, and that one says so plainly below.
+    if db_record.get("max_loss_unbounded_reason") is None:
+        db_record.pop("max_loss_unbounded_reason", None)
     try:
         client = db.client
         client.table("swayam_positions").insert(db_record).execute()
     except Exception as e:
+        # A LOSS WITH NO CEILING NEEDS MIGRATION 025. Before it is applied the
+        # column is NOT NULL and the row is refused, which is what cost him the
+        # trade on 11 September. Say which migration and what it does, rather
+        # than handing him the driver's sentence about JSON compliance.
+        if unbounded_reason is not None:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "The legs filled, but this trade could not be recorded. Its loss has "
+                    "no ceiling, so there is no maximum loss to store, and that needs "
+                    "migration 025 (025_unbounded_max_loss.sql), which is not applied on "
+                    "this database yet. Apply it and the same trade records normally. "
+                    f"Underlying error: {e}"
+                ),
+            ) from e
         raise HTTPException(
             status_code=503,
             detail=(
@@ -1155,6 +1192,7 @@ def _execute_trade_inner(
         "spot_source": spot_source,
         "net_debit_credit_inr": curve.net_debit_credit_inr,
         "max_loss_inr": curve.max_loss_inr,
+        "max_loss_unbounded_reason": unbounded_reason,
         "max_profit_inr": curve.max_profit_inr,
         "breakevens": list(curve.breakevens),
         "entry_charges_inr": entry_charges_total,
@@ -1295,6 +1333,12 @@ def _add_leg_inner(
     )
     spread, iv_map, _ = build_spread_from_request(compute_req)
     curve = compute_payoff_curve(spread=spread, current_spot=spot_now, current_iv_per_leg=iv_map, as_of_date=date.today())
+    # WHY THE MAXIMUM LOSS MAY BE ABSENT. A net short call position has no
+    # worst case at expiry, so the figure stored is NULL and this sentence
+    # goes with it. Fault 0a of his live test, 11 September 2026: the
+    # infinity used to travel into the column and the trade was lost after
+    # the fills had already happened.
+    unbounded_reason = unbounded_loss_reason(spread)
     resolved_new = spread.legs[-1]
 
     leg = new_leg_req.model_dump()
@@ -1329,6 +1373,7 @@ def _add_leg_inner(
         "expiry_date": str(min(l.expiry_date for l in combined_reqs)),
         "net_debit_credit_inr": curve.net_debit_credit_inr,
         "max_loss_inr": curve.max_loss_inr,
+        "max_loss_unbounded_reason": unbounded_reason,
         "max_profit_inr": curve.max_profit_inr,
         "breakeven_points": list(curve.breakevens),
         "risk_at_entry_inr": curve.max_loss_inr,
@@ -1337,6 +1382,10 @@ def _add_leg_inner(
         "margin_quoted_at": margin["margin_quoted_at"],
         "margin_source": margin["margin_source"],
     }
+    # As at the insert above: only written when there is something to say, so
+    # adding a leg keeps working before migration 025 is applied.
+    if update.get("max_loss_unbounded_reason") is None:
+        update.pop("max_loss_unbounded_reason", None)
     try:
         client.table("swayam_positions").update(update).eq("id", position_id).execute()
     except Exception as exc:
@@ -1354,6 +1403,7 @@ def _add_leg_inner(
     structure_after = {
         "net_debit_credit_inr": curve.net_debit_credit_inr,
         "max_loss_inr": curve.max_loss_inr,
+        "max_loss_unbounded_reason": unbounded_reason,
         "max_profit_inr": curve.max_profit_inr,
         "breakevens": list(curve.breakevens),
         "margin_required_inr": margin["margin_required_inr"],
@@ -1672,6 +1722,12 @@ def _structure_after(
         current_iv_per_leg=iv_map,
         as_of_date=date.today(),
     )
+    # WHY THE MAXIMUM LOSS MAY BE ABSENT. A net short call position has no
+    # worst case at expiry, so the figure stored is NULL and this sentence
+    # goes with it. Fault 0a of his live test, 11 September 2026: the
+    # infinity used to travel into the column and the trade was lost after
+    # the fills had already happened.
+    unbounded_reason = unbounded_loss_reason(spread)
     margin = _margin_for(reqs, underlying)
     return {
         "legs_count": len(still_open),
@@ -1679,6 +1735,7 @@ def _structure_after(
         "expiry_date": str(min(r.expiry_date for r in reqs)),
         "net_debit_credit_inr": curve.net_debit_credit_inr,
         "max_loss_inr": curve.max_loss_inr,
+        "max_loss_unbounded_reason": unbounded_reason,
         "max_profit_inr": curve.max_profit_inr,
         "breakevens": list(curve.breakevens),
         "margin_required_inr": margin["margin_required_inr"],
@@ -1918,6 +1975,13 @@ def _apply_leg_exit(
     ):
         if key in structure:
             update[key] = structure[key]
+    # SQUARING OFF A LEG CAN CHANGE WHETHER THE LOSS HAS A CEILING, in both
+    # directions: exiting the long call of a bull call spread leaves a naked
+    # short and the ceiling goes, and buying that wing back puts it back. The
+    # reason follows the structure that is left, and is only written when there
+    # is one, so this keeps working before migration 025 is applied.
+    if structure.get("max_loss_unbounded_reason") is not None:
+        update["max_loss_unbounded_reason"] = structure["max_loss_unbounded_reason"]
     if "breakevens" in structure:
         update["breakeven_points"] = structure["breakevens"]
         update["risk_at_entry_inr"] = structure["max_loss_inr"]

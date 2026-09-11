@@ -59,6 +59,104 @@ def fetch_chain_cached(symbol: str, strike_count: int, timestamp: Optional[str] 
     return fetch_chain_snapshot(symbol, strike_count, timestamp).data or {}
 
 
+# ONE KEY PER EXPIRY, SHARED BY EVERYTHING.
+#
+# The feed refreshes each key it is watching on its own timer, so a key is not
+# free: every distinct (symbol, strike_count, epoch) triple is another standing
+# poll of FYERS whether or not anything reads it. Measured on 2026-09-11 while
+# moving the live valuation onto the feed: four keys for one expiry produced 66
+# broker calls a minute, against 11 for the old on-demand cache.
+#
+# So the widths are constants rather than whatever a caller happened to pass.
+# The chain panel asks for 30 strikes and the position valuation wanted 40;
+# both now read the SAME 40-strike chain and the panel narrows it for the
+# screen, which costs nothing and removes a whole standing poll.
+BASE_CHAIN_STRIKES = 2    # enough to read expiryData, and nothing more
+# FIFTY, because that is the width Build B's order watcher already asks for and
+# the watcher must not be narrowed: a resting order can sit at a strike well
+# away from the money, and a chain too narrow to hold it would leave the order
+# watching nothing. Everything else reads this same chain, narrowed on the way
+# to the screen, so there is ONE key per expiry rather than one per caller.
+WIDE_CHAIN_STRIKES = 50
+
+
+# expiry ISO -> (FYERS epoch, when it was read). The mapping from a date to the
+# broker's epoch changes when the expiry list changes, which is weekly, not
+# every three seconds. Re-reading a two-strike chain on every poll to learn it
+# again was half of all the broker calls this backend made: 15 of 29 in the
+# minute measured on 2026-09-11. Held for ten minutes, so the base key falls
+# out of the feed's demand list between reads instead of being polled forever.
+_EPOCH_TTL_SECONDS = 600.0
+_epoch_cache: dict[str, tuple[Optional[str], float]] = {}
+
+
+def epoch_for(symbol: str, expiry: str) -> Optional[str]:
+    """FYERS' epoch for an expiry date, remembered for ten minutes.
+
+    None when FYERS does not list that expiry, and None is remembered too: an
+    expiry the broker has never heard of will not start being listed within the
+    next ten minutes, and asking again every three seconds is how the request
+    budget was spent.
+    """
+    key = f"{symbol}|{expiry}"
+    now = time.time()
+    hit = _epoch_cache.get(key)
+    if hit is not None and (now - hit[1]) < _EPOCH_TTL_SECONDS:
+        return hit[0]
+
+    # READ WITHOUT REGISTERING STANDING DEMAND. `register` tells the feed to go
+    # on refreshing a key every three seconds for the next ninety, which is
+    # right for quotes and wrong for this: the mapping from a date to an epoch
+    # changes when the expiry list changes. Registering it cost sixteen broker
+    # calls a minute for a two-strike chain nobody was reading, measured on
+    # 2026-09-11. `fetch_now` reads what is already there and fetches only on a
+    # cold cache, and it records no demand.
+    feed_key = chain_feed.key_for(symbol, BASE_CHAIN_STRIKES, None)
+    base = chain_feed.snapshot(feed_key).data
+    if base is None:
+        base = chain_feed.fetch_now(feed_key)
+    if not base:
+        # Nothing was read, so nothing is remembered. A blank answer here is
+        # "could not look it up", not "this expiry does not exist".
+        return None
+    found = resolve_expiry_epoch(base, str(expiry))
+    _epoch_cache[key] = (found, now)
+    return found
+
+
+def narrow_chain(raw_chain: dict[str, Any], strike_count: int) -> dict[str, Any]:
+    """The same chain with only the `strike_count` strikes nearest the money.
+
+    The feed holds one wide chain per expiry. A caller that wants fewer rows
+    slices what is already here rather than opening a second key for a second
+    width. The underlying row (option_type "") is always kept: the spot is read
+    from it.
+    """
+    rows = raw_chain.get("optionsChain") or []
+    if not rows or strike_count <= 0:
+        return raw_chain
+
+    spot: Optional[float] = None
+    for r in rows:
+        if not r.get("option_type"):
+            spot = _opt_float(r.get("ltp")) or None
+            break
+    if spot is None:
+        return raw_chain
+
+    strikes = sorted({float(r["strike_price"]) for r in rows if r.get("strike_price") is not None})
+    if len(strikes) <= strike_count:
+        return raw_chain
+    nearest = sorted(strikes, key=lambda s: abs(s - spot))[:strike_count]
+    keep = set(nearest)
+    out = dict(raw_chain)
+    out["optionsChain"] = [
+        r for r in rows
+        if not r.get("option_type") or float(r.get("strike_price", -1)) in keep
+    ]
+    return out
+
+
 # The order matters: the screen shows the worst of the sources, so one glance
 # is enough and nothing hides behind an average.
 _STATE_RANK = {"live": 0, "closing": 1, "delayed": 2, "unavailable": 3}
@@ -308,12 +406,13 @@ def get_option_chain(
 
     now = time.time()
     try:
-        base_chain = fetch_chain_cached("NSE:NIFTY50-INDEX", strike_count)
+        # The date-to-epoch mapping, remembered for ten minutes.
+        epoch = epoch_for("NSE:NIFTY50-INDEX", expiry)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Failed to fetch option chain from FYERS: {e}") from e
 
-    epoch = resolve_expiry_epoch(base_chain, expiry)
     if epoch is None:
+        base_chain = fetch_chain_cached("NSE:NIFTY50-INDEX", BASE_CHAIN_STRIKES)
         listed = [ed.get("date") for ed in base_chain.get("expiryData", []) or []]
         raise HTTPException(
             status_code=404,
@@ -327,7 +426,12 @@ def get_option_chain(
             return entry["data"]
 
     try:
-        raw_chain = fetch_chain_cached("NSE:NIFTY50-INDEX", strike_count, epoch)
+        # The one wide chain per expiry, narrowed here for the screen. The
+        # position valuation reads the very same key.
+        raw_chain = narrow_chain(
+            fetch_chain_cached("NSE:NIFTY50-INDEX", WIDE_CHAIN_STRIKES, epoch),
+            strike_count,
+        )
         rows = raw_chain.get("optionsChain", []) or []
         if not rows:
             raise RuntimeError("FYERS returned an empty option chain.")
@@ -439,7 +543,7 @@ def get_option_quote(
     quote_error: Optional[str] = None
     freshness: Optional[ChainSnapshot] = None
     try:
-        base = fetch_chain_snapshot(symbol, 50)
+        base = fetch_chain_snapshot(symbol, BASE_CHAIN_STRIKES)
         base_chain = base.data or {}
         # Map requested expiry (YYYY-MM-DD) -> FYERS epoch via expiryData (dates are DD-MM-YYYY).
         want_epoch = resolve_expiry_epoch(base_chain, expiry)
@@ -448,7 +552,7 @@ def get_option_quote(
         # costs a FYERS call while the feed already holds them.
         snap = base
         if want_epoch:
-            snap = fetch_chain_snapshot(symbol, 50, want_epoch)
+            snap = fetch_chain_snapshot(symbol, WIDE_CHAIN_STRIKES, want_epoch)
         freshness = snap
         chain = snap.data or {}
         for row in chain.get("optionsChain", []) or []:

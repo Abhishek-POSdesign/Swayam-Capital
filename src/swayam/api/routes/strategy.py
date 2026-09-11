@@ -331,13 +331,22 @@ def compute_strategy(req: StrategyComputeRequest) -> StrategyComputeResponse:
     ]
 
     breakevens_rounded = [round(b, 2) for b in curve.breakevens]
+
+    def _r2(value):
+        """Round, or pass None straight through.
+
+        `round(math.inf, 2)` is `inf`, and FastAPI writes that into the reply as
+        the bare token `Infinity`, which is not valid JSON. That is the browser
+        half of fault 0a: a naked leg broke the desk as well as the record.
+        """
+        return None if value is None else round(value, 2)
     payoff_resp = PayoffCurveResponse(
         spot_range=[round(curve.spot_range[0], 2), round(curve.spot_range[1], 2)],
         points=points_resp,
         breakevens=breakevens_rounded,
         max_profit_inr=round(curve.max_profit_inr, 2),
-        max_loss_inr=round(curve.max_loss_inr, 2),
-        rr_implied=round(curve.rr_implied, 2),
+        max_loss_inr=_r2(curve.max_loss_inr),
+        rr_implied=_r2(curve.rr_implied),
         net_debit_credit_inr=round(curve.net_debit_credit_inr, 2),
     )
 
@@ -346,8 +355,8 @@ def compute_strategy(req: StrategyComputeRequest) -> StrategyComputeResponse:
         points=points_expiry,
         breakevens=breakevens_rounded,
         max_profit_inr=round(curve.max_profit_inr, 2),
-        max_loss_inr=round(curve.max_loss_inr, 2),
-        rr_implied=round(curve.rr_implied, 2),
+        max_loss_inr=_r2(curve.max_loss_inr),
+        rr_implied=_r2(curve.rr_implied),
         net_debit_credit_inr=round(curve.net_debit_credit_inr, 2),
     )
 
@@ -356,8 +365,8 @@ def compute_strategy(req: StrategyComputeRequest) -> StrategyComputeResponse:
         points=points_target,
         breakevens=breakevens_rounded,
         max_profit_inr=round(curve.max_profit_inr, 2),
-        max_loss_inr=round(curve.max_loss_inr, 2),
-        rr_implied=round(curve.rr_implied, 2),
+        max_loss_inr=_r2(curve.max_loss_inr),
+        rr_implied=_r2(curve.rr_implied),
         net_debit_credit_inr=round(curve.net_debit_credit_inr, 2),
     )
 

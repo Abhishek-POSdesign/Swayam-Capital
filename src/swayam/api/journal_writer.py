@@ -223,7 +223,12 @@ def write_new_trade_journal(
     greeks = spread_data.get("greeks", {})
     notice_block = f"\n> **{notice}**\n" if notice else ""
 
-    max_loss_inr = float(payoff.get("max_loss_inr", 0.0))
+    # UNLIMITED IS NOT ZERO. A net short call has no worst case at expiry, and
+    # the row stores NULL for it. Printing "Max loss: Rs 0" into his permanent
+    # record would be the most reassuring lie this terminal could tell.
+    _raw_max_loss = payoff.get("max_loss_inr")
+    max_loss_inr = None if _raw_max_loss is None else float(_raw_max_loss)
+    max_loss_unbounded = payoff.get("max_loss_unbounded_reason")
     max_profit_inr = float(payoff.get("max_profit_inr", 0.0))
     rr_implied = float(payoff.get("rr_implied", 0.0))
     net_debit_credit = float(payoff.get("net_debit_credit_inr", 0.0))
@@ -234,9 +239,19 @@ def write_new_trade_journal(
     # note printed "0.00% of margin base" because the rebuild passed no balance.
     max_loss_pct_text = (
         f"{max_loss_inr / margin_base_inr * 100.0:.2f}% of margin base"
-        if margin_base_inr and margin_base_inr > 0
+        if max_loss_inr is not None and margin_base_inr and margin_base_inr > 0
         else "% of margin base unavailable, no balance was read"
     )
+    # The one line the note prints. Unlimited says so in words and carries the
+    # reason; a bounded loss reads exactly as it always did.
+    if max_loss_inr is None:
+        max_loss_text = (
+            f"**UNLIMITED** — {max_loss_unbounded}"
+            if max_loss_unbounded
+            else "**UNLIMITED** — this structure has no worst case at expiry"
+        )
+    else:
+        max_loss_text = f"₹{max_loss_inr:,.0f} ({max_loss_pct_text})"
     opened_text = _ist_stamp(opened_at) if opened_at else f"{now.isoformat()} (the note's time; the trade's was not recorded)"
     margin_required = spread_data.get("margin_required_inr")
     margin_line = (
@@ -332,7 +347,7 @@ provenance: {provenance_value}
 
 ### Risk / Reward
 
-- **Max loss**: ₹{max_loss_inr:,.0f} ({max_loss_pct_text})
+- **Max loss**: {max_loss_text}
 - **Max profit**: ₹{max_profit_inr:,.0f}
 - **R:R implied**: {rr_implied:.2f}
 - **Net debit/credit**: ₹{net_debit_credit:,.0f}
@@ -430,7 +445,7 @@ def append_leg_block(
 |:---:|---:|:---:|:---:|:---:|:---:|---:|---:|---:|
 {row}
 
-The trade now holds {structure_after.get('legs_count', '—')} legs. Net debit/credit ₹{float(structure_after.get('net_debit_credit_inr') or 0):,.0f}, max loss ₹{float(structure_after.get('max_loss_inr') or 0):,.0f}, max profit ₹{float(structure_after.get('max_profit_inr') or 0):,.0f}, breakeven(s) {be_text}, broker margin {('₹' + format(float(margin), ',.0f')) if margin is not None else 'unavailable'}.
+The trade now holds {structure_after.get('legs_count', '—')} legs. Net debit/credit ₹{float(structure_after.get('net_debit_credit_inr') or 0):,.0f}, max loss {('unlimited' if structure_after.get('max_loss_inr') is None else '₹' + format(float(structure_after['max_loss_inr']), ',.0f'))}, max profit ₹{float(structure_after.get('max_profit_inr') or 0):,.0f}, breakeven(s) {be_text}, broker margin {('₹' + format(float(margin), ',.0f')) if margin is not None else 'unavailable'}.
 
 """
     heading = "## Adjustments"
@@ -512,7 +527,7 @@ def append_leg_exit_block(
         margin = after.get("margin_required_inr")
         holding_line = (
             f"The trade stays open with {after.get('legs_count', '—')} leg(s). "
-            f"Max loss ₹{float(after.get('max_loss_inr') or 0):,.0f}, "
+            f"Max loss {('unlimited' if after.get('max_loss_inr') is None else '₹' + format(float(after['max_loss_inr']), ',.0f'))}, "
             f"max profit ₹{float(after.get('max_profit_inr') or 0):,.0f}, "
             f"breakeven(s) {be_text}, broker margin "
             f"{('₹' + format(float(margin), ',.0f')) if margin is not None else 'unavailable'}."

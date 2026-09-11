@@ -328,7 +328,21 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
             ValidationCheck(
                 rule="overnight_carry",
                 verdict="PASS" if carry.may_carry else "FAIL",
-                blocking=True,
+                # ADVISORY, LIKE EVERY OTHER CHECK AT ENTRY. Fault 0c of his
+                # live test, 11 September 2026: "Entry was blocked by a rule."
+                # With the plan chip on "carrying overnight" this check was the
+                # only blocking one in the file, so a naked leg could not be
+                # sent at all -- and a naked leg is how he BUILDS. A straddle
+                # becomes a condor by passing through states no gate would
+                # allow, which is his own settled rule of 8 September.
+                #
+                # It is not weakened, it is moved to where it belongs. The gap
+                # test still answers, still says FAIL in words, still colours
+                # the execute bar, and CARRYING is still gated: the 15:20
+                # naked-shorts check watches what he actually holds, which is
+                # the only moment the answer is real. A verdict computed on a
+                # structure he has not sent yet cannot gate anything.
+                blocking=False,
                 actual_inr=round(carry.gap_loss_inr, 2) if carry.gap_loss_inr is not None else None,
                 cap_inr=round(carry.cap_inr, 2),
                 note=" ".join(
@@ -347,19 +361,27 @@ def audit_strategy_rules(req: StrategyComputeRequest) -> ValidationResponse:
             "not executed."
         )
 
+    # NOTHING HERE BLOCKS AN ENTRY ANY MORE, so `overall_passed` says only that
+    # every check passed, and the execute path treats it as information rather
+    # than as a gate. The list is kept because a check may become blocking
+    # again one day, and because an empty list making this True is the right
+    # answer: no blocking check has failed.
     blocking_checks = [c for c in checks if c.blocking]
     overall_passed = all(c.verdict == "PASS" for c in blocking_checks)
 
     warnings: list[str] = []
-    if not overall_passed:
+    carry_failed = [c for c in checks if c.rule == "overnight_carry" and c.verdict == "FAIL"]
+    if carry_failed:
         warnings.append(
-            "Cannot be carried overnight: "
-            + "; ".join(c.note or c.rule for c in blocking_checks if c.verdict == "FAIL")
+            "Fine to enter, but not to carry overnight as it stands: "
+            + "; ".join(c.note or c.rule for c in carry_failed)
         )
     advisory_failures = [
         RULE_DISPLAY_NAMES.get(c.rule, c.rule.replace("_", " "))
         for c in checks
-        if not c.blocking and c.verdict == "FAIL"
+        # The carry test has its own sentence above, naming the arithmetic.
+        # Listing it here as well said the same thing twice in two voices.
+        if not c.blocking and c.verdict == "FAIL" and c.rule != "overnight_carry"
     ]
     if advisory_failures:
         warnings.append(

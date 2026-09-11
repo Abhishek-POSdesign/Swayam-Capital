@@ -310,6 +310,10 @@ def test_close_position_fills_against_the_book_when_exit_legs_omitted(client):
     with (
         patch("swayam.api.routes.positions.db") as mock_db,
         patch("swayam.api.routes.positions.fyers_client") as mock_fyers,
+        # Round 1b: the live valuation reads api/chain_feed.py now, so the
+        # chain is stubbed at this route's own door rather than at the
+        # broker client, which it no longer calls itself.
+        patch("swayam.api.routes.positions._get_cached_option_chain") as mock_chain_door,
         patch("swayam.api.routes.positions.append_exit_block") as mock_journal,
         patch("swayam.api.routes.positions._market_is_open_now", return_value=True),
     ):
@@ -324,7 +328,7 @@ def test_close_position_fills_against_the_book_when_exit_legs_omitted(client):
         mock_db.client.table.return_value.insert.return_value.execute.return_value = MagicMock()
         mock_db.client.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
         mock_db.get_margin_base_inr.return_value = 850000.0
-        mock_fyers.get_option_chain.return_value = mock_chain
+        mock_chain_door.return_value = mock_fyers.get_option_chain.return_value = mock_chain
 
         resp = client.post(
             "/api/positions/pos-close-123/close",
@@ -339,7 +343,11 @@ def test_close_position_fills_against_the_book_when_exit_legs_omitted(client):
     assert sides == {"buy": "bid", "sell": "ask"}
     # Twice: the expiry is resolved to a FYERS epoch, then the chain is
     # read. It used to send the word NIFTY as a symbol and never worked.
-    assert mock_fyers.get_option_chain.call_count == 2
+    # ONCE. It used to be twice: one call to map the expiry to a FYERS epoch
+    # and one for the chain itself. Round 1b remembers the epoch for ten
+    # minutes and reads the chain from the shared feed, so closing a trade
+    # costs this route one read rather than two broker calls.
+    assert mock_chain_door.call_count == 1
 
 
 def test_close_position_journal_uses_the_live_balance(client):
