@@ -1,26 +1,37 @@
 /* Swayam Capital Design System — Inherited from Atlas (POS)
  * Canonical reference: D:\Claude\POS\Atlas\Deploy\css\tokens.css & primitives.css
+ *
+ * BUILD_06, 2026-09-11: the values here are now Atlas's, in both themes, and
+ * every token NAME is unchanged so nothing downstream had to move. What had
+ * been inherited before was the four ACCENTS in dark, to the hex; the grounds
+ * under them never were, and in light even the accents were different colours
+ * (a vivid #15803d green where Atlas has a muted #6f8f65).
+ *
+ * THIS IS ONE OF TWO TOKEN SYSTEMS. This file dresses the header, the AI
+ * drawer and the Trade Journal. `swayam-desk.css` dresses Home, the Strategy
+ * Desk, both tickets, the option chain and the targets modal, which all render
+ * inside `.sw-desk`. Change one without the other and half the app moves.
  */
 
 /* ===== DARK CANVAS (default — Charcoal Muse) ===== */
 :root,
 :root[data-theme="dark"] {
-  --text-primary: #edeff4;    /* near-white — hero data, numerals, primary text */
-  --text-secondary: #a9afbd;  /* mid-gray — body copy, meta text */
-  --text-muted: #8a91a0;      /* low-gray — section labels ONLY (all-caps eyebrows) */
-  --text-inverse: #101116;    /* dark — text placed ON a light/tinted surface */
+  --text-primary: #e2e2e2;    /* near-white — hero data, numerals, primary text */
+  --text-secondary: #c4c4c4;  /* mid-gray — body copy, meta text */
+  --text-muted: #8f8f8f;      /* low-gray — section labels ONLY (all-caps eyebrows) */
+  --text-inverse: #1a1a1a;    /* dark — text placed ON a light/tinted surface */
 
-  --dl-bg: #101116;
-  --dl-card: #191b21;
-  --dl-card-2: #20232b;
-  --dl-rail: #16171c;
-  --dl-line: #272a33;
-  --dl-line-2: #20232a;
-  --dl-fg: #edeff4;
-  --dl-fg-2: #a9afbd;
-  --dl-fg-3: #8a91a0;
-  --dl-track: #2f333d;
-  --dl-ink-tile: #13151a;
+  --dl-bg: #1a1a1a;
+  --dl-card: #202020;
+  --dl-card-2: #2a2a2a;
+  --dl-rail: #1a1a1a;
+  --dl-line: rgba(255, 255, 255, 0.08);
+  --dl-line-2: rgba(255, 255, 255, 0.05);
+  --dl-fg: #e2e2e2;
+  --dl-fg-2: #c4c4c4;
+  --dl-fg-3: #8f8f8f;
+  --dl-track: #2f2f2f;
+  --dl-ink-tile: #1a1a1a;
 
   --accent-sage: #86ab92;
   --accent-sage-tint: rgba(134, 171, 146, 0.17);
@@ -32,11 +43,6 @@
   --accent-blue-tint-hover: rgba(117, 154, 208, 0.32);
   --dl-task: #c3dcff;  --dl-task-on: #0f4680;  --dl-task-mark: #c3dcff;
 
-  /* Purple/lilac removed per Abhishek's standing directive — these alias BLUE so every
-     component that still references --accent-lilac renders blue, never purple. */
-  --accent-lilac: var(--accent-blue);
-  --accent-lilac-tint: var(--accent-blue-tint);
-  --accent-lilac-tint-hover: var(--accent-blue-tint-hover);
   --dl-project: var(--dl-task);  --dl-project-on: var(--dl-task-on);  --dl-project-mark: var(--dl-task-mark);
 
   --accent-coral: #dd8170;
@@ -49,10 +55,10 @@
   --accent-amber-tint-hover: rgba(201, 160, 74, 0.32);
   --dl-skip: #ffe6ac;  --dl-skip-on: #6f4b06;  --dl-skip-mark: #ffe6ac;
 
-  --dl-shadow: 0 1px 2px rgba(0,0,0,0.5), 0 10px 26px rgba(0,0,0,0.4);
+  --dl-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.25);
   --theme-switcher-bg: rgba(255,255,255,0.06);
-  --plotly-bg: #191b21;
-  --plotly-grid: #272a33;
+  --plotly-bg: #202020;
+  --plotly-grid: rgba(255, 255, 255, 0.08);
 
   /* The brand sage of the mark: #7d9d84 on light, #9dbba3 on dark. */
   --brand-sage: #9dbba3;
@@ -75,88 +81,83 @@
 
 /* ===== LIGHT CANVAS (Atlas Modern) — warm-white #fafaf8, dark rail #16171c ===== */
 :root[data-theme="light"] {
-  --surface-0: #fafaf8;
-  --surface-1: #ffffff;
-  --surface-1-hover: #fbfbfc;
-  --surface-2: #f3f4f6;
-  --border: #e5e7eb;
-  --border-hover: #d1d5db;
+  --surface-0: #ebe8e1;
+  --surface-1: #f8f6f2;
+  --surface-1-hover: #ffffff;
+  --surface-2: #fdfbf7;
+  --border: rgba(0, 0, 0, 0.07);
+  --border-hover: rgba(0, 0, 0, 0.12);
   --top-edge: inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05), 0 6px 16px rgba(0, 0, 0, 0.04);
-  --shadow-card-hover: 0 4px 8px rgba(0, 0, 0, 0.07), 0 12px 24px rgba(0, 0, 0, 0.06);
-  --text-primary: #0f172a;
-  --text-secondary: #334155;
-  --text-muted: #64748b;
-  --text-inverse: #ffffff;
+  --shadow-card: 0 1px 2px rgba(30, 25, 15, 0.04), 0 6px 20px rgba(30, 25, 15, 0.06);
+  --shadow-card-hover: 0 2px 4px rgba(30, 25, 15, 0.06), 0 10px 30px rgba(30, 25, 15, 0.10);
+  --text-primary: #1a1a1c;
+  --text-secondary: #6c6b68;
+  --text-muted: #94928e;
+  --text-inverse: #f8f6f2;
 
-  --dl-bg: #fafaf8;
-  --dl-card: #ffffff;
-  --dl-card-2: #f8f9fa;
-  --dl-rail: #ffffff; /* Header and left sidebar are pure clean white in Light mode */
-  --dl-line: #e2e8f0;
-  --dl-line-2: #f1f5f9;
-  --dl-fg: #0f172a;
-  --dl-fg-2: #334155;
-  --dl-fg-3: #64748b;
-  --dl-track: #e2e8f0;
-  --dl-ink-tile: #0f172a;
+  --dl-bg: #ebe8e1;
+  --dl-card: #f8f6f2;
+  --dl-card-2: #fdfbf7;
+  --dl-rail: #f8f6f2; /* Header and left sidebar are pure clean white in Light mode */
+  --dl-line: rgba(0, 0, 0, 0.07);
+  --dl-line-2: rgba(0, 0, 0, 0.04);
+  --dl-fg: #1a1a1c;
+  --dl-fg-2: #6c6b68;
+  --dl-fg-3: #94928e;
+  --dl-track: #ddd9d0;
+  --dl-ink-tile: #1a1a1c;
 
-  --accent-sage: #15803d;
-  --accent-sage-tint: rgba(21, 128, 61, 0.12);
-  --accent-sage-tint-hover: rgba(21, 128, 61, 0.22);
-  --dl-done: #dcfce7;  --dl-done-on: #14532d;  --dl-done-mark: #15803d;
+  --accent-sage: #6f8f65;
+  --accent-sage-tint: rgba(111, 143, 101, 0.14);
+  --accent-sage-tint-hover: rgba(111, 143, 101, 0.24);
+  --dl-done: #dde5d9;  --dl-done-on: #3d5136;  --dl-done-mark: #6f8f65;
 
-  --accent-blue: #2563eb;
-  --accent-blue-tint: rgba(37, 99, 235, 0.12);
-  --accent-blue-tint-hover: rgba(37, 99, 235, 0.22);
-  --dl-task: #dbeafe;  --dl-task-on: #1e3a8a;  --dl-task-mark: #2563eb;
+  --accent-blue: #5e7fb0;
+  --accent-blue-tint: rgba(94, 127, 176, 0.14);
+  --accent-blue-tint-hover: rgba(94, 127, 176, 0.24);
+  --dl-task: #dbe3ee;  --dl-task-on: #32486a;  --dl-task-mark: #5e7fb0;
 
-  /* Purple/lilac removed — alias BLUE (light theme). */
-  --accent-lilac: var(--accent-blue);
-  --accent-lilac-tint: var(--accent-blue-tint);
-  --accent-lilac-tint-hover: var(--accent-blue-tint-hover);
   --dl-project: var(--dl-task);  --dl-project-on: var(--dl-task-on);  --dl-project-mark: var(--dl-task-mark);
 
-  --accent-coral: #dc2626;
-  --accent-coral-tint: rgba(220, 38, 38, 0.12);
-  --accent-coral-tint-hover: rgba(220, 38, 38, 0.22);
-  --dl-alert: #fee2e2;  --dl-alert-on: #7f1d1d;  --dl-alert-mark: #dc2626;
+  --accent-coral: #b56b5d;
+  --accent-coral-tint: rgba(181, 107, 93, 0.14);
+  --accent-coral-tint-hover: rgba(181, 107, 93, 0.24);
+  --dl-alert: #f0dcd8;  --dl-alert-on: #6d3a31;  --dl-alert-mark: #b56b5d;
 
-  --accent-amber: #d97706;
-  --accent-amber-tint: rgba(217, 119, 6, 0.12);
-  --accent-amber-tint-hover: rgba(217, 119, 6, 0.22);
-  --dl-skip: #fef3c7;  --dl-skip-on: #78350f;  --dl-skip-mark: #d97706;
+  --accent-amber: #b89a44;
+  --accent-amber-tint: rgba(184, 154, 68, 0.14);
+  --accent-amber-tint-hover: rgba(184, 154, 68, 0.24);
+  --dl-skip: #efe7cf;  --dl-skip-on: #6b591f;  --dl-skip-mark: #b89a44;
 
-  --dl-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 6px 16px rgba(0, 0, 0, 0.04);
-  --dl-shadow-2: 0 4px 8px rgba(0, 0, 0, 0.07), 0 12px 24px rgba(0, 0, 0, 0.06);
+  --dl-shadow: 0 1px 2px rgba(30, 25, 15, 0.04), 0 6px 20px rgba(30, 25, 15, 0.06);
+  --dl-shadow-2: 0 2px 4px rgba(30, 25, 15, 0.06), 0 10px 30px rgba(30, 25, 15, 0.10);
   --theme-switcher-bg: rgba(0, 0, 0, 0.06);
-  --plotly-bg: #ffffff;
-  --plotly-grid: #f1f5f9;
+  --plotly-bg: #f8f6f2;
+  --plotly-grid: rgba(0, 0, 0, 0.07);
   --brand-sage: #7d9d84;
 }
 
 /* ===== AUTO (follows OS preference) ===== */
 @media (prefers-color-scheme: light) {
   :root[data-theme="auto"] {
-    --surface-0: #fafaf8;  --surface-1: #ffffff;  --surface-1-hover: #fbfbfc;
-    --surface-2: #f3f4f6;
-    --border: #e2e8f0;
-    --text-primary: #0f172a;
-    --text-secondary: #334155;
-    --text-muted: #64748b;
-    --text-inverse: #ffffff;
-    --dl-bg: #fafaf8;  --dl-card: #ffffff;  --dl-card-2: #f8f9fa;
-    --dl-rail: #ffffff;  --dl-line: #e2e8f0;  --dl-line-2: #f1f5f9;
-    --dl-fg: #0f172a;  --dl-fg-2: #334155;  --dl-fg-3: #64748b;
-    --dl-track: #e2e8f0;  --dl-ink-tile: #0f172a;
-    --accent-sage: #15803d;  --accent-sage-tint: rgba(21, 128, 61, 0.12);
-    --accent-blue: #2563eb;  --accent-blue-tint: rgba(37, 99, 235, 0.12);
-    --accent-lilac: var(--accent-blue);  --accent-lilac-tint: var(--accent-blue-tint);
-    --accent-coral: #dc2626;  --accent-coral-tint: rgba(220, 38, 38, 0.12);
-    --accent-amber: #d97706;  --accent-amber-tint: rgba(217, 119, 6, 0.12);
-    --dl-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 6px 16px rgba(0, 0, 0, 0.04);
+    --surface-0: #ebe8e1;  --surface-1: #f8f6f2;  --surface-1-hover: #ffffff;
+    --surface-2: #fdfbf7;
+    --border: rgba(0, 0, 0, 0.07);
+    --text-primary: #1a1a1c;
+    --text-secondary: #6c6b68;
+    --text-muted: #94928e;
+    --text-inverse: #f8f6f2;
+    --dl-bg: #ebe8e1;  --dl-card: #f8f6f2;  --dl-card-2: #fdfbf7;
+    --dl-rail: #f8f6f2;  --dl-line: rgba(0, 0, 0, 0.07);  --dl-line-2: rgba(0, 0, 0, 0.04);
+    --dl-fg: #1a1a1c;  --dl-fg-2: #6c6b68;  --dl-fg-3: #94928e;
+    --dl-track: #ddd9d0;  --dl-ink-tile: #1a1a1c;
+    --accent-sage: #6f8f65;  --accent-sage-tint: rgba(111, 143, 101, 0.14);
+    --accent-blue: #5e7fb0;  --accent-blue-tint: rgba(94, 127, 176, 0.14);
+    --accent-coral: #b56b5d;  --accent-coral-tint: rgba(181, 107, 93, 0.14);
+    --accent-amber: #b89a44;  --accent-amber-tint: rgba(184, 154, 68, 0.14);
+    --dl-shadow: 0 1px 2px rgba(30, 25, 15, 0.04), 0 6px 20px rgba(30, 25, 15, 0.06);
     --theme-switcher-bg: rgba(0, 0, 0, 0.06);
-    --plotly-bg: #ffffff;  --plotly-grid: #f1f5f9;
+    --plotly-bg: #f8f6f2;  --plotly-grid: rgba(0, 0, 0, 0.07);
     --brand-sage: #7d9d84;
   }
 }

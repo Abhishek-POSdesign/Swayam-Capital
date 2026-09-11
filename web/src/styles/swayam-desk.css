@@ -4,35 +4,57 @@
    ported verbatim in spirit and scoped under `.sw-desk` so it cannot leak into
    the Journal page or the header, which still use the older styles.
 
-   Simple near-white and near-black grounds, one accent, sage brand mark.
+   ATLAS'S GROUNDS, from BUILD_06 on 2026-09-11. This file used to hold a pure
+   white light theme (#ffffff on #ffffff) and a cold near-black dark one
+   (#0d0f0f). His question was "why doesn't my website have these colours?",
+   and the answer was that Swayam had copied Atlas's ACCENTS to the hex and
+   never its GROUNDS. A warm sage laid on a cold blue-black is what he read as
+   harsh. Light is now Atlas's warm paper #ebe8e1, dark its warm charcoal
+   #1a1a1a. Canonical source: D:\Claude\POS\Atlas\Deploy\css\tokens.css.
+
+   THIS FILE IS ONE OF TWO TOKEN SYSTEMS and it is the one that matters most.
+   Home, the Strategy Desk, both tickets, the option chain and the targets
+   modal all render inside `.sw-desk` and take every colour from here.
+   `swayam-tokens.css` dresses the header, the AI drawer and the Trade Journal.
+   Changing one without the other restyles half the app.
+
+   THE MONEY IS NOT AN ACCENT, and it is the one thing here that may shout.
+   `--up` and `--down` are the colours he reads his profit and loss in. Atlas
+   has no equivalent, so there was nothing to copy and every instinct in this
+   build says to mute them along with everything else. They are NOT muted. The
+   grounds went calm, the accents went calm, and the money stayed loud; where
+   the softer ground made green or red harder to pick out, the colour was
+   adjusted for CONTRAST, never softened. Their backgrounds moved to rgba so
+   they tint the warm paper instead of sitting on it as a cold mint patch.
+
    No purple, lilac or violet anywhere: that is a standing rule, not a taste.
    ========================================================================== */
 
 .sw-desk {
   /* light is the base definition; dark overrides only the tokens below */
-  --bg: #ffffff;
-  --panel: #ffffff;
-  --panel-2: #f7f8f8;
-  --sunk: #f0f2f2;
-  --line: #e3e6e6;
-  --line-2: #c9cfcf;
-  --fg: #101414;
-  --fg-2: #5a6362;
-  --fg-3: #8a9392;
+  --bg: #ebe8e1;
+  --panel: #f8f6f2;
+  --panel-2: #fdfbf7;
+  --sunk: #e3dfd6;
+  --line: rgba(0, 0, 0, 0.07);
+  --line-2: rgba(0, 0, 0, 0.12);
+  --fg: #1a1a1c;
+  --fg-2: #6c6b68;
+  --fg-3: #94928e;
   --up: #0a7a45;
-  --up-bg: #e6f4ec;
-  --down: #c02718;
-  --down-bg: #fbe9e6;
-  --warn: #8a5b00;
-  --warn-bg: #fbf1dc;
-  --info: #0b5f78;
-  --info-bg: #e2f0f4;
+  --up-bg: rgba(10, 122, 69, 0.13);
+  --down: #b02516;
+  --down-bg: rgba(176, 37, 22, 0.12);
+  --warn: #7a6420;
+  --warn-bg: rgba(184, 154, 68, 0.16);
+  --info: #3f6484;
+  --info-bg: rgba(94, 127, 176, 0.14);
   /* MATTE. His words, 2026-09-11: "I do not like these glowing colours
      anywhere... use the matte, but it should be visible." For figures that
      appear on dozens of rows at once, where the saturated tone becomes noise. */
   --up-matte: #4a7c62;
   --down-matte: #a8574a;
-  --brand: #7d9d84;
+  --brand: #6f8f65;
   --f: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --m: 'JetBrains Mono', 'Roboto Mono', ui-monospace, Consolas, monospace;
 
@@ -47,10 +69,10 @@
   /* The morning ritual is the same physical object in both themes, not the
      same colour: a deep near-black bar lying on a light desk here, a raised
      slate above a near-black page in the dark theme. */
-  --tile:      #141616;
-  --tile-fg:   #f2f4f3;
-  --tile-fg-2: rgba(242,244,243,.6);
-  --tile-line: rgba(255,255,255,.12);
+  --tile:      #fdfbf7;
+  --tile-fg:   #1a1a1c;
+  --tile-fg-2: rgba(26, 26, 28, 0.62);
+  --tile-line: rgba(0, 0, 0, 0.07);
 
   background: var(--bg);
   color: var(--fg);
@@ -64,64 +86,64 @@
    below, exactly as swayam-tokens.css does. Listing it here painted a dark
    page under a light header on a light system. */
 :root[data-theme='dark'] .sw-desk {
-  --bg: #0d0f0f;
-  --panel: #141717;
-  --panel-2: #1a1e1e;
-  --sunk: #101313;
-  --line: #262c2c;
-  --line-2: #3a4342;
-  --fg: #eef2f1;
-  --fg-2: #a3adac;
-  --fg-3: #77817f;
-  --up: #3ec27f;
-  --up-bg: #123024;
-  --down: #f47163;
-  --down-bg: #2f1614;
-  --warn: #e3a63f;
-  --warn-bg: #2c2110;
-  --info: #4bb4d0;
-  --info-bg: #0d2b34;
+  --bg: #1a1a1a;
+  --panel: #202020;
+  --panel-2: #2a2a2a;
+  --sunk: #161616;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-2: rgba(255, 255, 255, 0.14);
+  --fg: #e2e2e2;
+  --fg-2: #c4c4c4;
+  --fg-3: #8f8f8f;
+  --up: #4ecb8b;
+  --up-bg: rgba(78, 203, 139, 0.16);
+  --down: #f4796b;
+  --down-bg: rgba(244, 121, 107, 0.16);
+  --warn: #c9a04a;
+  --warn-bg: rgba(201, 160, 74, 0.17);
+  --info: #759ad0;
+  --info-bg: rgba(117, 154, 208, 0.17);
   --up-matte: #7fae92;
   --down-matte: #c98b7f;
-  --brand: #9dbba3;
+  --brand: #86ab92;
   --shadow:    0 1px 2px rgba(0,0,0,.45), 0 8px 22px rgba(0,0,0,.42);
   --shadow-hi: 0 3px 6px rgba(0,0,0,.5), 0 16px 36px rgba(0,0,0,.55);
   --edge:      inset 0 1px 0 rgba(255,255,255,.05);
-  --tile:      #1f2525;
-  --tile-fg:   #eef2f1;
-  --tile-fg-2: rgba(238,242,241,.6);
-  --tile-line: rgba(255,255,255,.1);
+  --tile:      #2a2a2a;
+  --tile-fg:   #e2e2e2;
+  --tile-fg-2: rgba(226, 226, 226, 0.62);
+  --tile-line: rgba(255, 255, 255, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .sw-desk {
-    --bg: #0d0f0f;
-    --panel: #141717;
-    --panel-2: #1a1e1e;
-    --sunk: #101313;
-    --line: #262c2c;
-    --line-2: #3a4342;
-    --fg: #eef2f1;
-    --fg-2: #a3adac;
-    --fg-3: #77817f;
-    --up: #3ec27f;
-    --up-bg: #123024;
-    --down: #f47163;
-    --down-bg: #2f1614;
-    --warn: #e3a63f;
-    --warn-bg: #2c2110;
-    --info: #4bb4d0;
-    --info-bg: #0d2b34;
+    --bg: #1a1a1a;
+    --panel: #202020;
+    --panel-2: #2a2a2a;
+    --sunk: #161616;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-2: rgba(255, 255, 255, 0.14);
+    --fg: #e2e2e2;
+    --fg-2: #c4c4c4;
+    --fg-3: #8f8f8f;
+    --up: #4ecb8b;
+    --up-bg: rgba(78, 203, 139, 0.16);
+    --down: #f4796b;
+    --down-bg: rgba(244, 121, 107, 0.16);
+    --warn: #c9a04a;
+    --warn-bg: rgba(201, 160, 74, 0.17);
+    --info: #759ad0;
+    --info-bg: rgba(117, 154, 208, 0.17);
     --up-matte: #7fae92;
     --down-matte: #c98b7f;
-    --brand: #9dbba3;
+    --brand: #86ab92;
     --shadow:    0 1px 2px rgba(0,0,0,.45), 0 8px 22px rgba(0,0,0,.42);
     --shadow-hi: 0 3px 6px rgba(0,0,0,.5), 0 16px 36px rgba(0,0,0,.55);
     --edge:      inset 0 1px 0 rgba(255,255,255,.05);
-    --tile:      #1f2525;
-    --tile-fg:   #eef2f1;
-    --tile-fg-2: rgba(238,242,241,.6);
-    --tile-line: rgba(255,255,255,.1);
+    --tile:      #2a2a2a;
+    --tile-fg:   #e2e2e2;
+    --tile-fg-2: rgba(226, 226, 226, 0.62);
+    --tile-line: rgba(255, 255, 255, 0.08);
   }
 }
 
@@ -305,8 +327,11 @@
 .sw-desk .grid { display: grid; gap: 12px; }
 .sw-desk .g2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 
+/* FILLED TILES, NOT A HAIRLINE GRID. BUILD_06, 2026-09-11, from the mockup he
+   approved: soft rounded blocks with air between them, no dark outlines. They
+   used to be flush panels separated by a 1px line, which reads as a table. */
 .sw-desk .rules, .sw-desk .money, .sw-desk .mets {
-  display: grid; gap: 1px; background: var(--line);
+  display: grid; gap: 10px; background: transparent; padding: 0 15px 14px;
 }
 .sw-desk .rules { grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); }
 .sw-desk .money { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
@@ -320,7 +345,19 @@
 .sw-desk .rl.pass { border-top-color: var(--up); }
 .sw-desk .rl.fail { border-top-color: var(--down); }
 .sw-desk .rl.idle { border-top-color: var(--line-2); }
-.sw-desk .mn, .sw-desk .met { background: var(--panel); padding: 12px 15px; }
+.sw-desk .mn, .sw-desk .met {
+  background: var(--panel-2); padding: 14px 16px; border-radius: 12px;
+}
+/* THE PASTELS, on the tiles the mockup tints and ONLY those.
+   His standing rule is that colour comes from the money. A sage ground behind
+   a red profit figure would fight it, so the six tiles of the position card
+   and the desk's metric row stay neutral, and the tint is used where no figure
+   is money-coloured: Home's Your money, where Balance, Free cash, Collateral
+   and Margin used are facts about the account, not results. */
+.sw-desk .money .mn:nth-child(4n+1) { background: var(--accent-sage-tint, var(--panel-2)); }
+.sw-desk .money .mn:nth-child(4n+2) { background: var(--accent-blue-tint, var(--panel-2)); }
+.sw-desk .money .mn:nth-child(4n+3) { background: var(--accent-amber-tint, var(--panel-2)); }
+.sw-desk .money .mn:nth-child(4n+4) { background: var(--accent-coral-tint, var(--panel-2)); }
 
 .sw-desk .k {
   font-family: var(--m); font-size: 9.5px; letter-spacing: 0.09em; text-transform: uppercase;
@@ -521,7 +558,10 @@
   cursor: pointer; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--fg);
 }
 .sw-desk .btn:hover { border-color: var(--fg-3); }
-.sw-desk .btn.pri { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+/* SAGE, not near-black. A solid ink button is the dark corner he asked to be
+   rid of, and the mockup's primary is sage on both themes. */
+.sw-desk .btn.pri { background: var(--brand); color: var(--panel); border-color: var(--brand); }
+.sw-desk .btn.pri:hover:not(:disabled) { filter: brightness(1.06); }
 .sw-desk .btn.pri:hover { opacity: 0.88; }
 .sw-desk .btn[disabled] { opacity: 0.45; cursor: not-allowed; }
 
@@ -836,7 +876,7 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .xt .stepper input { border: none; background: none; width: 34px; text-align: center; padding: 5px 0; font-weight: 600; font-family: var(--m); font-size: 12.5px; color: var(--fg); }
 .xt .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; margin: 0; }
 .xt .seg button { border: none; background: var(--panel-2); color: var(--fg-3); font-family: var(--m); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; padding: 6px 9px; cursor: pointer; }
-.xt .seg button[aria-pressed='true'] { background: var(--fg); color: var(--bg); }
+.xt .seg button[aria-pressed='true'] { background: var(--brand); color: var(--panel); }
 .xt .price { display: flex; gap: 6px; align-items: center; }
 .xt .price input { width: 84px; font-family: var(--m); font-size: 12.5px; background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 5px; padding: 6px 7px; font-variant-numeric: tabular-nums; }
 .xt .price input:disabled { color: var(--fg-2); }
@@ -991,12 +1031,12 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 /* The six tiles. One row, hairline gaps, each filled to its edges. */
 .sw-desk .pos-tiles {
   display: grid; grid-template-columns: 1.35fr 1.15fr 1fr 1fr 1fr 1fr;
-  gap: 1px; background: var(--line); border-bottom: 1px solid var(--line);
+  gap: 10px; background: transparent; padding: 0 16px 14px;
 }
 @media (max-width: 1180px) { .sw-desk .pos-tiles { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 700px)  { .sw-desk .pos-tiles { grid-template-columns: repeat(2, 1fr); } }
 .sw-desk .pos-tiles .met {
-  background: var(--panel); padding: 15px 18px; min-height: 116px;
+  background: var(--panel-2); border-radius: 12px; padding: 15px 18px; min-height: 116px;
   display: flex; flex-direction: column; justify-content: space-between; gap: 6px;
 }
 .sw-desk .pos-tiles .met .k {
@@ -1194,8 +1234,10 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .ocm .ocm-exp button small {
   font-family: var(--m); font-size: 10.5px; font-weight: 500; color: var(--fg-3);
 }
-.ocm .ocm-exp button.on { background: var(--fg); color: var(--panel); }
-.ocm .ocm-exp button.on small { color: var(--panel); opacity: .75; }
+/* The chosen expiry is SAGE, not a black pill. A solid near-black block is
+   exactly the dark corner BUILD_06 exists to remove. */
+.ocm .ocm-exp button.on { background: var(--brand); color: var(--panel); }
+.ocm .ocm-exp button.on small { color: var(--panel); opacity: .8; }
 
 /* The six figures above the table, as tiles, exactly as the position card
    does them. */
@@ -1316,15 +1358,20 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
    scroll shadow. The cell is a cell again and the buttons sit in a box in it. */
 .ocm .ocm-t td.act { white-space: nowrap; width: 110px; padding: 5px 8px; }
 .ocm .ocm-t td.act .pair { display: flex; gap: 5px; }
+/* SMALL PASTEL-FILLED BUTTONS, sage and coral, no outline. BUILD_06, from the
+   mockup: "the option chain's Buy and Sell become small pastel-filled buttons,
+   sage and coral, no outline". They were outlined and transparent, which is
+   the dark-outline look he asked to be rid of everywhere. */
 .ocm .ocbtn {
   font-family: var(--f); font-size: 12px; font-weight: 700;
-  border-radius: 6px; padding: 5px 0; cursor: pointer; flex: 1;
-  border: 1px solid; background: transparent; min-width: 0;
+  border-radius: 8px; padding: 6px 0; cursor: pointer; flex: 1;
+  border: 0; min-width: 0;
+  transition: background var(--dur, 180ms) var(--ease, ease), color var(--dur, 180ms) var(--ease, ease);
 }
-.ocm .ocbtn.B { color: var(--up-matte); border-color: var(--up-matte); }
-.ocm .ocbtn.B:hover:not(:disabled) { background: var(--up-matte); color: var(--panel); }
-.ocm .ocbtn.S { color: var(--down-matte); border-color: var(--down-matte); }
-.ocm .ocbtn.S:hover:not(:disabled) { background: var(--down-matte); color: var(--panel); }
+.ocm .ocbtn.B { color: var(--up); background: var(--up-bg); }
+.ocm .ocbtn.B:hover:not(:disabled) { background: var(--up); color: var(--panel); }
+.ocm .ocbtn.S { color: var(--down); background: var(--down-bg); }
+.ocm .ocbtn.S:hover:not(:disabled) { background: var(--down); color: var(--panel); }
 .ocm .ocbtn:disabled { opacity: .3; cursor: not-allowed; }
 
 .ocm .ocm-foot {
@@ -1457,7 +1504,7 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   border: 1px solid var(--line-2); background: var(--panel); color: var(--fg);
 }
 .sw-desk .hbtn:hover:not(:disabled) { border-color: var(--fg-3); }
-.sw-desk .hbtn.pri { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.sw-desk .hbtn.pri { background: var(--brand); color: var(--panel); border-color: var(--brand); }
 .sw-desk .hbtn:disabled { opacity: 0.45; cursor: not-allowed; }
 .sw-desk .hbtn:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
 
