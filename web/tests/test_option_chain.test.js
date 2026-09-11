@@ -311,7 +311,7 @@ describe('four figures a side, the rest on demand', () => {
     await settle();
     const html = m.el.innerHTML;
     expect(html).toContain('title="IV 11.3% · volume 25,76,600 · book 277.20 / 278.15"');
-    expect(html).not.toContain('<th class="n">IV</th>');
+    expect(html).not.toContain('>IV</th>');
     m.close();
   });
 
@@ -320,7 +320,7 @@ describe('four figures a side, the rest on demand', () => {
     m.open();
     await settle();
     m.toggleMore();
-    expect(m.el.innerHTML).toContain('<th class="n">IV</th>');
+    expect(m.el.innerHTML).toContain('<th class="n iv">IV</th>');
     expect(m.el.innerHTML).toContain('Fewer figures');
     expect(m.more).toBe(true);
 
