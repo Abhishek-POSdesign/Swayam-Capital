@@ -85,7 +85,27 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: THE THREE FAULTS ARE FIXED, AND THREE BUILDS ARE PLANNED, 2026-09-11 night
+### Latest first: NINE PULL REQUESTS, A ZERO-FAILURE SUITE, AND THE CLOUD CLEANED, 2026-09-11 late night
+
+**`docs/PLAN.md` §2.21 is the full record of this night.** Read it before
+anything else if you are waking into a cleared chat.
+
+| | |
+|---|---|
+| **Merged** | #71 to #79. Resting orders, polish round one, round 1b, three build documents, round two the look, the clarity pass, the stale mock, and Build C cloud hygiene. **No pull request is open** |
+| **The suite is at ZERO failures** | #77 removed the stale notifications mock that had been reported as "1 long-standing failure" for weeks. **Keep it at zero.** A normalised red is how the next real failure hides |
+| **⚠️ TWO PUBLIC COPIES OF THE TERMINAL, FOUND AND DESTROYED** | `asia-east1` and `asia-south1` held 4 September builds with no sign-in, public invoker bindings, and his real Supabase service-role key and FYERS credentials. Deleted. **The live site was never exposed**, checked by loading the domain before and after. PLAN §2.21.2 |
+| **The build machine nobody had counted** | Every build ran on an 8-vCPU machine outside the free tier: **about ₹2,000 a month since 4 September**, seven times what the images cost. Now `E2_STANDARD_2`. **Measured after the change: 6m52s against a previous 4m52s. It stays** |
+| **The cloud, after Build C** | Images **84 → 19**, revisions **83 → 20**, **27.7 GB freed**. A cleanup policy keys on count and age, and a prune step inside every deploy holds revisions at twenty for ever. Documents-only merges no longer build. Images carry their commit SHA |
+| **The look** | Both token systems now on Atlas's warm grounds and muted accents, in both themes, with a clarity pass after it. **Zero violet anywhere.** No behaviour changed |
+| **⚠️ NO NIGHTLY BACKUP RUNS ANYWHERE** | One backup exists, taken by hand on 11 September: `gs://swayam-backups/supabase/2026-09-11T13-18-31Z/`, 19 tables, 883 rows, the open condor inside it. The scheduled job, the thirty-night vault copy and Home's backup age are **the outstanding half of Build C**, on branch `feature/swayam-nightly-backup-054` |
+| **⚠️ HIS BACKTEST HISTORY HAS NO COPY** | `data/history`, 631 MB, on his PC only. The bucket copy the roadmap promises has never been made. It costs **₹1.07 a month**. Part of the same outstanding work |
+| **The backup bucket's lifecycle is fixed** | One rule now: everything kept one year, then deleted. He applied it himself. The old rule deleted a folder his backups were never in |
+| **The AI panel** | Mockup approved: https://claude.ai/code/artifact/f3efa90c-c57d-4dba-bd00-924b3c04ee04 `BUILD_07` is written and waiting for a fresh chat |
+| **The data map** | His idea, and it lives in **his vault**, not the terminal, because the day he needs it most is the day the app is down. `02 - Projects/Trading/06 - Platform Plan/Data Map.md` |
+| **The worktree rule, corrected** | Never a worktree that SHARES the primary venv. A worktree with its OWN venv is allowed and is how Builds B and C were done |
+
+### Earlier: THE THREE FAULTS ARE FIXED, AND THREE BUILDS ARE PLANNED, 2026-09-11 night
 
 `docs/PLAN.md` §2.20 has the decisions; `docs/builds/` has the three documents.
 
