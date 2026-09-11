@@ -35,7 +35,95 @@ steps:
       - '--set-env-vars=GCP_PROJECT_ID=swayam-capital,GCP_REGION=asia-southeast1,GCP_AI_LOCATION=global,GCS_OPTIONS_BUCKET=swayam-capital-options-data,TRADING_METHOD_PATH=/app/src/swayam/data/method_files,TRADING_BRIEF_PATH=/app/src/swayam/data/method_files/Personal Trading Brief.md'
       - '--set-secrets=SUPABASE_URL=swayam-supabase-url:latest,SUPABASE_ANON_KEY=swayam-supabase-anon-key:latest,SUPABASE_SERVICE_ROLE_KEY=swayam-supabase-service-role-key:latest,FYERS_ACCESS_TOKEN=fyers-access-token:latest,FYERS_CLIENT_ID=fyers-client-id:latest,FYERS_APP_ID=fyers-app-id:latest,FYERS_SECRET_KEY=fyers-secret-key:latest'
 
+  # 4. Prune Cloud Run revisions beyond the newest twenty.
+  #
+  # WHY THIS STEP EXISTS. Artifact Registry's cleanup policy runs on its own.
+  # Cloud Run's revisions do not: nothing prunes them, ever. Every revision
+  # pins an image digest, so an unpruned revision keeps its image alive and
+  # the cleanup policy can never reclaim it. On 2026-09-11 there were 82
+  # revisions pinning 81 of the 83 images in the repository, which is why
+  # 35.4 GB had accumulated and why deleting only "unreferenced" images would
+  # have freed 0.85 GB of it. Twenty is a STANDING limit, not a one-off.
+  #
+  # SAFETY. Whatever is serving traffic is never deleted, whatever its age.
+  # That is the one case the newest-twenty rule cannot cover by itself: a
+  # rollback left live for weeks would slowly age out of the newest twenty.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'prune-revisions'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        # THIS STEP NEVER FAILS THE BUILD. It ends in exit 0 on every path.
+        # A deploy that succeeded must never show red because the tidying
+        # after it hit a problem: he would see a failed build and not know
+        # his site was fine. Every failure here logs loudly and carries on.
+        # There is deliberately no `set -e`.
+        REGION=asia-southeast1
+        SVC=swayam-dashboard
+        KEEP=20
 
+        echo "=== revision prune: keeping the newest $$KEEP ==="
+
+        SERVING=$$(gcloud run services describe "$$SVC" --region="$$REGION" \
+          --format='value(status.traffic[].revisionName)' 2>/dev/null \
+          | tr ';,' '\n\n' | sed '/^[[:space:]]*$$/d' | sort -u)
+
+        if [ -z "$$SERVING" ]; then
+          echo "WARNING: could not read which revision is serving traffic."
+          echo "WARNING: pruning NOTHING this run, deliberately. Never guess here."
+          echo "NOTE: THE DEPLOY ABOVE SUCCEEDED. This step never fails the build."
+          exit 0
+        fi
+
+        echo "serving traffic now, never deleted whatever its age:"
+        echo "$$SERVING" | sed 's/^/  /'
+
+        ALL=$$(gcloud run revisions list --service="$$SVC" --region="$$REGION" \
+          --sort-by=~metadata.creationTimestamp \
+          --format='value(metadata.name)' 2>/dev/null)
+
+        if [ -z "$$ALL" ]; then
+          echo "WARNING: could not list revisions. Pruning nothing this run."
+          echo "NOTE: THE DEPLOY ABOVE SUCCEEDED. This step never fails the build."
+          exit 0
+        fi
+
+        TOTAL=$$(echo "$$ALL" | wc -l | tr -d ' ')
+        CANDIDATES=$$(echo "$$ALL" | tail -n +$$((KEEP + 1)))
+
+        if [ -z "$$CANDIDATES" ]; then
+          echo "nothing to prune: $$TOTAL revisions, at or under the limit of $$KEEP."
+          exit 0
+        fi
+
+        # THE NAMES, EVERY TIME. When something goes wrong in a month, this
+        # log is the only record of what this step removed.
+        echo "revisions this step will now delete, by name:"
+        echo "$$CANDIDATES" | sed 's/^/  /'
+
+        DELETED=0; SKIPPED=0; FAILED=0
+        for REV in $$CANDIDATES; do
+          if echo "$$SERVING" | grep -qx "$$REV"; then
+            echo "SKIP, serving traffic: $$REV"
+            SKIPPED=$$((SKIPPED + 1))
+            continue
+          fi
+          if gcloud run revisions delete "$$REV" --region="$$REGION" --quiet 2>&1; then
+            echo "deleted: $$REV"
+            DELETED=$$((DELETED + 1))
+          else
+            echo "WARNING: could not delete $$REV. Leaving it and carrying on."
+            FAILED=$$((FAILED + 1))
+          fi
+        done
+
+        echo "=== prune done: $$DELETED deleted, $$SKIPPED skipped, $$FAILED failed ==="
+        if [ "$$FAILED" -ne 0 ]; then
+          echo "WARNING: $$FAILED revision(s) would not delete. Check run.revisions.delete."
+          echo "NOTE: THE DEPLOY ABOVE SUCCEEDED. This step never fails the build."
+        fi
+        exit 0
 
 images:
   - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/swayam/dashboard:$_TAG'
@@ -43,7 +131,13 @@ images:
 
 options:
   logging: CLOUD_LOGGING_ONLY
-  machineType: 'E2_HIGHCPU_8'
+  # Changed 2026-09-11 from E2_HIGHCPU_8. The 2,500 free build-minutes a month
+  # apply ONLY to e2-standard-2 in the default pool; every other machine type
+  # bills from the first minute. At ~1,450 build-minutes a month that machine
+  # was costing about Rs 2,000 every month since 4 September, to save roughly
+  # five minutes on a build nobody watches. Builds run while he is asleep or
+  # trading. Reversible in one line if a build proves too slow.
+  machineType: 'E2_STANDARD_2'
 
 timeout: '1800s'
 

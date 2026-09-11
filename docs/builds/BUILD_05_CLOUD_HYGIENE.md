@@ -276,6 +276,31 @@ properly for a bucket that will hold years. **Do not delete the six existing
 objects.** Write a short note in the build document saying which path is
 authoritative from which date, so a backtest reading history knows.
 
+#### ⚠️ WHICH PATH IS AUTHORITATIVE. Written by the Build C builder, 2026-09-11.
+
+**Anything reading the options history must use the NESTED path.**
+
+```
+gs://swayam-capital-options-data/YYYY/MM/DD/nifty_chain.parquet     <-- read this
+gs://swayam-capital-options-data/YYYY-MM-DD/nifty_chain.parquet     <-- ignore this
+```
+
+| Dates | What exists | What to read |
+|---|---|---|
+| **2026-09-09 to 2026-09-11** | BOTH paths, written by the recorder as identical copies of the same data | The nested path. The flat copy is a duplicate, not a second day |
+| **From 2026-09-12 onward** | The nested path ONLY | The nested path |
+
+The recorder was writing every snapshot twice, to both layouts, by design. The
+flat write was removed from `cloud/recorder/fyers_recorder.py` on 2026-09-11.
+**The flat objects already written were deliberately NOT deleted**, so nothing
+that already points at them breaks.
+
+**The reason this mattered is not storage — it was about 1.3 MB a day.** It is
+that a backtest walking the bucket by prefix would find the same trading day
+under two different names and count it twice, with nothing on any screen saying
+so. Any loader that globs the bucket must therefore filter to the nested layout
+for the three overlapping days above.
+
 ### 3.5 The nightly backup, and its age on the screen
 
 **Settled with him on 2026-09-11, after he asked what a fourth backup is even

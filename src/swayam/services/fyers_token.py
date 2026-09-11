@@ -41,6 +41,13 @@ logger = logging.getLogger(__name__)
 SECRET_ID = os.getenv("FYERS_ACCESS_TOKEN_SECRET_ID", "fyers-access-token")
 CACHE_SECONDS = 60.0
 
+# Bounds the Secret Manager call so a slow one cannot hold a request open.
+# On 2026-09-10 at 14:52 IST this call blocked until gunicorn's 60-second
+# worker timeout fired and aborted the worker mid-window. The fallback below
+# was already correct; it simply never got to run in time. Five seconds is far
+# under the worker timeout, so the stale-token fallback now wins that race.
+SECRET_TIMEOUT_SECONDS = 5.0
+
 _lock = threading.Lock()
 _cached_token: Optional[str] = None
 _cached_at: float = 0.0
@@ -62,7 +69,9 @@ def _read_secret_manager(project_id: str) -> str:
 
     client = secretmanager.SecretManagerServiceClient()
     name = f"projects/{project_id}/secrets/{SECRET_ID}/versions/latest"
-    response = client.access_secret_version(request={"name": name})
+    response = client.access_secret_version(
+        request={"name": name}, timeout=SECRET_TIMEOUT_SECONDS
+    )
     return response.payload.data.decode("utf-8").strip()
 
 
