@@ -384,6 +384,42 @@ Build it as:
   project, not loss of the project itself.
 - **Run it once by hand first and show him the new object**, then schedule it.
 
+#### ⚠️ THE NIGHTLY JOB DID NOT SELF-HEAL, AND WHY THAT WAS PREDICTABLE
+
+**Written 2026-09-12 after the build for #81 failed and the job never ran.**
+
+The scheduler and the Cloud Run job were created and enabled on 2026-09-11,
+pointing at `:latest`. The image at that moment did not contain the module, so
+the job failed. **That was tested and known.** What was written in the handoff
+was: *"Left enabled deliberately: it self-heals on the first build after merge,
+so he has nothing to remember."*
+
+**It did not self-heal. The build after merge FAILED**, at step 0, with
+`COPY failed: stat migrations/: file does not exist`. The same pull request
+that added the module also added a `Dockerfile` line that `.dockerignore`
+forbade, so no new image was ever produced and the job kept failing against the
+old one.
+
+**The fault in the reasoning, which is the part worth keeping:**
+
+> "It heals on the first build after merge" assumed that build would succeed.
+> **An enabled scheduler pointing at an image that does not exist yet is a
+> promise resting on a build nobody had run.**
+
+The backup code itself was proven — 19 tables, 900 rows, 21 objects verified —
+but proven **on a developer's disk, where `migrations/` is simply present**.
+The image was never built. It was a path nobody ran.
+
+**Two rules follow, and they are cheap:**
+
+1. **A change to the `Dockerfile` or `.dockerignore` is not verified until an
+   image has been BUILT.** Reading either file proves nothing; they interact,
+   and the interaction is where this failed.
+2. **Do not enable a schedule that points at an artefact that does not exist
+   yet.** Either build the artefact first, or leave the schedule disabled and
+   enable it once something real is behind it. "It will heal itself" is a
+   forecast, not a verification.
+
 ### 3.6 The lifecycle rule, corrected
 
 Rewrite `gcs_lifecycle_backups.json` and apply it: match the prefix the script

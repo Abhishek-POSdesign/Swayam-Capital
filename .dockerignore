@@ -14,9 +14,19 @@ __pycache__/
 docs/
 tests/
 web/tests/
-migrations/
 scripts/
 /*.md
 !README.md
+
+# migrations/ IS NOT EXCLUDED, deliberately. The nightly backup job reads
+# migrations/000_baseline.sql and refuses to write a schema-less backup, so
+# without this folder the image cannot back his record up. It was excluded
+# here until 2026-09-12, which is why the build for #81 failed at step 0 with
+# "stat migrations/: file does not exist" while the same code passed on a
+# developer's disk, where the folder is simply present.
+#
+# It is REMOVED from this file rather than re-included with a negation,
+# because directory negation in .dockerignore is unreliable. The whole folder
+# is 118 KB; the image does not notice it.
 
 
