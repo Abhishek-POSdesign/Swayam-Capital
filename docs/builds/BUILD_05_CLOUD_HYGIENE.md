@@ -550,14 +550,64 @@ except one line: the last-backup age.**
 1. **The Home backup line has never been looked at.** Its text and behaviour
    are proven on the running page; **its appearance in either theme is not, and
    this build does not claim it.** He sees it after the deploy.
-2. **The first history push, ~631 MB, is his to start** —
-   `scripts/nightly_local.py --first-history-push`. Until then his four years of
-   market data exist in exactly one place.
-3. **The 03:00 local task is his to register.** The command is in the handoff.
-4. **`swayam/services/backup_service.py` now has no caller**, only its own
-   passing tests, and it is the module that records an unreadable table as an
-   empty one. Green tests over a module with a known silent failure is the same
-   trap as an undeployed function. Left for the main chat.
+2. ~~The first history push is his to start~~ **DONE 2026-09-11.** Verified
+   against the bucket, not the script's own output: **630.5 MiB across 160
+   objects** under `gs://swayam-backups/history/`.
+3. ~~The 03:00 local task is his to register~~ **DONE 2026-09-11.** Verified by
+   the vault copy landing: `02 - Projects/Trading/07 - Backups/2026-09-11T16-46-46Z`,
+   21 files — all 19 tables, `schema.sql` and `MANIFEST.json`.
+4. ~~`backup_service.py` has no caller~~ **DELETED 2026-09-12**, along with
+   `scripts/restore_from_backup.py`. See §8.
+
+### ⚠️ 7.1 THE NIGHTLY CLOUD BACKUP IS FAILING. FOUND 2026-09-12.
+
+**It is not backing his record up, and it has never once succeeded.**
+
+The 02:00 IST run on 2026-09-12 (`swayam-nightly-backup-jsgqh`) read all 19
+tables correctly and was then refused when it tried to write:
+
+```
+BACKUP FAILED: 403
+swayam-dashboard-sa@swayam-capital.iam.gserviceaccount.com does not have
+storage.objects.create access to ... buckets/swayam-backups/objects/supabase/...
+```
+
+**The service account the job runs as has NO IAM binding on that bucket at
+all.** Confirmed by reading the bucket policy: it grants only project-level
+legacy Editor/Owner/Viewer roles, and `swayam-dashboard-sa` is not among them.
+
+**Why this was not caught.** Every successful backup so far ran from a
+developer's machine, authenticated as Abhishek, who owns the project. **The
+same class of mistake as the `migrations/` failure: proved under one identity,
+run under another.** Verify as the thing that will actually run, not only as
+yourself.
+
+**The one good thing here, and it is worth stating.** `record_backup.py`
+**failed the job loudly** rather than reporting success on a backup it had not
+written. Had this been `backup_service.py`, the deleted module, it would have
+logged a warning and returned success, and he would have believed he had a
+nightly backup that did not exist. The design rule earned its keep on its first
+real night.
+
+**The fix is one grant, and it is deliberately not `objectAdmin`:**
+
+```
+gcloud storage buckets add-iam-policy-binding gs://swayam-backups \
+  --member=serviceAccount:swayam-dashboard-sa@swayam-capital.iam.gserviceaccount.com \
+  --role=roles/storage.objectCreator
+
+gcloud storage buckets add-iam-policy-binding gs://swayam-backups \
+  --member=serviceAccount:swayam-dashboard-sa@swayam-capital.iam.gserviceaccount.com \
+  --role=roles/storage.objectViewer
+```
+
+Create and list, which is all the job does — it uploads, then lists to prove
+the objects landed. **No delete.** A backup writer that cannot destroy his
+backups is the right shape for this, and `objectAdmin` would have handed it
+that power for no reason.
+
+**Until this is granted, a backup of his record only exists when one is taken
+by hand.**
 
 ### The two lessons worth more than the money
 
@@ -572,3 +622,33 @@ objects deep on a developer's disk, where `migrations/` is simply present, and
 the image was never built. Reading a `Dockerfile` proves nothing; `Dockerfile`
 and `.dockerignore` interact, and the interaction is where it failed. **Verify
 by invoking, and invoke the thing that will actually run.**
+
+**And its twin, learned the next night: verify AS the thing that will actually
+run.** The same backup then failed in the cloud with a 403, because every
+successful run had been made by a project owner and the job runs as a service
+account with no permission on the bucket. Identity is part of the path.
+
+---
+
+## 8. THE DEAD RECOVERY PATHS, DELETED 2026-09-12
+
+Two modules went, and the second matters more than the first.
+
+**`src/swayam/services/backup_service.py`** — no caller once the three
+undeployed Cloud Functions went. It recorded a table it could not read as an
+EMPTY table and reported success.
+
+**`scripts/restore_from_backup.py`** — **worse than dead.** By the admission in
+`restore_drill.py`'s own docstring, it *"counted INSERT lines, checked
+connectivity and returned success. It never restored anything."* **A recovery
+path that reports success without recovering would have told him he was fine in
+the worst hour he ever had.** It also only read `.sql.gz`, which nothing writes
+any more.
+
+`tests/test_backups_and_restore.py` is trimmed to what still exists. **It is
+kept rather than deleted because it now records a real gap:
+`scripts/restore_drill.py` — the script that proves his record can be recovered
+— has no automated test anywhere in this repository.** It has been run by hand
+and passed, which is more than the deleted code ever managed, but a hand-run
+drill is not a regression test. Proving it properly needs a live database,
+which is why it does not already exist and why it should be done deliberately.

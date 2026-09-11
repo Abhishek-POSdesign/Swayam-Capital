@@ -23,9 +23,9 @@
 | 1 | **My trade record.** Trades, legs, results, journal rows, targets, AI conversations | Supabase project `wxijlrwoiaeaupaaqecc`, ap-south-1. Shared with two other apps, so everything of mine is prefixed `swayam_` | The terminal | **Nothing** |
 | 2 | **My trade notes**, one per trade | This vault, `02 - Projects/Trading/04 - Journal/` and its `Terminal tests/` subfolder | The drainer, from the terminal | **Nothing** |
 | 3 | **Recorder data.** Spot, open interest, implied volatility, Greeks, minute snapshots of the chain | Google bucket `gs://swayam-capital-options-data`, Mumbai. **Not Supabase, not this vault, not my PC** | The recorder, a Cloud Run job, every minute the market is open | **Nothing. It has no deletion rule** |
-| 4 | **Backtest history**, the years of option data sourced from FYERS and NSE | **My PC only**, `D:\Claude\POS\Trading-Platform\Swayam Capital\data\history`. Git ignores it | The loader scripts, run by hand | **Nothing, and nothing copies it either** |
+| 4 | **Backtest history**, the years of option data sourced from FYERS and NSE | My PC, `D:\Claude\POS\Trading-Platform\Swayam Capital\data\history` (git ignores it) **and, since 11 September 2026, a copy in `gs://swayam-backups/history/`** — 160 objects, 630.5 MiB | The loader scripts, run by hand. The copy is kept current by `scripts/nightly_local.py`, which uploads only what changed | **Kept one year, then deleted**, by the same bucket rule as row 6 |
 | 5 | **Backtest query store** | My PC, `data\options_cache.duckdb` | DuckDB, from the files above | Nothing |
-| 6 | **Backups of my record** | Google bucket `gs://swayam-backups`, Singapore, under `supabase/<timestamp>/` | `scripts/backup_supabase.py --gcs` | **Kept one year, then deleted.** One rule, applied 11 September 2026 |
+| 6 | **Backups of my record** | **TWO places.** The full history in Google bucket `gs://swayam-backups`, Singapore, under `supabase/<timestamp>/`. **And the newest THIRTY nights in this vault, at `02 - Projects/Trading/07 - Backups/<timestamp>/`**, each folder holding all 19 tables, `schema.sql` and `MANIFEST.json` | The bucket copy by the nightly Cloud Run job `swayam-nightly-backup` at 02:00, or `scripts/backup_supabase.py --gcs` by hand. The vault copy by `scripts/nightly_local.py` at 03:00, which also prunes to thirty | **Bucket: kept one year, then deleted.** One rule, applied 11 September 2026. **Vault: newest thirty nights, older ones pruned** |
 | 7 | **My code** | GitHub, `Abhishek-POSdesign/Swayam-Capital` | Every merged pull request | Nothing. This is my real history |
 
 ---
@@ -37,12 +37,20 @@ as far back as the newest backup.
 
 **Not protected today.**
 
-- **Rows 3, 4 and 5 have no copy anywhere.** The recorder's bucket is its only
-  home, and my 631 MB of backtest history exists on one disk in my house. If
-  that disk dies I have to source it again: the minute bars alone took 90
-  minutes and 8,576 requests to FYERS.
-- **Row 1 is only as safe as the newest backup**, and **no nightly backup runs
-  yet.** That is the outstanding half of Build C.
+- **Rows 3 and 5 have no copy anywhere.** The recorder's bucket is its only
+  home, and the DuckDB query store is rebuilt from row 4 rather than backed up.
+- ~~Row 4 has no copy~~ **Row 4 is now copied**, since 11 September 2026:
+  630.5 MiB across 160 objects in `gs://swayam-backups/history/`. Before that it
+  existed on one disk in my house, and the minute bars alone took 90 minutes and
+  8,576 requests to FYERS to source.
+- **⚠️ Row 1 is only as safe as the newest backup, and as of 12 September 2026
+  the NIGHTLY CLOUD BACKUP IS FAILING.** The job runs, reads all 19 tables, and
+  is then refused when it tries to write: its service account
+  `swayam-dashboard-sa` has no permission on `gs://swayam-backups`. **It fails
+  loudly rather than reporting success**, which is the behaviour I want, but it
+  means the newest backup is still the one taken by hand on 11 September at
+  16:46 UTC. The local 03:00 half is registered and working. **Until the
+  permission is granted, a backup only exists when it is taken by hand.**
 
 ---
 
