@@ -2944,6 +2944,140 @@ but strips nothing. `web/src/components/tts-player.js`, `src/swayam/ai/tts.py`.
 - His history is context about him, not an argument about today.
 - The cost line says "estimated" until it is measured against the bill.
 
+---
+
+#### 2.17.12 THE STATE OF THE TERMINAL FILE. Designed 2026-09-12 by the mentor chat at the main chat's request. NOT BUILT.
+
+**Why.** On 2026-09-12 he found that the partner does not know where the
+terminal stands, so it cannot answer him about his own tool. The main chat
+asked this chat to design the grounding: a short "state of the terminal" file,
+what is built, what is live, what is unproven, what he is being asked to test
+next. **The main chat keeps the file current, because that is where the state
+lives. This chat designs the pipe and the persona side.** Three constraints
+were given and every choice below answers one of them: capped in length and
+read the way the Method files are read, never on page load; never stale
+silently, it carries its date and the partner says so; not a second plan, and
+if it argues with this file, this file wins.
+
+**Where the file lives, and why it is not in `docs/`.** The live site cannot
+see the vault, and `.dockerignore` excludes `docs/` from the image, which is
+what broke the build for #81. The Method files reach the live site by one road
+only: a copy under `src/swayam/data/method_files/`, carried by `COPY src/`, read
+by `VaultReader` with a modification-time cache. **The state file takes the same
+road:** `src/swayam/data/TERMINAL_STATE.md`. No Dockerfile change, no
+`.dockerignore` negation, and it is live the moment the merge deploys, which
+is the one event that actually changes what is live. The path is overridable
+by `TERMINAL_STATE_PATH` for tests, like the Method paths.
+
+**The file's shape. Facts and pointers only; the reasons live in this plan.**
+
+```
+as_of: 2026-09-12
+written_by: main chat, PR #88
+phase: paper trading, terminal tests. No real money. No order code exists.
+
+LIVE, merged and deployed
+- The desk: position area, exit ticket, campaign model, targets. (§2.12.7)
+- Home: running-trade band, So far today saved one row a day. (§2.20.3)
+- The floating AI panel; the exit ticket always covers it. (§2.23.5)
+MERGED BUT UNPROVEN with a real market
+- Resting orders filling from the book. (§2.12.8)
+- Dictation transcribing; the browser blocked the microphone. (§2.23.5)
+BUILT, NOT MERGED
+- (none)
+HE IS TESTING NEXT, in his window
+- A naked leg end to end, now that migration 025 is applied. (§2.23.2)
+KNOWN FAULTS HE WILL MEET
+- The partner cannot see his open trade. (§2.17.11)
+NOT BUILT, do not assume
+- Calendars. Real-money orders. Kill switch. Backtester page. Trade Journal page.
+```
+
+Rules of the shape, enforced by `tests/test_terminal_state.py`:
+- Header lines `as_of`, `written_by`, `phase`, all three present; `as_of` a
+  real date.
+- The six section names above, in that order, each present, `(none)` allowed.
+- **At most 30 bullets, each one line of at most 140 characters, each ending
+  in a pointer to a section of this plan.** Whole file at most 3,500
+  characters, about 900 tokens.
+- No bullet contains "because", "so that", "decided" or "should": a reason or
+  a decision belongs in this plan, not here. That check is crude and that is
+  fine; the point is that a bullet is a fact with an address.
+
+**The pipe, `src/swayam/ai/terminal_state.py`, about sixty lines.**
+- `load_terminal_state()` reads the file, caches on modification time exactly
+  as `VaultReader.should_reload()` does, and returns the header, the body and
+  an **age in IST calendar days** from `as_of` to today.
+- `format_for_partner()` returns one block for `assemble_context()`, placed
+  **first**, before the Method rules, because it is the frame everything else
+  sits in. The block starts with one line the partner cannot miss:
+  `# The state of the terminal, as of 12 September 2026, written today by the main chat`
+  and, when the file is older than the threshold, a second line:
+  `⚠️ STALE: this was written N days ago and the terminal changes daily. Say so before you answer from it.`
+- **If the file is missing or fails the shape check, the block says so and
+  forbids the partner from describing the terminal**: `The state of the
+  terminal is unavailable (reason). Do not describe what the terminal can do;
+  say the state file is unavailable and that the main chat keeps it.` Never
+  silently omitted, never a fallback to the design documents.
+- **Staleness thresholds, a draft for him:** 0 to 3 days, nothing said beyond
+  the date; 4 to 7 days, the date plus "N days old, check before you rely on
+  it"; more than 7, the STALE line. The number is his to move.
+- **No AI call anywhere in this.** It is a text file read at chat time. It
+  costs nothing on page load and about 900 input tokens a message, under a
+  tenth of a rupee by the current estimate. The cost rule is untouched.
+
+**The persona side, one paragraph added to the persona, in this spirit:**
+
+> The block headed "The state of the terminal" is the ONLY thing you know
+> about what his terminal can do today. Design documents, Method files, his
+> brief and your own assumptions are not evidence that a feature exists.
+> When he asks what works, what is live, what to test, or why a page behaves
+> as it does, answer from that block and say "as of" its date in the first
+> sentence. If the block is marked stale, say that first. If the question is
+> not covered by it, say the state file does not say and that the main chat
+> keeps it; do not guess. If what he sees on his screen disagrees with the
+> block, his screen wins and the file may be out of date. If the block
+> disagrees with the plan, say so; never resolve it yourself.
+
+**A small window for him, so staleness is visible without asking.** One
+route, `GET /api/ai/terminal-state`, returning the header and the age, no AI
+call, and one muted line in the AI panel's title bar: `Terminal state as of
+12 Sep`, coral when stale. Cheap, and it turns the second constraint into
+something he sees rather than something the partner has to remember to say.
+**Optional; his call.**
+
+**Who writes it, and when. Proposed for `docs/builds/README.md`; the main chat
+decides.** The main chat owns the file. It changes in the same pull request
+as the thing that changed the state: a build merged, a live test that proved
+or disproved something, a fault found. A builder's handoff moves its own line
+from "built, not merged" and says so in the handoff. **The first version is
+written by the main chat from `SWAYAM_START_HERE.md` §3 "Latest first" and
+§5 "What is not done"; the state file is their thirty-line, dated, partner-
+facing distillation and nothing more.** The mentor chat checks each session
+that `as_of` matches the newest state-changing merge, and raises it in the
+chat when it does not; it does not edit the file.
+
+**What this is NOT.** Not a second plan: no reasons, no decisions, no
+history, and every bullet points into this plan. Not the vault mirror of
+§2.13, which carries his Method files and his daily log; this carries the
+terminal's own state, which lives in the repository. Not a replacement for
+`SWAYAM_START_HERE.md`, which is for agents and is long on purpose.
+
+**How it is proven, on the running system, in both themes.** Open the panel
+on the live site and ask "what can my terminal do today"; the first sentence
+carries the date. Ask about calendars; the answer says not built, as of the
+date, and does not describe them. Locally, set `as_of` ten days back and ask
+again; the STALE line leads. Delete the file locally and ask; the partner
+refuses to describe the terminal and says why. The test file fails on a
+31st bullet and on a bullet without a pointer.
+
+**Open, for him or the main chat.** The staleness thresholds. Whether the
+panel shows the date. Whether the build should also stamp the image with its
+commit and build time as environment variables in `cloudbuild.yaml`, so the
+partner can say "the site you are on was built on" alongside "the state file
+was written on"; a one-line change, and the mentor recommends it, later, not
+in this build.
+
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 
 **Why it came up.** He has one free Supabase account with two projects:

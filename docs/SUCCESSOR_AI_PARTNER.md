@@ -164,7 +164,21 @@ cost line is an estimate shown as exact; and its cross-day memory is a thin
 daily summary that does work. My verdict: right direction, machine-like, we
 are far from tuning it, just make sure the numbers and dates are not wrong.
 
+THE THIRD SESSION, 2026-09-12. I said there are too many chats and I get
+confused: the main chat is the orchestrator; under it are Build A, Build B,
+Build C, the backtester, the trading terminal, a Google Cloud chat, and this
+one. The AI panel was redesigned and merged that day (Build 07, PR #86): it
+floats, opens small, no starter prompts, the exit ticket always covers it,
+Home has "So far today" saved one row a day. While testing I found the
+partner does not know where my terminal stands, so the main chat asked this
+chat to design a "state of the terminal" file. The design is in PLAN
+2.17.12, brought back before building, as asked. The main chat keeps the file;
+this chat designed the pipe and the persona side.
+
 STILL OPEN, in order.
+- The state-of-the-terminal design, PLAN 2.17.12: his yes, then who builds it
+  (a builder chat, not this one), the staleness threshold, and whether the
+  panel shows the date.
 - Correction: I did not understand the question. PLAN 2.17.10 item 4 says how
   to ask it properly. Ask it that way.
 - SETTLED 2026-09-11: it may advise and recommend a SETUP, a view, a scenario,
