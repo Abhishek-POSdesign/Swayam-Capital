@@ -1055,7 +1055,7 @@ close." Tomorrow in his window: Home and the desk with a carried position, rule
 2 against a real carry, the 15:20 naked-shorts check on a hedged structure, and
 the position area's first real subject once PR 3 lands.
 
-### 2.12.7 BUILD A IS COMPLETE. Built 2026-09-10, pull request open, not merged.
+### 2.12.7 BUILD A IS COMPLETE. Built 2026-09-10. MERGED as #65, #66, #67 and live since 2026-09-11 00:11 IST. Proven in his window on 2026-09-11: §2.12.8.
 
 All three parts are on `feature/swayam-build-a-desk-home-chain-042`, one pull
 request. **Nothing is live until he merges, and migrations 022 and 023 must be
@@ -1093,7 +1093,7 @@ identically on `main`, JavaScript 314 passing in 35 files, his journal folder
 6 notes before and after every run, zero console errors on a clean load in
 both themes. **Only his window can prove a target reached on a live mark.**
 
-### 2.12.8 BUILD B, RESTING ORDERS. Built 2026-09-10 night, branch pushed, not merged.
+### 2.12.9 BUILD B, RESTING ORDERS. Built 2026-09-10 night. Pull request #71 open, not merged.
 
 `docs/builds/BUILD_03_RESTING_ORDERS.md` has the full state. In short: item 1
 of 2.12.5, his words, is now built. **A limit the book has not reached no
@@ -1128,12 +1128,29 @@ for entry and for exit, and expires at the bell.**
   awake and reading prices, which on Cloud Run means while a page of his is
   open. It is not sitting at the broker.
 
-Verified 2026-09-10 night on the running system: Python 692 passing with the
-one stale mock still failing identically on `main`, JavaScript 339 passing in
-36 files, his journal folder 6 notes before and after, the three groups
-rendered from the real backend in both themes. **Only his window can prove a
-fill from the book, and, because nothing may rest after 15:30, a resting order
-on the live screen at all.**
+**The main chat's review of 2026-09-11 found a real bug and it is fixed.** The
+watcher re-sent a claimed order down a path that, since this build, RESTS a
+limit the book has not reached. When the market moved away in between, that
+re-send wrote a SECOND order for the same leg and let the watcher mark the
+original filled on an empty fill. The execute, add-leg and exit paths now have
+an internal `allow_resting`, and the watcher enters through `execute_trade_now`,
+`add_leg_now` and `exit_leg_now`, which mean fill now or refuse; a moved-away
+book releases the order back to resting. Nothing may read an answer as a fill
+without a real position id and a real fill. One test per path.
+
+**And no unit test may reach FYERS any more.** `tests/conftest.py` stands in
+for `fyersModel.FyersModel` and RECORDS every attempt, because several call
+sites treat a broker failure as "unavailable" and would swallow the reach. It
+caught one test that was not this build's: the institutional-separation test in
+`test_home_snapshot.py` spent five real FYERS requests per suite run on an
+assertion about field names.
+
+Verified on the merged tree, 2026-09-11: Python 695 passing with the one stale
+mock still failing identically on `main`, JavaScript 340 passing in 36 files,
+the three groups rendered from the real backend in both themes, the
+verification orders removed again and `swayam_orders` shown empty. **Only his
+window can prove a fill from the book, and, because nothing may rest after
+15:30, a resting order on the live screen at all.**
 
 ### 2.12.6 WHAT HE CORRECTED AND DECIDED ON 2026-09-10 EVENING. Read before any build.
 
@@ -1200,6 +1217,73 @@ on the live screen at all.**
 - **Standing screen rules:** numbers he reads are big and bold; informative
   text is small and muted; a card is 70 to 80 percent filled; any change
   with a visual impact gets a mockup first.
+
+### 2.12.8 THE LIVE TEST OF 2026-09-11, AND WHAT COMES NEXT. Written by the main chat after his window.
+
+**Proven on the live market, first time for each:** Home's band blinking on
+the running condor; a target reached turning it solid and naming the leg;
+the Targets modal saving and reading back; the crosshair; the option chain
+holding his scroll during a live session; the position card's figures
+reconciling to the paisa against the legs; **a hedged dummy (bull put
+spread, `2026-09-11-trade01`) opened through the ticket and closed through
+the new exit ticket via Manage on Home**, one result row, and the drainer
+writing its note with the Exit block. Marking script run: five closed
+trades marked `terminal_test`, notes moved. Smart App Control had blocked
+every Python on his PC from 17:39 on the 10th; he turned it off.
+
+**What broke, in priority order, all going to the polish chat's round one:**
+
+1. **A naked leg cannot be recorded.** Its maximum loss is unlimited and the
+   execute path tried to store infinity, which the database refuses: "Out
+   of range float values are not JSON compliant". Store `null` with the
+   reason, everywhere a figure can be unbounded. Never exercised before
+   because every earlier trade was hedged.
+2. **FYERS refused requests after 15:00, code 429 "request limit reached".**
+   Build A's pages poll every five seconds and the live valuation quotes
+   each leg straight from FYERS, outside the chain feed built on 8 September
+   to prevent this. It cost him one refused exit. Every quote goes through
+   the chain feed; count FYERS calls per minute on the live logs before and
+   after.
+3. **Entry was blocked by a rule.** With the plan chip on "carrying
+   overnight", the overnight and black-swan checks are blocking for a naked
+   leg (`validation.py`, `blocking_checks`). His rule: entry is never
+   blocked; at entry every check is advisory; carrying is gated at 15:20.
+4. **Home's band colours a reached target backwards:** red on profit, green
+   on loss. The position area's strip is right.
+5. The Targets modal accepts a number on the wrong side of the entry; the
+   chain offers two expiries instead of all; rules are not evaluated for a
+   loaded open trade; the open condor's chip says "paper trade"; pages keep
+   each other's scroll position; the advances line overflows; the AI chat
+   needs Clear and Delete; the explanatory prose goes.
+
+**Round two, after round one: the look.** Atlas-inspired: pastel filled
+cards and buttons, no dark corners or outlines, generous spacing, very
+large calm numbers, a clear hierarchy; sage, coral, amber and blue; no
+lilac. Chain Buy and Sell as small pastel-filled buttons. Mockup first in
+the polish chat, he approves there, then built identical. The Atlas
+sources are at `D:\Claude\POS\Atlas\Deploy\css\`.
+
+**Merge order:** Build B (resting orders, done, reviewed by the main chat,
+695 passing) opens its pull request first, merging main into its branch;
+then polish round one; then round two.
+
+**His decisions and asks of 11 September:** the condor stays for at least
+one more expiry. The crosshair's big figure should become Today with At
+expiry small beneath (builder's recommendation, accepted for round two).
+Per-leg targets become adjustment triggers at a price and the trade's rupee
+target is the real one, with a "50% of max profit" quick-set: its own
+session with a mockup. Exiting or adding a leg of an EXISTING trade must
+never be blocked by the time of day; a fresh single-leg entry after about
+15:15 may be. Closed trades read muted everywhere.
+
+**Build C, cloud hygiene, still to be written by the main chat**, from his
+cost chat's audit: 60+ untagged 500 MB images (about 10 builds a day, every
+merge deploys, documents included) with a cleanup policy and a trigger that
+ignores documents-only merges; three `swayam-dashboard` regions of which
+`asia-southeast1` is the one, delete the other two; one SIGABRT on
+2026-09-10 14:52 IST, revision 00068, cause unknown; the recorder writing
+each file twice (flat and nested paths) by design, to be reduced to one;
+the nightly backup (§2.6). AI spend to date ₹6.20; BigQuery unused.
 
 ### 2.18 THE TRADE JOURNAL PAGE. To be planned WITH him, in its own discussion. Not started.
 

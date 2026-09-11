@@ -85,32 +85,25 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: BUILD B, RESTING ORDERS, 2026-09-10 night
+### Latest first: BUILD A LIVE AND PROVEN IN HIS WINDOW, 2026-09-11
 
-**On a branch, pushed, NOT merged, so none of it is live.** Branch
-`feature/swayam-build03-resting-orders-044`, cut from `main` at the merge of
-pull request #66. **Migration 024 IS APPLIED**, by him, 17:59 on 2026-09-10.
-
-**A limit the book has not reached now WAITS instead of refusing.** His words
-of 10 September, item 1 of `docs/PLAN.md` §2.12.5, built. Entry and exit
-alike. `docs/builds/BUILD_03_RESTING_ORDERS.md` has every proof.
+`docs/PLAN.md` §2.12.8 has the full account; the vault log
+`00 - Developer Logs/SESSION_LOG_2026-09-11.md` the narrative.
 
 | | |
 |---|---|
-| **The order book** | `swayam_orders`, one trading day, everything resting expires at 15:30 and is charged nothing. A row there is not a trade: no position, no fill, no charge and no note until it fills |
-| **The band comes from the FYERS DEPTH call, not the quote** | The quote carries no band at all. Verified live: 23,800 September call, 0.05 to 327.45, tick 0.05, against 263.85 on 10 September. One depth call per order placed, never per refresh. A failure lets the order rest and SAYS the band could not be read |
-| **The watcher never calls FYERS** | It rides on the chain feed's refreshes and reads the book the desk is already quoting from. A fill goes down exactly the path a sent leg takes |
-| **One order fills at most once** | One conditional update in the database that only one process can win. His own requirement of 2026-09-10 |
-| **⚠️ IT ONLY FILLS WHILE THE BACKEND IS AWAKE** | Which on Cloud Run means while one of his pages is open. It is NOT sitting at the broker. That sentence is on the screen in every state and in the handoff |
-| **The bell's warning** | A resting exit killed by 15:30 while its trade is still open is named on Home and on the desk, pointing at the 15:20 naked-shorts check. Proved live on his real condor |
-| **Built in a worktree, deliberately** | Another chat held the primary folder. The worktree got its own Python environment and its own ports, 8010 and 5183, and `import swayam` was proved to resolve inside it before any test ran. `main` gets merged in again before the pull request |
-| **Verified on the running system** | Python 692 passing, JavaScript 339 in 36 files, journal folder 6 notes before and after, three groups rendered from the real backend in both themes, the verification rows removed again and the table shown empty |
-| **Only his window can prove** | A fill from the book. And a resting order on the live screen at all, because nothing may rest after 15:30 |
+| **Merged and live** | Build A (#65), the marking-script fix (#66), his first review round (#67), the AI partner chat's documents (#68, #69). Migrations 022, 023 and 024 applied. Live revision built from main |
+| **Proven on the live market** | The band, targets reached, the crosshair, the chain holding his scroll, the card's figures, and a hedged dummy opened and closed through the new exit ticket with its note completed by the drainer |
+| **⚠️ Broke, top three** | A naked leg cannot be recorded (infinity stored as max loss); FYERS 429 after 15:00 because Build A quotes legs outside the chain feed; entry blocked by a rule with the plan chip on "carrying overnight". All to the polish chat's round one |
+| **The record** | Five closed trades marked `terminal_test`, notes moved to `04 - Journal/Terminal tests/` (six there now with today's dummy). **The journal folder holds ONE note**, the open condor's. Check it before and after every test run |
+| **Two builder chats open** | The polish chat in the primary folder, branch `feature/swayam-polish-round2-047`, round one fixes then round two the Atlas-inspired look with a mockup first. Build B, resting orders, done and reviewed (695 passing), in worktree `.claude/worktrees/nifty-resting-orders-074c38` with its own venv. **Pull request #71 is open**, with `main` merged into it through #70 |
+| **Merge order** | Build B, then polish round one, then round two |
+| **Still to write** | Build C, cloud hygiene, from his cost chat's audit: images, three regions, the SIGABRT, the double-written bucket, the nightly backup |
+| His PC | Windows Smart App Control was blocking every Python from 17:39 on the 10th; he turned it off on the 10th night |
 
-### Latest first: BUILD A COMPLETE, ALL THREE PARTS, 2026-09-10
+### Earlier: BUILD A COMPLETE, ALL THREE PARTS, 2026-09-10
 
-**On a branch with an open pull request, NOT merged, so none of this is
-live.** Branch `feature/swayam-build-a-desk-home-chain-042`, cut from `main`
+**Merged the same night as #65; see the entry above.** Branch `feature/swayam-build-a-desk-home-chain-042`, cut from `main`
 at the merge of pull request #63.
 
 **All three parts are built and verified on the running system in both
