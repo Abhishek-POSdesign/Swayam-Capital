@@ -237,7 +237,8 @@ def newest_backup_info(bucket: str = "swayam-backups") -> dict:
             if len(b.name.split("/")) > 2
         })
         if not stamps:
-            return {"available": False, "reason": "no backup exists in the bucket yet"}
+            return {"available": False,
+                    "reason": f"no backup folders under gs://{bucket}/{GCS_PREFIX}/"}
 
         newest = stamps[-1]
         taken = datetime.strptime(newest, "%Y-%m-%dT%H-%M-%SZ").replace(tzinfo=timezone.utc)
@@ -259,7 +260,12 @@ def newest_backup_info(bucket: str = "swayam-backups") -> dict:
             "rows": rows,
         }
     except Exception as exc:
-        return {"available": False, "reason": str(exc)[:200]}
+        # Names where it looked. A reason that says only "failed" tells him
+        # nothing, and a reason that draws a conclusion about his machine or
+        # his account from one lookup can be plainly wrong. See the note on
+        # `attempt` in scripts/nightly_local.py for the incident behind this.
+        return {"available": False,
+                "reason": f"could not read gs://{bucket}/{GCS_PREFIX}/: {str(exc)[:160]}"}
 
 
 def main(argv: Optional[list[str]] = None) -> int:

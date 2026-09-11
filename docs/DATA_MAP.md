@@ -127,7 +127,7 @@ gcloud run revisions list --service=swayam-dashboard --region=asia-southeast1 --
 
 ## 7. LIVE FIGURES
 
-Refreshed automatically by `scripts/nightly_local.py` on **11 September 2026, 22:23 India Standard Time**.
+Refreshed automatically by `scripts/nightly_local.py` on **12 September 2026, 00:47 India Standard Time**.
 Anything it could not read says so, with the reason. No stale number is
 left standing here.
 
@@ -136,8 +136,8 @@ left standing here.
 | Newest backup of my record | 2026-09-11T16-46-46Z, 19 tables, 900 rows |
 | Older backups kept | 2, oldest 2026-09-07T17-12-15Z |
 | Recorder data | 3 trading days, 11.4 MB total |
-| Backtest history on my PC | unavailable — data/history not present on this machine |
-| Backtest history copied to the bucket | not yet copied |
+| Backtest history on my PC | 630 MB at D:\Claude\POS\Trading-Platform\Swayam Capital\data\history |
+| Backtest history copied to the bucket | nothing under gs://swayam-backups/history/ yet |
 | Build images | 22 |
 | Live site versions | 20 |
 | Open trades | 1, `7cd4d017` |

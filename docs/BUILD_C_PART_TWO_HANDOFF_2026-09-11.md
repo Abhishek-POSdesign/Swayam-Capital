@@ -191,7 +191,7 @@ a scheduled task is a system setting and is his to create.**
 | Worktree isolated | `import swayam` resolves inside this worktree, re-proved after the branch switch |
 | Backup works end to end | 19 tables, **900 rows**, **21 objects uploaded and verified** through the new storage-client path |
 | Bucket state | Three backups present: 07 Sep, and two from 11 Sep |
-| Local task works | Vault copy landed; **both** Data Map copies refreshed; `history_local` correctly said `unavailable — data/history not present on this machine` |
+| Local task works | Vault copy landed; **both** Data Map copies refreshed. **The `history_local` result was recorded here as a pass and it was a FAULT — see 7.1.** Re-run from the primary folder 2026-09-12 00:47 IST and now correct |
 | Data Map markers respected | Everything above the opening marker untouched, end marker intact |
 | Home line | Rendered on the running page against the real backend: *"Your record was backed up less than an hour ago · 19 tables, 900 rows · protects against damage inside the database, not loss of the project"* |
 | Backup-age endpoint | `HTTP 200` through the real server, correct live JSON |
@@ -205,6 +205,66 @@ pane returned blank screenshots for this layout and I could not get a usable
 image. **The text and behaviour are proven; the appearance is not.** Worth his
 eye after merge. It uses the existing `.why` class, and `var(--down)` when stale,
 both already theme-aware.
+
+---
+
+### 7.1 ⚠️ THE FAULT THIS HANDOFF ORIGINALLY RECORDED AS A PASS
+
+**Found by the main chat reviewing PR #81, fixed on `feature/swayam-backup-messages-057`.**
+
+The row above used to read: *"`history_local` correctly said `unavailable —
+data/history not present on this machine`"*. It was presented as proof the
+error path worked. **It was a false statement about his machine, published into
+his vault.**
+
+**What was actually wrong.** `history_local()` looked in exactly one place —
+`ROOT_DIR / "data" / "history"`, where `ROOT_DIR` is wherever the script runs
+from. Run from the worktree, that folder is legitimately absent, because
+`data/` is gitignored and a worktree starts without ignored files. The script
+then drew a conclusion about **his whole machine** from that single lookup. The
+truth was **631 MB sitting in his primary folder.**
+
+**Two consequences, and the second is the serious one:**
+
+1. This handoff recorded a wrong answer as a verified pass.
+2. **The Data Map in his vault — the note he hands to future chats — stated
+   that his most vulnerable data was missing.** Data that exists in exactly one
+   place on Earth, that took 8,576 FYERS requests to assemble.
+
+**The fix was the message, not the logic.** The logic was right: in production
+the task runs from the primary folder, where that path is correct.
+
+```
+before:  "data/history not present on this machine"     a claim about the machine
+after:   f"data/history not found at {src}"             a statement of what and where
+```
+
+**Swept across every message in the script, and made structural rather than
+left to care.** `attempt()` now takes a required `where` argument naming WHAT
+was being read, and each function's own error names WHERE it looked. A message
+that cannot say both is now impossible to write by omission:
+
+| Figure | Message shape now |
+|---|---|
+| local history | `could not read the local backtest history: data/history not found at <full path>` |
+| bucket reads | name the exact `gs://bucket/prefix/` |
+| gcloud reads | name the command that failed and its exit code |
+| the database | names the table |
+
+The same sweep was applied to `record_backup.py`, which feeds the Home line.
+
+**Corrected in his vault at 2026-09-12 00:47 IST**, re-run from the primary
+folder. It now reads:
+
+```
+| Backtest history on my PC | 630 MB at D:\...\Swayam Capital\data\history |
+| Backtest history copied to the bucket | nothing under gs://swayam-backups/history/ yet |
+```
+
+**The lesson worth keeping:** a message that names the path it looked in cannot
+mislead, and this one would have shown the fault to its own author immediately.
+Every "unavailable" in this project should say what it could not read and where
+it looked, and never a conclusion about the machine, the account or the world.
 
 ---
 

@@ -153,7 +153,8 @@ def sync_history(root: Optional[Path] = None, dry_run: bool = False) -> dict:
     root = root or ROOT_DIR
     src = root / "data" / "history"
     if not src.exists():
-        return {"skipped": f"{src} does not exist", "uploaded": 0, "bytes": 0}
+        return {"skipped": f"nothing to sync: no folder at {src}",
+                "uploaded": 0, "bytes": 0}
 
     client = _storage()
     bucket = client.bucket(BUCKET)
@@ -186,9 +187,15 @@ def sync_history(root: Optional[Path] = None, dry_run: bool = False) -> dict:
 # --------------------------------------------------------------------------
 
 def _gcloud_json(args: list[str]):
+    """Runs gcloud and returns JSON. A failure names the command it ran, so the
+    message says what was attempted rather than only that something failed."""
     p = subprocess.run(["gcloud"] + args, capture_output=True, text=True, shell=True)
     if p.returncode != 0:
-        raise RuntimeError((p.stderr or "gcloud failed").strip().splitlines()[-1][:160])
+        tail = (p.stderr or "no stderr").strip().splitlines()
+        raise RuntimeError(
+            f"`gcloud {' '.join(args[:4])}…` exited {p.returncode}: "
+            f"{tail[-1][:110] if tail else 'no stderr'}"
+        )
     return json.loads(p.stdout or "[]")
 
 
@@ -197,11 +204,26 @@ def gather_figures() -> dict[str, str]:
     never a stale number carried over from last night."""
     figures: dict[str, str] = {}
 
-    def attempt(key: str, fn):
+    # EVERY FAILURE NAMES WHAT IT READ AND WHERE IT LOOKED. `where` is required,
+    # so this cannot be forgotten.
+    #
+    # WHY IT IS BUILT THIS WAY RATHER THAN LEFT TO CARE. On 2026-09-11 this
+    # function reported "data/history not present on this machine". That is a
+    # conclusion about his MACHINE drawn from looking in exactly ONE place, and
+    # it was FALSE: the folder held 631 MB in his primary folder, and the task
+    # had merely been run from a worktree. The wrong answer then reached the
+    # Data Map in his vault, the note he hands to future chats, and said his
+    # most vulnerable data was missing.
+    #
+    # A message that names the path it looked in cannot mislead like that, and
+    # it would have shown the fault immediately. So no message here states
+    # anything about the machine, the account or the world: only what was
+    # sought, where, and what came back.
+    def attempt(key: str, where: str, fn):
         try:
             figures[key] = fn()
         except Exception as exc:
-            figures[key] = f"{UNAVAILABLE} — {str(exc)[:150]}"
+            figures[key] = f"{UNAVAILABLE} — could not read {where}: {str(exc)[:120]}"
 
     def newest_backup() -> str:
         client = _storage()
@@ -211,7 +233,7 @@ def gather_figures() -> dict[str, str]:
             if len(b.name.split("/")) > 2
         })
         if not stamps:
-            raise RuntimeError("no backups in the bucket")
+            raise RuntimeError(f"no backup folders found under gs://{BUCKET}/{BACKUP_PREFIX}/")
         newest = stamps[-1]
         man = client.bucket(BUCKET).blob(f"{BACKUP_PREFIX}/{newest}/MANIFEST.json")
         if not man.exists():
@@ -231,7 +253,11 @@ def gather_figures() -> dict[str, str]:
 
     def recorder_data() -> str:
         client = _storage()
-        blobs = list(client.list_blobs("swayam-capital-options-data"))
+        try:
+            blobs = list(client.list_blobs("swayam-capital-options-data"))
+        except Exception as exc:
+            raise RuntimeError(
+                f"gs://swayam-capital-options-data/ could not be listed: {exc}") from exc
         total = sum(b.size or 0 for b in blobs)
         days = {"/".join(b.name.split("/")[:3]) for b in blobs if b.name.count("/") >= 3}
         return f"{len(days)} trading days, {total / 1048576:.1f} MB total"
@@ -239,17 +265,21 @@ def gather_figures() -> dict[str, str]:
     def history_local() -> str:
         src = ROOT_DIR / "data" / "history"
         if not src.exists():
-            raise RuntimeError("data/history not present on this machine")
+            # Names the path, never a claim about the machine. Run from a
+            # worktree this folder is legitimately absent while 631 MB sits in
+            # the primary folder, and saying otherwise put a falsehood in his
+            # vault on 2026-09-11.
+            raise RuntimeError(f"data/history not found at {src}")
         size = sum(p.stat().st_size for p in src.rglob("*") if p.is_file())
-        return f"{size / 1048576:.0f} MB"
+        return f"{size / 1048576:.0f} MB at {src}"
 
     def history_in_bucket() -> str:
         client = _storage()
         blobs = list(client.list_blobs(BUCKET, prefix=f"{HISTORY_PREFIX}/"))
         if not blobs:
-            return "not yet copied"
+            return f"nothing under gs://{BUCKET}/{HISTORY_PREFIX}/ yet"
         total = sum(b.size or 0 for b in blobs)
-        return f"{len(blobs)} files, {total / 1048576:.0f} MB"
+        return f"{len(blobs)} files, {total / 1048576:.0f} MB in gs://{BUCKET}/{HISTORY_PREFIX}/"
 
     def build_images() -> str:
         rows = _gcloud_json([
@@ -275,14 +305,17 @@ def gather_figures() -> dict[str, str]:
         ids = ", ".join(f"`{r['id'].split('-')[0]}`" for r in rows[:5])
         return f"{len(rows)}, {ids}"
 
-    attempt("newest_backup", newest_backup)
-    attempt("older_backups", older_backups)
-    attempt("recorder", recorder_data)
-    attempt("history_local", history_local)
-    attempt("history_bucket", history_in_bucket)
-    attempt("images", build_images)
-    attempt("versions", live_versions)
-    attempt("open_trades", open_trades)
+    # `where` is a short label saying WHAT was being read. Each function's own
+    # error carries WHERE it looked, so between them a failure always answers
+    # both, once each, without repeating a long path twice in his Data Map.
+    attempt("newest_backup", "the newest backup", newest_backup)
+    attempt("older_backups", "the backup history", older_backups)
+    attempt("recorder", "the recorder's bucket", recorder_data)
+    attempt("history_local", "the local backtest history", history_local)
+    attempt("history_bucket", "the history copy in the bucket", history_in_bucket)
+    attempt("images", "the build images", build_images)
+    attempt("versions", "the live site versions", live_versions)
+    attempt("open_trades", "the open trades", open_trades)
     return figures
 
 
