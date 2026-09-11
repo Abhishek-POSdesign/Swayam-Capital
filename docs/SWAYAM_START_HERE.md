@@ -85,7 +85,21 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: A DEPLOY THAT FAILED, AND THE AI PANEL PLANNED, 2026-09-12
+### Latest first: THE BACKUP FINALLY RAN, AND THE PANEL IS LIVE, 2026-09-12
+
+**`docs/PLAN.md` §2.23 is the record.**
+
+| | |
+|---|---|
+| **⚠️ THE NIGHTLY BACKUP HAD NEVER ONCE SUCCEEDED** | Two executions, both 403. The job's service account had no write binding on the bucket, because every backup until then had run from his own machine as the project owner. **Proved under one identity, run under another.** One grant of `objectCreator` fixed it, and the job was then executed by hand: `supabase/2026-09-11T21-33-51Z/` is the first backup of his record ever written by a machine |
+| **⚠️ MIGRATION 025 HAD NEVER BEEN APPLIED** | Merged with round 1b on 11 September, never run, so **the whole naked-leg fix was inert in the live database.** The main chat had claimed it was applied; that claim was written from the pattern, not checked. **A migration is applied when `apply_migration.py status` says so and at no other moment.** Applied 12 September |
+| **Merged** | #85 and #87, closing Build C; **#86, the AI panel**. Migrations 025 and 026 applied |
+| **The AI panel** | Floats above the page, opens small, resizes from eight handles, no starter prompts, and **the exit ticket covers it, hit-tested at three points rather than read from a stylesheet**. Home has no chat; it has "So far today", saved one row a day. **110 conversations and 35 messages counted before and after: nothing lost** |
+| **Still unproven, and it says so** | Dictation actually transcribing, because the browser blocks the microphone. Resting orders filling from the book. A naked leg end to end, now that 025 is applied. All need his window |
+| **A third handoff command that could not work** | `apply_migration.py 026`: the script takes `status`, `up` or `baseline`, never a number, and the file was in another clone. **Three in two days, always a path or an interface assumed rather than read** |
+| **The stacked pull request, caught** | #87 was opened against #85's branch, the exact shape that made #35 merge into a dead end. Caught by reading the base before recommending an order |
+
+### Earlier: A DEPLOY THAT FAILED, AND THE AI PANEL PLANNED, 2026-09-12
 
 **`docs/PLAN.md` §2.22 is the record of this day.**
 
