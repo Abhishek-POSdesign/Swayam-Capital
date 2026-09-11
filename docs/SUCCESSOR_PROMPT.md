@@ -48,6 +48,7 @@ READ THESE, IN THIS ORDER, ALL THE WAY THROUGH. Do not ask me where anything is.
 6. G:\My Drive\Second Brain\00 - Developer Logs\SESSION_LOG_2026-09-09_evening.md
 7. G:\My Drive\Second Brain\00 - Developer Logs\SESSION_LOG_2026-09-10.md
 8. G:\My Drive\Second Brain\00 - Developer Logs\SESSION_LOG_2026-09-10_evening.md
+9. G:\My Drive\Second Brain\00 - Developer Logs\SESSION_LOG_2026-09-11.md
 Deeper only when needed: WHERE_EVERYTHING_LIVES.md, docs/API.md,
 docs/RUNBOOK.md, docs/architecture.md.
 
@@ -106,55 +107,70 @@ WHERE EVERYTHING LIVES. Do not ask me any of this.
 - The local backend starts from .claude/launch.json as swayam-api, the web as
   swayam-web. Both point at the LIVE database and live FYERS.
 
-WHERE THINGS STAND, 10 September 2026, evening
-On 9 September I took three trades through the terminal. That evening the
-execution ticket (PR #49), a retry fix (#50), the Home strip move (#51) and
-realistic fills at the bid and ask (#52) were built and merged; the roadmap
-(#54, #60) and the handover docs (#53, #61) followed. A separate chat rebuilt
-the recorder and did the backtesting research (#55 to #58). On 10 September,
-in my window, everything from 9 September was proven ON THE LIVE MARKET:
-docs/PLAN.md 2.12.5 has every figure. That evening I corrected the record and
-set the way we work from now on: docs/PLAN.md 2.12.6.
+WHERE THINGS STAND, 11 September 2026, after my window
+You are waking from a cleared chat, not starting fresh. The chat before you
+was the orchestrator from the evening of 10 September through my window on
+11 September. Read docs/PLAN.md 2.12.6, 2.12.7 and 2.12.8 and the vault log
+SESSION_LOG_2026-09-11.md and you have everything it knew.
+
+What is merged and live: Build A, all three parts (PR #65), the marking
+script fix (#66), my first review round (#67), the AI partner chat's
+documents (#68, #69). The live site runs main. Migrations 022, 023 and 024
+are applied. On 11 September, in my window, Build A was proven on the live
+market: the band, targets, the crosshair, the chain, the position card, and
+a hedged dummy trade opened and closed through the new exit ticket with its
+note completed by the drainer. PLAN 2.12.8 has what passed and what broke.
 
 EVERY TRADE IN THE RECORD IS A TERMINAL TEST. Paper trading has NOT started.
-The six trades, three from 9 September and three from 10 September, were me
-clicking orders to see how the terminal behaves, not planned trades. I will
-say when paper trading starts; a script I run marks that day. Until then
-nothing in the record is a paper trade and nothing you take in a browser is
-either. ONE trade is OPEN, 7cd4d017, a four-leg condor on the 29 September
-expiry, carried overnight on purpose as the first real subject for the
-position area. It is a terminal test, and you still do not close it, edit it
-or mark it by script. The system named it "Short Strangle"; I did not. I
-loaded the strangle preset, the ticket refused my limit price because the
-book had not reached it, I went to a condor at market, and the name stayed
-with the preset. I had no role in naming it.
+The five closed trades are marked terminal_test and their notes moved into
+"04 - Journal/Terminal tests/"; today's dummy went there too. My journal
+folder therefore holds ONE note, the open condor's, plus that subfolder.
+Every builder checks it before and after a test run. I will say when paper
+trading starts; scripts/start_paper_trading.py is mine to run and nobody
+runs it before I say. ONE trade is OPEN, 7cd4d017, a four-leg condor on the
+29 September expiry, which I am keeping for at least one more expiry. You
+do not close it, edit it or mark it by script. The system named it "Short
+Strangle" from a preset; the app now derives Iron Condor from its legs.
 
-THIS CHAT IS THE ORCHESTRATOR. IT DOES NOT BUILD. Since 10 September evening:
-this chat plans, draws the mockup, writes the build document and the prompt
-for a builder chat, and reviews the finished build with me before I merge. I
-open a fresh chat per build and paste the prompt from the top of that build's
-document. docs/builds/README.md has the loop and the rules. When a build comes
-back, you review it against its document and the mockup on the running
-system and tell me plainly whether to merge.
+THIS CHAT IS THE ORCHESTRATOR. IT DOES NOT BUILD. It plans, draws the
+mockup, writes the build document and the prompt for a builder chat, and
+reviews the finished build on the running system before I merge. Builder
+chats build. Two are open right now:
+- The Build A POLISH chat, in the primary folder, branch
+  feature/swayam-polish-round2-047, working the list in PLAN 2.12.8: round
+  one is fixes, round two is the Atlas-inspired look with a mockup first
+  that I approve in that chat. Its prompt is in PLAN 2.12.8.
+- The Build B chat, resting orders, DONE and reviewed (Python 695 passing,
+  1 stale failure as on main), in a worktree with its own venv at
+  .claude/worktrees/nifty-resting-orders-074c38, branch
+  feature/swayam-build03-resting-orders-044. It opens its pull request when
+  I say; it merges main into its branch first.
+MERGE ORDER: Build B first, then the polish chat's round one, then round
+two. Nothing else moves ahead of these. Only one chat writes to the primary
+folder; a second builder takes a worktree WITH ITS OWN VENV and proves
+"import swayam" resolves inside it.
 
-WHAT WAS DECIDED ON 10 SEPTEMBER, AND IS NOT UP FOR DISCUSSION
+WHAT WAS DECIDED, AND IS NOT UP FOR DISCUSSION
 - Limit orders REST. A limit away from the market sits as an open order until
-  the bid or ask reaches it, inside the exchange's price band. The ticket's
-  refusal of such a limit was wrong. 2.12.5 item 1. Build 03.
-- TWO BUILDS. Build A, one builder chat, one branch, one pull request, in
-  this order: the desk's position area, the exit ticket for one leg or all,
-  the campaign model in the record, the name from the legs, click a position
-  to load it on the payoff, the drainer's close-row fault, the price wording
-  (BUILD_01); then Home's running-trade band with its states, targets per leg
-  and per trade, Manage from Home, the payoff crosshair, the terminal-test
-  phase, the big-number pass (BUILD_02); then the option chain after its
-  mockup (BUILD_04). Build B, its own chat after Build A is merged: resting
-  orders (BUILD_03), the trickiest piece, kept apart on purpose. I do not
-  have whole days to open chats and answer questions; do not split further.
-  docs/builds/. Nothing moves ahead of them.
+  the bid or ask reaches it, inside the exchange's price band, which comes
+  from the FYERS DEPTH call. Build B built it. 2.12.5 item 1.
 - The mockup every build is held to: Swayam Position Area,
   https://claude.ai/code/artifact/ef242a22-59a7-4752-8aa4-91d59393c5d5. The
-  build must be identical to it.
+  build must be identical to it. The look is changing in polish round two,
+  Atlas-inspired, pastel filled cards and buttons, no dark corners or
+  outlines, NO lilac; that gets its own mockup in the polish chat.
+- Entry is NEVER blocked by a rule. On 11 September a naked leg was blocked
+  at the ticket because the plan chip said "carrying overnight" and the
+  overnight and black-swan checks are treated as blocking. That is a fault
+  to fix, not a rule: rules at entry are advisory; carrying is gated at
+  15:20 by the naked-shorts check.
+- The database: the record stays in Supabase; the backtesting history stays
+  in DuckDB on my PC with the bucket as the copy. PLAN 2.19. The backtester
+  chat brainstorms it with me before building.
+- The cloud audit from my cost chat (images piling up, three dashboard
+  regions, a SIGABRT on 10 September at 14:52 IST, the bucket written
+  twice, no scheduled backup) is Build C, cloud hygiene, its own builder
+  document still to be written by this chat. PLAN 2.12.8.
 - Home, Option B: the whole band takes its colour from the money. BLINKING
   means running. SOLID green or solid red means a target was reached, profit
   or loss, on a leg or the trade, and needs my attention. MUTED means nothing
@@ -202,12 +218,14 @@ answers do we start.
 2. What are the four horizons, and which one are we in?
 3. What did I decide about limit orders on 10 September, and what did the
    ticket do wrong?
-4. Why was my short strangle not sent on 10 September? Was it a rule?
-5. What are the four builds, in order, which chat builds them, and what does
-   this chat do with a finished build?
-6. Which files did the backtesting chat promise not to touch, and did it keep
-   that promise?
-7. What is wrong with the drainer today, and why are the notes still fine?
+4. Why was my naked leg not sent on 11 September, twice, and which of the
+   two reasons is a fault in the terminal?
+5. Which two builder chats are open, where does each work, and in what
+   order do their pull requests merge?
+6. What happened at 3 pm on 11 September with FYERS, why, and what is the
+   fix?
+7. Where does my journal folder stand, and what does a builder check before
+   and after a test run?
 8. What does "one by one" do on the server, and what keeps a retry from
    opening a second trade?
 9. What are my hours, and what may never be planned for 09:15?
