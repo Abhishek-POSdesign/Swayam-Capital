@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 from swayam.services.so_far_today import (
     DailyCapExceededError,
+    SummaryStoreUnavailable,
     generate_so_far_today,
     read_day_summary,
 )
@@ -94,7 +95,28 @@ def get_so_far_today_status() -> dict[str, Any]:
     still the summary of today and is still shown, with its age beside it.
     The 60-minute cache is a rule about SPENDING, and it lives on the POST.
     """
-    saved = read_day_summary()
+    try:
+        saved = read_day_summary()
+    except SummaryStoreUnavailable as e:
+        # Not an empty day. The card must say what could not be read and where,
+        # rather than showing a blank that looks like a quiet market.
+        return {
+            "has_data": False,
+            "day": "",
+            "text": "",
+            "sources": [],
+            "search_queries": [],
+            "model": "",
+            "generated_at": "",
+            "is_cached": False,
+            "age_minutes": 0,
+            "call_count_today": 0,
+            "daily_cap": 8,
+            "cap_reached": True,
+            "stored": False,
+            "message": f"unavailable — {e}",
+        }
+
     if saved is not None and (saved.get("text") or "").strip():
         age = saved.get("age_minutes")
         stamp = f"Saved summary for today, written {age} minutes ago." if age is not None else "Saved summary for today."
@@ -141,6 +163,17 @@ def post_generate_so_far_today(force: bool = Query(default=False)) -> dict[str, 
         raise HTTPException(
             status_code=429,
             detail=str(e),
+        )
+    except SummaryStoreUnavailable as e:
+        # Nothing was generated and nothing was spent: without the store the
+        # daily cap cannot be counted, and a cost rule that cannot be counted
+        # is not a cost rule.
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"{e} Nothing was generated and nothing was charged, because the "
+                "daily cap cannot be counted without that table."
+            ),
         )
     except Exception as e:
         logger.error("Error generating so_far_today: %s", e)

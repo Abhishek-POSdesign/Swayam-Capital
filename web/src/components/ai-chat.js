@@ -84,20 +84,26 @@ export class AIChatPanel {
     this.container.innerHTML = `
       <div class="ai-panel" id="ai-panel">
         <div class="ai-panel__header">
-          <div class="ai-panel__header-left">
+          <!-- The title bar. It carries the name and the three window buttons,
+               and it is the handle the panel is dragged by.
+               MEASURED, not guessed: one row holding the name AND all seven
+               controls needs 491px, so at the size it opens at the name was
+               squeezed to nothing and the window had no title. -->
+          <div class="ai-panel__titlebar" id="ai-titlebar">
             <span class="ai-panel__dot" aria-hidden="true"></span>
             <span class="ai-panel__title">AI Trading Partner</span>
             <span class="ai-panel__conv-title" id="ai-conv-title"></span>
+            <button class="ai-icon-btn" id="ai-btn-dock" title="Detach it from the corner" aria-label="Detach or attach" aria-pressed="false">&#10530;</button>
+            <button class="ai-icon-btn" id="ai-btn-tiny" title="Shrink it to the bar" aria-label="Shrink to the bar" aria-pressed="false">&ndash;</button>
+            <button class="ai-icon-btn" id="ai-btn-close-panel" title="Close" aria-label="Close">&#10005;</button>
           </div>
-          <div class="ai-panel__header-right">
+          <!-- The conversation's own actions. -->
+          <div class="ai-panel__toolbar">
             <button class="ai-btn ai-btn--sm" id="ai-btn-new" title="Start a new conversation">New</button>
             <button class="ai-btn ai-btn--sm" id="ai-btn-history" title="Every conversation you have had">History</button>
             <button class="ai-btn ai-btn--sm" id="ai-btn-clear" title="Empty this pane. The conversation stays in History">Clear</button>
             <button class="ai-btn ai-btn--sm ai-btn--danger" id="ai-btn-delete" title="Remove this conversation from the database">Delete</button>
             <button class="ai-icon-btn" id="ai-btn-settings" title="Voice and AI settings" aria-label="Voice and AI settings">&#9881;</button>
-            <button class="ai-icon-btn" id="ai-btn-dock" title="Detach it from the corner" aria-label="Detach or attach" aria-pressed="false">&#10530;</button>
-            <button class="ai-icon-btn" id="ai-btn-tiny" title="Shrink it to the bar" aria-label="Shrink to the bar" aria-pressed="false">&ndash;</button>
-            <button class="ai-icon-btn" id="ai-btn-close-panel" title="Close" aria-label="Close">&#10005;</button>
           </div>
         </div>
 
@@ -961,7 +967,16 @@ export class AIChatPanel {
         background: var(--dl-rail);
         flex-shrink: 0;
       }
-      .ai-panel__header { flex-wrap: nowrap; overflow: hidden; }
+      /* Two rows: a title bar, then the conversation's toolbar. */
+      .ai-panel__header { flex-direction: column; align-items: stretch; gap: 7px; padding: 8px 11px; }
+      .ai-panel__titlebar {
+        display: flex; align-items: center; gap: 6px; min-width: 0;
+        cursor: grab; touch-action: none;
+      }
+      .ai-panel__titlebar:active { cursor: grabbing; }
+      .ai-panel__titlebar .ai-panel__conv-title { margin-right: auto; }
+      .ai-panel__titlebar .ai-panel__title + .ai-icon-btn { margin-left: auto; }
+      .ai-panel__toolbar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
       /* Left side shrinks (title/convo-title truncate) so the right-side controls —
          including the ⚙ settings gear — are NEVER pushed off the 370px panel edge.
          (Bug: a past chat's conversation title used to shove the gear off-screen.) */
@@ -1250,8 +1265,6 @@ export class AIChatPanel {
         width: 8px; height: 8px; border-radius: 50%;
         background: var(--accent-sage); flex: 0 0 auto;
       }
-      .ai-panel__header { cursor: grab; touch-action: none; }
-      .ai-panel__header:active { cursor: grabbing; }
       .ai-panel__header button { cursor: pointer; }
 
       /* Delete is the only destructive control in the panel and it reads that

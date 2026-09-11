@@ -107,6 +107,12 @@ export class SoFarTodayCardComponent {
         this.state.callCountToday = res.call_count_today || 0;
         this.state.dailyCap = res.daily_cap || 8;
         this.state.capReached = res.cap_reached || false;
+        // An unreadable store is NOT an empty day. The server says so in words
+        // and names what it looked for; the card repeats it rather than
+        // showing a blank that reads like a quiet market.
+        this.state.errorMessage = String(res.message || '').startsWith('unavailable')
+          ? res.message
+          : null;
       }
       this.render();
     } catch (err) {
@@ -230,6 +236,10 @@ export class SoFarTodayCardComponent {
              ${sourcesHtml}
              <p class="sft-model">${this._modelLine()}</p>
            </div>`;
+    } else if (String(errorMessage || '').startsWith('unavailable')) {
+      // The store could not be read. Saying "nothing saved yet" underneath
+      // that would be two contradictory claims on one card.
+      body = '';
     } else {
       body = `
         <div class="sft-empty">

@@ -52,6 +52,19 @@ class DailyCapExceededError(Exception):
     pass
 
 
+class SummaryStoreUnavailable(Exception):
+    """The day's row could not be READ. That is not the same as having none.
+
+    Found on the running system on 12 September, before migration 026 had been
+    applied: a failed read came back as "nothing saved for today yet", which
+    invites a paid call whose result then cannot be stored. An empty table and
+    an unreachable one look identical to a caller that only gets None back, and
+    his first rule is that a thing is real or it says what could not be read
+    and where it was looked for.
+    """
+    pass
+
+
 def get_today_ist_start() -> datetime:
     """Returns midnight (00:00:00) IST for today as a UTC datetime."""
     tz = ZoneInfo(TIMEZONE)
@@ -66,7 +79,11 @@ def today_ist() -> date:
 
 
 def _fetch_day_row(day: date, db: SupabaseDB) -> Optional[dict[str, Any]]:
-    """The stored row for one IST day, or None. Raises nothing."""
+    """The stored row for one IST day, or None when the day has none.
+
+    Raises SummaryStoreUnavailable when the table itself could not be read, so
+    that a missing table can never be mistaken for a quiet day.
+    """
     try:
         res = (
             db.client.table(SUMMARY_TABLE)
@@ -80,7 +97,10 @@ def _fetch_day_row(day: date, db: SupabaseDB) -> Optional[dict[str, Any]]:
         return None
     except Exception as e:
         logger.error("Failed to read %s for %s: %s", SUMMARY_TABLE, day, e)
-        return None
+        raise SummaryStoreUnavailable(
+            f"The table {SUMMARY_TABLE} could not be read ({e}). "
+            "If migration 026 has not been applied yet, that is why."
+        ) from e
 
 
 def count_grounded_calls_today(db: Optional[SupabaseDB] = None) -> int:
@@ -137,7 +157,13 @@ def get_cached_so_far_today(
     if db is None:
         db = SupabaseDB()
 
-    row = _fetch_day_row(today_ist(), db)
+    try:
+        row = _fetch_day_row(today_ist(), db)
+    except SummaryStoreUnavailable:
+        # A cache MISS is the safe answer here. It never claims anything; the
+        # worst it does is let the caller decide to generate, and generating
+        # refuses on its own when the store cannot be read.
+        return None
     if not row or not (row.get("text") or "").strip():
         return None
 
@@ -195,7 +221,9 @@ def generate_so_far_today(
         if cached is not None:
             return cached
 
-    # 2. The daily cap.
+    # 2. The daily cap. If the store cannot be read the cap CANNOT be enforced,
+    #    so nothing is generated and nothing is spent. Failing closed is the
+    #    only honest answer for a rule about money.
     calls_today = count_grounded_calls_today(db)
     daily_cap = settings.swayam_ai_daily_grounded_cap
     if calls_today >= daily_cap:

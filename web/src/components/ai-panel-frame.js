@@ -33,7 +33,10 @@ export const PANEL_PLACE_KEY = 'swayam-ai-panel-place';
 
 /** Four or five lines. The size it opens at, every time, however big it was. */
 export const DEFAULT_W = 360;
-export const DEFAULT_H = 250;
+// 280 rather than the mockup's 250, because the header became two rows
+// once it was measured at this width. Four or five lines of conversation
+// is the thing he asked for; the number was never the point.
+export const DEFAULT_H = 280;
 
 /** Below this it stops being usable as a chat. */
 export const MIN_W = 260;
@@ -214,7 +217,9 @@ export class AIPanelFrame {
   }
 
   _bindHeader() {
-    const head = this.el.querySelector('.ai-panel__header');
+    // The title bar is the handle, not the whole header: the toolbar row
+    // under it is all buttons and must not drag the window.
+    const head = this.el.querySelector('.ai-panel__titlebar') || this.el.querySelector('.ai-panel__header');
     if (!head || head.dataset.aipDrag === '1') return;
     head.dataset.aipDrag = '1';
     head.addEventListener('pointerdown', (e) => {
