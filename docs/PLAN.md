@@ -1350,6 +1350,79 @@ he is missing: the nightly backup, §2.6. His reason for urgency is that the
 real bill has not arrived yet, and the backtesting and AI work is what will
 bring it.
 
+### 2.20 THE LOOK, THE AI PANEL, AND HOME. Decided with him 2026-09-11 night. Three builds.
+
+**Round one (#72) and round 1b (#74) are merged.** Round 1b fixed the three
+faults from his live test and, on the main chat's review, four more places that
+still assumed a maximum loss was a number: the close route crashed on a naked
+trade, and the exit note would have printed a result as 0.00% of a risk that had
+no ceiling. It shipped a lifecycle test and `scripts/prove_naked_trade.py`.
+**Only his window can prove a real naked leg.**
+
+#### 2.20.1 Why his terminal does not look like Atlas, measured not guessed
+
+His four accents are **already Atlas's, to the hex**. What was never copied is
+the ground beneath them. His dark background is `#101116`, a cold blue-black,
+where Atlas is `#1a1a1a`, a warm charcoal; his dark text is `#edeff4` where
+Atlas is `#e2e2e2`; and **his light theme's sage is `#15803d`, a vivid
+saturated green, where Atlas is `#6f8f65`**. A warm sage on a cold blue-black is
+what he has been reading as harsh, every day, for weeks. His own token file's
+first line says it was inherited from Atlas. `BUILD_06_THE_LOOK.md` §0 has the
+full table.
+
+#### 2.20.2 The AI panel. His decisions, and the mockup he approved
+
+**The mockup, interactive, and the build must be identical to it:**
+https://claude.ai/code/artifact/f3efa90c-c57d-4dba-bd00-924b3c04ee04
+
+- **It floats above the page and never reflows it.** Narrowing the page was
+  measured and offered to him; he rejected it. Do not re-propose it.
+- **It opens small, about four or five lines, every time.** Where it opens is
+  remembered; how big it was, is not.
+- **Eight resize handles**, four edges and four corners, clamped to half the
+  window across and half down.
+- **Detach, move, attach, close**, and a tiny bar state.
+- **No starter prompts, in any state.** His words: "I don't want these presets.
+  It is a noise taking space."
+- **Voice first.** The composer stays small and the microphone is a real control.
+- **⚠️ The exit ticket and the execution ticket are ALWAYS above the panel.**
+  His words: "my exit ticket will always be on top. Orders are a priority, so
+  nothing on top of that." A money rule, not a layout preference.
+- **Clear empties the pane; Delete removes the open conversation after a
+  confirm**, and takes its attached images with it, which the existing endpoint
+  leaves orphaned today. Notebook entries and pinned decisions survive with a
+  null source. Only the open conversation; there is no delete-everything.
+
+#### 2.20.3 Home loses its chat and gains a saved daily summary
+
+**His decision, and the big change.** "On the homepage, remove this on-page chat
+area. It is not required now because I'm getting a floating chat that I can move
+and resize." The zone goes; **no conversation is deleted**; the floating panel
+then behaves identically on every page, which removes the special case the first
+mockup had.
+
+In its place, **"So far today"**: one Generate button, and the summary stays
+until he presses it again. **It is saved as a row a day in the database**, in
+his words: "I want to save the AI-generated summary. I'm paying for that, so I
+don't want to lose those details and create a record of what's happening, a
+trend in the market or in the geopolitics as well." The panel reads it.
+Regenerating a day replaces that day's row. **It is an AI feature and obeys his
+standing cost rule: a manual button, a 60-minute cache, a daily cap, never on
+page load.**
+
+#### 2.20.4 The order, and why
+
+| Build | Chat | Where | When |
+|---|---|---|---|
+| **C, cloud hygiene**, `BUILD_05` | His Google Cloud cost chat | A worktree with its own venv | Now |
+| **Round two, the look**, `BUILD_06` | The same polish chat | The primary folder | Now |
+| **The AI panel**, `BUILD_07` | A fresh chat | The primary folder | After round two merges |
+
+The panel waits for the look because otherwise it is built twice. The two
+running now overlap in exactly one place, the last-backup age on Home, which
+belongs to `BUILD_05`; round two does not touch that line and `BUILD_05` touches
+nothing else on Home. `docs/builds/README.md` carries the same rule.
+
 ### 2.18 THE TRADE JOURNAL PAGE. To be planned WITH him, in its own discussion. Not started.
 
 Opened by him on 2026-09-10 after seeing the page with six real rows. Do not
