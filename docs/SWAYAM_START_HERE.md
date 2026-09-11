@@ -40,7 +40,7 @@ holding what was learned by talking to him rather than by reading the code.
 |---|---|
 | Code | `D:\Claude\POS\Trading-Platform\Swayam Capital` |
 | GitHub | `Abhishek-POSdesign/Swayam-Capital` |
-| Python | `.\.venv\Scripts\python.exe` (editable install; work in the primary folder, NEVER a worktree) |
+| Python | `.\.venv\Scripts\python.exe` (editable install pointing at the primary tree). **Never a worktree that SHARES this venv.** A worktree with its OWN venv is allowed and must prove `import swayam` resolves inside itself before any test runs. Corrected 2026-09-11; see `CLAUDE.md` |
 | **His raw trading archive** | **`E:\Project E\Trading\Bazaar`.** Everything he ever saved: the swing journal spreadsheet, four written strategies, broker reports, daily records. **His own word for it is broken**: some current, some years old, some spreadsheets lost. Evidence of how he worked, never a reconciled record |
 | **Vault** | **`G:\My Drive\Second Brain`.** `D:\Second Brain` is EMPTY and STALE. Never use it. **Writes to it are caged during tests** — see §3 |
 | Database | Supabase `wxijlrwoiaeaupaaqecc`, ap-south-1. **Shared with two other apps.** Scope everything to `swayam_*`. |
