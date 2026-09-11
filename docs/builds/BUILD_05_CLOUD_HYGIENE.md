@@ -259,6 +259,53 @@ An **Artifact Registry cleanup policy** on both `swayam` repositories:
 free, before anything is deleted.** Then apply. Expect the store to fall from
 about 35 GB to under 5 GB.
 
+#### ⚠️ WHAT WAS ACTUALLY BUILT, AND WHY IT DIFFERS. Written by the Build C builder, 2026-09-11.
+
+**The policy above would have freed 0.85 GB of 35.4, not "under 5 GB".** Two
+faults in it, both found before anything was deleted:
+
+1. **"Keep every tagged image" becomes "keep everything" the moment §3.1
+   lands.** §3.1 tags every image with its commit SHA. A policy that spares
+   tagged images would then spare all of them, for ever, and the pile returns
+   within a month. **The policy therefore keys on COUNT and AGE, never on
+   tagged-versus-untagged.**
+2. **Nothing prunes Cloud Run revisions.** Artifact Registry's cleanup policy
+   runs on its own; revisions do not. Every revision pins an image digest, so
+   82 revisions were holding 81 of the 83 images alive. Deleting images first
+   was impossible; **deleting the revisions first is what made 27.72 GB
+   genuinely unreferenced.**
+
+**What is live now, on both `swayam` repositories:**
+
+| Policy | Action |
+|---|---|
+| `keep-newest-20` | KEEP, `mostRecentVersions.keepCount: 20` |
+| `delete-older-than-2-days` | DELETE, `olderThan: 172800s` |
+
+And a **prune step inside every deploy** (`cloudbuild.yaml`) holding revisions
+at twenty for ever. It never fails the build, refuses to touch whatever serves
+traffic, and prints every name it deletes.
+
+#### ⚠️ THE ONE RESIDUAL RISK, NAMED RATHER THAN ENGINEERED AROUND
+
+**A cleanup policy cannot name a digest.** Keeping the newest twenty covers the
+live image in practice, because the live revision is normally the newest one
+deployed.
+
+**The exception:** a Cloud Run **rollback left serving for weeks** would slowly
+age out of the newest twenty, and its image would eventually be deleted
+underneath it. The revision itself is safe — the prune step refuses to delete
+whatever serves traffic — but the image behind it is not.
+
+**If that ever happens, the recovery is one deploy from `main`.** Nothing is
+lost; the site is rebuilt from the commit it should have been on anyway.
+
+**AND THE OTHER HALF, WHICH MATTERS JUST AS MUCH: two days is the RIGHT delete
+window, not an oversight.** It is precisely what stops twenty becoming eighty
+again. **Do not widen it later thinking you are being careful** — a longer
+window is how 35.8 GB accumulated in the first place. The rollback case above
+is the known, accepted, one-deploy-to-fix cost of keeping it tight.
+
 ### 3.3 Delete the two dead services
 
 After section 0's bindings are removed and he has said yes, delete
