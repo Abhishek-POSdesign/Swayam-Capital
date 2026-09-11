@@ -109,22 +109,19 @@ def test_restore_backup_verification(tmp_path):
         assert ok is True
 
 
-def test_cron_backup_db_function_auth():
-    """Verifies Cloud Function cron_backup_db checks X-Cron-Secret."""
-    from functions.cron_backup_db.main import cron_backup_db
-
-    mock_unauth = MagicMock()
-    mock_unauth.headers = {"X-Cron-Secret": "wrong"}
-
-    with patch.dict("os.environ", {"CRON_SHARED_SECRET": "secret-backup-123"}):
-        body, code, headers = cron_backup_db(mock_unauth)
-        assert code == 401
-
-    mock_auth = MagicMock()
-    mock_auth.headers = {"X-Cron-Secret": "secret-backup-123"}
-
-    with patch.dict("os.environ", {"CRON_SHARED_SECRET": "secret-backup-123"}),          patch("swayam.services.backup_service.run_nightly_backup", return_value=True):
-        body, code, headers = cron_backup_db(mock_auth)
-        assert code == 200
-        data = json.loads(body)
-        assert data["status"] == "ok"
+# test_cron_backup_db_function_auth was removed on 2026-09-12 with the Cloud
+# Function it imported. `functions/cron_backup_db` was deleted because it had
+# never been deployed, and a test that guards an entry point nobody calls is
+# part of what makes an undeployed thing look deployed.
+#
+# ⚠️ WHAT IS LEFT HERE STILL NEEDS A DECISION. Every remaining test in this file
+# exercises `swayam/services/backup_service.py`, which after that deletion is
+# reachable from NOTHING BUT THESE TESTS. It is not the backup: the real one is
+# `swayam/services/record_backup.py`, running nightly as the Cloud Run job
+# `swayam-nightly-backup`. backup_service records a table it cannot read as an
+# EMPTY table and still reports success, which is why it was not chosen.
+#
+# So this file is now green tests standing over a module with a known silent
+# failure and no caller. That is the same shape of trap as the undeployed
+# functions. Left for the main chat to decide rather than removed here, because
+# deleting it is a wider change than closing Build C.
