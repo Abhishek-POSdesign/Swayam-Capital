@@ -531,8 +531,14 @@ def append_and_dedupe_to_gcs(
 
     bucket = storage_client.bucket(bucket_name)
 
+    # ONE PATH, THE NESTED ONE. Until 2026-09-11 every snapshot was written
+    # twice, here and again flat as YYYY-MM-DD/, and the loader read either.
+    # Two copies of the same day is how a backtest reads a day twice with
+    # nothing on the screen saying so. The nested path is kept because it
+    # sorts and prefixes properly for a bucket that will hold years. The flat
+    # objects already written are NOT deleted; docs/builds/BUILD_05_CLOUD_HYGIENE.md
+    # records which path is authoritative from which date.
     path_hierarchical = f"{target_date.strftime('%Y/%m/%d')}/nifty_chain.parquet"
-    path_flat = f"{target_date.strftime('%Y-%m-%d')}/nifty_chain.parquet"
 
     blob = bucket.blob(path_hierarchical)
     existing_df = pd.DataFrame()
@@ -559,8 +565,5 @@ def append_and_dedupe_to_gcs(
     parquet_bytes = buf.getvalue()
 
     blob.upload_from_string(parquet_bytes, content_type="application/octet-stream")
-
-    blob_flat = bucket.blob(path_flat)
-    blob_flat.upload_from_string(parquet_bytes, content_type="application/octet-stream")
 
     return len(combined)
