@@ -39,8 +39,8 @@
   --line: rgba(0, 0, 0, 0.07);
   --line-2: rgba(0, 0, 0, 0.12);
   --fg: #1a1a1c;
-  --fg-2: #6c6b68;
-  --fg-3: #94928e;
+  --fg-2: #56544f;
+  --fg-3: #78756e;
   --up: #0a7a45;
   --up-bg: rgba(10, 122, 69, 0.13);
   --down: #b02516;
@@ -93,8 +93,8 @@
   --line: rgba(255, 255, 255, 0.08);
   --line-2: rgba(255, 255, 255, 0.14);
   --fg: #e2e2e2;
-  --fg-2: #c4c4c4;
-  --fg-3: #8f8f8f;
+  --fg-2: #bdbbb6;
+  --fg-3: #95928b;
   --up: #4ecb8b;
   --up-bg: rgba(78, 203, 139, 0.16);
   --down: #f4796b;
@@ -124,8 +124,8 @@
     --line: rgba(255, 255, 255, 0.08);
     --line-2: rgba(255, 255, 255, 0.14);
     --fg: #e2e2e2;
-    --fg-2: #c4c4c4;
-    --fg-3: #8f8f8f;
+    --fg-2: #bdbbb6;
+    --fg-3: #95928b;
     --up: #4ecb8b;
     --up-bg: rgba(78, 203, 139, 0.16);
     --down: #f4796b;
@@ -335,7 +335,51 @@
 }
 .sw-desk .rules { grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); }
 .sw-desk .money { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
-.sw-desk .mets { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+/* THE METRIC ROW HAS A HIERARCHY NOW. His words, 2026-09-11: "max profit and
+   max loss are the most important numbers, they can be a little bigger. The
+   rest of the numbers can be a little smaller, not much."
+   Order in the markup: margin needed, margin used, MAX PROFIT, MAX LOSS, at
+   your target, reward : risk, breakeven. The two that decide whether he can
+   take the trade lead; breakeven gets the width to draw its road. */
+.sw-desk .mets {
+  grid-template-columns: .85fr .85fr 1fr 1fr .85fr .7fr 1.25fr;
+}
+@media (max-width: 1500px) { .sw-desk .mets { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 900px)  { .sw-desk .mets { grid-template-columns: repeat(2, 1fr); } }
+
+/* The two that matter, and the five that support them. */
+.sw-desk .mets .met:nth-child(3) .v,
+.sw-desk .mets .met:nth-child(4) .v { font-size: 34px; }
+.sw-desk .mets .met:nth-child(1) .v,
+.sw-desk .mets .met:nth-child(2) .v,
+.sw-desk .mets .met:nth-child(5) .v,
+.sw-desk .mets .met:nth-child(6) .v { font-size: 23px; }
+
+/* ---------- breakeven, drawn as the road the price travels ----------
+   "It must show that the price is travelling from this place to this place."
+   The band is where the structure keeps money; the two edges are the
+   breakevens; the dot is NIFTY now. */
+.sw-desk .met.be .be-road {
+  position: relative; height: 26px; margin: 9px 0 3px;
+  border-radius: 7px; background: var(--sunk); overflow: hidden;
+}
+.sw-desk .met.be .be-band {
+  position: absolute; top: 0; bottom: 0; background: var(--up-bg);
+}
+.sw-desk .met.be .be-edge {
+  position: absolute; top: 3px; bottom: 3px; width: 2px; margin-left: -1px;
+  background: var(--fg-3); border-radius: 2px;
+}
+.sw-desk .met.be .be-spot {
+  position: absolute; top: 50%; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px;
+  border-radius: 50%; background: var(--up); box-shadow: 0 0 0 2.5px var(--panel-2);
+}
+.sw-desk .met.be .be-spot.out { background: var(--down); }
+.sw-desk .met.be .be-ends {
+  display: flex; justify-content: space-between;
+  font-family: var(--m); font-variant-numeric: tabular-nums;
+  font-size: 15px; font-weight: 700; color: var(--fg);
+}
 
 .sw-desk .rl { background: var(--panel); padding: 12px 15px; border-top: 2px solid var(--line-2); }
 .sw-desk .rl.a { border-top-color: var(--down); }
@@ -760,13 +804,44 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   gap: 2px 18px; padding: 8px 15px 12px;
 }
 .sw-desk .caps .cap { min-width: 0; }
+/* Three sizes, plainly apart: the name, the figure, the percentage. His note
+   on the mockup: "the size of the text and the number must be different." */
 .sw-desk .caps .ck {
-  font-family: var(--m); font-size: 10px; letter-spacing: 0.05em; color: var(--fg-2);
-  font-weight: 600;
+  font-family: var(--m); font-size: 11px; letter-spacing: 0.05em; color: var(--fg-2);
+  font-weight: 700; text-transform: uppercase;
 }
+/* THE BAND. One ground under all four caps rather than four loose blocks, and
+   three clearly different sizes: the name, the figure, the percentage. */
+.sw-desk .caps { background: var(--sunk); border-radius: 12px; margin: 0 15px 14px; }
+.sw-desk .caps .capsh { padding: 11px 15px 0; }
+.sw-desk .caps .capsr { padding: 8px 15px 13px; }
+.sw-desk .caps .cvrow { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sw-desk .caps .cpc { font-family: var(--m); font-size: 11.5px; font-weight: 700; color: var(--brand); }
+
+/* THE SENTENCE BEHIND THE NUMBER. His instruction, 2026-09-11: "when I put my
+   mouse on the number they should appear, and when I remove my mouse they
+   should disappear". Focusable, so the keyboard reaches it too, and it is a
+   real element rather than a title attribute so it can be read in both themes
+   and styled to match the page. */
+.sw-desk .hint { position: relative; display: inline-block; }
+.sw-desk .hint > .cpc, .sw-desk .hint > .s {
+  cursor: help; text-decoration: underline; text-decoration-style: dotted;
+  text-underline-offset: 3px; text-decoration-color: var(--fg-3);
+}
+.sw-desk .hint .more {
+  position: absolute; left: 0; top: calc(100% + 6px); z-index: 20;
+  width: max-content; max-width: 260px;
+  background: var(--fg); color: var(--panel);
+  font-family: var(--f); font-size: 11.5px; font-weight: 500; line-height: 1.45;
+  padding: 7px 10px; border-radius: 8px; box-shadow: var(--shadow-hi, 0 8px 24px rgba(0,0,0,.25));
+  opacity: 0; visibility: hidden; transition: opacity 140ms var(--ease, ease), visibility 140ms;
+}
+.sw-desk .hint:hover .more, .sw-desk .hint:focus-within .more { opacity: 1; visibility: visible; }
+@media (prefers-reduced-motion: reduce) { .sw-desk .hint .more { transition: none; } }
+
 .sw-desk .caps .cv {
-  font-family: var(--m); font-size: 17px; font-weight: 700; color: var(--brand);
-  font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.25;
+  font-family: var(--m); font-size: 23px; font-weight: 700; color: var(--fg);
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.2;
 }
 .sw-desk .caps .cv .na { font-size: 12px; color: var(--fg-3); }
 .sw-desk .caps .cs { font-size: 10.5px; color: var(--fg-3); }

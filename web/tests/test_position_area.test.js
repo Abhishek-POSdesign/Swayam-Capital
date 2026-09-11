@@ -213,7 +213,11 @@ describe('the position card', () => {
   it('states the net after charges both ways, and the charges themselves', async () => {
     const { html } = await rendered();
     expect(html).toContain('Net if you exit now');
-    expect(html).toContain('of charges both ways');
+    // The phrase moved behind the hover on 2026-09-11, on his instruction that
+    // a sentence should appear when his mouse is on the number. It is still on
+    // the page, in the hint, which is what this now asserts.
+    expect(html).toContain('both ways');
+    expect(html).toContain('Charges already paid on the way in');
     // Entry charges on the sold call, to the paisa.
     expect(html).toContain('₹37.98');
     expect(html).toContain('₹27.18');

@@ -17,8 +17,8 @@
 :root,
 :root[data-theme="dark"] {
   --text-primary: #e2e2e2;    /* near-white — hero data, numerals, primary text */
-  --text-secondary: #c4c4c4;  /* mid-gray — body copy, meta text */
-  --text-muted: #8f8f8f;      /* low-gray — section labels ONLY (all-caps eyebrows) */
+  --text-secondary: #bdbbb6;  /* mid-gray — body copy, meta text */
+  --text-muted: #95928b;      /* low-gray — section labels ONLY (all-caps eyebrows) */
   --text-inverse: #1a1a1a;    /* dark — text placed ON a light/tinted surface */
 
   --dl-bg: #1a1a1a;
@@ -28,8 +28,8 @@
   --dl-line: rgba(255, 255, 255, 0.08);
   --dl-line-2: rgba(255, 255, 255, 0.05);
   --dl-fg: #e2e2e2;
-  --dl-fg-2: #c4c4c4;
-  --dl-fg-3: #8f8f8f;
+  --dl-fg-2: #bdbbb6;
+  --dl-fg-3: #95928b;
   --dl-track: #2f2f2f;
   --dl-ink-tile: #1a1a1a;
 
@@ -91,8 +91,8 @@
   --shadow-card: 0 1px 2px rgba(30, 25, 15, 0.04), 0 6px 20px rgba(30, 25, 15, 0.06);
   --shadow-card-hover: 0 2px 4px rgba(30, 25, 15, 0.06), 0 10px 30px rgba(30, 25, 15, 0.10);
   --text-primary: #1a1a1c;
-  --text-secondary: #6c6b68;
-  --text-muted: #94928e;
+  --text-secondary: #56544f;
+  --text-muted: #78756e;
   --text-inverse: #f8f6f2;
 
   --dl-bg: #ebe8e1;
@@ -102,8 +102,8 @@
   --dl-line: rgba(0, 0, 0, 0.07);
   --dl-line-2: rgba(0, 0, 0, 0.04);
   --dl-fg: #1a1a1c;
-  --dl-fg-2: #6c6b68;
-  --dl-fg-3: #94928e;
+  --dl-fg-2: #56544f;
+  --dl-fg-3: #78756e;
   --dl-track: #ddd9d0;
   --dl-ink-tile: #1a1a1c;
 
@@ -144,12 +144,12 @@
     --surface-2: #fdfbf7;
     --border: rgba(0, 0, 0, 0.07);
     --text-primary: #1a1a1c;
-    --text-secondary: #6c6b68;
-    --text-muted: #94928e;
+    --text-secondary: #56544f;
+    --text-muted: #78756e;
     --text-inverse: #f8f6f2;
     --dl-bg: #ebe8e1;  --dl-card: #f8f6f2;  --dl-card-2: #fdfbf7;
     --dl-rail: #f8f6f2;  --dl-line: rgba(0, 0, 0, 0.07);  --dl-line-2: rgba(0, 0, 0, 0.04);
-    --dl-fg: #1a1a1c;  --dl-fg-2: #6c6b68;  --dl-fg-3: #94928e;
+    --dl-fg: #1a1a1c;  --dl-fg-2: #56544f;  --dl-fg-3: #78756e;
     --dl-track: #ddd9d0;  --dl-ink-tile: #1a1a1c;
     --accent-sage: #6f8f65;  --accent-sage-tint: rgba(111, 143, 101, 0.14);
     --accent-blue: #5e7fb0;  --accent-blue-tint: rgba(94, 127, 176, 0.14);

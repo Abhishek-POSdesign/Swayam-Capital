@@ -1693,18 +1693,68 @@ export class StrategyBuilderPage {
         maxProfit === null ? null : maxProfit >= 0 ? 'var(--up)' : 'var(--down)', maxProfit) +
       this._met('Max loss', unlimited ? 'Unlimited' : maxLoss === null ? null : inr(maxLoss),
         unlimited ? `no ceiling ${unlimitedUp ? 'above' : 'below'}` : maxLoss !== null && bal ? `${((maxLoss / bal) * 100).toFixed(2)}% of balance` : '', 'var(--down)', unlimited ? undefined : maxLoss, true) +
-      this._met('Breakeven', bes.length ? bes.map((b) => num(b)).join(' / ') : mathRan ? 'none' : null,
-        bes.length === 1 && this.spot
-          ? `${bes[0] - this.spot > 0 ? '+' : ''}${Math.round(bes[0] - this.spot)} pts from spot`
-          : bes.length > 1
-            ? 'two sides'
-            : mathRan
-              ? 'the payoff never crosses zero'
-              : '') +
-      this._met('Reward : risk', unlimited || (mathRan && rr === null) ? 'n/a' : rr === null ? null : `1 : ${rr.toFixed(2)}`, rrNote) +
       this._met('At your target', proj === null ? null : inr(proj),
         this.targetSpot ? `${num(this.targetSpot)} in ${Math.max(0, (this.dteMax || 0) - (this.dteDays || 0))}d` : '',
-        proj === null ? null : proj >= 0 ? 'var(--up)' : 'var(--down)', proj);
+        proj === null ? null : proj >= 0 ? 'var(--up)' : 'var(--down)', proj) +
+      this._met('Reward : risk', unlimited || (mathRan && rr === null) ? 'n/a' : rr === null ? null : `1 : ${rr.toFixed(2)}`, rrNote) +
+      this._breakevenTile(bes, mathRan);
+  }
+
+  /**
+   * BREAKEVEN AS A JOURNEY, not a printed number.
+   *
+   * His words, 2026-09-11: "the break-even must look like a break-even, not
+   * just the number printed on the card. It must show that the price is
+   * travelling from this place to this place."
+   *
+   * So the tile draws the road: the lower breakeven at one end, the upper at
+   * the other, the band between them shaded in the money colour of what
+   * happens there, and NIFTY's own mark on the track so he can see where it
+   * stands between them. Two breakevens is the ordinary case for everything he
+   * trades; one is drawn as a single edge with the spot beside it.
+   *
+   * NOTHING HERE IS COMPUTED. The breakevens and the spot are the same figures
+   * the tile printed before; only the drawing is new.
+   */
+  _breakevenTile(bes, mathRan) {
+    const spot = typeof this.spot === 'number' && Number.isFinite(this.spot) ? this.spot : null;
+
+    if (!bes.length) {
+      return `<div class="met be"><div class="k">Breakeven</div>
+        <div class="v sm">${mathRan ? 'none' : '<span class="na" style="font-size:14px">unavailable</span>'}</div>
+        <div class="s">${mathRan ? 'the payoff never crosses zero' : ''}</div></div>`;
+    }
+
+    if (bes.length === 1) {
+      const gap = spot === null ? null : bes[0] - spot;
+      return `<div class="met be"><div class="k">Breakeven</div>
+        <div class="v sm">${escapeHtml(num(bes[0]))}</div>
+        <div class="s">${gap === null ? 'one side' : `${gap > 0 ? '+' : ''}${Math.round(gap)} pts from spot`}</div></div>`;
+    }
+
+    // The road between the two edges, with a margin either side so the spot
+    // can sit outside them and still be drawn.
+    const lo = Math.min(...bes);
+    const hi = Math.max(...bes);
+    const pad = Math.max((hi - lo) * 0.35, 1);
+    const from = lo - pad;
+    const to = hi + pad;
+    const at = (v) => `${(((v - from) / (to - from)) * 100).toFixed(1)}%`;
+    const inside = spot !== null && spot >= lo && spot <= hi;
+
+    return `<div class="met be"><div class="k">Breakeven</div>
+      <div class="be-road">
+        <div class="be-band" style="left:${at(lo)};right:${(100 - parseFloat(at(hi))).toFixed(1)}%"></div>
+        <i class="be-edge" style="left:${at(lo)}"></i>
+        <i class="be-edge" style="left:${at(hi)}"></i>
+        ${spot === null ? '' : `<i class="be-spot ${inside ? 'in' : 'out'}" style="left:${at(Math.min(Math.max(spot, from), to))}"></i>`}
+      </div>
+      <div class="be-ends"><b>${escapeHtml(num(lo))}</b><b>${escapeHtml(num(hi))}</b></div>
+      <div class="s">${spot === null
+        ? 'you keep the credit between them'
+        : inside
+          ? `NIFTY ${escapeHtml(num(spot))} is between them`
+          : `NIFTY ${escapeHtml(num(spot))} is outside them`}</div></div>`;
   }
 
   renderSliders() {
