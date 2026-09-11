@@ -1655,6 +1655,114 @@ and **nothing has ever cleaned that folder.** `DELETE /api/ai/conversations/{id}
 removes the rows and leaves the images. Fixed inside BUILD_07 on his decision of
 11 September: the images go with the conversation.
 
+### 2.23 THE REST OF 12 SEPTEMBER. The backup finally ran, and a migration nobody had applied.
+
+#### 2.23.1 ⚠️ THE NIGHTLY BACKUP HAD NEVER ONCE SUCCEEDED, AND NOW HAS
+
+Two executions of `swayam-nightly-backup`, both failed, both with the same
+cause. The job read all 19 tables and was refused on write:
+
+```
+BACKUP FAILED: 403
+swayam-dashboard-sa@swayam-capital.iam.gserviceaccount.com does not have
+storage.objects.create access to buckets/swayam-backups/objects/supabase/...
+```
+
+**The job's service account had no binding on that bucket at all.** Verified by
+reading the bucket policy, which held only project-level legacy roles, and the
+account's project roles, which include `storage.objectViewer` and nothing that
+can write.
+
+**Why nobody caught it: every successful backup so far ran from his own machine,
+as him, the project owner. The same class of fault as the `migrations/` failure
+one layer up. Proved under one identity, run under another. Identity is part of
+the path.**
+
+**The fix was ONE grant, not the two proposed**, because the account already
+holds read across the project:
+
+```
+gcloud storage buckets add-iam-policy-binding gs://swayam-backups   --member=serviceAccount:swayam-dashboard-sa@swayam-capital.iam.gserviceaccount.com   --role=roles/storage.objectCreator
+```
+
+**`objectCreator`, deliberately not `objectAdmin`: it can write a new backup and
+it cannot delete one.** A backup writer that can destroy backups is how the data
+and its copies are lost in the same accident.
+
+**Proved by invoking, the same night.** The job was executed by hand rather than
+waiting for 02:00: it succeeded, and `gs://swayam-backups/supabase/2026-09-11T21-33-51Z/`
+is the first backup of his record ever written by a machine.
+
+**The design rule earned its keep on its first real night.** `record_backup.py`
+failed the job loudly. `backup_service.py`, deleted the same evening, would have
+logged a warning and returned success, and he would have believed in a nightly
+backup that did not exist.
+
+#### 2.23.2 ⚠️ MIGRATION 025 HAD NEVER BEEN APPLIED, AND THE MAIN CHAT SAID IT HAD
+
+Round 1b (#74) was merged on 11 September. **Its migration was never run.**
+Found on 12 September by reading `apply_migration.py status` rather than trusting
+a document: 19 applied, 1 pending.
+
+**What it meant.** `max_loss_inr` was still `NOT NULL` and
+`max_loss_unbounded_reason` did not exist, so **the entire naked-leg fix was
+inert in the live database**. A naked single leg would have failed again in his
+next window, where testing one is item two on the list.
+
+**The main chat's own error, stated plainly:** `SUCCESSOR_PROMPT.md` claimed
+"migrations 022 to 025 are applied". That was written from the pattern of the
+previous days, not checked. **A migration is applied when
+`apply_migration.py status` says so and at no other moment.** Applied by him at
+last on 12 September.
+
+#### 2.23.3 A handoff command that could not have worked, twice over
+
+`BUILD_07`'s handoff told him to run `apply_migration.py 026` from his primary
+folder. The script takes `status`, `up` or `baseline` and **never a number**; and
+migration 026 existed only in the panel's own clone, which has no environment to
+run anything with. **The order was inverted instead:** merge, pull, then apply
+with `up`, which the handoff's own text says is safe because the card explains
+which table it cannot read and Generate refuses rather than spending money it
+cannot record.
+
+**Third command in two days that would have failed him.** The pattern is always
+the same: a path or an interface assumed rather than read.
+
+#### 2.23.4 The stacked pull request, caught before it bit
+
+**#87 was opened against #85's branch, not `main`** — the exact shape that made
+#35 merge into a dead end while the live site silently kept the old interface.
+Caught by reading the base branches before recommending a merge order. He merged
+#85 first and checked #87's base before merging it.
+
+#### 2.23.5 The AI panel is merged
+
+`#86`. Its second round answered nine points of his own review. **What was
+proven the right way:** the exit ticket covering the panel was **hit-tested at
+three points, not read from a stylesheet**, and his conversations were counted
+against the live database before and after Home's chat zone was removed — **110
+conversations and 35 messages, unchanged**.
+
+**Honestly unproven, and it says so:** dictation actually transcribing, because
+the browser blocked microphone capture, and anything the closed market hides.
+
+Migration 026 creates `swayam_daily_summary` and backfills the newest summary of
+each past day. The cost rule moved to a `generation_count` column so that
+collapsing to one row a day did not silently turn a cap of eight into a cap of
+one.
+
+#### 2.23.6 Left for a small follow-up
+
+- **The nightly local task rewrites `docs/DATA_MAP.md` inside the repository
+  every night**, so his working tree is dirty every morning and an unrelated
+  file can be swept into another build's commit. **The vault copy is the one
+  that matters; the repo copy should stop being written nightly.**
+- **`scripts/restore_drill.py` has no automated test**, and proving it needs a
+  live database, which is why it does not have one. Deliberate, and recorded so
+  it is not mistaken for an oversight.
+- **The restore drill has still never run against a backup the CLOUD JOB made.**
+  One now exists, so it finally can.
+
 ### 2.18 THE TRADE JOURNAL PAGE. To be planned WITH him, in its own discussion. Not started.
 
 Opened by him on 2026-09-10 after seeing the page with six real rows. Do not

@@ -107,19 +107,34 @@ WHERE EVERYTHING LIVES. Do not ask me any of this.
 - The local backend starts from .claude/launch.json as swayam-api, the web as
   swayam-web. Both point at the LIVE database and live FYERS.
 
-WHERE THINGS STAND, late on 11 September 2026
+WHERE THINGS STAND, end of 12 September 2026
 You are waking from a cleared chat, not starting fresh. READ docs/PLAN.md
-2.21 FIRST: it is the whole record of that night, written for you. Then
-2.12.8, 2.12.10 and 2.20, and the vault logs SESSION_LOG_2026-09-11.md and
-SESSION_LOG_2026-09-11_night.md.
+2.21, 2.22 and 2.23 FIRST: they are the whole record of 11 and 12 September,
+written for you. Then 2.12.8, 2.12.10 and 2.20, and the vault logs
+SESSION_LOG_2026-09-11.md, SESSION_LOG_2026-09-11_night.md and
+SESSION_LOG_2026-09-12.md.
 
-Merged and live: everything through pull request #79. Resting orders (#71),
-polish round one (#72), round 1b (#73, #74), the three build documents
-(#75), round two the look (#76), the stale mock (#77), Build C cloud
-hygiene (#78) and the clarity pass (#79). Nothing is open. Migrations 022
-to 025 are applied. THE SUITE IS AT ZERO FAILURES for the first time in
-weeks and it stays that way: a red everyone ignores is how the next real
+Merged and live: everything through pull request #87. Resting orders (#71),
+the polish rounds (#72, #74, #76, #79), the build documents (#75), Build C
+cloud hygiene (#78, #85, #87) and THE AI PANEL (#86). The suite is at ZERO
+failures and it stays that way: a red everyone ignores is how the next real
 one hides.
+
+NEVER TRUST A DOCUMENT ABOUT MIGRATIONS, INCLUDING THIS ONE. Run
+  .\.venv\Scripts\python.exe scripts\apply_migration.py status
+and believe only that. On 12 September migration 025 was found sitting
+unapplied for a day while this prompt claimed it was applied, and the whole
+naked-leg fix was inert in the live database because of it. 026 is the
+newest.
+
+MY CLOUD, AS OF TONIGHT. The nightly backup finally works: it had NEVER once
+succeeded, because the job's service account had no write binding on the
+bucket, and every backup before that had run from my own machine as me.
+Proved under one identity, run under another. The first machine-written
+backup of my record is supabase/2026-09-11T21-33-51Z. Images are held at
+about 20 by policy, revisions at 20 by a prune step inside every deploy,
+documents-only merges no longer build, and the build machine is inside the
+free tier.
 
 WHAT ONLY MY WINDOW CAN PROVE, and it is the whole of my next session:
 a resting order filling from the book, which has NEVER been seen live
