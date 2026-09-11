@@ -652,3 +652,73 @@ kept rather than deleted because it now records a real gap:
 and passed, which is more than the deleted code ever managed, but a hand-run
 drill is not a regression test. Proving it properly needs a live database,
 which is why it does not already exist and why it should be done deliberately.
+
+---
+
+## 9. ⚠️ THE RESTORE DRILL FAILED AGAINST THE CLOUD JOB'S BACKUP. 2026-09-12.
+
+**This is the sentence that was meant to close Build C. It does not.**
+
+After the `objectCreator` grant the nightly job finally succeeded —
+`swayam-nightly-backup-rbmp8`, 21 objects, 934 rows, written by the job itself
+to `gs://swayam-backups/supabase/2026-09-11T21-33-51Z`. That artifact was
+downloaded and the drill run against it, because **every previous pass had been
+against a backup made on a developer's machine, and that is no longer what his
+record depends on.**
+
+```
+backup   : 2026-09-11T21-33-51Z
+[ok] schema rebuilt from backup: 19 tables
+KeyError: ('swayam_positions', 'closed_at')
+```
+
+### What is actually wrong, and it is not the job
+
+**The backup's `schema.sql` is a copy of `migrations/000_baseline.sql` and
+nothing else. The data in the same backup is CURRENT.** Every column added by
+migrations 001 through 025 is missing from the schema the backup carries.
+
+`closed_at` on `swayam_positions` comes from **migration 020**. The drill
+rebuilt the baseline schema, then tried to load rows that have a column the
+baseline never declared, and stopped.
+
+**So the backup is not self-restorable.** Restoring from it today would
+reconstruct the database as it stood at the baseline and then fail, or silently
+drop every column added since. **The artifact is complete as a copy of his rows
+and incomplete as a way of getting them back.**
+
+### Why this was never seen before
+
+The drill's own docstring records a pass on **19 tables and 600 rows**. Tonight's
+backup holds **934**. Migrations 020 through 025 landed on 10 and 11 September,
+during Build A and Build B. **The drill passed before those columns existed and
+was never run again.** Nothing re-ran it, because nothing tests it — see §8.
+
+### What has to happen, and it is not small
+
+The backup must carry the schema that matches its data. Either:
+
+- **capture the live schema at backup time** rather than copying the baseline
+  file, which is the honest fix and makes the artifact self-describing; or
+- **concatenate `000_baseline.sql` with every later migration in order**, which
+  is cheaper but assumes the migration files and the live database have never
+  diverged, and nothing currently proves that.
+
+**This is left for the next builder rather than attempted at the end of a long
+session, because it changes what a backup IS.** It is written up here with the
+exact failure so nobody has to rediscover it.
+
+### What is true tonight, stated plainly
+
+- **His rows are safe.** Three backups exist in the bucket and thirty nights
+  land in his vault. Nothing has been lost and nothing is at risk today.
+- **Getting them back is not yet proven** against the artifact the nightly job
+  produces. The drill passes against older backups whose data predates
+  migration 020.
+- **The nightly job now works.** Read, write and verify all succeed.
+- **No debris was left in his database.** The drill crashed after creating its
+  isolated schema; the connection rolled back and a check confirmed zero tables
+  under `swayam_restore_drill`, with his live tables untouched at 88 positions
+  and 6 closed trades.
+
+**Build C is one defect away from closed, and this is the defect.**

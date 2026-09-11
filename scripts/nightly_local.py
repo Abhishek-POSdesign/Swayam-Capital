@@ -376,6 +376,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--first-history-push", action="store_true",
                     help="acknowledge the first ~631 MB upload and do it")
     ap.add_argument("--dry-run-history", action="store_true")
+    ap.add_argument("--write-repo-copy", action="store_true",
+                    help="also refresh docs/DATA_MAP.md inside the repository. OFF by "
+                         "default, so the nightly run never dirties his working tree.")
     args = ap.parse_args(argv)
 
     _cage()
@@ -406,7 +409,19 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     figures = gather_figures()
     block = render_block(figures)
-    rewrite_data_map(ROOT_DIR / DATA_MAP_REPO, block)
+
+    # THE REPO COPY IS NOT WRITTEN NIGHTLY, DELIBERATELY. Until 2026-09-12 this
+    # rewrote docs/DATA_MAP.md every night, so his working tree was dirty every
+    # morning and an unrelated file could be swept into another build's commit.
+    # THE VAULT COPY IS THE ONE THAT MATTERS and it keeps its nightly refresh;
+    # the repo copy is a mirror, updated deliberately with --write-repo-copy
+    # when someone wants `main` to match what the vault already says.
+    if args.write_repo_copy:
+        rewrite_data_map(ROOT_DIR / DATA_MAP_REPO, block)
+    else:
+        logger.info("repo copy of the Data Map left alone; the vault copy is the "
+                    "one that matters. Pass --write-repo-copy to mirror it.")
+
     try:
         rewrite_data_map(_vault_root() / DATA_MAP_VAULT, block)
     except Exception as exc:
