@@ -535,7 +535,76 @@ body {
   margin-left: 0.5rem;
 }
 
-/* Floating AI Launcher Button */
+/* ==========================================================================
+   THE FLOATING AI PANEL AND ITS LAUNCHER. BUILD_07, 12 September 2026.
+
+   ⚠️ THE LAYERING IS A MONEY RULE, NOT A LAYOUT PREFERENCE.
+   His instruction of 11 September: "my exit ticket will always be on top.
+   Orders are a priority, so nothing on top of that." His live window is sixty
+   to ninety minutes and the one moment a covered control costs him real money
+   is the moment he is getting out.
+
+   The stack, and nothing here may rise through it:
+
+       960  the targets modal          .tg-backdrop
+       950  the exit ticket and the execution ticket   .xt-backdrop
+       900  the option chain           .ocm-backdrop
+       800  THE AI PANEL               .ai-float-panel
+       790  the launcher orb           .ai-floating-launcher
+
+   Before this build the drawer sat at 1000 and the orb at 999, which put both
+   ABOVE both tickets. Read from the stylesheets on 12 September.
+
+   A stacking context made by a transform or a filter anywhere up the tree can
+   defeat a z-index that reads perfectly, so this is proven by dragging the
+   panel over the exit ticket and then opening the ticket, never by reading
+   these numbers.
+   ========================================================================== */
+
+.ai-float-panel {
+  position: fixed;
+  z-index: 800;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--dl-card);
+  border: 1px solid var(--dl-line);
+  border-radius: 16px;
+  box-shadow: var(--dl-shadow);
+  /* The width and height are set by ai-panel-frame.js, which opens it small
+     every time and remembers only where it was, never how big. */
+  max-width: 100vw;
+  max-height: 100vh;
+}
+
+.ai-float-panel[hidden] { display: none; }
+.ai-float-panel .ai-panel { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+
+/* Eight handles: four edges and four corners. "I want to be able to resize the
+   window half vertically, like I'm chatting with you like this, or half
+   horizontally if I want to." The half-window ceiling is enforced in JS. */
+.ai-float-panel .aip-rz { position: absolute; touch-action: none; z-index: 5; }
+.ai-float-panel .aip-rz--n { top: 0; left: 12px; right: 12px; height: 6px; cursor: ns-resize; }
+.ai-float-panel .aip-rz--s { bottom: 0; left: 12px; right: 12px; height: 6px; cursor: ns-resize; }
+.ai-float-panel .aip-rz--w { left: 0; top: 12px; bottom: 12px; width: 6px; cursor: ew-resize; }
+.ai-float-panel .aip-rz--e { right: 0; top: 12px; bottom: 12px; width: 6px; cursor: ew-resize; }
+.ai-float-panel .aip-rz--nw { top: 0; left: 0; width: 15px; height: 15px; cursor: nwse-resize; }
+.ai-float-panel .aip-rz--ne { top: 0; right: 0; width: 15px; height: 15px; cursor: nesw-resize; }
+.ai-float-panel .aip-rz--sw { bottom: 0; left: 0; width: 15px; height: 15px; cursor: nesw-resize; }
+.ai-float-panel .aip-rz--se { bottom: 0; right: 0; width: 15px; height: 15px; cursor: nwse-resize; }
+
+/* One visible grip, bottom-left, so the handles are discoverable without
+   eight marks cluttering a 360px window. */
+.ai-float-panel .aip-rz--sw::after {
+  content: ""; position: absolute; inset: 3px; opacity: 0.45;
+  background: linear-gradient(45deg, transparent 45%, var(--dl-fg-3) 45%, var(--dl-fg-3) 55%, transparent 55%);
+}
+
+/* Shrunk to the bar, so it can stay up while he works. */
+.ai-float-panel.aip-tiny { height: auto !important; }
+
+/* Floating AI Launcher Button. Sage, because the terminal's accent is sage,
+   and its label colour follows the theme instead of a baked-in near-black. */
 .ai-floating-launcher {
   position: fixed;
   right: 24px;
@@ -543,21 +612,22 @@ body {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--accent-blue);
-  color: #101116;
+  background: var(--accent-sage);
+  color: var(--text-inverse);
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 16px rgba(117, 154, 208, 0.4);
+  box-shadow: var(--dl-shadow);
   cursor: pointer;
-  z-index: 999;
+  z-index: 790;
   transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
 }
 
 .ai-floating-launcher:hover {
   transform: scale(1.08);
-  box-shadow: 0 0 24px rgba(117, 154, 208, 0.6);
+  background: var(--accent-sage);
+  filter: brightness(1.06);
 }
 
 /* Range Slider Primitives (Sensibull-pattern) */

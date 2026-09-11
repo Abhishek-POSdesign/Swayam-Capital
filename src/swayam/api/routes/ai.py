@@ -41,6 +41,10 @@ from swayam.db import db
 
 logger = logging.getLogger(__name__)
 
+# Where chat image attachments live, one folder per conversation.
+# Written by _process_image_upload, removed by delete_conversation.
+ATTACHMENT_BUCKET = "swayam-ai-chat-attachments"
+
 router = APIRouter(prefix="/api/ai", tags=["AI Trading Partner"])
 
 
@@ -156,7 +160,7 @@ async def _process_image_upload(image_file: Any, conversation_id: str) -> tuple[
     storage_path = f"{conversation_id}/{msg_id}.{ext}"
 
     try:
-        bucket = db.client.storage.from_("swayam-ai-chat-attachments")
+        bucket = db.client.storage.from_(ATTACHMENT_BUCKET)
         bucket.upload(storage_path, raw_bytes, file_options={"content-type": mime})
         attachment_url = bucket.get_public_url(storage_path)
         return raw_bytes, mime, attachment_url
@@ -493,12 +497,60 @@ def archive_conversation(conversation_id: str) -> dict:
 
 @router.delete("/conversations/{conversation_id}")
 def delete_conversation(conversation_id: str) -> dict:
-    """Hard-deletes a conversation and all its messages (cascades via FK)."""
+    """Hard-deletes ONE conversation: its row, its messages, and its images.
+
+    HIS DECISION, 11 September 2026. Until BUILD_07 this removed the rows and
+    left every image he had attached sitting in the bucket for ever, because
+    nothing has ever cleaned `{ATTACHMENT_BUCKET}/{conversation_id}/`.
+
+    THE ORDER IS DELIBERATE. The rows go first. If that fails, nothing is
+    removed from storage, because deleting the pictures belonging to a
+    conversation that still exists would be the worse outcome.
+
+    WHAT SURVIVES, and it is deliberate. `swayam_ai_notebook` and
+    `swayam_ai_pinned_decisions` keep their rows; their `source_message_id`
+    is set to NULL by the foreign key (migration 005). Something he chose to
+    keep is not deleted because the conversation it came from was.
+    `swayam_ai_usage_daily` is a daily aggregate and is untouched.
+
+    ONLY the conversation named. There is no delete-everything anywhere.
+    """
     try:
         db.client.table("swayam_ai_conversations").delete().eq("id", conversation_id).execute()
-        return {"status": "deleted", "conversation_id": conversation_id}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Could not delete conversation: {exc}")
+
+    # The images. A failure here does not undo the delete he asked for, but it
+    # is reported rather than swallowed: orphaned images are what this change
+    # exists to stop, so a silent failure would be the old bug wearing a new
+    # coat.
+    images_removed = 0
+    images_error = None
+    try:
+        bucket = db.client.storage.from_(ATTACHMENT_BUCKET)
+        listed = bucket.list(conversation_id) or []
+        paths = [
+            f"{conversation_id}/{obj['name']}"
+            for obj in listed
+            if isinstance(obj, dict) and obj.get("name")
+        ]
+        if paths:
+            bucket.remove(paths)
+            images_removed = len(paths)
+    except Exception as exc:
+        images_error = str(exc)
+        logger.warning(
+            "Conversation %s was deleted but its images were not: %s",
+            conversation_id,
+            exc,
+        )
+
+    return {
+        "status": "deleted",
+        "conversation_id": conversation_id,
+        "images_removed": images_removed,
+        "images_error": images_error,
+    }
 
 
 @router.get("/usage/today")

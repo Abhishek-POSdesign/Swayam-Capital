@@ -6,7 +6,7 @@ Unit and integration tests for BUILD-11.9:
 - Institutional participation separation (FII cash vs F&O)
 """
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import pytest
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
@@ -26,8 +26,10 @@ from swayam.services.nifty_snapshot import (
 )
 from swayam.services.so_far_today import (
     DailyCapExceededError,
+    count_grounded_calls_today,
     generate_so_far_today,
     get_cached_so_far_today,
+    read_day_summary,
 )
 
 
@@ -168,16 +170,42 @@ def test_nifty_snapshot_institutional_separation():
     assert "institutional_bias" not in inst
 
 
+def _day_row(db, row):
+    """Points the mock at the one row the day has, however the service asks."""
+    chain = db.client.table.return_value.select.return_value.eq.return_value.limit.return_value
+    chain.execute.return_value.data = [row] if row else []
+
+
 def test_so_far_today_daily_cap_enforcement():
-    """Ensures generate_so_far_today raises DailyCapExceededError when cap is reached."""
+    """Ensures generate_so_far_today raises DailyCapExceededError when cap is reached.
+
+    BUILD_07: the cap is counted from generation_count on the DAY'S ROW, not by
+    counting rows since IST midnight. With one row a day a row count is always
+    one, and the second press of the day would have been refused.
+    """
     mock_db = MagicMock()
-    # Mock count of calls today returning 8
-    mock_db.client.table.return_value.select.return_value.eq.return_value.gte.return_value.execute.return_value.count = 8
-    mock_db.client.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = []
+    _day_row(mock_db, {
+        "day": date.today().isoformat(),
+        "text": "eight already today",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generation_count": 8,
+    })
 
     with pytest.raises(DailyCapExceededError) as exc_info:
         generate_so_far_today(force=True, db=mock_db)
     assert "Daily cap reached" in str(exc_info.value)
+
+
+def test_the_cap_counts_presses_not_rows():
+    """Two presses today must leave the cap at two, on ONE row."""
+    mock_db = MagicMock()
+    _day_row(mock_db, {
+        "day": date.today().isoformat(),
+        "text": "written twice so far",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generation_count": 2,
+    })
+    assert count_grounded_calls_today(db=mock_db) == 2
 
 
 def test_so_far_today_api_429_on_cap_hit(client, monkeypatch):
@@ -190,18 +218,48 @@ def test_so_far_today_api_429_on_cap_hit(client, monkeypatch):
 
 
 def test_so_far_today_cache_retrieval():
-    """Tests 60-minute cache validity."""
+    """Tests 60-minute cache validity, against the day's own row."""
     mock_db = MagicMock()
-    recent_time = datetime.now(timezone.utc).isoformat()
-    mock_db.client.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = [
-        {
-            "generated_at": recent_time,
-            "payload": {"text": "Session summary text", "sources": []},
-        }
-    ]
-    mock_db.client.table.return_value.select.return_value.eq.return_value.gte.return_value.execute.return_value.count = 2
+    _day_row(mock_db, {
+        "day": date.today().isoformat(),
+        "text": "Session summary text",
+        "sources": [],
+        "model": "gemini-2.5-flash",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generation_count": 2,
+    })
 
     cached = get_cached_so_far_today(max_age_minutes=60, db=mock_db)
     assert cached is not None
     assert cached["is_cached"] is True
     assert cached["text"] == "Session summary text"
+    assert cached["call_count_today"] == 2
+    assert cached["model"] == "gemini-2.5-flash"
+
+
+def test_an_old_summary_is_not_served_as_the_cache_but_is_still_readable():
+    """The 60-minute rule is about SPENDING; the card still shows the day's row.
+
+    His decision of 12 September: the summary stays on the card until he presses
+    Generate again. So a three-hour-old summary must NOT satisfy the cache (the
+    next press really does generate) and must still come back from the read.
+    """
+    mock_db = MagicMock()
+    old = datetime.now(timezone.utc) - timedelta(hours=3)
+    _day_row(mock_db, {
+        "day": date.today().isoformat(),
+        "text": "Written this morning.",
+        "sources": [],
+        "model": None,
+        "generated_at": old.isoformat(),
+        "generation_count": 1,
+    })
+
+    assert get_cached_so_far_today(max_age_minutes=60, db=mock_db) is None
+
+    saved = read_day_summary(db=mock_db)
+    assert saved is not None
+    assert saved["text"] == "Written this morning."
+    assert saved["age_minutes"] >= 179
+    # Never recorded, and never borrowed from the current code.
+    assert saved["model"] is None

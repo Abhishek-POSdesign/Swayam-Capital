@@ -1,14 +1,27 @@
 /**
- * AI Trading Partner Chat Panel for Swayam Capital.
+ * THE AI TRADING PARTNER'S CONVERSATION. BUILD_07.
  *
- * Collapsible right-sidebar panel with SSE streaming, conversation history,
- * starter prompts, and daily cost footer.
+ * This file owns the conversation: streaming, history, attachments, voice, and
+ * now Clear and Delete. It does NOT own where the panel sits or how big it is;
+ * `ai-panel-frame.js` owns that, and the two must stay separate so a change to
+ * the geometry can never reach the messages.
  *
- * Uses browser-native EventSource for SSE — no additional dependencies.
+ * WHAT BUILD_07 CHANGED HERE, and nothing else about the AI moved. Its persona,
+ * its routes, its model, its cost cap and its grounding are untouched.
  *
- * Layout: right-side sidebar, default expanded. Collapses via chevron button.
- * Messages: user = right-aligned accent, assistant = left-aligned text-primary.
- * Markdown: bold, italic, code, lists rendered via simple inline parser.
+ * 1. THE STARTER PROMPTS ARE GONE, in every state including after Clear.
+ *    HIS WORDS, 11 September 2026: "I don't want these presets. It is a noise
+ *    taking space. Whatever I want to ask, I can ask directly."
+ * 2. CLEAR AND DELETE. Clear empties the pane and the conversation stays in
+ *    History. Delete asks first, then removes THAT ONE conversation from the
+ *    database along with its images. There is no delete-everything.
+ * 3. THE MICROPHONE IS REAL. His decision of 12 September: the browser's own
+ *    dictation, free, nothing to do with the model or the cost cap. Where the
+ *    browser cannot do it the panel SAYS SO IN WORDS and offers typing. A
+ *    microphone that does nothing must never appear.
+ * 4. THE COLOURS COME FROM THE TOKEN FILES. The primary action was blue where
+ *    the rest of the terminal went sage, and a near-black `#101116` was baked
+ *    into the send button's label.
  */
 
 import { openImageModal, attachmentName } from './chat-surface.js';
@@ -28,12 +41,6 @@ const VOICE_OPTIONS = [
   { id: 'swayam_warm', label: 'Swayam Warm', lang: 'Indian English · female' },
 ];
 
-const STARTER_PROMPTS = [
-  "Walk me through today's market open — what's setting up?",
-  "Given India VIX is at the 8th percentile, what setups favor this regime?",
-  "Anything on the calendar this week I should NOT trade around?",
-  "Based on my last 5 trades, what mistake am I repeating?",
-];
 
 /** Minimal markdown-to-HTML renderer for AI responses. */
 function renderMarkdown(text) {
@@ -63,6 +70,8 @@ export class AIChatPanel {
     this.currentEventSource = null;
     this.pendingImage = null;
     this.showingSettings = false;
+    // The live dictation session, or null. Never a promise of one.
+    this.recognition = null;
   }
 
   async init() {
@@ -76,74 +85,85 @@ export class AIChatPanel {
       <div class="ai-panel" id="ai-panel">
         <div class="ai-panel__header">
           <div class="ai-panel__header-left">
-            <div class="ai-orb" style="width: 24px; height: 24px; border-radius: 50%; background: var(--accent-blue-tint); color: var(--accent-blue); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700;">✦</div>
-            <span class="ai-panel__title" style="font-family: var(--font-sans); font-size: 0.92rem; font-weight: 600; color: var(--dl-fg);">Trading Partner</span>
+            <span class="ai-panel__dot" aria-hidden="true"></span>
+            <span class="ai-panel__title">AI Trading Partner</span>
             <span class="ai-panel__conv-title" id="ai-conv-title"></span>
           </div>
           <div class="ai-panel__header-right">
-            <div class="ai-model-wrap" style="position: relative;">
-              <button class="ai-model-pill" id="ai-model-pill" title="Model: Cloud (Gemini)">☁ Gemini ▾</button>
-              <div class="ai-model-menu" id="ai-model-menu" style="display:none;">
-                <div class="ai-model-menu__label">Model</div>
-                <button class="ai-model-opt ai-model-opt--sel" type="button">☁ Cloud (Gemini)<span class="ai-model-opt__check">✓</span></button>
-                <div class="ai-model-menu__note">Swayam runs one cloud model (Vertex AI · Gemini). No local model configured.</div>
-              </div>
-            </div>
-            <button class="ai-btn ai-btn--sm" id="ai-btn-new" title="New conversation">+ New</button>
-            <button class="ai-btn ai-btn--sm" id="ai-btn-history" title="Conversation history">History</button>
-            <button class="ai-icon-btn" id="ai-btn-settings" title="Voice &amp; AI settings" aria-label="Settings">⚙</button>
-            <button class="ai-btn ai-btn--ghost" id="ai-btn-collapse" title="Collapse">❯</button>
+            <button class="ai-btn ai-btn--sm" id="ai-btn-new" title="Start a new conversation">New</button>
+            <button class="ai-btn ai-btn--sm" id="ai-btn-history" title="Every conversation you have had">History</button>
+            <button class="ai-btn ai-btn--sm" id="ai-btn-clear" title="Empty this pane. The conversation stays in History">Clear</button>
+            <button class="ai-btn ai-btn--sm ai-btn--danger" id="ai-btn-delete" title="Remove this conversation from the database">Delete</button>
+            <button class="ai-icon-btn" id="ai-btn-settings" title="Voice and AI settings" aria-label="Voice and AI settings">&#9881;</button>
+            <button class="ai-icon-btn" id="ai-btn-dock" title="Detach it from the corner" aria-label="Detach or attach" aria-pressed="false">&#10530;</button>
+            <button class="ai-icon-btn" id="ai-btn-tiny" title="Shrink it to the bar" aria-label="Shrink to the bar" aria-pressed="false">&ndash;</button>
+            <button class="ai-icon-btn" id="ai-btn-close-panel" title="Close" aria-label="Close">&#10005;</button>
           </div>
         </div>
 
         <div class="ai-panel__body" id="ai-panel-body">
           <div class="ai-messages" id="ai-messages">
-            <!-- Messages inserted here -->
+            <!-- Messages inserted here. No starter prompts, in any state. -->
           </div>
-
-          <div class="ai-starters" id="ai-starters">
-            <p class="ai-starters__label">Ask me something to start:</p>
-            ${STARTER_PROMPTS.map(
-              (p) => `<button class="ai-starter-btn" data-prompt="${p}">${p}</button>`
-            ).join('')}
-          </div>
-
           <div class="ai-error" id="ai-error" style="display:none;"></div>
         </div>
 
         <!-- Attachment preview -->
-        <div id="ai-drawer-attachment-preview" style="display: none; align-items: center; gap: 8px; padding: 6px 12px; background: var(--dl-card-2); border-top: 1px solid var(--dl-line);">
-          <div style="position: relative; display: inline-block;">
-            <img id="ai-drawer-thumb" src="" style="max-height: 70px; max-width: 110px; border-radius: 6px; border: 1px solid var(--dl-line); object-fit: cover;" />
-            <button id="ai-drawer-thumb-remove" type="button" title="Remove attachment" style="position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent-coral); color: #fff; border: none; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; line-height: 1;">×</button>
+        <div id="ai-drawer-attachment-preview" class="ai-att-preview" style="display: none;">
+          <div class="ai-att-thumbwrap">
+            <img id="ai-drawer-thumb" src="" alt="" class="ai-att-thumb" />
+            <button id="ai-drawer-thumb-remove" type="button" class="ai-att-remove" title="Remove attachment" aria-label="Remove attachment">&#215;</button>
           </div>
-          <span id="ai-drawer-attachment-info" style="font-size: 0.72rem; color: var(--dl-fg-3);"></span>
+          <span id="ai-drawer-attachment-info" class="ai-att-info"></span>
         </div>
 
-        <div class="ai-panel__input-area" id="ai-input-area" style="display: flex; gap: 8px; align-items: flex-end;">
+        <div class="ai-panel__input-area" id="ai-input-area">
           <textarea
             class="ai-textarea"
             id="ai-textarea"
             rows="2"
-            placeholder="Ask anything, or paste a chart screenshot..."
-            style="flex: 1;"
+            placeholder="Speak, or type here"
           ></textarea>
           <input type="file" id="ai-file-input" accept="image/png,image/jpeg,image/webp,image/gif" style="display: none;" />
-          <button class="ai-btn ai-btn--ghost" id="ai-btn-upload" title="Attach screenshot or image (max 5 MB)" style="height: 38px; width: 38px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; border: 1px solid var(--dl-line); border-radius: 8px; cursor: pointer;">📎</button>
+          <button class="ai-icon-btn ai-tool" id="ai-btn-upload" title="Attach a screenshot or image, up to 5 MB" aria-label="Attach an image">&#128206;</button>
+          <button class="ai-mic" id="ai-btn-mic" title="Talk to it" aria-label="Dictate" aria-pressed="false">&#127897;</button>
           <button class="ai-btn ai-btn--primary" id="ai-btn-send">Send</button>
         </div>
 
+        <!-- Filled only when the browser cannot dictate. Never an empty
+             promise: it says what he CAN do instead. -->
+        <p class="ai-dictation-note" id="ai-dictation-note" hidden></p>
+
         <div class="ai-panel__footer" id="ai-footer">
           <span id="ai-cost-display">Loading usage...</span>
+          <span class="ai-footer-model" title="Swayam runs one cloud model, Vertex AI Gemini. No local model is configured.">&#9729; Gemini</span>
         </div>
 
         <!-- Settings sub-view (voice + AI), overlays the panel when open -->
         <div class="ai-settings-view" id="ai-settings-view" style="display:none;">
           <div class="ai-settings-view__bar">
-            <button class="ai-icon-btn" id="ai-settings-back" title="Back to chat" aria-label="Back">←</button>
+            <button class="ai-icon-btn" id="ai-settings-back" title="Back to chat" aria-label="Back">&#8592;</button>
             <span class="ai-settings-view__title">Voice &amp; AI settings</span>
           </div>
           <div class="ai-settings-view__body" id="ai-settings-body"></div>
+        </div>
+
+        <!-- Delete asks first. It covers the panel only, never the page, so it
+             can never land on top of a ticket. -->
+        <div class="ai-sheet-scrim" id="ai-delete-scrim" hidden>
+          <div class="ai-sheet" role="dialog" aria-modal="true" aria-labelledby="ai-del-title">
+            <h3 id="ai-del-title">Delete this conversation?</h3>
+            <p>This removes the conversation you have open from the database for good. Clear only empties the pane, and the conversation stays in History.</p>
+            <ul>
+              <li>The conversation and every message in it go.</li>
+              <li>Any image you attached to it goes with it.</li>
+              <li>Anything you pinned, or saved to the notebook, stays. It stops pointing back here.</li>
+            </ul>
+            <div class="ai-sheet__row">
+              <button class="ai-btn" id="ai-del-keep">Keep it</button>
+              <button class="ai-btn ai-btn--danger-solid" id="ai-del-go">Delete for good</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -151,7 +171,7 @@ export class AIChatPanel {
       <div class="ai-history-drawer" id="ai-history-drawer" style="display:none;">
         <div class="ai-history-drawer__header">
           <span>Conversations</span>
-          <button class="ai-btn ai-btn--ghost" id="ai-history-close">✕</button>
+          <button class="ai-btn ai-btn--ghost" id="ai-history-close">&#10005;</button>
         </div>
         <ul class="ai-history-list" id="ai-history-list"></ul>
       </div>
@@ -162,9 +182,6 @@ export class AIChatPanel {
   }
 
   _attachEventListeners() {
-    // Collapse toggle
-    document.getElementById('ai-btn-collapse').addEventListener('click', () => this._toggleCollapse());
-
     // New conversation
     document.getElementById('ai-btn-new').addEventListener('click', () => this._startNewConversation());
 
@@ -172,22 +189,17 @@ export class AIChatPanel {
     document.getElementById('ai-btn-history').addEventListener('click', () => this._openHistory());
     document.getElementById('ai-history-close').addEventListener('click', () => this._closeHistory());
 
+    // Clear empties the pane. It never touches a row.
+    document.getElementById('ai-btn-clear').addEventListener('click', () => this._clearPane());
+
+    // Delete asks first, every time.
+    document.getElementById('ai-btn-delete').addEventListener('click', () => this._askToDelete());
+    document.getElementById('ai-del-keep').addEventListener('click', () => this._closeDeleteSheet());
+    document.getElementById('ai-del-go').addEventListener('click', () => this._deleteConversation());
+
     // Settings sub-view (voice + AI)
     document.getElementById('ai-btn-settings').addEventListener('click', () => this._openSettings());
     document.getElementById('ai-settings-back').addEventListener('click', () => this._closeSettings());
-
-    // Model pill menu (honest: one cloud model)
-    const modelPill = document.getElementById('ai-model-pill');
-    const modelMenu = document.getElementById('ai-model-menu');
-    if (modelPill && modelMenu) {
-      modelPill.addEventListener('click', (e) => {
-        e.stopPropagation();
-        modelMenu.style.display = modelMenu.style.display === 'none' ? 'block' : 'none';
-      });
-      document.addEventListener('click', (e) => {
-        if (!modelMenu.contains(e.target) && e.target !== modelPill) modelMenu.style.display = 'none';
-      });
-    }
 
     // Attachment upload button and file input
     const uploadBtn = document.getElementById('ai-btn-upload');
@@ -231,14 +243,186 @@ export class AIChatPanel {
       }
     });
 
-    // Starter prompts
-    this.container.querySelectorAll('.ai-starter-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const prompt = btn.getAttribute('data-prompt');
-        document.getElementById('ai-textarea').value = prompt;
-        this._sendMessage();
-      });
-    });
+    // The microphone, which is either real or absent with a reason.
+    this._setUpDictation();
+  }
+
+  // ------------------------------------------------------------ dictation
+  //
+  // HIS DECISION, 12 September 2026: the browser's own dictation. Free, and it
+  // never touches the AI's model, routes or cost cap. It does not exist in
+  // Firefox or Safari, and it can be refused by the operating system or by
+  // site permissions. In EVERY one of those cases the panel says so in words
+  // and points at the keyboard. It must never show a microphone that does
+  // nothing, because a refusal on his screen always says what he CAN do.
+
+  _dictationEngine() {
+    if (typeof window === 'undefined') return null;
+    return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  }
+
+  _setUpDictation() {
+    const btn = document.getElementById('ai-btn-mic');
+    const note = document.getElementById('ai-dictation-note');
+    if (!btn || !note) return;
+
+    const Engine = this._dictationEngine();
+    if (!Engine) {
+      // No dead microphone. The control goes, and words take its place.
+      btn.remove();
+      note.hidden = false;
+      note.textContent =
+        'Dictation needs Chrome or Edge. This browser has no speech engine, so type in the box instead.';
+      return;
+    }
+
+    btn.addEventListener('click', () => this._toggleDictation());
+  }
+
+  _toggleDictation() {
+    if (this.recognition) {
+      this._stopDictation();
+      return;
+    }
+
+    const Engine = this._dictationEngine();
+    const btn = document.getElementById('ai-btn-mic');
+    const note = document.getElementById('ai-dictation-note');
+    if (!Engine || !btn) return;
+
+    let rec;
+    try {
+      rec = new Engine();
+    } catch (err) {
+      note.hidden = false;
+      note.textContent = `Dictation could not start (${err.message}). Type in the box instead.`;
+      return;
+    }
+
+    rec.lang = 'en-IN';
+    rec.continuous = true;
+    rec.interimResults = true;
+
+    const textarea = document.getElementById('ai-textarea');
+    const before = textarea ? textarea.value : '';
+
+    rec.onresult = (event) => {
+      let heard = '';
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        heard += event.results[i][0].transcript;
+      }
+      if (!textarea) return;
+      const joiner = before && !before.endsWith(' ') ? ' ' : '';
+      textarea.value = `${before}${joiner}${heard}`;
+    };
+
+    rec.onerror = (event) => {
+      const why = event && event.error ? String(event.error) : 'unknown';
+      note.hidden = false;
+      if (why === 'not-allowed' || why === 'service-not-allowed') {
+        note.textContent =
+          'The microphone is blocked for this site. Allow it from the padlock in the address bar, or type in the box.';
+      } else if (why === 'no-speech') {
+        note.textContent = 'Nothing was heard. Press the microphone again, or type in the box.';
+      } else if (why === 'audio-capture') {
+        note.textContent = 'No microphone was found on this machine. Type in the box instead.';
+      } else {
+        note.textContent = `Dictation stopped (${why}). Type in the box instead.`;
+      }
+      this._stopDictation();
+    };
+
+    rec.onend = () => {
+      this.recognition = null;
+      const b = document.getElementById('ai-btn-mic');
+      if (b) {
+        b.classList.remove('ai-mic--on');
+        b.setAttribute('aria-pressed', 'false');
+        b.title = 'Talk to it';
+      }
+    };
+
+    try {
+      rec.start();
+    } catch (err) {
+      note.hidden = false;
+      note.textContent = `Dictation could not start (${err.message}). Type in the box instead.`;
+      return;
+    }
+
+    this.recognition = rec;
+    note.hidden = true;
+    btn.classList.add('ai-mic--on');
+    btn.setAttribute('aria-pressed', 'true');
+    btn.title = 'Stop dictating';
+  }
+
+  _stopDictation() {
+    if (!this.recognition) return;
+    try {
+      this.recognition.stop();
+    } catch (_) {}
+    this.recognition = null;
+    const btn = document.getElementById('ai-btn-mic');
+    if (btn) {
+      btn.classList.remove('ai-mic--on');
+      btn.setAttribute('aria-pressed', 'false');
+      btn.title = 'Talk to it';
+    }
+  }
+
+  // ------------------------------------------------------- clear and delete
+
+  /**
+   * CLEAR EMPTIES THE PANE AND NOTHING ELSE. No row is touched, no request is
+   * sent. The conversation is still in History and the panel reopens it.
+   */
+  _clearPane() {
+    const messages = document.getElementById('ai-messages');
+    if (!messages) return;
+    messages.innerHTML =
+      '<div class="ai-message ai-message--assistant"><div class="ai-message__content">' +
+      'Cleared. This conversation is still in History, with every word in it.' +
+      '</div></div>';
+    this._clearError();
+  }
+
+  _askToDelete() {
+    if (!this.conversationId) {
+      this._showError('There is no conversation open to delete.');
+      return;
+    }
+    const scrim = document.getElementById('ai-delete-scrim');
+    if (scrim) scrim.hidden = false;
+  }
+
+  _closeDeleteSheet() {
+    const scrim = document.getElementById('ai-delete-scrim');
+    if (scrim) scrim.hidden = true;
+  }
+
+  /** Removes THIS conversation only, with its messages and its images. */
+  async _deleteConversation() {
+    const id = this.conversationId;
+    this._closeDeleteSheet();
+    if (!id) return;
+    try {
+      const resp = await fetch(`${API_BASE}/api/ai/conversations/${id}`, { method: 'DELETE' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      let body = {};
+      try { body = await resp.json(); } catch (_) {}
+      this.conversationId = null;
+      await this._startNewConversation();
+      if (body && body.images_error) {
+        // The rows went; the pictures did not. Say so rather than let him
+        // believe the bucket is clean when it is not.
+        this._showError(
+          `The conversation was deleted, but its images could not be removed (${body.images_error}).`
+        );
+      }
+    } catch (err) {
+      this._showError(`Could not delete that conversation: ${err.message}`);
+    }
   }
 
   _setPendingImage(file) {
@@ -275,23 +459,6 @@ export class AIChatPanel {
     if (fileInput) fileInput.value = '';
   }
 
-  _toggleCollapse() {
-    this.isCollapsed = !this.isCollapsed;
-    const body = document.getElementById('ai-panel-body');
-    const inputArea = document.getElementById('ai-input-area');
-    const footer = document.getElementById('ai-panel__footer');
-    const btn = document.getElementById('ai-btn-collapse');
-    if (this.isCollapsed) {
-      body.style.display = 'none';
-      if (inputArea) inputArea.style.display = 'none';
-      btn.textContent = '❮';
-    } else {
-      body.style.display = '';
-      if (inputArea) inputArea.style.display = '';
-      btn.textContent = '❯';
-    }
-  }
-
   async _loadOrCreateConversation() {
     try {
       const resp = await fetch(`${API_BASE}/api/ai/conversations`);
@@ -321,7 +488,6 @@ export class AIChatPanel {
       this.conversationId = data.conversation_id;
       document.getElementById('ai-messages').innerHTML = '';
       document.getElementById('ai-conv-title').textContent = '';
-      document.getElementById('ai-starters').style.display = '';
       this._clearError();
     } catch (err) {
       this._showError(`Could not create conversation: ${err.message}`);
@@ -339,9 +505,6 @@ export class AIChatPanel {
       const container = document.getElementById('ai-messages');
       container.innerHTML = '';
       messages.forEach((msg) => this._appendMessage(msg.role, msg.content, false, msg.attachment_url));
-      if (messages.length > 0) {
-        document.getElementById('ai-starters').style.display = 'none';
-      }
       this._scrollToBottom();
     } catch (err) {
       this._showError(`Could not load messages: ${err.message}`);
@@ -430,9 +593,6 @@ export class AIChatPanel {
     textarea.disabled = true;
     document.getElementById('ai-btn-send').disabled = true;
     this._clearError();
-
-    // Hide starters
-    document.getElementById('ai-starters').style.display = 'none';
 
     // Show user message
     this._appendMessage('user', content, false, localAttachmentUrl);
@@ -807,7 +967,7 @@ export class AIChatPanel {
          (Bug: a past chat's conversation title used to shove the gear off-screen.) */
       .ai-panel__header-left { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; overflow: hidden; }
       .ai-panel__header-right { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
-      .ai-panel__icon { font-size: 16px; color: var(--accent-blue); }
+      .ai-panel__icon { font-size: 16px; color: var(--accent-sage); }
       .ai-panel__title { font-weight: 600; font-size: 14px; color: var(--dl-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
       .ai-panel__conv-title {
         font-size: 11px;
@@ -880,40 +1040,10 @@ export class AIChatPanel {
       .ai-typing {
         display: inline-block;
         animation: blink 1s step-end infinite;
-        color: var(--accent-blue);
+        color: var(--accent-sage);
       }
       @keyframes blink { 50% { opacity: 0; } }
-      .ai-starters {
-        padding: 12px 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        border-top: 1px solid var(--dl-line);
-      }
-      .ai-starters__label {
-        font-size: 11px;
-        color: var(--dl-fg-3);
-        margin: 0 0 4px 0;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 600;
-      }
-      .ai-starter-btn {
-        text-align: left;
-        background: var(--dl-card-2);
-        border: 1px solid var(--dl-line);
-        color: var(--dl-fg);
-        padding: 8px 12px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 12px;
-        line-height: 1.4;
-        transition: all 0.15s;
-      }
-      .ai-starter-btn:hover {
-        background: var(--dl-card);
-        border-color: var(--accent-blue);
-      }
+
       .ai-panel__input-area {
         display: flex;
         align-items: flex-end;
@@ -936,7 +1066,7 @@ export class AIChatPanel {
         outline: none;
         line-height: 1.4;
       }
-      .ai-textarea:focus { border-color: var(--accent-blue); }
+      .ai-textarea:focus { border-color: var(--accent-sage); }
       .ai-panel__footer {
         padding: 6px 14px;
         font-size: 11px;
@@ -944,7 +1074,12 @@ export class AIChatPanel {
         border-top: 1px solid var(--dl-line);
         background: var(--dl-rail);
         flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
       }
+      .ai-footer-model { white-space: nowrap; }
       .ai-error {
         margin: 6px 12px;
         padding: 6px 10px;
@@ -970,9 +1105,12 @@ export class AIChatPanel {
       .ai-btn--sm { padding: 4px 8px; font-size: 11px; }
       .ai-btn--ghost { background: transparent; border-color: transparent; }
       .ai-btn--primary {
-        background: var(--accent-blue);
-        border-color: var(--accent-blue);
-        color: #101116;
+        /* Sage, because the terminal's accent is sage and this panel was the
+           last blue primary left after BUILD_06. The label was a baked-in
+           #101116 that stayed near-black on a light theme. */
+        background: var(--accent-sage);
+        border-color: var(--accent-sage);
+        color: var(--text-inverse);
         font-weight: 700;
         min-width: 64px;
         flex-shrink: 0;
@@ -1011,7 +1149,7 @@ export class AIChatPanel {
         transition: background 0.1s;
       }
       .ai-history-item:hover { background: var(--dl-card-2); color: var(--dl-fg); }
-      .ai-history-item--active { border-left: 3px solid var(--accent-blue); padding-left: 11px; color: var(--dl-fg); font-weight: 600; }
+      .ai-history-item--active { border-left: 3px solid var(--accent-sage); padding-left: 11px; color: var(--dl-fg); font-weight: 600; }
       .ai-history-item--empty, .ai-history-item--error { color: var(--dl-fg-3); cursor: default; }
       .ai-history-item--error { color: var(--accent-coral); }
 
@@ -1023,29 +1161,6 @@ export class AIChatPanel {
         align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s;
       }
       .ai-icon-btn:hover { color: var(--dl-fg); background: var(--dl-card-2); }
-      .ai-model-pill {
-        background: var(--dl-card-2); border: 1px solid var(--dl-line); color: var(--dl-fg-2);
-        font-family: inherit; font-size: 10.5px; font-weight: 600; padding: 4px 8px;
-        border-radius: 999px; cursor: pointer; white-space: nowrap;
-      }
-      .ai-model-pill:hover { color: var(--dl-fg); border-color: var(--dl-fg-3); }
-      .ai-model-menu {
-        position: absolute; top: calc(100% + 6px); right: 0; z-index: 120;
-        background: var(--dl-card); border: 1px solid var(--dl-line); border-radius: 10px;
-        box-shadow: var(--dl-shadow); padding: 6px; min-width: 210px;
-      }
-      .ai-model-menu__label {
-        font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
-        color: var(--dl-fg-3); padding: 4px 8px 6px;
-      }
-      .ai-model-opt {
-        display: flex; align-items: center; justify-content: space-between; width: 100%;
-        background: none; border: 0; font-family: inherit; font-size: 12.5px; color: var(--dl-fg);
-        padding: 8px 9px; border-radius: 7px; cursor: pointer;
-      }
-      .ai-model-opt--sel { color: var(--accent-blue); font-weight: 600; }
-      .ai-model-opt__check { color: var(--accent-blue); }
-      .ai-model-menu__note { font-size: 10.5px; color: var(--dl-fg-3); padding: 6px 9px 3px; line-height: 1.4; }
 
       /* Assistant message meta row: model tag + Play/Save */
       .ai-message--assistant { flex-direction: column; align-items: flex-start; }
@@ -1062,7 +1177,7 @@ export class AIChatPanel {
         font-size: 12px; font-weight: 500; cursor: pointer; display: inline-flex;
         align-items: center; gap: 4px; padding: 2px 4px; border-radius: 5px;
       }
-      .ai-msg-action:hover { color: var(--accent-blue); }
+      .ai-msg-action:hover { color: var(--accent-sage); }
       .ai-msg-action.saved { color: var(--accent-sage); cursor: default; }
       .ai-msg-action:disabled { cursor: default; }
 
@@ -1095,12 +1210,12 @@ export class AIChatPanel {
         color: var(--accent-sage); background: var(--accent-sage-tint); padding: 3px 9px; border-radius: 999px;
       }
       .ai-switch {
-        width: 38px; height: 22px; border-radius: 999px; background: var(--accent-blue);
+        width: 38px; height: 22px; border-radius: 999px; background: var(--accent-sage);
         position: relative; flex-shrink: 0; cursor: pointer; border: none; padding: 0; transition: background 0.15s;
       }
       .ai-switch::after {
         content: ""; position: absolute; top: 2px; left: 18px; width: 18px; height: 18px;
-        border-radius: 50%; background: #fff; transition: left 0.15s;
+        border-radius: 50%; background: var(--text-inverse); transition: left 0.15s;
       }
       .ai-switch--off { background: var(--dl-track); }
       .ai-switch--off::after { left: 2px; }
@@ -1114,7 +1229,7 @@ export class AIChatPanel {
       }
       .ai-set-slider-head { display: flex; align-items: center; justify-content: space-between; }
       .ai-set-rate-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--dl-fg); }
-      .ai-set-range { width: 100%; accent-color: var(--accent-blue); }
+      .ai-set-range { width: 100%; accent-color: var(--accent-sage); }
       .ai-set-scale {
         display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace;
         font-size: 10px; color: var(--dl-fg-3); margin-top: 2px;
@@ -1123,7 +1238,95 @@ export class AIChatPanel {
         align-self: flex-start; margin-top: 8px; background: var(--dl-card-2); border: 1px solid var(--dl-line);
         color: var(--dl-fg-2); font-family: inherit; font-size: 12px; padding: 6px 12px; border-radius: 7px; cursor: pointer;
       }
-      .ai-set-preview:hover { color: var(--accent-blue); border-color: var(--accent-blue); }
+      .ai-set-preview:hover { color: var(--accent-sage); border-color: var(--accent-sage); }
+
+      /* ---------------------------------------------------------------
+         BUILD_07. The floating panel's own controls.
+         Every colour here is a token. No hex, in either theme.
+         --------------------------------------------------------------- */
+
+      /* The sage dot is the whole identity mark in a 360px header. */
+      .ai-panel__dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--accent-sage); flex: 0 0 auto;
+      }
+      .ai-panel__header { cursor: grab; touch-action: none; }
+      .ai-panel__header:active { cursor: grabbing; }
+      .ai-panel__header button { cursor: pointer; }
+
+      /* Delete is the only destructive control in the panel and it reads that
+         way before it is pressed, not only after. */
+      .ai-btn--danger { color: var(--accent-coral); }
+      .ai-btn--danger:hover { background: var(--accent-coral-tint); border-color: var(--accent-coral); }
+      .ai-btn--danger-solid {
+        background: var(--accent-coral); border-color: var(--accent-coral);
+        color: var(--text-inverse); font-weight: 700;
+      }
+      .ai-btn--danger-solid:hover { opacity: 0.9; }
+
+      /* The microphone is a first-class control, his words. It is only ever
+         rendered when the browser really can dictate. */
+      .ai-mic {
+        width: 38px; height: 38px; border-radius: 50%; flex: 0 0 auto;
+        background: var(--accent-sage-tint); border: 1px solid var(--dl-line);
+        color: var(--dl-fg); font-size: 15px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .ai-mic:hover { background: var(--accent-sage-tint-hover); }
+      .ai-mic--on {
+        background: var(--accent-sage); border-color: var(--accent-sage);
+        color: var(--text-inverse);
+      }
+      .ai-tool { width: 38px; height: 38px; border: 1px solid var(--dl-line); border-radius: 8px; font-size: 16px; }
+
+      /* What he can do instead, when dictation is not available. */
+      .ai-dictation-note {
+        margin: 0; padding: 0 14px 8px; font-size: 11.5px; line-height: 1.45;
+        color: var(--dl-fg-2); background: var(--dl-card); flex-shrink: 0;
+      }
+
+      /* The attachment preview. The thumbnail's ground follows the theme; it
+         used to be a baked-in near-black behind a transparent image. */
+      .ai-att-preview {
+        align-items: center; gap: 8px; padding: 6px 12px;
+        background: var(--dl-card-2); border-top: 1px solid var(--dl-line); flex-shrink: 0;
+      }
+      .ai-att-thumbwrap { position: relative; display: inline-block; }
+      .ai-att-thumb {
+        max-height: 70px; max-width: 110px; border-radius: 6px;
+        border: 1px solid var(--dl-line); background: var(--dl-card-2); object-fit: cover;
+      }
+      .ai-att-remove {
+        position: absolute; top: -5px; right: -5px; width: 18px; height: 18px;
+        border-radius: 50%; background: var(--accent-coral); color: var(--text-inverse);
+        border: none; cursor: pointer; font-size: 11px; line-height: 1;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .ai-att-info { font-size: 0.72rem; color: var(--dl-fg-3); }
+
+      /* Delete asks first. The sheet covers the PANEL, never the page, so it
+         can never land on top of an exit ticket. */
+      .ai-sheet-scrim {
+        position: absolute; inset: 0; z-index: 140;
+        background: var(--dl-bg); display: flex; align-items: flex-start;
+        justify-content: center; padding: 10px; overflow-y: auto;
+      }
+      .ai-sheet-scrim[hidden] { display: none; }
+      .ai-sheet { color: var(--dl-fg); font-size: 12.5px; }
+      .ai-sheet h3 { margin: 0 0 8px; font-size: 15px; font-weight: 800; }
+      .ai-sheet p { margin: 0 0 10px; color: var(--dl-fg-2); line-height: 1.5; }
+      .ai-sheet ul { margin: 0 0 12px; padding-left: 17px; color: var(--dl-fg-2); line-height: 1.5; }
+      .ai-sheet li { margin: 3px 0; }
+      .ai-sheet__row { display: flex; gap: 8px; justify-content: flex-end; }
+
+      /* Shrunk to the bar: the header stays, everything else goes. */
+      .aip-tiny .ai-panel__body,
+      .aip-tiny .ai-panel__input-area,
+      .aip-tiny .ai-att-preview,
+      .aip-tiny .ai-dictation-note,
+      .aip-tiny .ai-panel__footer,
+      .aip-tiny .aip-rz { display: none !important; }
     `;
     document.head.appendChild(style);
   }

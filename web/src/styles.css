@@ -477,49 +477,15 @@ td {
 #strategy-view { display: none; }
 #journal-view { display: none; }
 
-/* Fix A4 & Fix C Bug 4 — AI drawer 400px content-shift layout pattern (Atlas pattern) */
-body:has(.ai-panel-open) .home-canvas,
-body:has(.ai-panel-open) .dashboard-container,
-body:has(.ai-panel-open) #header-container,
-body:has(.ai-panel-open) #strategy-builder-layout,
-body:has(.ai-panel-open) #journal-view,
-body:has(.ai-panel-open) .journal-page-canvas,
-body.ai-panel-open .home-canvas,
-body.ai-panel-open .dashboard-container,
-body.ai-panel-open #header-container,
-body.ai-panel-open #strategy-builder-layout,
-body.ai-panel-open #journal-view,
-body.ai-panel-open .journal-page-canvas {
-  margin-right: 400px;
-  transition: margin-right var(--dur-base, 180ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
-}
-
-body:has(.ai-panel-open) #ai-sidebar-container,
-body.ai-panel-open #ai-sidebar-container {
-  right: 0px !important;
-}
-
-body:has(.ai-panel-open) .home-canvas,
-body.ai-panel-open .home-canvas {
-  gap: 0px !important;
-}
-
-/* Auto-collapse Strategy Builder and Home left rails when AI drawer opens to give full space to content */
-body:has(.ai-panel-open) #strategy-left-rail,
-body.ai-panel-open #strategy-left-rail,
-body:has(.ai-panel-open) #home-left-sidebar,
-body.ai-panel-open #home-left-sidebar {
-  flex: 0 0 0px !important;
-  width: 0px !important;
-  min-width: 0px !important;
-  max-width: 0px !important;
-  padding: 0px !important;
-  border-right: none !important;
-  overflow: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  transition: all var(--dur-base, 180ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
-}
+/* THE 400px PAGE SHIFT IS GONE. BUILD_07, 12 September 2026.
+   HIS WORDS: "I don't want to squeeze the window, or I don't want to shift the
+   window to the left or right. I want the AI panel to open above the window
+   without squeezing or shifting it."
+   What stood here pushed six containers four hundred pixels to the left and collapsed
+   both left rails whenever `.ai-panel-open` was on the body. Narrowing the page
+   was measured, offered to him, and REJECTED. Do not re-propose it and do not
+   re-add it: the panel floats, and the page below it does not know it is there.
+   The class `ai-panel-open` no longer exists anywhere in this app. */
 
 /* Manual collapsible Strategy Builder left rail */
 #strategy-left-rail.rail-collapsed {
@@ -545,26 +511,6 @@ body.ai-panel-open #home-left-sidebar {
   }
 }
 
-@media (max-width: 900px) {
-  body:has(.ai-panel-open) .home-canvas,
-  body:has(.ai-panel-open) .dashboard-container,
-  body:has(.ai-panel-open) #header-container,
-  body:has(.ai-panel-open) #strategy-builder-layout,
-  body:has(.ai-panel-open) #journal-view,
-  body:has(.ai-panel-open) .journal-page-canvas,
-  body.ai-panel-open .home-canvas,
-  body.ai-panel-open .dashboard-container,
-  body.ai-panel-open #header-container,
-  body.ai-panel-open #strategy-builder-layout,
-  body.ai-panel-open #journal-view,
-  body.ai-panel-open .journal-page-canvas {
-    margin-right: 0;
-  }
-}
-
-.home-canvas, .dashboard-container, #header-container, #strategy-builder-layout, #journal-view, .journal-page-canvas {
-  transition: margin-right var(--dur-base, 180ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
-}
 
 /* Fix C Correction A — Solid Full-Height Sidebar Rail (Atlas Design) */
 .swayam-rail {
