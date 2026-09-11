@@ -421,6 +421,21 @@ export class PositionArea {
     const move = isNum(p.current_spot) && isNum(p.spot_at_entry) ? p.current_spot - p.spot_at_entry : null;
     const bes = Array.isArray(p.breakevens) ? p.breakevens.filter(isNum) : [];
 
+    // WHICH TILES TAKE A PASTEL, and it is a RULE rather than a taste.
+    //
+    // His standing rule is that colour comes from the money only. So a tile
+    // that holds MONEY stays neutral, and the green or the red of the figure
+    // is the only colour in it; a tile that holds a FACT may take a pastel,
+    // because there is no result in it for the colour to fight.
+    //
+    // Money, and therefore neutral: open profit and loss, net if you exit now,
+    // rule 1 headroom and max loss. All four are rupee figures the terminal
+    // paints green or red.
+    // Fact, and therefore tinted: the broker's margin and the NIFTY level.
+    // Neither is a result of his trade.
+    //
+    // Home's Your money is tinted throughout for the same reason: balance,
+    // free cash, collateral and margin used are facts about the account.
     return `<div class="pos-tiles">
       <div class="met">
         <div class="k">Open profit / loss</div>
@@ -446,14 +461,14 @@ export class PositionArea {
           ? escapeHtml(p.max_loss_unbounded_reason || 'no worst case at expiry')
           : `at expiry${isNum(maxLossPct) ? ` · ${maxLossPct.toFixed(2)}% of balance` : ''}`}<br>max profit <b class="up">${orNA(inr(p.max_profit_inr))}</b></div>
       </div>
-      <div class="met">
+      <div class="met fact blue">
         <div class="k">Margin</div>
         <div class="v">${orNA(inr(p.margin_required_inr), p.margin_source)}</div>
         <div class="s">${escapeHtml(isNum(p.margin_required_inr) ? 'FYERS, stored on the row' : (p.margin_source || 'not stored on this row'))}<br>
           rule 4: <b>${isNum(rule4Share) ? `${rule4Share.toFixed(0)}%` : '—'}</b> of ${orNA(inr(p.rule4_ceiling_inr), p.rules_unavailable_reason)}</div>
         <div class="bar"><i style="width:${isNum(rule4Share) ? Math.min(100, rule4Share).toFixed(0) : 0}%"></i></div>
       </div>
-      <div class="met">
+      <div class="met fact amber">
         <div class="k">NIFTY</div>
         <div class="v">${orNA(num(p.current_spot, 2))}</div>
         <div class="s">${isNum(move) ? `<b class="${tone(move)}">${move >= 0 ? '+' : '−'}${num(Math.abs(move), 2)}</b> since entry at ${num(p.spot_at_entry, 2)}` : 'no spot at entry stored on this row'}<br>

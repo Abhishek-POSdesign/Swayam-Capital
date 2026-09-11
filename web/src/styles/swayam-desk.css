@@ -348,12 +348,21 @@
 .sw-desk .mn, .sw-desk .met {
   background: var(--panel-2); padding: 14px 16px; border-radius: 12px;
 }
-/* THE PASTELS, on the tiles the mockup tints and ONLY those.
-   His standing rule is that colour comes from the money. A sage ground behind
-   a red profit figure would fight it, so the six tiles of the position card
-   and the desk's metric row stay neutral, and the tint is used where no figure
-   is money-coloured: Home's Your money, where Balance, Free cash, Collateral
-   and Margin used are facts about the account, not results. */
+/* THE PASTELS, and the rule that decides them. His words, 2026-09-11:
+   "colour comes from the money only. So tint the tiles that hold a FACT and
+   leave neutral the tiles that hold MONEY."
+
+   A money tile stays neutral so the green or the red of the figure is the only
+   colour in it. A fact tile may be tinted, because there is no result in it
+   for the colour to fight. On the position card that means open profit and
+   loss, net if you exit now, rule 1 headroom and max loss are neutral, while
+   the broker's margin and the NIFTY level carry a pastel. Home's Your money is
+   tinted throughout: balance, free cash, collateral and margin used are all
+   facts about the account. */
+.sw-desk .met.fact.sage  { background: var(--accent-sage-tint, var(--panel-2)); }
+.sw-desk .met.fact.blue  { background: var(--accent-blue-tint, var(--panel-2)); }
+.sw-desk .met.fact.amber { background: var(--accent-amber-tint, var(--panel-2)); }
+.sw-desk .met.fact.coral { background: var(--accent-coral-tint, var(--panel-2)); }
 .sw-desk .money .mn:nth-child(4n+1) { background: var(--accent-sage-tint, var(--panel-2)); }
 .sw-desk .money .mn:nth-child(4n+2) { background: var(--accent-blue-tint, var(--panel-2)); }
 .sw-desk .money .mn:nth-child(4n+3) { background: var(--accent-amber-tint, var(--panel-2)); }
