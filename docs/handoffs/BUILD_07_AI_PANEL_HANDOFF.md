@@ -10,6 +10,30 @@
 
 ---
 
+## 0. HIS REVIEW OF 12 SEPTEMBER, AND WHAT IT CHANGED
+
+He ran the first build on localhost and gave nine points. All nine are fixed,
+and a sweep of my own found three more he had not reached yet. **He has not
+seen the second version; this section is what he is being asked to look at.**
+
+| His point | What was wrong | What it is now |
+|---|---|---|
+| 1. The size | Capped at half the WIDTH and half the HEIGHT, which is a **quarter** of his screen | Either axis reaches the whole window, the other held at half. **Measured at 1440 by 900: 1424 by 450, or 720 by 884** |
+| 2 and 7. The type | 11 to 13px throughout. "What are you saving this space for? Is it rented?" | The conversation and the box he types in are **15px**, the title 15px at weight 800, and nothing in the panel is under 12px. The window opens at 460 by 460 to carry it |
+| 3. The left edge | A **2px blue border**, left over from when this was a drawer glued to the right of the screen | Gone. One quiet border on all four sides, which is what a floating window has |
+| 4. The scrollbar | Windows' own | Thin, round, from the tokens, in both themes, everywhere in the panel that scrolls |
+| 5. The prompt box | Two cramped lines, fixed | Three lines to start, growing as he types to six lines or two fifths of the window, and that ceiling rises when he stretches the window |
+| 6. "The mockup was beautiful" | Three things the mockup does that this did not | A sage-tinted header, a ground under the partner's replies, and a **YOU** or **PARTNER** label above every message |
+| 8. The lag | The move and release listeners sat on the thing he grabbed, so a drag that outran the pointer was dropped. And the wheel went straight through the panel to the desk | The gesture is tracked on the window: once he has pressed, it follows his hand anywhere. The panel swallows the wheel except over the four things inside it that really scroll |
+
+**The three from my own sweep:** the bar he shrinks to was two rows tall and is
+now one 59-pixel bar; the launcher orb was marked hidden while the panel was
+open and drawn anyway, because `display: flex` on a class beats a bare `hidden`
+attribute; and nothing overflows at the 320 by 220 minimum, checked rather than
+assumed.
+
+---
+
 ## ⚠️ 1. ONE MANUAL STEP, AND IT IS BEFORE MERGE
 
 **Migration 026 has NOT been applied.** He applies it, the way he applied 022
@@ -118,8 +142,10 @@ Each of these is an action he takes and a thing he sees.
    four or five lines. **Look at the page behind it: nothing has moved.**
 2. Drag it by its title bar, the row with the green dot and the name. Put it
    somewhere you like.
-3. Pull it by any edge or any corner. Try to make it bigger than half your
-   screen. It will stop.
+3. **Pull the left or right edge.** It goes all the way to the far side of your
+   screen and its height holds at half. **Now pull the top or bottom edge.** It
+   goes all the way up or down and its width holds at half. That is the half of
+   the screen you asked for, either way round.
 4. Press the dash. It shrinks to its bar. Press it again.
 5. Press the arrows. It goes back to the corner. Press again, it comes loose.
 6. Press the cross. Then reload the page. **It comes back small, in the place
@@ -173,8 +199,14 @@ Two dev servers are running on ports 8010 and 5180 and can be stopped.
 
 ## ⚠️ WHAT EXISTS AND WHAT DOES NOT
 
-**EXISTS, checked on the running system on 12 September 2026:** the floating
-panel with all eight handles and the half-window ceiling, measured; the page
+**EXISTS, checked on the running system on 12 September 2026, after his
+review:** the new ceiling, measured both ways round at 1440 by 900; the type at
+15px and the box he types in growing with the text and stopping; no coloured
+edge; the themed scrollbar; the drag following his hand after the pointer has
+left the title bar; the wheel over the panel no longer moving the desk; the bar
+state at 59 pixels; the orb hidden while the panel is open; nothing overflowing
+at the 320 by 220 minimum. Then, from the first round and still true: the
+floating panel with all eight handles; the page
 not moving, measured at 1425 pixels with the panel open, closed and reopened;
 the exit ticket covering the panel, hit-tested at three points rather than read
 from a stylesheet; the position remembered and the size forgotten across a
