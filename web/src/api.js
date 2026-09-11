@@ -224,6 +224,7 @@ export const api = {
   getSoFarToday: () => request('/api/home/so-far-today'),
   generateSoFarToday: (force = false) => request(`/api/home/so-far-today?force=${force}`, { method: 'POST' }),
   getNiftySnapshot: (refresh = false) => request(`/api/home/nifty-snapshot?refresh=${refresh}`),
+  getBackupAge: () => request('/api/home/backup-age'),
   getMacroEvents: (highlightedOnly = true) => request(`/api/macro/events?highlighted_only=${highlightedOnly}`),
   // Live capital and the caps derived from it. The home page shows the four
   // rules in rupees, and every one of them is a percentage of this balance.

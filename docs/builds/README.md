@@ -118,11 +118,31 @@ trade either. See BUILD_02 for the phase mark.
 mark it. It is the first real subject of the position area.
 
 **How to work.** Feature branch off `main`, the name given in the table above.
-Never `main`, never a git worktree, work in the primary folder. `git fetch`
-and check whether the branch's pull request is already merged before pushing
-more. Plan first in plain English, six parts, and wait for his yes. Hand off in
-five parts, files as clickable links, any manual step in bold up front, and a
-line in bold saying **what exists and what does not**.
+Never `main`. `git fetch` and check whether the branch's pull request is already
+merged before pushing more. Plan first in plain English, six parts, and wait for
+his yes. Hand off in five parts, files as clickable links, any manual step in
+bold up front, and a line in bold saying **what exists and what does not**.
+
+**Where to work, corrected 2026-09-11.** This file used to say "never a git
+worktree, work in the primary folder". That was the right reason attached to
+the wrong rule, and it bit the Build C builder. The real rule:
+
+> **Never a worktree that SHARES the primary folder's venv.** That venv is an
+> editable install pointing at the primary tree, so a builder using it would
+> silently test the wrong source and every passing test would be a lie.
+> **A worktree with its OWN venv is allowed**, and is how Build B and Build C
+> were both done while another chat held the primary folder.
+
+**A worktree builder proves the isolation before running a single test:**
+
+```
+.\.venv\Scripts\python.exe -c "import swayam; print(swayam.__file__)"
+```
+
+The path printed must contain that worktree's own folder name. If it does not,
+stop — the venv points elsewhere and nothing tested there is real. Setting up
+that venv is `python -m venv .venv` then `pip install -e .` inside the
+worktree, and a copy of `.env`, which git ignores.
 
 **Verification is invoking, never reading a status.** Load the real page in a
 real browser, both themes, against the real backend started from

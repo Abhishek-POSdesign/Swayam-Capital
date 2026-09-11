@@ -194,8 +194,16 @@ which he did not create himself is test data.
 - **Only one session may write to the working tree at a time.** Two sessions
   sharing it will fight over the index and the checked-out branch. If two are
   needed at once, one takes a separate clone.
-- **Work in the primary folder, never a git worktree.** The venv is an editable
-  install pointing at it, so a worktree silently tests the wrong source tree.
+- **Never a worktree that SHARES the primary folder's venv.** That venv is an
+  editable install pointing at the primary tree, so a builder using it would
+  silently test the wrong source. **A worktree with its OWN venv is allowed**,
+  and is how Build B and Build C were both done while another chat held the
+  primary folder. Corrected 2026-09-11: the old wording said "never a git
+  worktree", which was the right reason attached to the wrong rule.
+  **A worktree builder proves the isolation before running a single test:**
+  `.\.venv\Scripts\python.exe -c "import swayam; print(swayam.__file__)"`
+  The path printed must contain that worktree's own folder name. If it does
+  not, stop — the venv points elsewhere and nothing tested there is real.
 - **Plan first, plain English, six parts.** Then build. Then hand off, five
   parts. His `/layman-plan` and `/handoff` skills carry the shape.
 - **Ask when unsure.** He has said so explicitly, and mid-build is fine.

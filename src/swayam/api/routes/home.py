@@ -5,6 +5,7 @@ Exposes:
 - GET /api/home/so-far-today: Returns cached grounded session recap if within 60 min
 - POST /api/home/so-far-today: Generates fresh grounded market summary with daily cap enforcement
 - GET /api/home/nifty-snapshot: Returns comprehensive Cash + F&O snapshot with freshness badges
+- GET /api/home/backup-age: How old his newest backup is, read from the bucket every time
 """
 
 from __future__ import annotations
@@ -20,10 +21,22 @@ from swayam.services.so_far_today import (
     get_cached_so_far_today,
 )
 from swayam.services.nifty_snapshot import get_nifty_snapshot_data
+from swayam.services.record_backup import newest_backup_info
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/home", tags=["home"])
+
+
+@router.get("/backup-age")
+def get_backup_age() -> dict[str, Any]:
+    """How old his newest backup is, read from the real object in the bucket.
+
+    Never a stored constant. If the bucket cannot be read the response says
+    `available: false` with the reason, and the screen shows that rather than
+    a comforting number nobody checked.
+    """
+    return newest_backup_info()
 
 
 class SoFarTodayResponse(BaseModel):
