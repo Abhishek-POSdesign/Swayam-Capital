@@ -2183,6 +2183,112 @@ migrations 002, 005, 006, 013. Then the live database, read only.
   far." Audit the existing partner against §2.17.7 and list what is right,
   what is wrong, what changes, what is fixed. Then step by step.
 
+---
+
+#### 2.17.10 HIS ANSWERS, FIRST ROUND, 2026-09-11. A draft, not a rulebook. His words in quotes.
+
+**His standing instruction for this whole section:** "Don't make hard rules
+right now. You are drafting right now. We will keep editing. There will be a
+time when you will say, okay, this is now fixed, but we are evolving." Every
+line below is a draft until he says fixed.
+
+**1. Which documents are law.** He did not rule. He said the papers multiply
+daily and he cannot track them: "leave the path for all the papers that you
+are referring to, and I'll see which one is the latest... the latest commits
+of the plans would be the best source of knowledge." **So the working rule
+for now:** the latest merged commit of `PLAN.md`, `ROADMAP.md` and the
+one-pager is current; anything older that contradicts them is history. The
+mentor keeps a paths list in `SUCCESSOR_AI_PARTNER.md` and reads the recent
+commits at the start of every session. The constitution question is parked,
+not closed.
+
+**2. Where the partner's memory of him lives.** "Vault will be there,
+absolutely." His preference in order: the partner reads Google Drive directly;
+failing that, "my PC holds what the AI needs every day." The second is the
+§2.13 mirror, already decided in the main chat. Direct Drive is still blocked
+on Google's consent screen (§2.13). **The mentor's chat gained a Google Drive
+connector on 2026-09-11**, so the mentor can read the vault through Drive
+itself; that does nothing for the partner in the terminal, and must not be
+mistaken for the bridge.
+
+**3. Findings.** No finding exists and none can yet: "I will start the
+backtest when the backtest page is ready, plus my AI is ready. We both will
+start the backtest when both are ready." The shape of a finding (§2.17.9) is a
+draft to be tested on the first real one.
+
+**4. Correction.** He did not understand the question and asked for it to be
+explained in detail. **Re-ask it like this, next session:** in the terminal,
+the partner says something like "a trader in your position would cut here".
+He replies "no, that is not how humans behave, I would hold because X". The
+question is only this: where does that sentence get saved, so that next week,
+and after the model is swapped, the partner still knows it? The mentor's
+draft: the partner writes it as one dated line in his words into a
+corrections note in the vault, after he says yes. Nothing else about his
+ten chats or his other decisions was being asked.
+
+**5. The existing partner's behaviour.** "Whatever it is doing today, it is
+doing it because nobody has planned what it has to do. It is better if we plan
+now onwards how it will behave." So the audit of the existing partner is a
+map of what to replace, not a list of faults to defend.
+
+**6. Powers and refusals, his framing, which replaces the mentor's list.**
+"It can advise me on anything, no boundaries, like a colleague or a mentor or
+an employee. But itself, it cannot do anything. It has a brain and research
+capacity, but it does not have any power to change anything financially. It
+has the power to document things, not to change the document." Three parts:
+advice unbounded; action zero, no power over money; writing allowed, editing
+not, so it appends its own notes and never edits his documents.
+**The tension between this and §2.17.1, settled by him the same night.**
+The partner MAY advise a setup, a view, a scenario, a strategy, and say why:
+"It can read the market scenario like me and say that this setup can work as
+per our backtest, as per our history, as per our past trades, as per the
+market condition, as per the expert view. It must have checked using the
+research, so it can create a view with me, a setup with me." What it may NOT
+do: "Buy this, sell this. Go long, go short." It cannot place an order and it
+cannot "create a full trade for me". **So the line is: a setup with reasons,
+yes; an order, never.** "Why? Why this one?" is the standard every
+recommendation must answer, from sources it names.
+
+**7. What it reads.** "Only what is necessary: anything related to my trading
+life and trading decisions." It may know his investments as a whole, because
+the pledged shares are his margin and his capital. His wife's records and tax
+detail are not needed, but "I'm not making a hard rule. If required in the
+future, it can read it." So: a scope, not a wall.
+
+**8. How it speaks.** "No cheerleader, no soft spoken, no buttering, no
+motivation. It needs to be simple. It must learn how I talk, so try to talk
+like me: natural. It should feel like it is its job as well. We will not bind
+it in chains. It must speak the reality." The honest word is **reality**. The
+existing persona's "direct, no cheerleading" survives; "natural, like him"
+is new and means the partner reads how he writes and speaks, and matches it.
+
+**9. Cost.** "Whatever the portal will cost me, AI or anything, will be
+adjusted in my trading profit, because that is my trading expense, and it
+has to be listed as my trading expense." Three consequences:
+- **AI cost is a line in his trading record**, tracked and shown like
+  charges, not a footnote in a settings page. The system to track it is to
+  be designed; `swayam_ai_usage_daily` is the seed.
+- **Quality first.** "I don't want a cheap AI model which will end up
+  costing me more in my trading journey." Then cost.
+- **The mentor's homework:** research the real options and their prices,
+  Gemini 3.1 Pro and 2.5 Pro against DeepSeek V4 Pro and whatever else is
+  credible, and bring numbers with sources. The Google credit of $300 runs
+  to 29 September 2026; use it to measure what a month of Gemini actually
+  costs before it expires, so the decision is made on a measured figure.
+  No cap number was given yet.
+
+**His closing instruction to the mentor.** "Keep on checking what is getting
+updated in my platform, recent commits, etc. We should grow together."
+
+**What the main chat did on 2026-09-10 that the partner design must know:**
+Build A is built and its pull request is open (§2.12.7): the position area,
+the exit ticket, the campaign model, Home's running-trade band, the option
+chain. A builder-chat loop now exists (`docs/builds/README.md`). The Trade
+Journal page is to be planned with him (§2.18). The database split is agreed
+(§2.19): the record in Supabase, the history on his PC in DuckDB, and any
+backtest result the desk shows is pushed up from his PC. The partner's
+"make my journal easy" and "make my backtesting easy" both land on those.
+
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 
 **Why it came up.** He has one free Supabase account with two projects:
