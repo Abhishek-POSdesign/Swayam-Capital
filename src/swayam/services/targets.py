@@ -102,6 +102,77 @@ def leg_targets_from(leg: dict[str, Any]) -> dict[str, Optional[float]]:
     }
 
 
+def wrong_side_of_entry(
+    leg: dict[str, Any],
+    *,
+    target_price: Optional[float],
+    stop_price: Optional[float],
+) -> Optional[str]:
+    """A target that can never fire, said in plain words, or None if both are fine.
+
+    HIS REPORT, 2026-09-11: the Targets box accepted a number on the wrong side
+    of the entry. It saved, it sat on the trade looking like a plan, and it
+    could never be reached, because the only way a bought leg loses money is by
+    falling and the only way it makes money is by rising.
+
+        a BOUGHT leg   take profit ABOVE the entry, cut loss BELOW it
+        a SOLD leg     take profit BELOW the entry, cut loss ABOVE it
+
+    EQUAL TO THE ENTRY IS ALLOWED. A target at the entry price is a break-even
+    exit, which is a real thing to want; it is not on the wrong side of
+    anything. Only a strictly wrong side is refused.
+
+    A leg with no stored entry price is not judged. There is nothing to be on
+    the wrong side OF, and inventing a reference price to check against would
+    be exactly the kind of made-up number this terminal must never produce.
+
+    The message says what he can DO, per his standing rule that a refusal on
+    his screen is useless unless it names the way out.
+    """
+    entry = _num(leg.get("entry_premium"))
+    if entry is None:
+        return None
+
+    buy = _is_buy(leg)
+    label = _leg_label(leg)
+    side = "bought" if buy else "sold"
+    entry_text = f"{entry:,.2f}"
+
+    if target_price is not None:
+        if buy and target_price < entry:
+            return (
+                f"On {label}, which you BOUGHT at {entry_text}, a take-profit of "
+                f"{target_price:,.2f} is below your entry, so it could only be reached "
+                f"at a loss. Put the take-profit ABOVE {entry_text}, or move that number "
+                f"to the cut-loss box."
+            )
+        if not buy and target_price > entry:
+            return (
+                f"On {label}, which you SOLD at {entry_text}, a take-profit of "
+                f"{target_price:,.2f} is above your entry, so it could only be reached "
+                f"at a loss. A sold leg profits as it falls: put the take-profit BELOW "
+                f"{entry_text}, or move that number to the cut-loss box."
+            )
+
+    if stop_price is not None:
+        if buy and stop_price > entry:
+            return (
+                f"On {label}, which you BOUGHT at {entry_text}, a cut-loss of "
+                f"{stop_price:,.2f} is above your entry, so it would fire while you are "
+                f"in PROFIT. Put the cut-loss BELOW {entry_text}, or move that number to "
+                f"the take-profit box."
+            )
+        if not buy and stop_price < entry:
+            return (
+                f"On {label}, which you SOLD at {entry_text}, a cut-loss of "
+                f"{stop_price:,.2f} is below your entry, so it would fire while you are "
+                f"in PROFIT. A sold leg loses as it rises: put the cut-loss ABOVE "
+                f"{entry_text}, or move that number to the take-profit box."
+            )
+
+    return None
+
+
 def evaluate_leg(leg: dict[str, Any]) -> Optional[dict[str, Any]]:
     """One alert for one open leg, or None if nothing of his was reached.
 

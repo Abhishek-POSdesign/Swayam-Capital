@@ -18,7 +18,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setupTestDOM } from './setup_test_dom.js';
 import { PayoffSvgComponent, axisBounds } from '../src/components/payoff-svg.js';
-import { TargetsModal, pnlAt, unitsOf, legLabel, isBuy } from '../src/components/targets-modal.js';
+import { TargetsModal, pnlAt, unitsOf, legLabel, isBuy, wrongSide } from '../src/components/targets-modal.js';
 import { pnlAt as mathPnlAt } from '../src/modules/options-math.js';
 
 const LEGS = [
@@ -280,6 +280,80 @@ describe('the Targets modal', () => {
     m.open(position());
     await m.act('save');
     expect(m.saved).toContain('Targets saved on 1 leg');
+    expect(m.error).toBeNull();
+  });
+});
+
+// -------------------------------------- a target the leg could never reach
+
+describe('a target on the wrong side of the entry', () => {
+  beforeEach(() => setupTestDOM());
+
+  // Leg 1 was BOUGHT at 34.50. Leg 3 was SOLD at 109.15.
+  const position = () => ({
+    position_id: '7cd4d017',
+    strategy_name: 'Iron Condor',
+    targets: {},
+    legs: [
+      { sequence: 1, direction: 'buy', strike: 24200, option_type: 'CE', status: 'open', entry_premium: 34.5, quantity_lots: 1, lot_size: 65, mark: 30.6, mark_side: 'bid' },
+      { sequence: 3, direction: 'sell', strike: 23800, option_type: 'CE', status: 'open', entry_premium: 109.15, quantity_lots: 1, lot_size: 65, mark: 98.75, mark_side: 'ask' },
+    ],
+  });
+  const host = () => ({ innerHTML: '', querySelectorAll: () => [], querySelector: () => null });
+
+  const BOUGHT = { direction: 'buy', strike: 24200, option_type: 'CE', entry_premium: 34.5 };
+  const SOLD = { direction: 'sell', strike: 23800, option_type: 'CE', entry_premium: 109.15 };
+
+  it('knows which way each side of the trade makes money', () => {
+    expect(wrongSide(BOUGHT, '50', '')).toBeNull();
+    expect(wrongSide(BOUGHT, '20', '')).toContain('above your entry');
+    expect(wrongSide(BOUGHT, '', '20')).toBeNull();
+    expect(wrongSide(BOUGHT, '', '50')).toContain('below your entry');
+
+    expect(wrongSide(SOLD, '80', '')).toBeNull();
+    expect(wrongSide(SOLD, '150', '')).toContain('below your entry');
+    expect(wrongSide(SOLD, '', '150')).toBeNull();
+    expect(wrongSide(SOLD, '', '80')).toContain('above your entry');
+  });
+
+  it('allows the entry price itself, which is a break-even exit', () => {
+    expect(wrongSide(BOUGHT, '34.5', '34.5')).toBeNull();
+    expect(wrongSide(SOLD, '109.15', '109.15')).toBeNull();
+  });
+
+  it('says nothing about a blank box or a leg with no stored entry', () => {
+    expect(wrongSide(BOUGHT, '', '')).toBeNull();
+    expect(wrongSide({ direction: 'buy', strike: 1, option_type: 'CE' }, '1', '9999')).toBeNull();
+  });
+
+  it('refuses to send it, and says which leg and what to change', async () => {
+    // HIS REPORT, 2026-09-11: the box took a number on the wrong side and
+    // saved it. Nothing reaches the server now; he sees the reason as he types.
+    let sent = 0;
+    const m = new TargetsModal(host(), { onSave: async () => { sent += 1; return { message: 'ok' }; } });
+    m.open(position());
+    m.setLeg(1, 'cut', '50');            // a cut-loss ABOVE a bought entry
+
+    expect(m.wrongSideLegs().map((w) => w.sequence)).toEqual([1]);
+    await m.act('save');
+    expect(sent).toBe(0);
+    expect(m.error).toContain('24,200 CE');
+    expect(m.error).toContain('below your entry');
+    expect(m.saved).toBeNull();
+  });
+
+  it('sends the moment he puts the number on the right side', async () => {
+    let sent = 0;
+    const m = new TargetsModal(host(), { onSave: async () => { sent += 1; return { message: 'Targets saved.' }; } });
+    m.open(position());
+    m.setLeg(1, 'cut', '50');
+    await m.act('save');
+    expect(sent).toBe(0);
+
+    m.setLeg(1, 'cut', '20');
+    expect(m.wrongSideLegs()).toEqual([]);
+    await m.act('save');
+    expect(sent).toBe(1);
     expect(m.error).toBeNull();
   });
 });

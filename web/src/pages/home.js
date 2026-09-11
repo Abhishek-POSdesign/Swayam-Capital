@@ -683,7 +683,7 @@ export class HomePage {
         ${this._kv('Futures volume', typeof c.futures_volume === 'number' ? num(c.futures_volume, 0) : null, null, c.futures_symbol || c.futures_volume_unavailable_reason || null)}
         ${this._kv('Advances / declines', breadth.value, null, breadth.note)}
         ${this._kv('Sentiment', c.sentiment || null)}
-        <div class="why">Sentiment is computed from spot against the 20-day average and where price sits inside the 20-day range. Breadth counts the 50 NIFTY constituents quoted live from FYERS. Volume is the front-month NIFTY futures contract, because the index itself has no volume. Anything not measured says unavailable.</div>
+        <div class="why">breadth: the 50 constituents quoted live · volume: the front-month future</div>
       </div>
 
       <div class="card">
@@ -932,6 +932,33 @@ export class HomePage {
     return pnl < 0 ? 'down' : 'up';
   }
 
+  /**
+   * WHICH TARGET WAS REACHED. Loss first, because a loss needs him more.
+   *
+   * THE BUG THIS FIXES, reported by him on 2026-09-11 with a screenshot: the
+   * band went SOLID RED above the chip "profit target hit", on a trade running
+   * at minus sixteen rupees. The solid colour was taken from `bandTone`, which
+   * reads the SIGN OF THE OPEN PROFIT. That is right for the gently blinking
+   * ground of a running trade and wrong for an alert: a profit target reached
+   * on one leg while the whole trade is down is a green event, and a cut-loss
+   * reached on one leg while the trade is up is a red one.
+   *
+   * His words: "Loss reached = solid red, profit reached = solid green, from
+   * the kind of target, never from the open profit's sign."
+   *
+   * The position area's strip was already right -- `reachedLine` in
+   * position-area.js picks a loss over a profit exactly this way -- so the two
+   * screens now say the same thing about the same trade, which is the whole
+   * reason the server computes `state` and `alerts` in one place.
+   *
+   * @returns {'loss'|'profit'|null} null when nothing of his was reached.
+   */
+  alertKind(p) {
+    const alerts = Array.isArray(p && p.alerts) ? p.alerts : [];
+    if (!alerts.length) return null;
+    return alerts.some((a) => a && a.kind === 'loss') ? 'loss' : 'profit';
+  }
+
   /** The trades that get a band, the ones needing him first. */
   bandPositions() {
     if (!Array.isArray(this.livePositions)) return [];
@@ -948,13 +975,16 @@ export class HomePage {
     // has not met yet. A reached target still comes first: that one needs him.
     const resting = Number(p.resting_orders || 0);
     if (alerts.length) {
-      const a = alerts[0];
-      const what = a.kind === 'profit' ? 'profit' : 'loss';
+      // THE SAME ALERT THE GROUND AND THE CHIP ARE SHOWING. Taking alerts[0]
+      // here while the ground took its colour from elsewhere is how the band
+      // came to say "profit" in green over a leg whose cut-loss had been hit.
+      const kind = this.alertKind(p);
+      const a = alerts.find((x) => x && x.kind === kind) || alerts[0];
       const who = a.scope === 'leg' ? a.leg_label : 'the whole trade';
       return {
         k: 'Reached',
-        v: `${who} · ${what}`,
-        tone: a.kind === 'profit' ? 'up' : 'down',
+        v: `${who} · ${kind === 'loss' ? 'loss' : 'profit'}`,
+        tone: kind === 'loss' ? 'down' : 'up',
       };
     }
     if (resting > 0) {
@@ -992,7 +1022,6 @@ export class HomePage {
     const state = String(p.state || 'running');
     const tone = this.bandTone(p);
     const shut = p.market_state !== 'live';
-    const alerts = Array.isArray(p.alerts) ? p.alerts : [];
 
     // WHAT THE GROUND SAYS, corrected by him on 2026-09-11.
     //
@@ -1008,8 +1037,13 @@ export class HomePage {
     // as "running" when nothing is. His words: "when the market is closed,
     // just give the blue colour or some other colour." The figures themselves
     // keep their own green and red, because the money did what it did.
+    // WHICH KIND OF TARGET WAS REACHED decides the solid colour and the chip,
+    // NOT the sign of the open profit. See alertKind above for the fault this
+    // corrects; he caught it as solid red over "profit target hit".
+    const reached = this.alertKind(p);
+
     const cls = state === 'alert'
-      ? `hb ${tone === 'down' ? 'solid-down' : 'solid-up'}`
+      ? `hb ${reached === 'loss' ? 'solid-down' : 'solid-up'}`
       : state === 'quiet'
         ? 'hb quiet'
         : shut
@@ -1017,7 +1051,7 @@ export class HomePage {
           : `hb tint-${tone} running`;
 
     const chip = state === 'alert'
-      ? `<span class="hchip alert"><span class="hdot"></span> ${alerts[0] && alerts[0].kind === 'profit' ? 'profit target hit' : 'loss target hit'}</span>`
+      ? `<span class="hchip alert"><span class="hdot"></span> ${reached === 'loss' ? 'loss target hit' : 'profit target hit'}</span>`
       : state === 'quiet'
         ? '<span class="hchip">squared off</span>'
         : shut
@@ -1201,8 +1235,7 @@ export class HomePage {
             <td class="n">${tagFor(e.importance)}</td></tr>`;
         }).join('')}
       </tbody></table>
-      <div class="why">From your own macro events table. Nothing here is scraped live yet.
-        An underlined event carries a written impact brief — hover it, or tap it, to read it.</div>`;
+      <div class="why">your own macro events table · an underlined event has a brief</div>`;
     }
     host.innerHTML = `<div class="card"><h3>Events ahead <span class="r">factor these into every trade · ${escapeHtml(this._readStamp('events'))}</span></h3>${body}</div>`;
     this.bindEventBriefs(host);
@@ -1293,9 +1326,9 @@ export class HomePage {
       : null;
     const note = paper
       ? (started
-        ? `Your paper record starts from ${String(started).slice(0, 10)}. Test rows are excluded from every figure here.`
-        : 'Test trading. Every trade below was a click to see how the terminal behaves, and your record starts clean on the day you say.')
-      : 'No real-money trades. Real execution is code-blocked: there is no order-placement code in the app at all. This book stays empty until you decide otherwise.';
+        ? `paper record from ${String(started).slice(0, 10)} · test rows excluded`
+        : 'test trading · your record starts clean on the day you say')
+      : 'no real-money trades · there is no order-placement code in the app';
 
     const why = this.recordError
       ? `Your record could not be read, so every figure above is a dash rather than a guess. ${this.recordError}`

@@ -461,7 +461,7 @@ export class ExitTicket {
           ? escapeHtml(shut)
           : t.away.length
             ? 'your price, not a rule · what cannot fill now waits for the book and expires at 15:30'
-            : 'one press, one result · a second press cannot record it twice · what you bought is sold at the bid, what you sold is bought back at the ask'}</span>
+            : 'bought legs sell at the bid, sold legs buy back at the ask'}</span>
       </div>`;
   }
 
@@ -477,7 +477,7 @@ export class ExitTicket {
     const waiting = this.pending.map((l) => `<li><span class="st wait">WAITING</span><div><b>${escapeHtml(legName(l))}</b><small>not sent yet</small></div><b class="num na">—</b></li>`).join('');
     return this._header(
       sendingText || `${this.doneLegs.length} of ${this.doneLegs.length + this.pending.length} legs are out. The next one waits for you.`,
-      walking ? 'One by one: each leg goes when you press, and the trade stays the same trade throughout.' : 'nothing else is sent until this answers',
+      walking ? 'one leg per press · the same trade throughout' : 'nothing else is sent until this answers',
     ) +
       (this.error ? `<div class="xt-refused"><b>The last leg was not sent.</b> ${escapeHtml(this.error)}${this.refused.map((r) => ` ${escapeHtml(r.reason)}`).join('')}</div>` : '') +
       `<div class="xt-fills"><ul class="fills">${done}${waiting}</ul></div>

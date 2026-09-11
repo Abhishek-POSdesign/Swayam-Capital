@@ -268,8 +268,17 @@
   border-bottom: 1px solid var(--line); font-size: 14px; line-height: 1.35;
 }
 .sw-desk .kv:last-child { border-bottom: none; }
-.sw-desk .kv span { color: var(--fg-2); }
-.sw-desk .kv b { font-family: var(--m); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* THE LABEL GIVES WAY, THE FIGURE DOES NOT. His report, 2026-09-11: the
+   advances and declines line pushed its arrows outside the card. Both halves
+   were free to grow, so a long label with a note under it ("50 of 50 quoted,
+   list as of ...") squeezed "14 ▲ / 36 ▼" until the second arrow fell off the
+   edge. The figure is now a fixed block that never shrinks and never breaks
+   across lines, and the label wraps instead, which is what a label is for. */
+.sw-desk .kv span { color: var(--fg-2); min-width: 0; flex: 1 1 auto; overflow-wrap: anywhere; }
+.sw-desk .kv b {
+  font-family: var(--m); font-weight: 600; font-variant-numeric: tabular-nums;
+  flex: 0 0 auto; text-align: right; white-space: nowrap;
+}
 .sw-desk .rangebar { padding: 11px 14px; border-bottom: 1px solid var(--line); }
 .sw-desk .rangebar .lbl {
   display: flex; justify-content: space-between; font-family: var(--m); font-size: 12.5px;
@@ -1167,12 +1176,20 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 
 /* The two expiries he compares, weekly and monthly, each carrying its own
    days to run so the choice is informed rather than remembered. */
-.ocm .ocm-exp { display: inline-flex; border: 1px solid var(--line-2); border-radius: 9px; overflow: hidden; }
+/* Every expiry the market offers sits here, so the strip wraps rather than
+   pushing the header's buttons off the panel. A hairline gap draws the
+   separators without a border per button. */
+.ocm .ocm-exp {
+  display: flex; flex-wrap: wrap; gap: 1px;
+  border: 1px solid var(--line-2); border-radius: 9px; overflow: hidden;
+  background: var(--line-2); min-width: 0;
+}
 .ocm .ocm-exp button {
   border: none; background: var(--panel-2); color: var(--fg-2);
   font-family: var(--f); font-size: 13.5px; font-weight: 700;
   padding: 7px 13px; cursor: pointer;
   display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  white-space: nowrap;
 }
 .ocm .ocm-exp button small {
   font-family: var(--m); font-size: 10.5px; font-weight: 500; color: var(--fg-3);
@@ -1516,6 +1533,12 @@ dialog.sw-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .tg .up { color: var(--up); } .tg .down { color: var(--down); }
 .tg .tg-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 14px 20px; border-top: 1px solid var(--line); background: var(--panel-2); }
 .tg .tg-actions .why { font-family: var(--m); font-size: 11px; color: var(--fg-3); margin-left: auto; max-width: 52ch; text-align: right; }
+/* A box on the wrong side of the entry. Amber, not red: nothing has gone
+   wrong with his trade, the number simply could never be reached. Both themes
+   take their colour from the one amber token. */
+.tg table.tg-t tr.tg-wrong { background: var(--warn-bg); }
+.tg table.tg-t tr.tg-wrong input { border-color: var(--warn); }
+.tg .tg-means .tg-why { color: var(--warn); font-weight: 600; font-family: var(--f); }
 .tg .tg-refused { margin: 12px 20px 0; padding: 10px 14px; border: 1px solid var(--down); border-radius: 8px; background: var(--down-bg); font-size: 13px; }
 .tg .tg-saved { margin: 12px 20px 0; padding: 10px 14px; border: 1px solid var(--accent-sage); border-radius: 8px; background: var(--accent-sage-tint); font-size: 13px; }
 @media (max-width: 720px) {

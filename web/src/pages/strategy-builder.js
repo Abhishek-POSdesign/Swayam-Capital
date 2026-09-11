@@ -471,10 +471,6 @@ export class StrategyBuilderPage {
                 </div>
                 <div class="rules" id="rule-validation-mount"></div>
                 <div class="why" id="rule-why"></div>
-                <div class="why">Nothing blocks an intraday entry, including a naked or half-built
-                  structure: converting a straddle into a condor has to pass through states no gate
-                  would allow. Only carrying overnight is gated, and only on two conditions — hedged,
-                  and inside the 2% gap test.</div>
                 <div class="exec">
                   <div class="banner" id="entry-banner"></div>
                   <div class="execbar" id="execute-row-mount"></div>
@@ -561,6 +557,9 @@ export class StrategyBuilderPage {
         fetchOrders: () => api.getOrders('today'),
         onModifyOrder: (orderId, price) => api.modifyOrder(orderId, price),
         onCancelOrder: (orderId) => api.cancelOrder(orderId),
+        // Whether paper trading has begun, so a row marked `live` while it has
+        // not is still called a terminal test. Read once, not on the timer.
+        fetchPhase: () => api.getPhase(),
       });
       this.positionArea.init();
     }
@@ -682,6 +681,21 @@ export class StrategyBuilderPage {
     }
 
     this.renderAll();
+
+    // AND ASK THE SERVER TO JUDGE IT, exactly as a preset is judged.
+    //
+    // HIS REPORT, 2026-09-11, with a screenshot of his own open condor drawn
+    // on the payoff: rules 1, 2 and 3 all read "the server has not checked
+    // this position" and the line beneath said "The rule check has not run
+    // yet." They were right. Loading a trade painted the desk and never asked.
+    // Every other way legs arrive -- a preset, the chain, typing, the lot
+    // multiplier -- goes through scheduleServerRefresh; this one path did not.
+    //
+    // The legs carry their real entry fills, so `fullyPriced()` is already
+    // true and the check runs on the money he actually paid. `this.carry`
+    // defaults to 'overnight', so rule 2 is tested against the next session,
+    // which is what he wants to know about a position he is holding.
+    this.scheduleServerRefresh();
   }
 
   /**
@@ -1554,14 +1568,18 @@ export class StrategyBuilderPage {
         const on = this.legs.filter((l) => l.on);
         const missing = on.filter((l) => l.price === null).length;
         const contracts = this.lotSize === null ? null : on.reduce((a, l) => a + l.lots, 0) * this.lotSize;
-        why.textContent =
-          (this.lotSize === null
-            ? 'Contract size not confirmed by the server yet, so nothing is scaled into rupees. '
-            : `Contract size ${this.lotSize} per lot, ${this.lotSizeSource}. ${on.length} active leg(s), ${contracts} contracts. `) +
-          (missing
-            ? `${missing} leg(s) have no traded price — type your own; nothing is seeded for you.`
-            : 'Prices are the traded prices from the chain, or the ones you typed.') +
-          (this.pricesReadAt ? ` Prices read ${istTime(this.pricesReadAt)} IST, re-read every ${Math.round(this.requoteMs / 1000)} s; a price you typed is never overwritten.` : '');
+        // Where the figures came from, not how the desk works. The unpriced-leg
+        // line stays in full: it is a refusal, and it names the leg holding
+        // things up.
+        why.textContent = [
+          this.lotSize === null
+            ? 'lot size unconfirmed, so nothing is scaled into rupees'
+            : `lot ${this.lotSize}, ${this.lotSizeSource} · ${on.length} leg${on.length === 1 ? '' : 's'}, ${contracts} contracts`,
+          missing
+            ? `${missing} leg${missing === 1 ? '' : 's'} with no traded price — type your own; nothing is seeded for you`
+            : null,
+          this.pricesReadAt ? `prices read ${istTime(this.pricesReadAt)} IST` : null,
+        ].filter(Boolean).join(' · ');
       }
     }
   }
@@ -1747,9 +1765,9 @@ export class StrategyBuilderPage {
     });
     const why = this.container.querySelector('#payoff-why');
     if (why) {
-      why.textContent = this.legs.length
-        ? 'Black line is the value at expiry. Blue line is the value on your chosen date, which still holds time value. Drag anywhere on the graph to move the target.'
-        : '';
+      // The two curves need naming; how to drag does not. The card's own
+      // heading already says "drag the graph, or use the sliders".
+      why.textContent = this.legs.length ? 'black at expiry · blue on your chosen date' : '';
     }
   }
 
@@ -1933,23 +1951,59 @@ export class StrategyBuilderPage {
       const why = this.marginUsedNote ? ` (${this.marginUsedNote})` : '';
       return this._rule('idle', '4 · Margin ceiling', inr(need), `needed · margin already used is unknown${why}, so the ceiling of ${inr(ceiling)} cannot be tested`);
     }
-    const total = need + used;
+    // A TRADE HE ALREADY HOLDS IS ALREADY INSIDE `used`, so adding what it
+    // "needs" on top counts the same rupees twice.
+    //
+    // Found 2026-09-11 the moment the rules began running on a loaded
+    // position: rule 4 read ₹1,69,626 against his condor, which is its own
+    // ₹84,929 of broker margin counted once as margin already used and once as
+    // margin this structure would need. He is not about to place it; he is
+    // holding it.
+    //
+    // Taking the loaded trade's own stored margin out of `used` is right in
+    // all three cases. Holding it unchanged: used − 84,929 + 84,929 = used.
+    // Holding it and adding a leg: the preview prices the WHOLE new structure,
+    // so removing the old figure and adding the new one is the real change.
+    // Building something new: nothing is loaded, nothing is subtracted.
+    //
+    // If the loaded trade has no stored margin, nothing is subtracted and the
+    // note says the figure may be double counted, rather than quietly showing
+    // a number that might be one trade too big.
+    const loaded = this.loadedFrom;
+    const loadedMargin = loaded && typeof loaded.margin_required_inr === 'number'
+      ? loaded.margin_required_inr
+      : null;
+    const alreadyCounted = loaded !== null && loaded !== undefined;
+    const usedNet = alreadyCounted && loadedMargin !== null
+      ? Math.max(0, used - loadedMargin)
+      : used;
+
+    const total = need + usedNet;
     const fits = total <= ceiling;
+    const caveat = alreadyCounted && loadedMargin === null
+      ? ' · this trade is already open and has no stored margin, so it may be counted twice'
+      : alreadyCounted
+        ? ' · this trade is already open, counted once'
+        : '';
     return this._rule(
       fits ? 'pass' : 'fail',
       '4 · Margin ceiling',
       inr(total),
       fits
-        ? `of ${inr(ceiling)} · ${inr(ceiling - total)} free after this`
-        : `SHORT BY ${inr(total - ceiling)} · ceiling ${inr(ceiling)}`,
+        ? `of ${inr(ceiling)} · ${inr(ceiling - total)} free after this${caveat}`
+        : `SHORT BY ${inr(total - ceiling)} · ceiling ${inr(ceiling)}${caveat}`,
     );
   }
 
   renderExecute() {
     const banner = this.container.querySelector('#entry-banner');
     if (banner) {
+      // The paragraph that used to sit here said the same thing as the one
+      // removed from under the rules on 2026-09-11, and both explained how the
+      // terminal works rather than naming a figure. The execute bar below
+      // already carries the verdict, in words, for the position on screen.
       banner.innerHTML = this.activeLegs().length
-        ? '<b>Intraday entry is never blocked</b>, including a naked or half-built structure. Only carrying overnight is gated, and only on two conditions: hedged, and inside the 2% gap test.'
+        ? ''
         : 'Load a strategy on the left to see every number recalculate.';
     }
 

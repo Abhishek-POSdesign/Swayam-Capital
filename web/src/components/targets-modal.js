@@ -81,6 +81,54 @@ export function pnlAt(leg, price) {
   return isBuy(leg) ? (price - entry) * units : (entry - price) * units;
 }
 
+/**
+ * A target that could never fire, named in one short line, or null.
+ *
+ * HIS REPORT, 2026-09-11: the box took a number on the wrong side of the entry
+ * and saved it. It then sat on the trade looking like a plan he had made,
+ * while the only price that could ever reach it was one that meant the
+ * opposite of what he wanted.
+ *
+ *     a BOUGHT leg   take profit ABOVE entry, cut loss BELOW entry
+ *     a SOLD leg     take profit BELOW entry, cut loss ABOVE entry
+ *
+ * EQUAL TO THE ENTRY IS FINE: that is a break-even exit, a real thing to want.
+ * A leg with no stored entry is not judged, because there is nothing to be on
+ * the wrong side of.
+ *
+ * THE RULE ALSO LIVES ON THE SERVER, in services/targets.py
+ * `wrong_side_of_entry`, and that is the one that actually protects the
+ * record: this copy exists only so the answer appears under his fingers as he
+ * types rather than after a round trip. If the two ever disagree, the server
+ * is right.
+ */
+export function wrongSide(leg, takeText, cutText) {
+  if (!leg) return null;
+  const entry = Number(leg.entry_premium);
+  if (!isNum(entry)) return null;
+  const buy = isBuy(leg);
+  const px = (v) => num(v, 2);
+
+  const read = (text) => {
+    const t = String(text ?? '').trim();
+    if (!t) return null;
+    const v = Number(t);
+    return isNum(v) && v !== 0 ? v : null;
+  };
+  const take = read(takeText);
+  const cut = read(cutText);
+
+  if (take !== null) {
+    if (buy && take < entry) return `take profit must be above your entry of ${px(entry)}`;
+    if (!buy && take > entry) return `you sold this: take profit must be below your entry of ${px(entry)}`;
+  }
+  if (cut !== null) {
+    if (buy && cut > entry) return `cut loss must be below your entry of ${px(entry)}`;
+    if (!buy && cut < entry) return `you sold this: cut loss must be above your entry of ${px(entry)}`;
+  }
+  return null;
+}
+
 export class TargetsModal {
   /**
    * @param {HTMLElement} host Where the modal mounts.
@@ -168,6 +216,22 @@ export class TargetsModal {
     this.render();
   }
 
+  /**
+   * Every leg whose boxes are on the wrong side of its entry, with the reason.
+   *
+   * Nothing is sent while this is not empty, so a target that could never fire
+   * never reaches the record in the first place.
+   */
+  wrongSideLegs() {
+    const out = [];
+    for (const leg of this.legs) {
+      const row = this.draft.get(String(leg.sequence)) || { take: '', cut: '' };
+      const why = wrongSide(leg, row.take, row.cut);
+      if (why) out.push({ sequence: leg.sequence, label: legLabel(leg), why });
+    }
+    return out;
+  }
+
   /** What goes to the server. A blank box becomes null, which clears it. */
   payload() {
     const level = (text) => {
@@ -193,6 +257,15 @@ export class TargetsModal {
 
   async save() {
     if (this.busy || !this.position) return;
+    // A target on the wrong side of the entry never leaves this screen. The
+    // server refuses it too, but he should not have to press Save to find out.
+    const wrong = this.wrongSideLegs();
+    if (wrong.length) {
+      this.error = wrong.map((w) => `${w.label}: ${w.why}.`).join(' ');
+      this.saved = null;
+      this.render();
+      return;
+    }
     this.busy = true;
     this.error = null;
     this.render();
@@ -217,16 +290,10 @@ export class TargetsModal {
     const takeMoney = pnlAt(leg, Number(row.take));
     const cutMoney = pnlAt(leg, Number(row.cut));
     const side = leg.mark_side ? ` at the ${escapeHtml(leg.mark_side)}` : '';
-    const means = [
-      row.take.trim() && isNum(takeMoney)
-        ? `<span class="${takeMoney < 0 ? 'down' : 'up'}">${escapeHtml(inr(takeMoney))}</span> on this leg`
-        : '<span class="na">no profit signal</span>',
-      row.cut.trim() && isNum(cutMoney)
-        ? `<span class="${cutMoney < 0 ? 'down' : 'up'}">${escapeHtml(inr(cutMoney))}</span> on this leg`
-        : '<span class="na">no loss signal</span>',
-    ].join('<br>');
+    const means = this._means(leg, row);
+    const why = wrongSide(leg, row.take, row.cut);
 
-    return `<tr>
+    return `<tr class="${why ? 'tg-wrong' : ''}">
       <td><span class="bs ${buy ? 'B' : 'S'}">${buy ? 'BUY' : 'SELL'}</span>
         <b class="num tg-leg">${escapeHtml(legLabel(leg))}</b></td>
       <td class="n">${isNum(Number(leg.entry_premium)) ? escapeHtml(num(Number(leg.entry_premium), 2)) : '<span class="na">—</span>'}</td>
@@ -239,6 +306,28 @@ export class TargetsModal {
         aria-label="Cut loss price for ${escapeHtml(legLabel(leg))}"></td>
       <td class="tg-means">${means}</td>
     </tr>`;
+  }
+
+  /**
+   * The Means cell for one leg: what each box is worth in rupees, or the one
+   * line saying the box is on a side that could never be reached.
+   *
+   * Shared by the first paint and by the repaint that follows his typing, so
+   * the two can never drift apart.
+   */
+  _means(leg, row) {
+    const why = wrongSide(leg, row.take, row.cut);
+    if (why) return `<span class="tg-why">${escapeHtml(why)}</span>`;
+    const takeMoney = pnlAt(leg, Number(row.take));
+    const cutMoney = pnlAt(leg, Number(row.cut));
+    return [
+      row.take.trim() && isNum(takeMoney)
+        ? `<span class="${takeMoney < 0 ? 'down' : 'up'}">${escapeHtml(inr(takeMoney))}</span> on this leg`
+        : '<span class="na">no profit signal</span>',
+      row.cut.trim() && isNum(cutMoney)
+        ? `<span class="${cutMoney < 0 ? 'down' : 'up'}">${escapeHtml(inr(cutMoney))}</span> on this leg`
+        : '<span class="na">no loss signal</span>',
+    ].join('<br>');
   }
 
   _tradeRow() {
@@ -279,9 +368,7 @@ export class TargetsModal {
           <span class="chip c-sage">profit and loss, both</span>
           <div class="r"><button class="btn sm" type="button" data-tgt-act="close">Close</button></div>
         </header>
-        <div class="tg-hint">A leg's target is a price of that option. When the leg's mark reaches it,
-          Home goes solid and names the leg. Leave a box blank and there is no signal for it.
-          The trade's targets are in rupees, net of charges, and stand in when a leg has none.</div>
+        <div class="tg-hint">a leg's boxes are prices · the trade's are rupees, net of charges · a blank box is no signal</div>
         <div class="tw"><table class="tg-t">
           <thead><tr><th>Leg</th><th class="n">Entry</th><th class="n">Now</th>
             <th class="n">Take profit at</th><th class="n">Cut loss at</th><th>Means</th></tr></thead>
@@ -290,14 +377,12 @@ export class TargetsModal {
             ${this._tradeRow()}
           </tbody>
         </table></div>
-        ${this.error ? `<div class="tg-refused"><b>Nothing was saved.</b> ${escapeHtml(this.error)}<br>
-          Your trade and its legs are exactly as they were. Change what the message names and press Save targets again,
-          or press Close and nothing changes.</div>` : ''}
+        ${this.error ? `<div class="tg-refused"><b>Nothing was saved.</b> ${escapeHtml(this.error)}</div>` : ''}
         ${this.saved ? `<div class="tg-saved">${escapeHtml(this.saved)}</div>` : ''}
         <div class="tg-actions">
-          <button class="btn pri" type="button" data-tgt-act="save" ${this.busy ? 'disabled' : ''}>${this.busy ? 'Saving…' : 'Save targets'}</button>
+          <button class="btn pri" type="button" data-tgt-act="save" ${this.busy || this.wrongSideLegs().length ? 'disabled' : ''}>${this.busy ? 'Saving…' : 'Save targets'}</button>
           <button class="btn" type="button" data-tgt-act="clear" ${this.busy ? 'disabled' : ''}>Clear all</button>
-          <span class="why">saved on the trade · shown on Home and the desk only when reached · changes nothing about the order</span>
+          <span class="why">changes nothing about the order</span>
         </div>
       </div>
     </div>`;
@@ -347,17 +432,17 @@ export class TargetsModal {
       const cell = cells[i];
       if (!cell) return;
       const row = this.draft.get(String(leg.sequence)) || { take: '', cut: '' };
-      const takeMoney = pnlAt(leg, Number(row.take));
-      const cutMoney = pnlAt(leg, Number(row.cut));
-      cell.innerHTML = [
-        row.take.trim() && isNum(takeMoney)
-          ? `<span class="${takeMoney < 0 ? 'down' : 'up'}">${escapeHtml(inr(takeMoney))}</span> on this leg`
-          : '<span class="na">no profit signal</span>',
-        row.cut.trim() && isNum(cutMoney)
-          ? `<span class="${cutMoney < 0 ? 'down' : 'up'}">${escapeHtml(inr(cutMoney))}</span> on this leg`
-          : '<span class="na">no loss signal</span>',
-      ].join('<br>');
+      cell.innerHTML = this._means(leg, row);
+      // The row carries the amber while he is still typing, so the warning
+      // arrives with the number rather than when he presses Save.
+      const tr = cell.parentElement;
+      if (tr && tr.classList) {
+        tr.classList.toggle('tg-wrong', !!wrongSide(leg, row.take, row.cut));
+      }
     });
+    // Save cannot go while any box is on the wrong side.
+    const save = root.querySelector('[data-tgt-act="save"]');
+    if (save) save.disabled = this.busy || this.wrongSideLegs().length > 0;
   }
 
   /** Every button's work lives here, so a test can press it without a DOM. */

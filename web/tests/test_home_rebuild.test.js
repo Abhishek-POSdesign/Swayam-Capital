@@ -201,13 +201,13 @@ describe('Home — the rebuilt page', () => {
     // from 8 September 2026" and "81 build-and-test rows". Both were written
     // into the page, neither was read from anything, and the first contradicted
     // his correction of 2026-09-10. The card reads the phase now.
-    expect(host.textContent).toContain('Test trading');
+    expect(host.textContent).toContain('test trading');
     expect(host.textContent).not.toContain('8 September');
     expect(host.textContent).not.toContain('81 build');
 
     page.phase = { paper_trading_started: true, paper_trading_started_at: '2026-10-01T04:00:00Z' };
     page.renderRecord();
-    expect(container.querySelector('#home-record').textContent).toContain('starts from 2026-10-01');
+    expect(container.querySelector('#home-record').textContent).toContain('paper record from 2026-10-01');
 
     page.book = 'real';
     page.renderRecord();
@@ -349,6 +349,77 @@ describe('Home — the rebuilt page', () => {
     expect(host.textContent).toContain('profit target hit');
   });
 
+  it('takes the solid colour from the TARGET, never from the open profit', () => {
+    // HIS REPORT, 2026-09-11, with a screenshot: the band was SOLID RED above
+    // the chip "profit target hit", on a trade running at minus sixteen rupees.
+    //
+    // Every test above happened to set a profit target beside a profit and a
+    // loss target beside a loss, so the fault could not show: the two sources
+    // agreed. It only appears when they CROSS, which is the ordinary case in a
+    // four-leg structure -- one leg reaches its take-profit while the trade as
+    // a whole is still down.
+    //
+    // His words: "Loss reached = solid red, profit reached = solid green, from
+    // the kind of target, never from the open profit's sign."
+    const page = new HomePage(container);
+    page.render();
+    page.positions = [{ id: 'p1' }];
+
+    const base = {
+      position_id: 'p1', strategy_name: 'Iron Condor', state: 'alert',
+      market_state: 'live', legs_open: 4, legs_closed: 0,
+      expiry_date: '2026-09-29', opened_at: '2026-09-10T08:15:00Z', days_held: 1,
+      targets: { legs_with_targets: 1, legs_total: 4 },
+    };
+
+    // A PROFIT target reached while the whole trade is DOWN. Green.
+    page.livePositions = [{
+      ...base,
+      unrealized_pnl_inr: -16,
+      net_if_exit_now_inr: -258,
+      alerts: [{ scope: 'leg', sequence: 3, leg_label: '23,800 CE', kind: 'profit', level: 50, mark: 49 }],
+    }];
+    page.renderPositions();
+    let host = container.querySelector('#home-positions');
+    expect(host.innerHTML).toContain('solid-up');
+    expect(host.innerHTML).not.toContain('solid-down');
+    expect(host.textContent).toContain('profit target hit');
+    // The named leg agrees with the colour rather than reading alerts[0] on
+    // its own, so all three parts of the band say one thing.
+    expect(host.textContent).toContain('23,800 CE · profit');
+
+    // A LOSS target reached while the whole trade is UP. Red.
+    page.livePositions = [{
+      ...base,
+      unrealized_pnl_inr: 4200,
+      net_if_exit_now_inr: 3960,
+      alerts: [{ scope: 'leg', sequence: 4, leg_label: '23,200 PE', kind: 'loss', level: 170, mark: 171 }],
+    }];
+    page.renderPositions();
+    host = container.querySelector('#home-positions');
+    expect(host.innerHTML).toContain('solid-down');
+    expect(host.innerHTML).not.toContain('solid-up');
+    expect(host.textContent).toContain('loss target hit');
+    expect(host.textContent).toContain('23,200 PE · loss');
+
+    // BOTH kinds reached at once: the loss wins, because it needs him more,
+    // and it wins even when the profit alert is the one listed first.
+    page.livePositions = [{
+      ...base,
+      unrealized_pnl_inr: 4200,
+      net_if_exit_now_inr: 3960,
+      alerts: [
+        { scope: 'leg', sequence: 3, leg_label: '23,800 CE', kind: 'profit', level: 50, mark: 49 },
+        { scope: 'leg', sequence: 4, leg_label: '23,200 PE', kind: 'loss', level: 170, mark: 171 },
+      ],
+    }];
+    page.renderPositions();
+    host = container.querySelector('#home-positions');
+    expect(host.innerHTML).toContain('solid-down');
+    expect(host.textContent).toContain('loss target hit');
+    expect(host.textContent).toContain('23,200 PE · loss');
+  });
+
   it('does not blink over a frozen number once the market is shut', () => {
     const page = new HomePage(container);
     page.render();
@@ -443,7 +514,9 @@ describe('Home — the rebuilt page', () => {
     expect(host.innerHTML).not.toContain('home-evb-1');
     expect(host.textContent).not.toContain('no brief available');
     expect(host.textContent).toContain('US CPI');
-    expect(host.textContent).toContain('Nothing here is scraped live yet');
+    // The source, not a paragraph explaining it. Trimmed 2026-09-11 on his
+    // instruction to cut the explanatory prose from the screens.
+    expect(host.textContent).toContain('your own macro events table');
   });
 
   it('escapes an impact brief rather than letting the curator inject markup', () => {

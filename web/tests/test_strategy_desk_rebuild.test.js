@@ -153,7 +153,7 @@ describe('Strategy Desk — the rebuilt page', () => {
     expect(container.querySelector('#rule-why').textContent).toContain('Supabase unreachable');
   });
 
-  it('never blocks an intraday entry, and says so on the page', () => {
+  it('never blocks an intraday entry, on a naked short with an unlimited loss', () => {
     const page = deskWithLegs(container, [
       { on: true, bs: 'S', strike: 23900, type: 'CE', lots: 1, price: 95, priceSource: 'live' },
     ], {
@@ -171,7 +171,17 @@ describe('Strategy Desk — the rebuilt page', () => {
     page.renderRules();
     page.renderExecute();
 
-    expect(container.querySelector('#entry-banner').textContent).toContain('never blocked');
+    // The PARAGRAPH saying entry is never blocked was cut from the page on
+    // 2026-09-11, with the rest of the prose explaining how the terminal
+    // works. What matters is not the sentence but the BUTTON: this is a naked
+    // short with an unlimited loss, and it is still his to send.
+    expect(container.querySelector('#entry-banner').textContent.trim()).toBe('');
+    // The markup, not the element: the test DOM hands out a fresh synthetic
+    // node on every querySelector, so a button inside injected HTML is null
+    // there. The browser proves the click; this proves it is not disabled.
+    const execHtml = container.querySelector('#execute-row-mount').innerHTML;
+    expect(execHtml).toContain('id="btn-execute"');
+    expect(execHtml).not.toContain('disabled');
     expect(container.querySelector('#execute-row-mount').textContent).toContain('must close before the bell');
     expect(container.querySelector('#rule-validation-mount').textContent).toContain('Unlimited');
   });
@@ -371,7 +381,7 @@ describe('Strategy Desk — the rebuilt page', () => {
     page.renderLegs();
     page.renderMetrics();
 
-    expect(container.querySelector('#leg-why').textContent).toContain('Contract size not confirmed');
+    expect(container.querySelector('#leg-why').textContent).toContain('lot size unconfirmed');
     expect(container.querySelector('#net-cost').textContent).toContain('unavailable');
     expect(container.querySelector('#metric-row').textContent).toContain('unavailable');
   });
