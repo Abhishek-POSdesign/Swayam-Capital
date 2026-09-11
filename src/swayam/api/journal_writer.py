@@ -230,7 +230,12 @@ def write_new_trade_journal(
     max_loss_inr = None if _raw_max_loss is None else float(_raw_max_loss)
     max_loss_unbounded = payoff.get("max_loss_unbounded_reason")
     max_profit_inr = float(payoff.get("max_profit_inr", 0.0))
-    rr_implied = float(payoff.get("rr_implied", 0.0))
+    # THE SAME TRAP AS THE MAXIMUM LOSS. There is no reward-to-risk ratio when
+    # the risk has no ceiling, so this is None, and the key is present so a
+    # default would never have fired.
+    _raw_rr = payoff.get("rr_implied")
+    rr_implied = None if _raw_rr is None else float(_raw_rr)
+    rr_text = "unavailable, the risk has no ceiling" if rr_implied is None else f"{rr_implied:.2f}"
     net_debit_credit = float(payoff.get("net_debit_credit_inr", 0.0))
     breakevens = payoff.get("breakevens", [])
     expiry_date = legs[0].get("expiry_date", date_str) if legs else date_str
@@ -349,7 +354,7 @@ provenance: {provenance_value}
 
 - **Max loss**: {max_loss_text}
 - **Max profit**: ₹{max_profit_inr:,.0f}
-- **R:R implied**: {rr_implied:.2f}
+- **R:R implied**: {rr_text}
 - **Net debit/credit**: ₹{net_debit_credit:,.0f}
 - **Breakeven(s)**: {breakeven_str}
 
@@ -571,7 +576,10 @@ def append_exit_block(
     gross_pnl_inr: float,
     charges_inr: float,
     net_pnl_inr: float,
-    max_loss_inr: float,
+    # NONE MEANS THE RISK HAD NO CEILING, not that it was zero. A naked trade
+    # stores no maximum loss, and "% of max risk: 0.0%" against a risk of
+    # nothing is a fabricated figure in his permanent record.
+    max_loss_inr: Optional[float],
     margin_base_inr: float,
     holding_days: int,
     vault_path: Optional[Path] = None,
@@ -679,7 +687,13 @@ def append_exit_block(
     )
 
     # Risk metrics
-    pct_of_risk = (net_pnl_inr / max_loss_inr * 100.0) if max_loss_inr > 0 else 0.0
+    # A percentage of a risk that had no ceiling is not 0.0%, it is no answer.
+    if max_loss_inr is None:
+        pct_of_risk_text = "the risk had no ceiling, so there is no percentage of it"
+    elif max_loss_inr > 0:
+        pct_of_risk_text = f"{net_pnl_inr / max_loss_inr * 100.0:.1f}%"
+    else:
+        pct_of_risk_text = "unavailable, no maximum risk was recorded"
     pct_of_margin_text = (
         f"{net_pnl_inr / margin_base_inr * 100.0:.2f}%" if margin_base_inr and margin_base_inr > 0
         else "unavailable, no balance was read"
@@ -703,7 +717,7 @@ def append_exit_block(
 - **Gross P&L**: ₹{gross_pnl_inr:,.0f}
 - **Charges, entry and exit, summed from the legs**: ₹{charges_inr:,.2f}
 - **NET realized P&L**: ₹{net_pnl_inr:,.0f}
-- **% of max risk**: {pct_of_risk:.1f}%
+- **% of max risk**: {pct_of_risk_text}
 - **% of margin base**: {pct_of_margin_text}
 
 ### Post-trade reflection (fill in manually)

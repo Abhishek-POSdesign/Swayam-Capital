@@ -308,7 +308,15 @@ def compute_payoff_curve(
     # no possible loss made this `Infinity`, and it travels into the record
     # beside max_loss_inr. There is no reward-to-risk ratio when there is no
     # risk, and None says that; a number here would be an invention.
-    rr_implied = (max_profit / max_loss) if max_loss > 0.0 else None
+    # THERE IS NO REWARD-TO-RISK RATIO WITHOUT A RISK TO DIVIDE BY.
+    #
+    # Two ways there is none. A structure that cannot lose gives a division by
+    # zero, which used to be `Infinity` and travelled into the record beside
+    # the maximum loss. And a structure whose loss has NO CEILING gives
+    # profit/inf = 0.0, which is worse than useless: "R:R implied 0.00" reads
+    # as a measured ratio on a naked short when the truth is that the
+    # denominator does not exist. Both are None, and the note says so in words.
+    rr_implied = None if (math.isinf(max_loss) or max_loss <= 0.0) else (max_profit / max_loss)
     rr_implied = bounded_or_none(rr_implied)
 
     return PayoffCurve(

@@ -1372,7 +1372,12 @@ def close_position(position_id: str, req: ClosePositionRequest) -> Any:
 
     legs = pos.get("legs", [])
     entry_debit_credit = float(pos.get("net_debit_credit_inr", 0.0))
-    max_loss = float(pos.get("max_loss_inr", 0.0))
+    # A NAKED TRADE HAS NO MAXIMUM LOSS, and the column now holds NULL for it.
+    # `float(pos.get("max_loss_inr", 0.0))` looked safe and was not: the KEY is
+    # present, so the 0.0 default never fired, and `float(None)` raised. Closing
+    # a naked trade through this route failed outright. Found by the review of
+    # Round 1b, 2026-09-11, on a path nobody had run.
+    max_loss = _opt_float(pos.get("max_loss_inr"))
     journal_path = _resolve_journal_path(pos, position_id)
     underlying = pos.get("underlying", "NIFTY")
     expiry_val = pos.get("expiry_date") or (legs[0].get("expiry_date") if legs else None)
@@ -1819,7 +1824,11 @@ def close_trade_from_legs(
     if journal_path is None:
         journal_path = _resolve_journal_path(pos, position_id)
     if max_loss is None:
-        max_loss = float(pos.get("max_loss_inr") or 0.0)
+        # `or 0.0` did not crash; it handed a zero to the exit note, which then
+        # printed the result as a percentage of a risk of nothing. The absence
+        # travels all the way to the note now, which says the risk had no
+        # ceiling instead of inventing a denominator.
+        max_loss = _opt_float(pos.get("max_loss_inr"))
     opened_at_str = str(pos.get("opened_at", closed_at.isoformat()))
     if holding_days is None or time_in_trade_minutes is None:
         try:
