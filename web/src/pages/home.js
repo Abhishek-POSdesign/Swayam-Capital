@@ -98,6 +98,8 @@ export class HomePage {
     this.positionsNotice = null;
     this.record = null;
     this.recordError = null;
+    /** How old the newest backup of his record is. Read from the bucket, never stored. */
+    this.backupAge = null;
     this.recordLoading = false;
     this.events = null;
     this.eventsError = null;
@@ -331,6 +333,7 @@ export class HomePage {
       this.loadEvents(),
       this.loadDaily(),
       this.loadRecord(),
+      this.loadBackupAge(),
     ]);
     this.renderTicker();
   }
@@ -372,6 +375,16 @@ export class HomePage {
    * direction: telling him his paper record has begun when it has not would
    * put his own judgement of the terminal on a false footing.
    */
+  async loadBackupAge() {
+    try {
+      this.backupAge = await api.getBackupAge();
+    } catch (err) {
+      // Never a comforting default. If it cannot be read, it says so.
+      this.backupAge = { available: false, reason: (err && err.message) || 'could not be read' };
+    }
+    this.renderRecord();
+  }
+
   async loadPhase() {
     try {
       this.phase = await api.getPhase();
@@ -1352,6 +1365,31 @@ export class HomePage {
           ? null
           : `No closed ${paper ? 'paper' : 'real-money'} trades yet, so there is nothing to compute these from.`;
 
+    // THE LAST-BACKUP AGE. Read from the real object in the bucket every time,
+    // never a stored constant, because a backup age nobody checked is worse
+    // than none: it reassures him about something that may not have happened.
+    // What it protects against is damage INSIDE the database, a migration or a
+    // script that changes the wrong rows, not the loss of the project itself.
+    const b = this.backupAge;
+    let backupLine = 'Checking when your record was last backed up…';
+    let backupStale = false;
+    if (b && b.available) {
+      const hrs = Number(b.age_hours);
+      const when = hrs < 1
+        ? 'less than an hour ago'
+        : hrs < 48
+          ? `${Math.round(hrs)} hours ago`
+          : `${Math.floor(hrs / 24)} days ago`;
+      const what = (b.tables && b.rows) ? ` · ${b.tables} tables, ${b.rows} rows` : '';
+      backupStale = Boolean(b.stale);
+      backupLine = backupStale
+        ? `Your record was last backed up ${when}${what}. That is older than ${b.stale_after_hours} hours.`
+        : `Your record was backed up ${when}${what} · protects against damage inside the database, not loss of the project`;
+    } else if (b) {
+      backupLine = `Backup age unavailable — ${b.reason || 'the bucket could not be read'}`;
+      backupStale = true;
+    }
+
     host.innerHTML = `
       <div class="card">
         <h3>Your record
@@ -1364,6 +1402,7 @@ export class HomePage {
         ${this.recordRows()}
         ${why ? `<div class="why">${escapeHtml(why)}</div>` : ''}
         <div class="why">${escapeHtml(note)}</div>
+        <div class="why"${backupStale ? ' style="color:var(--down);font-weight:600"' : ''}>${escapeHtml(backupLine)}</div>
       </div>`;
 
     const tabP = host.querySelector('#tab-paper');

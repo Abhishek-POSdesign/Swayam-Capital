@@ -216,6 +216,52 @@ def run_backup(
     return summary
 
 
+STALE_AFTER_HOURS = 48
+
+
+def newest_backup_info(bucket: str = "swayam-backups") -> dict:
+    """How old his newest backup actually is, read from the bucket every time.
+
+    **Never a stored constant.** A backup age that comes from anywhere but the
+    real object is worse than no figure at all, because it reassures him about
+    something that may not have happened. On any failure this returns
+    `available: False` with the reason, and the screen says so.
+    """
+    try:
+        from google.cloud import storage
+
+        client = storage.Client()
+        stamps = sorted({
+            b.name.split("/")[1]
+            for b in client.list_blobs(bucket, prefix=f"{GCS_PREFIX}/")
+            if len(b.name.split("/")) > 2
+        })
+        if not stamps:
+            return {"available": False, "reason": "no backup exists in the bucket yet"}
+
+        newest = stamps[-1]
+        taken = datetime.strptime(newest, "%Y-%m-%dT%H-%M-%SZ").replace(tzinfo=timezone.utc)
+        age_hours = (datetime.now(timezone.utc) - taken).total_seconds() / 3600.0
+
+        tables = rows = None
+        man = client.bucket(bucket).blob(f"{GCS_PREFIX}/{newest}/MANIFEST.json")
+        if man.exists():
+            m = json.loads(man.download_as_text())
+            tables, rows = len(m.get("tables", {})), m.get("total_rows")
+
+        return {
+            "available": True,
+            "taken_at_utc": taken.isoformat(),
+            "age_hours": round(age_hours, 1),
+            "stale": age_hours > STALE_AFTER_HOURS,
+            "stale_after_hours": STALE_AFTER_HOURS,
+            "tables": tables,
+            "rows": rows,
+        }
+    except Exception as exc:
+        return {"available": False, "reason": str(exc)[:200]}
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     parser = argparse.ArgumentParser(description=__doc__)
