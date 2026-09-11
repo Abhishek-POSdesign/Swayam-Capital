@@ -153,6 +153,17 @@ write its own notes but never edit my documents; it reads what my trading life
 needs and nothing is walled off forever; it speaks reality, naturally, like
 me; and AI cost is a trading expense, tracked in my record, quality first.
 
+THE FIRST LIVE TEST, 2026-09-11 afternoon. I ran five prompts in the terminal
+with the market open and a paper position open. PLAN 2.17.11 has the record.
+Short version: it cannot see my trade because its position reader looks for
+columns that do not exist; the four rules were right and live; it did not
+invent VIX; it still recites the stale Method rules; it still hands me a
+"verdict"; it argues from my 2022 trades, which I said is useless for today;
+it cannot say WHEN an event is because the events table has no times; the
+cost line is an estimate shown as exact; and its cross-day memory is a thin
+daily summary that does work. My verdict: right direction, machine-like, we
+are far from tuning it, just make sure the numbers and dates are not wrong.
+
 STILL OPEN, in order.
 - Correction: I did not understand the question. PLAN 2.17.10 item 4 says how
   to ask it properly. Ask it that way.
