@@ -2289,6 +2289,57 @@ Journal page is to be planned with him (§2.18). The database split is agreed
 backtest result the desk shows is pushed up from his PC. The partner's
 "make my journal easy" and "make my backtesting easy" both land on those.
 
+---
+
+#### 2.17.11 THE FIRST LIVE TEST OF THE EXISTING PARTNER, 2026-09-11, 14:44 to 14:57 IST. Verified against the record.
+
+He ran five prompts in the terminal's chat with the market open and one paper
+position open. The mentor read every message and its stored context snapshot
+from `swayam_ai_messages`, the position row, the macro events table, the
+session summaries and `swayam_ai_usage_daily`. What follows is what the
+partner was shown, what it said, and where the fault lies.
+
+| # | Prompt | What happened | Verdict |
+|---|---|---|---|
+| 1 | What am I holding, and how much running-loss room is left | The context said `open_position_count: 1`, but the position line read `?: ? x? | Entry ₹? | Stop ₹? | Target ₹?`. The partner said so honestly and did not invent a position. The "data today" it mentioned was the macro calendar: US CPI (Aug) and India IIP, both dated 2026-09-11 and highlighted in `swayam_macro_events`. Current, not old | **Real bug, honest answer.** `_format_positions_for_ai()` reads `symbol`, `direction`, `quantity`, `entry_price`, `stop_loss`, `target`; none exists on a position row. The trade is a `legs` JSON array plus `strategy_name`, `spot_at_entry`, `max_loss_inr`, `opened_at`. His open trade is `7cd4d017`, four legs, opened 2026-09-10 13:45 IST, named "Short Strangle" though its legs are an iron condor. Running loss room needs live leg prices, which the partner is never given |
+| 2 | My rules in rupees today | Four rules from the live balance ₹9,62,750, read from FYERS at 14:44 IST: ₹9,628, ₹19,255, ₹48,138, and rule 4 ₹5,54,961. Then it added daily cap, weekly cap, sleep sizing and a 90-day alcohol lockout | **The four are right and live.** Rule 4 comes from a STORED pledged-holding figure with an as-of date (`swayam_config.cash_equivalent_pledged_inr`), by design, with an age check; it should say so. **The extras are the stale Method files**, exactly §2.17.8 item 1 |
+| 3 | NIFTY and India VIX | Gave the spot from context, said VIX is not in its feed, offered 20-day realised volatility instead | **Correct.** No fabrication |
+| 4 | Should I take a bear put spread now | Read the event calendar, reasoned about IV into CPI, gave sizing off the live caps, cited his 2022-23 swing record, ended "Verdict: skip or shrink" | **Direction fine, two faults.** The verdict is the old persona's five-step instruction and is closer to a signal than to a colleague. Citing 2022 trades as a reason for today is what he said he does not want: "a trade taken last month cannot be useful in the month ahead." **US CPI for August 2026 was due 2026-09-11 at 08:30 ET, which is 18:00 IST**, so it was not out during his window; the partner was right that it was today and could not say when, because `swayam_macro_events.event_time` is empty for every row |
+| 5 | What happened yesterday | Said there was no logged session for the 10th and the last was the 9th, and summarised it correctly | **Correct and honest.** This is the thin cross-day memory that exists: `swayam_ai_session_summaries`, one summary per day, compacted at 16:00 IST |
+
+**The cost line he saw, "₹1.443".** It is an ESTIMATE shown as an exact figure:
+tokens are approximated as characters divided by four, priced at the Gemini
+2.5 Pro rate in `.env` although the model was 3.1 Pro preview, times 83 to the
+rupee. Not fake, but not measured, and it does not say "estimated". The real
+figure is the Google Cloud bill. Five requests today: 19,527 input and 1,340
+output tokens by that approximation, ₹2.59.
+
+**His verdict, in his words.** "It is giving me the right direction, telling
+me what I have to see and where it fits. It feels like a machine framing the
+numbers, less like a human, but we are far away from training or tuning it.
+Just make sure the numbers are not wrong and the data and dates are not wrong."
+
+**Two voice-player faults he found, for the main chat and a builder, not for
+this chat.** (a) Pressing play twice while the audio was still loading started
+two voices at once, one from the start and one from the middle; the player
+only guards against a second press once audio is playing. (b) There is no
+replay: play and pause only, so a paused message cannot be started again from
+the top. (c) The voice reads markdown aloud: "asterisk asterisk" for every bold,
+and symbols such as the rupee sign; `tts.py` truncates at a sentence boundary
+but strips nothing. `web/src/components/tts-player.js`, `src/swayam/ai/tts.py`.
+
+**What this test settles for the design.**
+- The partner must be given the trade the way the desk sees it: the legs, the
+  live prices, the campaign's running profit and loss, the room left under
+  rule 1. Not a flat row with the wrong column names.
+- Every stored figure must carry its date in the partner's context, as rule 4
+  should.
+- Every event must carry its time in IST, or the partner says the time is
+  unknown.
+- The verdict habit goes. A setup with reasons, yes; a verdict, no.
+- His history is context about him, not an argument about today.
+- The cost line says "estimated" until it is measured against the bill.
+
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 
 **Why it came up.** He has one free Supabase account with two projects:
