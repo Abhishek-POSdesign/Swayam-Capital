@@ -24,6 +24,7 @@ from swayam.services.structure_name import is_open as _leg_is_open, name_from_le
 from swayam.services.exit_refusal import is_his_price, reword_if_his_price
 from swayam.services.phase import read_phase
 from swayam.services.targets import evaluate_position as evaluate_targets
+from swayam.services.targets import wrong_side_of_entry
 from swayam.services.fills import FillRefused, LegQuote, exit_side_of, resolve_fill, spread_cost_inr
 from swayam.services.charges import (
     ChargeScheduleUnavailable,
@@ -2251,6 +2252,9 @@ def set_position_targets(position_id: str, req: SetTargetsRequest) -> dict[str, 
                 status_code=400,
                 detail=f"A cut-loss price cannot be negative (leg {seq}). Nothing was saved.",
             )
+        wrong = wrong_side_of_entry(leg, target_price=take, stop_price=cut)
+        if wrong is not None:
+            raise HTTPException(status_code=400, detail=f"{wrong} Nothing was saved.")
         leg["target_price"] = take
         leg["stop_price"] = cut
         legs_touched += 1

@@ -330,7 +330,11 @@ describe('Strategy Desk: live legs and the four rules', () => {
       expect(page.legs[0].price).toBe(215);
       expect(page.legs[1].price).toBe(77.5);
       expect(page.legs[1].priceSource).toBe('your own limit price');
-      expect(container.querySelector('#leg-why').textContent).toContain('never overwritten');
+      // The sentence promising a typed price is never overwritten was cut from
+      // the screen on 2026-09-11. The BEHAVIOUR is what matters and it is
+      // asserted directly two lines above: leg 1 was re-quoted, leg 2 kept his
+      // 77.5 and its own price source.
+      expect(container.querySelector('#leg-why').textContent).toContain('prices read');
 
       page.destroy();
       expect(page._requoteTimer).toBeNull();

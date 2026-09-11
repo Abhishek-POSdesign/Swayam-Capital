@@ -406,9 +406,36 @@ describe('the three groups', () => {
     const test = await rendered([condor({ provenance: 'terminal_test' })], [closedRow()]);
     expect(test.html).toContain('terminal test');
 
+    // A `live` row while paper trading has not started is STILL a terminal
+    // test. His report, 2026-09-11: the open condor's chip said "paper trade"
+    // like nothing else in the record. The row is marked `live` on purpose --
+    // the marking script leaves an open trade alone -- so the PHASE decides
+    // the word, and it corrects itself the day he starts paper trading.
     const live = await rendered([condor({ provenance: 'live' })], [closedRow()]);
-    expect(live.html).toContain('paper trade');
-    expect(live.html).not.toContain('>terminal test<');
+    expect(live.html).toContain('terminal test');
+    expect(live.html).not.toContain('paper trade');
+
+    // AND IT CORRECTS ITSELF the day he starts paper trading, which is the
+    // whole reason it reads the phase rather than a constant. The same row,
+    // unchanged, is a paper trade once /api/phase says paper trading began.
+    const started = mount([condor({ provenance: 'live' })], [closedRow()], {
+      fetchPhase: async () => ({ paper_trading_started: true, paper_trading_started_at: '2026-10-01T04:00:00Z' }),
+    });
+    await started.area.readPhase();
+    await started.area.refresh();
+    expect(started.host.innerHTML).toContain('paper trade');
+    expect(started.host.innerHTML).not.toContain('>terminal test<');
+
+    // A PHASE THAT CANNOT BE READ leaves it a terminal test, which is what it
+    // is today and the safe direction in every other case: a terminal test
+    // shown as a paper trade quietly dirties the record he will judge his real
+    // money by.
+    const broken = mount([condor({ provenance: 'live' })], [closedRow()], {
+      fetchPhase: async () => { throw new Error('swayam_phase unreachable'); },
+    });
+    await broken.area.readPhase();
+    await broken.area.refresh();
+    expect(broken.host.innerHTML).toContain('terminal test');
 
     // A row with nothing recorded says so rather than picking one of the three.
     const unknown = await rendered([condor()], [closedRow()]);

@@ -274,6 +274,19 @@ class SwayamApp {
   }
 
   navigateTo(page, updateHistory = true) {
+    // A NEW PAGE OPENS AT ITS TOP. His report, 2026-09-11: "Switching pages
+    // opens the new page at its top; today the scroll position carries over."
+    // The three views are siblings that are shown and hidden, so the WINDOW
+    // never scrolls -- it simply keeps whatever offset the page he left was
+    // sitting at, and the new one appears already scrolled into its middle.
+    // Done before the swap so he never sees the old page jump.
+    const changed = this.currentPage !== page;
+    if (changed && typeof window !== 'undefined' && window.scrollTo) {
+      // 'instant' rather than a smooth glide: he is switching pages, not
+      // scrolling, and a half-second animation on every tab press reads as lag.
+      try { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }
+      catch (_) { window.scrollTo(0, 0); }
+    }
     this.currentPage = page;
     // Clear anti-flash initial-page attribute — its !important CSS rules
     // block navigation to sibling views. See styles.css.

@@ -393,14 +393,92 @@ describe('max pain says which expiry it belongs to', () => {
     m.close();
   });
 
-  it('the switcher offers the weekly and the monthly, not merely the next two', async () => {
+  it('the switcher offers EVERY expiry, nearest first, each with its badge', async () => {
+    // HIS REPORT, 2026-09-11: the switcher showed two dates. It took the one
+    // the endpoint calls weekly_expiry and the one it calls monthly_expiry and
+    // dropped the rest, so 22 Sep was unreachable -- and a middle expiry is
+    // exactly the far leg a calendar needs. Ten of his twenty-one profitable
+    // swing trades were calendars.
     const m = panel();
     m.open();
     await settle();
     await settle();
-    // 22 Sep is nearer than 29 Sep, and is neither the weekly nor the monthly.
-    expect(m.expiries.map((e) => e.date)).toEqual([WEEKLY, MONTHLY]);
-    expect(m.el.innerHTML).not.toContain('2026-09-22');
+    expect(m.expiries.map((e) => e.date)).toEqual([WEEKLY, '2026-09-22', MONTHLY]);
+    // The switcher's own markup, not m.el.innerHTML: the test DOM hands back a
+    // fresh synthetic element on every querySelector, so _paintChrome's write
+    // into the header lands on a throwaway and never shows up there.
+    expect(m._expirySwitcher()).toContain('22 Sep');
+    expect(m._expirySwitcher()).toContain('15 Sep');
+    expect(m._expirySwitcher()).toContain('29 Sep');
+
+    // The endpoint flags only the NEAREST weekly, so 22 Sep arrives with
+    // neither flag. On NIFTY anything that is not the monthly is a weekly, so
+    // the badge is computed rather than left blank.
+    expect(m.expiries.map((e) => e.kind)).toEqual(['weekly', 'weekly', 'monthly']);
+    m.close();
+  });
+
+  it('never calls a far-dated monthly a weekly', async () => {
+    // CAUGHT ON THE RUNNING PANEL, 2026-09-11, before it ever reached him.
+    // The first badge rule was "anything the endpoint has not flagged monthly
+    // is a weekly". The endpoint flags exactly ONE monthly, THIS month's, so
+    // 27 Oct, 23 Nov, 29 Dec and the 2027 quarterlies were all badged weekly.
+    // They are monthly and quarterly contracts. A wrong label is a fabricated
+    // figure wearing words, and his first rule forbids it.
+    //
+    // A monthly is the LAST expiry of its calendar month, which is what the
+    // exchange means, and the list holds every upcoming expiry so it can be
+    // answered from the list itself.
+    api.getExpiries.mockResolvedValue({
+      expiries: [
+        { date: '2026-09-15', calendar_days: 4, is_weekly: true, is_monthly: false },
+        { date: '2026-09-22', calendar_days: 11, is_weekly: false, is_monthly: false },
+        { date: '2026-09-29', calendar_days: 18, is_weekly: false, is_monthly: true },
+        { date: '2026-10-06', calendar_days: 25, is_weekly: false, is_monthly: false },
+        { date: '2026-10-13', calendar_days: 32, is_weekly: false, is_monthly: false },
+        { date: '2026-10-27', calendar_days: 46, is_weekly: false, is_monthly: false },
+        { date: '2026-11-23', calendar_days: 73, is_weekly: false, is_monthly: false },
+        { date: '2027-06-29', calendar_days: 291, is_weekly: false, is_monthly: false },
+      ],
+      weekly_expiry: '2026-09-15',
+      monthly_expiry: '2026-09-29',
+    });
+    const m = panel();
+    m.open();
+    await settle();
+    await settle();
+    expect(m.expiries.map((e) => `${e.date} ${e.kind}`)).toEqual([
+      '2026-09-15 weekly',
+      '2026-09-22 weekly',
+      '2026-09-29 monthly',
+      '2026-10-06 weekly',
+      '2026-10-13 weekly',
+      '2026-10-27 monthly',   // October's, which the endpoint does not flag
+      '2026-11-23 monthly',   // November's
+      '2027-06-29 monthly',   // a quarterly, which is a monthly contract
+    ]);
+    m.close();
+  });
+
+  it('compares max pain against the MONTHLY, not merely the next date along', async () => {
+    // With every expiry in the switcher, "the first one that is not this one"
+    // would have compared 22 Sep against 15 Sep and dropped the monthly out of
+    // the picture entirely. The comparison he asked for is near against
+    // monthly: he saw 23,500 on Home and 24,000 here and neither said which.
+    const m = panel();
+    m.open();
+    await settle();
+    await settle();
+    // The panel opens on the monthly here, so the other one is the nearest.
+    expect(m._otherExpiry()).toBe(WEEKLY);
+
+    // From anywhere else, including the middle expiry that used not to exist
+    // in this switcher at all, the monthly is what it is compared against.
+    m.setExpiry(WEEKLY);
+    expect(m._otherExpiry()).toBe(MONTHLY);
+
+    m.setExpiry('2026-09-22');
+    expect(m._otherExpiry()).toBe(MONTHLY);
     m.close();
   });
 });

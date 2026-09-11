@@ -34,6 +34,7 @@ from swayam.services.targets import (
     evaluate_leg,
     evaluate_position,
     evaluate_trade,
+    wrong_side_of_entry,
 )
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
@@ -497,3 +498,67 @@ def test_the_dry_run_names_a_note_for_every_one_of_his_five():
     # All six of his notes are accounted for: five moved, and the open condor's
     # left exactly where it is.
     assert len(set(moves.values())) == 5
+
+
+# --------------------------------------------------- a target that cannot fire
+
+
+class TestWrongSideOfEntry:
+    """A take-profit or a cut-loss on the side the leg can never reach.
+
+    HIS REPORT, 2026-09-11: the Targets box took a number on the wrong side of
+    the entry and saved it. It then sat on the trade looking like a plan he had
+    made, and no price could ever reach it.
+
+        a BOUGHT leg   take profit ABOVE entry, cut loss BELOW entry
+        a SOLD leg     take profit BELOW entry, cut loss ABOVE entry
+    """
+
+    BOUGHT = {"direction": "buy", "strike": 23800, "option_type": "CE", "entry_premium": 100.0}
+    SOLD = {"direction": "sell", "strike": 23200, "option_type": "PE", "entry_premium": 80.0}
+
+    def test_a_bought_leg_profits_upward(self):
+        assert wrong_side_of_entry(self.BOUGHT, target_price=150, stop_price=None) is None
+        refused = wrong_side_of_entry(self.BOUGHT, target_price=90, stop_price=None)
+        assert refused is not None
+        assert "take-profit" in refused and "ABOVE" in refused
+
+    def test_a_bought_leg_loses_downward(self):
+        assert wrong_side_of_entry(self.BOUGHT, target_price=None, stop_price=60) is None
+        refused = wrong_side_of_entry(self.BOUGHT, target_price=None, stop_price=120)
+        assert refused is not None
+        assert "cut-loss" in refused and "BELOW" in refused
+
+    def test_a_sold_leg_profits_downward(self):
+        assert wrong_side_of_entry(self.SOLD, target_price=40, stop_price=None) is None
+        refused = wrong_side_of_entry(self.SOLD, target_price=95, stop_price=None)
+        assert refused is not None
+        assert "take-profit" in refused and "BELOW" in refused
+
+    def test_a_sold_leg_loses_upward(self):
+        assert wrong_side_of_entry(self.SOLD, target_price=None, stop_price=140) is None
+        refused = wrong_side_of_entry(self.SOLD, target_price=None, stop_price=50)
+        assert refused is not None
+        assert "cut-loss" in refused and "ABOVE" in refused
+
+    def test_the_entry_price_itself_is_allowed(self):
+        """A target at the entry is a break-even exit, not a wrong side."""
+        assert wrong_side_of_entry(self.BOUGHT, target_price=100.0, stop_price=100.0) is None
+        assert wrong_side_of_entry(self.SOLD, target_price=80.0, stop_price=80.0) is None
+
+    def test_a_leg_with_no_entry_price_is_not_judged(self):
+        """There is nothing to be on the wrong side OF, and a reference price
+        invented to check against would be exactly the sort of made-up figure
+        this terminal must never produce."""
+        bare = {"direction": "buy", "strike": 1, "option_type": "CE"}
+        assert wrong_side_of_entry(bare, target_price=1, stop_price=9999) is None
+
+    def test_a_blank_box_is_never_wrong(self):
+        assert wrong_side_of_entry(self.BOUGHT, target_price=None, stop_price=None) is None
+
+    def test_the_message_names_the_leg_and_says_what_to_do(self):
+        """His standing rule: a refusal on his screen must say what he can DO."""
+        refused = wrong_side_of_entry(self.SOLD, target_price=95, stop_price=None)
+        assert "23,200 PE" in refused
+        assert "80.00" in refused
+        assert "cut-loss box" in refused

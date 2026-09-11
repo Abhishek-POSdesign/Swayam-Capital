@@ -246,31 +246,49 @@ export class OptionChainModalComponent {
   }
 
   /**
-   * The two expiries he compares: the weekly and the monthly.
+   * EVERY expiry the market offers, nearest first, each with its badge.
    *
-   * The endpoint lists every expiry the market offers, and the next two would
-   * be 15 Sep and 22 Sep on a day like 10 September, neither of which is the
-   * monthly. It names the weekly and the monthly itself, so take those.
+   * HIS REPORT, 2026-09-11: the switcher showed two dates. It took the one the
+   * endpoint calls `weekly_expiry` and the one it calls `monthly_expiry` and
+   * threw the rest away, so on a day like 10 September he was offered 15 Sep
+   * and 29 Sep and could not reach 22 Sep at all -- which is exactly the far
+   * leg a calendar spread needs. Ten of his twenty-one profitable swing trades
+   * were calendars.
+   *
+   * THE BADGES, and why they are derived rather than read. The endpoint flags
+   * exactly ONE row `is_weekly`, the nearest, and exactly ONE `is_monthly`,
+   * this month's. Every other row arrives with neither flag, so a middle
+   * expiry such as 22 Sep would show a blank badge.
+   *
+   * "Anything not flagged monthly is a weekly" was the first thing tried and
+   * it is WRONG, caught on the running panel the same hour: it badged 27 Oct,
+   * 23 Nov, 29 Dec and the 2027 quarterlies as weeklies. Those are monthly and
+   * quarterly contracts. A wrong label is a fabricated figure wearing words.
+   *
+   * A monthly expiry is the LAST one of its calendar month, which is exactly
+   * what the exchange means by it, and the list is every upcoming expiry so
+   * the question can be answered from the list itself. The endpoint's own flag
+   * still wins wherever it gives one.
    */
   async _loadExpiries() {
     try {
       const res = await api.getExpiries();
       const all = (res && res.expiries) || [];
-      const find = (iso) => all.find((e) => e && e.date === iso) || (iso ? { date: iso } : null);
-      const weekly = find(res && res.weekly_expiry);
-      const monthly = find(res && res.monthly_expiry);
-      const picked = [];
-      [weekly, monthly].forEach((e) => {
-        if (e && e.date && !picked.some((p) => p.date === e.date)) {
-          picked.push({
-            date: e.date,
-            kind: e.is_monthly ? 'monthly' : e.is_weekly ? 'weekly' : '',
-            days: isNum(e.calendar_days) ? e.calendar_days : null,
-          });
-        }
-      });
-      this.expiries = picked;
-      // If the desk is on neither of them, the panel still shows what the desk
+      const monthly = res && res.monthly_expiry;
+      const rows = all.filter((e) => e && e.date);
+      // The last expiry in each calendar month, taken from the list itself.
+      const lastOfMonth = new Set();
+      const seen = new Map();
+      rows.forEach((e) => seen.set(String(e.date).slice(0, 7), e.date));
+      seen.forEach((date) => lastOfMonth.add(date));
+      // The endpoint already returns them in date order and has already
+      // dropped anything expired, so the order here is the order it gave.
+      this.expiries = rows.map((e) => ({
+        date: e.date,
+        kind: (e.is_monthly || e.date === monthly || lastOfMonth.has(e.date)) ? 'monthly' : 'weekly',
+        days: isNum(e.calendar_days) ? e.calendar_days : null,
+      }));
+      // If the desk is on none of them, the panel still shows what the desk
       // chose; the switcher just has nothing lit.
       this._loadOtherPain();
       this._paintChrome();
@@ -302,11 +320,23 @@ export class OptionChainModalComponent {
     this._paintChrome();
   }
 
+  /**
+   * The expiry whose max pain is shown BESIDE this one's.
+   *
+   * The comparison he asked for is the near against the monthly: he saw 23,500
+   * on Home and 24,000 on the chain and neither said which it meant. So from
+   * anywhere except the monthly, the monthly is the other one; standing ON the
+   * monthly, the nearest expiry is. With every expiry now in the switcher, a
+   * plain "first one that is not this one" would have compared 22 Sep against
+   * 15 Sep and quietly dropped the monthly out of the picture.
+   */
   _otherExpiry() {
-    const list = this.expiries.map((e) => e.date);
-    if (!list.length) return null;
+    if (!this.expiries.length) return null;
     const here = this.expiry;
-    return list.find((d) => d !== here) || null;
+    const monthly = this.expiries.find((e) => e.kind === 'monthly');
+    if (monthly && monthly.date !== here) return monthly.date;
+    const nearest = this.expiries.find((e) => e.date !== here);
+    return nearest ? nearest.date : null;
   }
 
   setExpiry(expiry) {
@@ -467,10 +497,8 @@ export class OptionChainModalComponent {
           </table>
         </div>
         <div class="ocm-foot">
-          <span>shaded cells are in the money</span><span>·</span>
-          <span><b>grey</b> is a strike with no trade today: the book is real, the last trade is not</span><span>·</span>
-          <span>hover any figure for IV, volume and the book</span>
-          <span class="r">one read per expiry, however many rows · Esc or click outside to close · drag the header to move</span>
+          <span>shaded is in the money</span><span>·</span>
+          <span><b>grey</b> is no trade today: the book is real, the last trade is not</span>
         </div>
       </div>`;
   }

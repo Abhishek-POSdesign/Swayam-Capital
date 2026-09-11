@@ -48,7 +48,7 @@ const EARLIER_KEY = 'swayam-desk-earlier-open';
  * now reads the row's own `provenance`, so the chip changes when the record
  * changes and never before.
  */
-export function provenanceChip(provenance) {
+export function provenanceChip(provenance, testing = false) {
   const value = String(provenance || '').toLowerCase();
   if (value === 'terminal_test') {
     return '<span class="chip c-test" title="You clicked this to see how the terminal behaves, before paper trading began. It is kept out of your record.">terminal test</span>';
@@ -56,7 +56,22 @@ export function provenanceChip(provenance) {
   if (value === 'build_test') {
     return '<span class="chip c-test" title="A row a build made. Not a trade you took.">build test</span>';
   }
-  if (value === 'live') return '<span class="chip c-sage">paper trade</span>';
+  if (value === 'live') {
+    // WHILE PAPER TRADING HAS NOT STARTED, A 'live' ROW IS STILL A TERMINAL
+    // TEST. His report, 2026-09-11: his open condor's chip said "paper trade"
+    // like nothing else in the record.
+    //
+    // It is marked `live` for a good reason. The marking script deliberately
+    // SKIPS an open trade, because a trade still running must not be rewritten
+    // underneath him, so 7cd4d017 keeps that mark until it is closed. The row
+    // is right; the word on the screen was not. The phase decides, read from
+    // /api/phase, so this corrects itself on the day he starts paper trading
+    // and not one minute before.
+    if (testing) {
+      return '<span class="chip c-test" title="Paper trading has not started, so this is a terminal test. Its row still says live because the marking script leaves an open trade alone until it is closed.">terminal test</span>';
+    }
+    return '<span class="chip c-sage">paper trade</span>';
+  }
   // Nothing recorded. Say so rather than picking one of the three.
   return '<span class="chip c-test" title="This row carries no provenance, so what it was is not recorded.">not recorded</span>';
 }
@@ -160,6 +175,27 @@ export class PositionArea {
     this.timer = null;
     this.earlierOpen = this._readEarlierPreference();
     this._bound = false;
+    // Whether paper trading has begun. Null until /api/phase answers; until
+    // then no chip claims a row is a paper trade, which is the safe direction:
+    // every row in the record today is a terminal test.
+    this.testing = true;
+  }
+
+  /**
+   * Read the phase ONCE. It changes exactly once, on a day he chooses, so it
+   * does not belong on the five-second timer. A failure leaves `testing` true,
+   * which is what it is today and the honest direction in every other case:
+   * a terminal test shown as a paper trade quietly dirties the record he will
+   * judge his real money by.
+   */
+  async readPhase() {
+    if (!this.options.fetchPhase) return;
+    try {
+      const phase = await this.options.fetchPhase();
+      this.testing = !(phase && phase.paper_trading_started === true);
+    } catch (_) {
+      this.testing = true;
+    }
   }
 
   _readEarlierPreference() {
@@ -179,6 +215,7 @@ export class PositionArea {
   }
 
   async init() {
+    await this.readPhase();
     await this.refresh();
     this.schedule();
   }
@@ -268,10 +305,10 @@ export class PositionArea {
     </div>`;
 
     if (this.error) {
-      return `${head}<div class="pa-empty pa-bad">Your open positions could not be read, so nothing is shown rather than something wrong. ${escapeHtml(this.error)}</div>`;
+      return `${head}<div class="pa-empty pa-bad">Your open positions could not be read. ${escapeHtml(this.error)}</div>`;
     }
     if (!this.open.length) {
-      return `${head}<div class="pa-empty">Nothing is open. A trade you send from the ticket above appears here within five seconds, with its own profit and loss and its own way out.</div>`;
+      return `${head}<div class="pa-empty">Nothing is open.</div>`;
     }
     return head + this.open.map((p) => this._card(p)).join('');
   }
@@ -334,7 +371,7 @@ export class PositionArea {
           <span>expiry <b>${escapeHtml(p.expiry_date || '—')}</b>${dte ? ` · ${escapeHtml(dte)}` : ''}</span>
           <span>${escapeHtml(kind)}</span>
           ${p.legs_closed ? `<span><b>${p.legs_closed}</b> leg${p.legs_closed === 1 ? '' : 's'} already out</span>` : ''}
-          ${provenanceChip(p.provenance)}
+          ${provenanceChip(p.provenance, this.testing)}
         </span>
         <div class="r">
           ${renaming
@@ -361,8 +398,8 @@ export class PositionArea {
           &nbsp;·&nbsp; charges to exit <b class="num">${orNA(inrExact(p.charges_out_now_inr))}</b>
           &nbsp;·&nbsp; net now <b class="num big ${tone(p.net_if_exit_now_inr)}">${orNA(signed(p.net_if_exit_now_inr), p.error)}</b></span>
         <span class="why">${p.market_state === 'live'
-          ? 'refreshes every 5 seconds from the chain feed'
-          : 'the market is shut, so this holds the last book and says so'}${p.error ? ` · ${escapeHtml(p.error)}` : ''}</span>
+          ? 'chain feed, every 5 s'
+          : 'the last book, market shut'}${p.error ? ` · ${escapeHtml(p.error)}` : ''}</span>
       </footer>
     </article>`;
   }
@@ -561,7 +598,7 @@ export class PositionArea {
       <div><div class="k">Charges</div><div class="v">${orNA(inrExact(t.total_charges_inr))}</div></div>
       <div><div class="k">Net</div><div class="v ${tone(t.realized_pnl_inr)}">${orNA(signed(t.realized_pnl_inr))}</div></div>
       <div><div class="k">Fills</div><div class="v small">${escapeHtml(tradedPrice ? 'traded price' : t.fill_basis === 'bid_ask' ? 'bid / ask' : 'unrecorded')}</div></div>
-      <div class="chips">${provenanceChip(t.provenance)}${tradedPrice ? '<span class="chip c-warn">not comparable</span>' : ''}</div>
+      <div class="chips">${provenanceChip(t.provenance, this.testing)}${tradedPrice ? '<span class="chip c-warn">not comparable</span>' : ''}</div>
     </div>`;
   }
 
