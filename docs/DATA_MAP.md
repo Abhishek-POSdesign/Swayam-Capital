@@ -93,6 +93,40 @@ gcloud run revisions list --service=swayam-dashboard --region=asia-southeast1 --
 
 ---
 
+---
+
+## 4b. IF MY DATABASE IS LOST, HOW I ACTUALLY GET IT BACK
+
+**Written 2026-09-12, after the restore drill failed against a real cloud
+backup. Read this before panicking: my rows are safe. What is not proven is a
+ONE-STEP restore.**
+
+**What the drill found.** A backup ships `schema.sql`, and that file is the
+schema as it stood on 8 September. Everything added since is missing from it:
+`margin_required_inr`, `max_loss_unbounded_reason`, and the whole
+`swayam_orders`, `swayam_phase` and `swayam_daily_summary` tables. The rows are
+all there; the shape they need is not.
+
+**So recovery today takes TWO sources, and I have both.**
+
+1. **The shape comes from GitHub.** `migrations/` holds every change ever made.
+   Apply them in order into the empty database:
+   `.\.venv\Scripts\python.exe scripts\apply_migration.py up`
+2. **The rows come from the backup.** One JSON file per table in
+   `gs://swayam-backups/supabase/<timestamp>/`, or from the copy in this vault
+   at `02 - Projects/Trading/07 - Backups/`.
+3. **Check against the backup's own MANIFEST.json**, which carries a row count
+   and a SHA-256 for every file.
+
+**This has never been rehearsed end to end.** That is the honest gap, and it is
+the first thing the cloud chat fixes next: a backup should carry the schema as
+it is on the night it runs, not a snapshot from a past date, so that one
+artifact is enough.
+
+**What is NOT at risk:** every row exists in four places tonight — the live
+database, three backups in the bucket, the copy in this vault, and GitHub for
+the shape.
+
 ## 5. THE THINGS THAT HAVE BITTEN ME, SO I DO NOT REPEAT THEM
 
 1. **A command that reads a file from the project must be run from the project
