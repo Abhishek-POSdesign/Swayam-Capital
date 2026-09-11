@@ -107,57 +107,73 @@ WHERE EVERYTHING LIVES. Do not ask me any of this.
 - The local backend starts from .claude/launch.json as swayam-api, the web as
   swayam-web. Both point at the LIVE database and live FYERS.
 
-WHERE THINGS STAND, 11 September 2026, evening
-You are waking from a cleared chat, not starting fresh. Read docs/PLAN.md
-2.12.6, 2.12.7, 2.12.8 and 2.12.10 and the vault log SESSION_LOG_2026-09-11.md
-and you have everything the chat before you knew.
+WHERE THINGS STAND, late on 11 September 2026
+You are waking from a cleared chat, not starting fresh. READ docs/PLAN.md
+2.21 FIRST: it is the whole record of that night, written for you. Then
+2.12.8, 2.12.10 and 2.20, and the vault logs SESSION_LOG_2026-09-11.md and
+SESSION_LOG_2026-09-11_night.md.
 
-What is merged and live: Build A, all three parts (#65), the marking script
-fix (#66), my first review round (#67), the AI partner chat's documents (#68,
-#69), Build B's resting orders (#71) and the polish chat's round one (#72).
-The live site runs main. Migrations 022, 023 and 024 are applied. On
-11 September, in my window, Build A was proven on the live market: the band,
-targets, the crosshair, the chain, the position card, and a hedged dummy
-opened and closed through the new exit ticket with its note completed by the
-drainer. PLAN 2.12.8 has what passed and what broke.
+Merged and live: everything through pull request #79. Resting orders (#71),
+polish round one (#72), round 1b (#73, #74), the three build documents
+(#75), round two the look (#76), the stale mock (#77), Build C cloud
+hygiene (#78) and the clarity pass (#79). Nothing is open. Migrations 022
+to 025 are applied. THE SUITE IS AT ZERO FAILURES for the first time in
+weeks and it stays that way: a red everyone ignores is how the next real
+one hides.
 
-THREE FAULTS FROM THAT TEST ARE STILL ON MAIN, and they are the next code:
-a naked single leg cannot be recorded because infinity reaches the database;
-FYERS answers 429 after 15:00 because the live valuation quotes legs outside
-the chain feed; and entry is blocked by a rule, which breaks my first
-principle. They are round 1b in the polish chat, on a fresh branch, before
-round two's look. PLAN 2.12.10 names the file and line of each.
+WHAT ONLY MY WINDOW CAN PROVE, and it is the whole of my next session:
+a resting order filling from the book, which has NEVER been seen live
+because #71 merged after the bell and nothing may rest after 15:30; a naked
+single leg opened and closed, now that round 1b made it recordable; the new
+look judged on a live market; and FYERS call counts after 15:00 to confirm
+the 429 is gone.
 
-AND RESTING ORDERS HAVE NEVER BEEN SEEN LIVE. #71 merged after the bell and
-nothing may rest after 15:30, so they are the first thing in my next window.
+⚠️ NO NIGHTLY BACKUP RUNS ANYWHERE. One backup exists, taken by hand on
+11 September, at gs://swayam-backups/supabase/2026-09-11T13-18-31Z/, 19
+tables and 883 rows with the open condor inside it. The scheduled job, the
+thirty-night copy into my vault and the backup age on Home are the
+outstanding half of Build C, on branch feature/swayam-nightly-backup-054.
+And my backtest history, data/history, 631 MB, exists ONLY on my PC; the
+bucket copy the roadmap promises has never been made and costs Rs 1.07 a
+month.
 
 EVERY TRADE IN THE RECORD IS A TERMINAL TEST. Paper trading has NOT started.
 The five closed trades are marked terminal_test and their notes moved into
-"04 - Journal/Terminal tests/"; today's dummy went there too. My journal
-folder therefore holds ONE note, the open condor's, plus that subfolder.
-Every builder checks it before and after a test run. I will say when paper
-trading starts; scripts/start_paper_trading.py is mine to run and nobody
-runs it before I say. ONE trade is OPEN, 7cd4d017, a four-leg condor on the
-29 September expiry, which I am keeping for at least one more expiry. You
-do not close it, edit it or mark it by script. The system named it "Short
-Strangle" from a preset; the app now derives Iron Condor from its legs.
+"04 - Journal/Terminal tests/". My journal folder holds ONE note, the open
+condor's, plus that subfolder. Every builder checks it before and after a
+test run. I will say when paper trading starts; scripts/start_paper_trading.py
+is mine to run and nobody runs it before I say. ONE trade is OPEN, 7cd4d017,
+a four-leg condor on the 29 September expiry, which I am keeping for at
+least one more expiry. You do not close it, edit it or mark it by script.
+The system named it "Short Strangle" from a preset; the app now derives Iron
+Condor from its legs.
 
 THIS CHAT IS THE ORCHESTRATOR. IT DOES NOT BUILD. It plans, draws the
 mockup, writes the build document and the prompt for a builder chat, and
-reviews the finished build on the running system before I merge. Builder
-chats build. Two are open right now:
-- The Build A POLISH chat, in the primary folder. Round one is merged as
-  #72. Next it takes ROUND 1b, the three faults still on main, on a fresh
-  branch off main, its own pull request, BEFORE round two's mockup. Round
-  two is the Atlas-inspired look, mockup first, approved in that chat, no
-  lilac. PLAN 2.12.10 has round 1b; 2.12.8 has round two.
-- The Build B chat, resting orders, merged as #71, in a worktree with its
-  own venv at .claude/worktrees/nifty-resting-orders-074c38. It is IDLE and
-  kept open only because it is the one chat that knows why the watcher
-  behaves as it does, for whatever my next window finds. New work for it
-  starts a fresh branch off main; its own is merged.
-Only one chat writes to the primary folder; a second builder takes a
-worktree WITH ITS OWN VENV and proves "import swayam" resolves inside it.
+reviews the finished build on the running system before I merge. I protect
+this chat's context on purpose: give it thinking, not typing. When code is
+needed, ask me to open a builder chat and hand me the prompt to paste. I am
+happy to be the messenger.
+
+THE CHATS OPEN RIGHT NOW:
+- The CLOUD chat, in worktree .claude/worktrees/swayam-cloud-hygiene-052
+  with its own venv, on branch feature/swayam-nightly-backup-054. It is
+  building the outstanding half of Build C. Its two handoffs are at
+  docs/BUILD_C_HANDOFF_2026-09-11.md and docs/BUILD_C_PART_TWO_HANDOFF_2026-09-11.md.
+- The POLISH chat, which built rounds one, 1b, two and the clarity pass. It
+  holds the primary folder and knows where every colour in the app lives.
+- The Build B chat, idle, kept only because it knows why the resting-order
+  watcher behaves as it does.
+- My AI partner chat and my backtester chat, which are not this chat's work.
+NEXT BUILD AFTER THE BACKUP: the AI panel, docs/builds/BUILD_07_AI_PANEL.md,
+a FRESH chat, mockup already approved.
+
+Only one chat writes to the primary folder. A second builder takes a
+worktree WITH ITS OWN VENV and proves "import swayam" resolves inside it
+before running a single test. On Python 3.13 "pip install -e ." fails
+because aiohttp will not build from source; freeze the known-good venv,
+strip the editable line, install with --no-deps, then "pip install -e .
+--no-deps".
 
 WHAT WAS DECIDED, AND IS NOT UP FOR DISCUSSION
 - Limit orders REST. A limit away from the market sits as an open order until
@@ -230,23 +246,20 @@ answers do we start.
 1. Which trade is open right now, why is it open, and what must you never do
    to it?
 2. What are the four horizons, and which one are we in?
-3. What did I decide about limit orders on 10 September, and what did the
-   ticket do wrong?
-4. Why was my naked leg not sent on 11 September, twice, and which of the
-   two reasons is a fault in the terminal?
-5. Which two builder chats are open, where does each work, what is merged
-   already, and what is round 1b?
-6. What happened at 3 pm on 11 September with FYERS, why, and what is the
-   fix?
-7. Where does my journal folder stand, and what does a builder check before
-   and after a test run?
-8. What does "one by one" do on the server, and what keeps a retry from
-   opening a second trade?
-9. What are my hours, and what may never be planned for 09:15?
-10. What is the Trade Journal page waiting for, and what may you not do to it?
-11. What do blinking, solid and muted mean on Home's band, and what is a
-    target on a leg?
-12. Which of the six trades are paper trades?
+3. What has NEVER been seen on a live market, and why not?
+4. How many backups of my record exist, when was the newest one taken, and
+   what is still not built?
+5. Where does my backtest history live, how many copies are there, and what
+   would a copy cost?
+6. What did the two public copies of my terminal hold, and why was my live
+   site never at risk?
+7. What was my build machine costing me, how was it found, and what did the
+   change cost me in time?
+8. What are my hours, and what may never be planned for 09:15?
+9. What is the Trade Journal page waiting for, and what may you not do to it?
+10. What do blinking, solid and muted mean on Home's band?
+11. Which of my trades are paper trades?
+12. When is a git worktree allowed, and what must its builder prove first?
 13. List every question you have where two documents disagree or something is
     unclear, with your recommendation for each.
 ```

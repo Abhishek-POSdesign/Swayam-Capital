@@ -1423,6 +1423,148 @@ running now overlap in exactly one place, the last-backup age on Home, which
 belongs to `BUILD_05`; round two does not touch that line and `BUILD_05` touches
 nothing else on Home. `docs/builds/README.md` carries the same rule.
 
+### 2.21 THE NIGHT OF 11 SEPTEMBER. Nine pull requests, and what was learned. Written by the main chat.
+
+**He was the messenger all evening**, carrying handoffs and prompts between
+four chats while doing his office work, and he asked for everything gathered in
+one place before this chat is cleared. This section is that record.
+
+#### 2.21.1 What merged
+
+| PR | What |
+|---|---|
+| #71 | Build B, resting orders |
+| #72 | Polish round one, his nine-item review list minus the AI panel |
+| #73 | The DuckDB roadmap edit and the three faults recorded |
+| #74 | Round 1b, the three faults from his live test, plus four more found in review |
+| #75 | The three build documents: the look, the AI panel, cloud hygiene |
+| #76 | Round two, the whole terminal on Atlas's grounds |
+| #77 | The stale notifications mock, which had been hiding behind "1 long-standing failure" |
+| #78 | Build C, cloud hygiene: 35.8 GB down to 8.1 and the waste stopped at its source |
+| #79 | The clarity pass on the new look |
+
+**The suite is at zero failures for the first time in weeks.** #77 removed the
+red everyone had learned to ignore. Keep it at zero: a normalised failure is how
+the next real one hides.
+
+#### 2.21.2 ⚠️ Two public copies of his terminal, found and destroyed
+
+`swayam-dashboard` existed in **three** regions, not one. The `asia-east1` and
+`asia-south1` copies were 4 September builds with **no Identity-Aware Proxy**,
+`allUsers` in `roles/run.invoker`, ingress `all`, and **his real
+`SUPABASE_SERVICE_ROLE_KEY`, `FYERS_ACCESS_TOKEN`, `FYERS_CLIENT_ID`,
+`FYERS_APP_ID` and `FYERS_SECRET_KEY` mounted from Secret Manager at `latest`**.
+Anyone with either URL had a no-sign-in copy of his terminal wired to his live
+database.
+
+**The live site was never exposed.** It is the `asia-southeast1` service, its
+IAP was on throughout, and the domain returned the Google sign-in challenge
+before, during and after. Checked by loading it, not by reading a setting.
+
+The public bindings were removed first, then both services deleted, then he
+deleted the leftover `asia-south1/swayam` repository himself. **The only reason
+this was not worse is that there is no order-placement code in this
+repository.**
+
+**The lesson, and it is new:** a region tried once and abandoned keeps its
+secrets, its ingress and its public binding for ever. Nothing expires. When a
+region is abandoned, delete the service the same day.
+
+#### 2.21.3 The build machine nobody had counted
+
+Every build ran on `E2_HIGHCPU_8`. Cloud Build's free 2,500 minutes a month
+apply **only to `e2-standard-2` in the default pool**; every other machine bills
+from the first minute. At roughly 1,450 build-minutes a month that was **about
+₹2,000 every month since 4 September**, against **₹0** on the default machine.
+**Seven times what the image pile cost**, and invisible because nobody had
+multiplied the minutes.
+
+Measured after the change, on the running system: the first build on
+`E2_STANDARD_2` took **6m52s** against a previous average of **4m52s**. Two
+minutes on a build he never watches. **It stays.**
+
+Found because the cost chat questioned one line of a build document the main
+chat had not thought about at all.
+
+#### 2.21.4 Both build documents were wrong, and both builders caught it
+
+- **`BUILD_06` named one token file and there are two.** Home, the desk, both
+  tickets, the chain and the targets modal all render inside `sw-desk` and take
+  their colours from `swayam-desk.css`, whose light ground was pure white on
+  white. Following the document literally would have restyled the journal page
+  and left the two pages he looks at every day untouched.
+- **`BUILD_05`'s cleanup policy would have freed 0.85 GB of 35.4.** Every Cloud
+  Run revision pins an image digest and there were 82 revisions pinning 81 of
+  the 83 images. **Nothing prunes Cloud Run revisions**, so the unlock was
+  deleting revisions first. And the document's "keep every tagged image" rule
+  would have protected everything for ever once §3.1 tagged every image with
+  its commit SHA.
+
+**This is the loop working.** Documents are written before code precisely so a
+builder can find the fault in the plan rather than in production.
+
+#### 2.21.5 The vault cannot be reached from the cloud, and it broke an instruction
+
+`BUILD_05` §3.5 said the nightly backup would keep thirty nights in his vault.
+**A job running in a Google data centre cannot see `G:\My Drive\Second Brain`**,
+which is a local filesystem path, the same root cause that breaks his daily
+check-in on the live site (§2.13). So §3.5 splits:
+
+- **Cloud half, 02:00 IST:** Supabase to the bucket. Never depends on his PC.
+- **Local half, later the same night:** the thirty-night vault copy and the
+  backtest-history sync, with catch-up so a night his PC was off runs at next
+  logon rather than being skipped in silence.
+
+**The local half must run AFTER the cloud half finishes**, or it copies the
+previous night's backup and reports success.
+
+#### 2.21.6 His backtest history exists in exactly one place
+
+`data/history`, 631 MB, on his PC, `.gitignore`d. The minute bars alone took 90
+minutes and 8,576 FYERS requests to assemble. The roadmap says the bucket is its
+copy and **that copy has never been made**. Cost to make it, read from Google's
+billing catalogue rather than quoted: **₹1.07 a month**.
+
+#### 2.21.7 The SIGABRT, solved
+
+Revision 00068, 2026-09-10 14:52 IST. `services/fyers_token.py` called Secret
+Manager with **no timeout**; a slow call held the worker past gunicorn's
+60-second limit and it aborted. The stale-token fallback was already correct and
+simply never ran in time. Fixed with `timeout=5.0`. A cause, not a hardening.
+
+#### 2.21.8 The data map, his idea
+
+He asked for one place holding every data store, where its backup is, how to
+reach it, and what deletes it, so that any new chat can be pointed at it.
+**Decided: it lives in his vault, not in the terminal**, because the day he most
+needs to know where his backups are is the day the app is broken. It is
+`02 - Projects/Trading/06 - Platform Plan/Data Map.md`, written in two halves: a
+hand-written map the automation never touches, and a live-figures block between
+markers that the local nightly task rewrites. A read-only panel in Settings
+showing the same live figures is **deferred until he has used the note for a
+week** and knows what he actually reaches for.
+
+#### 2.21.9 Rules learned tonight, for whoever comes next
+
+1. **A command that reads a file from the repository must be given with its
+   full path.** He ran one from `C:\Windows\System32` and it failed. Worse, the
+   copy in his primary folder was the **broken** version of that lifecycle rule,
+   so a working path would have re-applied the fault.
+2. **"Be careful" is not an instruction.** Either a command should be run or it
+   should not. Say which, and say what it touches.
+3. **The worktree rule was the right reason attached to the wrong rule.** Never
+   a worktree that SHARES the primary venv. A worktree with its OWN venv is
+   allowed and is how Builds B and C were both done. Corrected in `CLAUDE.md`
+   and `docs/builds/README.md`. Standing up that venv is not trivial: on Python
+   3.13 `pip install -e .` fails because `aiohttp` will not build from source.
+4. **Leaving the primary folder on the wrong branch strands another chat's
+   work.** The main chat did this once tonight and the polish chat's round 1b
+   was briefly uncommitted on `main`. Park the folder where you found it.
+5. **Three backup functions exist in `functions/` and none is deployed**, which
+   is why the `db/`, `ai-chat/` and `weekly/` prefixes sit in the bucket with
+   nothing maintaining them. A thing that was built and never deployed looks
+   exactly like a thing that works.
+
 ### 2.18 THE TRADE JOURNAL PAGE. To be planned WITH him, in its own discussion. Not started.
 
 Opened by him on 2026-09-10 after seeing the page with six real rows. Do not
