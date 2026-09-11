@@ -56,7 +56,10 @@ export function previewFill(leg, state) {
   const marketable = leg.bs === 'B' ? limit >= market : limit <= market;
   // HIS PRICE, NOT A RULE. The words matter: on 2026-09-10 a refusal at his
   // own limit read to him as the hedge rule blocking the trade.
-  if (!marketable) return { ok: false, away: true, price: null, how: `your price, not a rule · the ${side} is ${px(market)}` };
+  // BUILD B: a limit the book has not reached rests as an open order rather
+  // than refusing the ticket. `away` still marks it, because the amber note and
+  // the button's wording both key off it; only the meaning changed.
+  if (!marketable) return { ok: false, away: true, price: null, how: `rests until the ${side} reaches ${px(limit)} · the ${side} is ${px(market)}` };
   const better = Math.abs(market - limit) >= 0.005;
   return { ok: true, price: market, how: better ? `limit ${px(limit)} · fills at the ${side} ${px(market)}, better` : `limit ${px(limit)} · fills at the ${side}` };
 }
@@ -243,8 +246,10 @@ export class ExecutionTicket {
 
   async send(mode) {
     if (this.phase !== 'ticket') return;
-    const { blocked } = this.totals();
-    if (blocked.length || this.marketBlock()) return;
+    // BUILD B. A leg away from the book no longer stops the send: it rests.
+    // Only the market being shut stops it, because nothing can fill or rest
+    // after the bell.
+    if (this.marketBlock()) return;
     this.sendMode = mode;
     this.error = null;
     this.refused = [];
@@ -383,9 +388,7 @@ export class ExecutionTicket {
     const awayHtml = t.blocked.length
       ? `<div class="xt-pricenote">
           <span class="chip c-your">your price, not a rule</span>
-          <span>${escapeHtml(t.blocked.join(', '))} ${t.blocked.length === 1 ? 'is' : 'are'} away from the book, so ${t.blocked.length === 1 ? 'it' : 'they'} would not fill now.
-          Nothing is blocking this trade: entry is never gated by a rule. Move the price, press Reset, or switch to market.
-          Resting orders, which would let it wait for the book, arrive in the next build.</span>
+          <span>${escapeHtml(t.blocked.join(', '))} ${t.blocked.length === 1 ? 'is' : 'are'} away from the book. ${t.blocked.length === 1 ? 'It' : 'They'} will rest as open orders until the book reaches your price, inside today's price band, and expire at the bell. The other legs fill now.</span>
         </div>`
       : '';
 
@@ -416,12 +419,12 @@ export class ExecutionTicket {
       </div>
       ${awayHtml}
       <div class="xt-actions">
-        <button class="btn pri" type="button" data-xt="send-all" ${t.blocked.length || shut ? 'disabled' : ''}>Execute all legs</button>
-        <button class="btn" type="button" data-xt="send-one" ${t.blocked.length || shut ? 'disabled' : ''}>Execute one by one</button>
+        <button class="btn pri" type="button" data-xt="send-all" ${shut ? 'disabled' : ''}>${t.blocked.length ? 'Send the fills and rest the rest' : 'Execute all legs'}</button>
+        <button class="btn" type="button" data-xt="send-one" ${shut ? 'disabled' : ''}>Execute one by one</button>
         <span class="why">${shut
           ? escapeHtml(shut)
           : t.blocked.length
-            ? escapeHtml(`Your price, not a rule: ${t.blocked.join(', ')} would not fill at that price. Move it, press Reset, or switch it to market.`)
+            ? escapeHtml(`Your price, not a rule: ${t.blocked.join(', ')} will wait for the book and expire at 15:30. Everything else fills now.`)
             : 'buys go first by default, that is what earns the hedged margin · one press, one trade · a buy pays the ask, a sell gets the bid'}</span>
       </div>`;
   }
@@ -459,11 +462,40 @@ export class ExecutionTicket {
       : r.journal_status === 'pending'
         ? 'The note is queued for your vault; the drainer writes it from your PC.'
         : r.journal_status === 'failed' ? 'The note could not be written or queued. Write it by hand.' : '';
+    // BUILD B. What FILLED and what is WAITING are two different things and
+    // are never blurred into one list. A trade that opened with two of four
+    // legs must not read as a four-leg trade.
+    const resting = Array.isArray(r.resting) ? r.resting : [];
+    const opened = Boolean(r.position_id);
+    const restingHtml = resting.length
+      ? `<div class="xt-resting">
+          <h3>${resting.length} order${resting.length === 1 ? '' : 's'} resting</h3>
+          <ul class="fills">${resting.map((o) => `<li><span class="st wait">RESTING</span>
+            <div><span class="bs ${String(o.direction) === 'BUY' ? 'B' : 'S'}">${escapeHtml(String(o.direction || ''))}</span> &nbsp;<b>${escapeHtml(o.leg || '')}</b>
+              <small>${escapeHtml(o.how || '')}</small></div>
+            <b class="num">${escapeHtml(px(o.limit_price))}</b></li>`).join('')}</ul>
+          <p class="xt-awake">They fill only while this terminal is awake and reading prices, which means
+            while one of your pages is open. Nothing is watched while you are away, and everything still
+            waiting expires at 15:30. You can change a price or cancel from Open orders on the desk.</p>
+        </div>`
+      : '';
+    const restingError = r.resting_error
+      ? `<div class="xt-refused"><b>The legs away from the book are NOT waiting.</b> ${escapeHtml(String(r.resting_error))} Send them again when you want them.</div>`
+      : '';
+
     return this._header(
-      r.stopped ? `Stopped. Trade #${id} is open with ${this.fills.length} leg${this.fills.length === 1 ? '' : 's'}.` : `Filled. Trade #${id} is open.`,
-      'Every buy was filled at the ask and every sell at the bid, read from the live book at the moment of sending. Here is what actually happened.',
+      r.stopped
+        ? `Stopped. Trade #${id} is open with ${this.fills.length} leg${this.fills.length === 1 ? '' : 's'}.`
+        : opened
+          ? `Filled. Trade #${id} is open${resting.length ? `, with ${resting.length} order${resting.length === 1 ? '' : 's'} waiting` : ''}.`
+          : `Nothing filled yet. ${resting.length} order${resting.length === 1 ? '' : 's'} waiting for your price.`,
+      opened
+        ? 'Every buy was filled at the ask and every sell at the bid, read from the live book at the moment of sending. Here is what actually happened.'
+        : 'No trade is open yet. The first order to fill opens it, and the others join that same trade.',
     ) +
+      restingError +
       `<div class="xt-fills"><ul class="fills">${this.fills.map((f, i) => this._fillLine(f, i)).join('')}</ul></div>
+      ${restingHtml}
       <div class="xt-foot">
         <div class="kv">
           <span>Net ${net === null ? 'debit or credit' : net >= 0 ? 'credit received' : 'debit paid'}</span><b class="${net === null ? 'na' : net >= 0 ? 'up' : 'down'}">${net === null ? 'unavailable' : escapeHtml(inr(Math.abs(net)))}</b>

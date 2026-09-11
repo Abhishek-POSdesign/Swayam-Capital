@@ -10,6 +10,63 @@
 
 ---
 
+## STATE, 2026-09-10 night. BUILT, VERIFIED ON THE RUNNING SYSTEM, PUSHED.
+
+Branch `feature/swayam-build03-resting-orders-044`, cut from `main` at the
+merge of pull request #66. **Migration 024 IS APPLIED**, by him, at 17:59 on
+2026-09-10. Nothing is merged, so nothing is live.
+
+**Built in a git worktree, on his instruction of 2026-09-10 night**, because
+another chat held the primary folder for Build A's feedback fixes. The
+worktree was given its OWN Python environment, installed editable, and
+`import swayam` was proved to resolve inside the worktree before a single test
+ran. Its servers run on 8010 and 5183 so they cannot collide with the primary
+folder's 8000 and 5173. **`main` will be merged into this branch again before
+the pull request**, because Build A's fixes land first.
+
+### What was proved on the running system, 2026-09-10 night
+
+| | Proof |
+|---|---|
+| The price band is real and it MOVES | Live FYERS depth, `NSE:NIFTY26SEP23800CE`: lower 0.05, upper **327.45**, tick 0.05. It was 263.85 on 10 September, so a band read once and cached would be wrong the next day |
+| A price outside the band is refused, with the band named | `PATCH /api/orders/{id}` with 900.00: "900.00 is outside today's price band for this contract, which is 0.05 to 327.45 from FYERS" |
+| A price off the tick is refused, with the two prices that trade | 97.53 refused: "The nearest prices that trade are 97.50 and 97.55" |
+| A re-price keeps the order | Same id back, `limit_price` 97.50, still resting |
+| Cancel, and cancel twice | First: "Cancelled. 23,500 CE is no longer waiting, and it cost nothing." Second: refused, in plain words |
+| The bell expires everything resting | Four orders placed after 15:30 were expired by the watcher's own pass, nothing charged |
+| **The bell's warning, his instruction of 2026-09-10** | On his real open condor: "You are NOT out of 23,800 CE. That exit never got your price and expired at 15:30, so the leg is still yours. Check the 15:20 naked-shorts reading before you carry it overnight." Live, on Home AND in the position area |
+| The three groups on the desk | Rendered from the real backend in both themes, with the awake sentence in every state |
+| The watcher is attached and running | Ten passes logged off the chain feed's refreshes, zero FYERS calls of its own |
+| Both suites | Python 692 passing, JavaScript 339 passing in 36 files. His journal folder held 6 notes before and after every run |
+
+**The verification orders were removed again**, and the table was shown empty:
+`swayam_orders` 0 rows, `swayam_positions` 87 rows with 1 open, and
+`swayam_trade_history` 5 rows, all untouched.
+
+### WHAT ONLY HIS WINDOW CAN PROVE, and it is more than the document expected
+
+**A fill from the book by the watcher**, as the document says. And one more,
+which follows from the design rather than from a gap in it: **a resting order
+on the live screen at all.** Everything resting expires at 15:30 and nothing
+may be placed after it, so between the bell and the next open there is no such
+thing as a legitimately resting order. The RESTING group was therefore proved
+from a captured reply in the JavaScript suite and in its empty state on the
+running page; the row itself he will see first, in his own window.
+
+### Two things added beyond section 3.1, both required by his own instructions
+
+- **`group_id`**, the press of the ticket an order came from. Sibling entry
+  orders need it to join the trade the first of them opens, and the bell's
+  warning needs it to know an expired exit was part of an Exit everything.
+- **A sixth status, `filling`.** His requirement of 2026-09-10: "The move from
+  resting to filled is one conditional update in the database that only one
+  process can win." That update needs somewhere to move the row TO. A row
+  stranded in `filling` means a process died mid-send and is never re-armed
+  automatically, because nothing can know from there whether the leg reached
+  the trade.
+
+---
+
 ```
 Swayam Capital, my NIFTY options terminal. THIS CHAT IS A BUILDER CHAT. It
 builds exactly ONE thing: Build 03, resting orders. A limit order away from

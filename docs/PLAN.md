@@ -1093,6 +1093,65 @@ identically on `main`, JavaScript 314 passing in 35 files, his journal folder
 6 notes before and after every run, zero console errors on a clean load in
 both themes. **Only his window can prove a target reached on a live mark.**
 
+### 2.12.9 BUILD B, RESTING ORDERS. Built 2026-09-10 night. Pull request #71 open, not merged.
+
+`docs/builds/BUILD_03_RESTING_ORDERS.md` has the full state. In short: item 1
+of 2.12.5, his words, is now built. **A limit the book has not reached no
+longer refuses anything. It rests as an open order until the book comes to it,
+for entry and for exit, and expires at the bell.**
+
+- **The order book**, `swayam_orders`, migration 024, **applied by him at
+  17:59 on 2026-09-10**. One trading day only. A row there holds no margin and
+  has cost nothing until it fills.
+- **The band is the exchange's, read per order from the FYERS DEPTH call**,
+  not the quote, which carries none. Verified live: the 23,800 September call
+  banded 0.05 to 327.45 with a 0.05 tick that night, against 263.85 on
+  10 September, so the band genuinely moves and genuinely must be read each
+  time. A depth call that fails still lets the order rest and says the band
+  could not be read. Never an invented band.
+- **The watcher rides on the chain feed's refreshes and never calls FYERS.**
+  When the book reaches his price it sends the order down EXACTLY the path a
+  leg he pressed Send on takes, so the fill rule, the charges, the note and the
+  execution key are all the code that already existed. `services/fills.py` is
+  untouched.
+- **One order fills at most once**, and the guarantee is one conditional
+  update in the database that only one process can win. His own requirement.
+- **Three groups in the position area**: resting with what each waits for,
+  filled from the book today, expired or cancelled today. **The count reaches
+  Home's band as its third figure.**
+- **His addition of 2026-09-10:** a resting exit killed by the bell while its
+  trade is still open is announced in plain words on both screens and points at
+  the 15:20 naked-shorts check. Proved live on his real condor. A warning only;
+  it never trades.
+- **And the sentence that must never be missing**, on the screen in every
+  state and in the handoff: a resting order fills only while the terminal is
+  awake and reading prices, which on Cloud Run means while a page of his is
+  open. It is not sitting at the broker.
+
+**The main chat's review of 2026-09-11 found a real bug and it is fixed.** The
+watcher re-sent a claimed order down a path that, since this build, RESTS a
+limit the book has not reached. When the market moved away in between, that
+re-send wrote a SECOND order for the same leg and let the watcher mark the
+original filled on an empty fill. The execute, add-leg and exit paths now have
+an internal `allow_resting`, and the watcher enters through `execute_trade_now`,
+`add_leg_now` and `exit_leg_now`, which mean fill now or refuse; a moved-away
+book releases the order back to resting. Nothing may read an answer as a fill
+without a real position id and a real fill. One test per path.
+
+**And no unit test may reach FYERS any more.** `tests/conftest.py` stands in
+for `fyersModel.FyersModel` and RECORDS every attempt, because several call
+sites treat a broker failure as "unavailable" and would swallow the reach. It
+caught one test that was not this build's: the institutional-separation test in
+`test_home_snapshot.py` spent five real FYERS requests per suite run on an
+assertion about field names.
+
+Verified on the merged tree, 2026-09-11: Python 695 passing with the one stale
+mock still failing identically on `main`, JavaScript 340 passing in 36 files,
+the three groups rendered from the real backend in both themes, the
+verification orders removed again and `swayam_orders` shown empty. **Only his
+window can prove a fill from the book, and, because nothing may rest after
+15:30, a resting order on the live screen at all.**
+
 ### 2.12.6 WHAT HE CORRECTED AND DECIDED ON 2026-09-10 EVENING. Read before any build.
 
 **Corrections, in his words.**

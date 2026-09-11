@@ -58,6 +58,13 @@ def _quote(ltp=100.0, bid=99.5, ask=100.5, state="live", open_=True):
     return LegQuote(ltp=ltp, bid=bid, ask=ask, spot=23635.1, state=state, market_open=open_, as_of=None)
 
 
+def _band(lower=0.05, upper=1000.0, tick=0.05):
+    """A band the way the FYERS depth call reports one. Build B."""
+    from swayam.services.price_band import FYERS_DEPTH, PriceBand
+
+    return PriceBand(lower=lower, upper=upper, tick=tick, source=FYERS_DEPTH, symbol="NSE:TEST")
+
+
 def test_a_market_buy_pays_the_ask_and_a_market_sell_gets_the_bid():
     buy = resolve_fill(direction="buy", order_type="MARKET", limit_price=None, quote=_quote(), leg_label="BUY 24,000 CE")
     assert buy.price == 100.5 and buy.side_hit == "ask"
@@ -205,22 +212,119 @@ def test_a_market_leg_is_filled_at_the_servers_price_even_if_the_browser_sent_an
 
 @pytest.mark.fake_db
 @pytest.mark.real_fills
-def test_one_unfillable_limit_refuses_the_whole_ticket_and_names_every_leg(fake_db):
-    with patch("swayam.api.routes.execution.quote_leg", side_effect=lambda **kw: _quote(ltp=100.0)):
+def test_a_limit_away_from_the_book_rests_and_the_rest_of_the_ticket_fills(fake_db):
+    """BUILD B replaced this test's original meaning, on purpose.
+
+    It used to assert that one limit the book had not reached refused the
+    WHOLE ticket. That refusal cost him his strangle on 10 September and is
+    the fault Build B exists to remove. What must be true now is: the legs
+    that can fill DO, the ones that cannot become open orders on the trade
+    those fills opened, and one press is still one trade.
+    """
+    with patch("swayam.api.routes.execution.quote_leg", side_effect=lambda **kw: _quote(ltp=100.0)), \
+         patch("swayam.api.routes.execution.band_for_leg", side_effect=lambda **kw: _band()), \
+         patch("swayam.services.orders.session_is_over", return_value=False):
         body = _condor(legs=[
             _leg("buy", 23800, "PE", 120.0, order_type="LIMIT", limit_price=95.0),   # away from the market
             _leg("sell", 23600, "PE", 60.0, order_type="LIMIT", limit_price=110.0),  # away the other way
-            _leg("buy", 23900, "PE", 100.0),                                          # fine
+            _leg("buy", 23900, "PE", 100.0),                                          # fills now
+        ], leg_order="as_sent")
+        res = client.post("/api/execute/multi-leg", json=body)
+
+    assert res.status_code == 200, res.text
+    body = res.json()
+
+    # One trade, opened by the one leg that could fill.
+    positions = fake_db.inserted_into("swayam_positions")
+    assert len(positions) == 1
+    assert len(positions[0]["legs"]) == 1, "only the leg that filled is on the trade"
+    assert len(body["fills"]) == 1
+
+    # And two orders waiting, on that same trade.
+    orders = fake_db.inserted_into("swayam_orders")
+    assert len(orders) == 2
+    assert {o["kind"] for o in orders} == {"add_leg"}
+    assert {o["position_id"] for o in orders} == {positions[0]["id"]}
+    assert {float(o["limit_price"]) for o in orders} == {95.0, 110.0}
+    assert all(o["status"] == "resting" for o in orders)
+    assert body["resting_count"] == 2
+    assert {r["leg"] for r in body["resting"]} == {"BUY 23,800 PE", "SELL 23,600 PE"}
+    assert "rest" in body["message"].lower()
+
+
+@pytest.mark.fake_db
+@pytest.mark.real_fills
+def test_when_no_leg_can_fill_every_leg_rests_and_no_trade_is_opened(fake_db):
+    """His words: it must sit in the system until the bid and ask reach it.
+
+    Nothing is opened, nothing is charged, and the first order to fill is what
+    opens the trade. The siblings share a group so they can find it.
+    """
+    with patch("swayam.api.routes.execution.quote_leg", side_effect=lambda **kw: _quote(ltp=100.0)), \
+         patch("swayam.api.routes.execution.band_for_leg", side_effect=lambda **kw: _band()), \
+         patch("swayam.services.orders.session_is_over", return_value=False):
+        body = _condor(legs=[
+            _leg("buy", 23800, "PE", 120.0, order_type="LIMIT", limit_price=95.0),
+            _leg("sell", 23600, "PE", 60.0, order_type="LIMIT", limit_price=110.0),
+        ], leg_order="as_sent")
+        res = client.post("/api/execute/multi-leg", json=body)
+
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["position_id"] is None
+    assert body["status"] == "resting"
+    assert body["fills"] == []
+    assert fake_db.inserted_into("swayam_positions") == [], "no trade until something fills"
+
+    orders = fake_db.inserted_into("swayam_orders")
+    assert len(orders) == 2
+    assert {o["kind"] for o in orders} == {"entry"}
+    assert all(o["position_id"] is None for o in orders)
+    assert len({o["group_id"] for o in orders}) == 1, "one press, one group"
+
+
+@pytest.mark.fake_db
+@pytest.mark.real_fills
+def test_after_the_bell_nothing_rests_and_he_is_told_to_use_his_window(fake_db):
+    """His instruction of 2026-09-10: refuse after 15:30, exactly as the close does.
+
+    An order placed after the bell would expire the same second, so accepting
+    it would be a lie of omission.
+    """
+    with patch("swayam.api.routes.execution.quote_leg", side_effect=lambda **kw: _quote(ltp=100.0)), \
+         patch("swayam.api.routes.execution.band_for_leg", side_effect=lambda **kw: _band()), \
+         patch("swayam.services.orders.session_is_over", return_value=True):
+        body = _condor(legs=[
+            _leg("buy", 23800, "PE", 120.0, order_type="LIMIT", limit_price=95.0),
         ])
         res = client.post("/api/execute/multi-leg", json=body)
+
     assert res.status_code == 422, res.text
     detail = res.json()["detail"]
-    assert "Nothing was sent" in detail["error"]
-    refused = detail["refused_legs"]
-    assert len(refused) == 2
-    assert {r["leg"] for r in refused} == {"BUY 23,800 PE", "SELL 23,600 PE"}
-    assert all("would not fill now" in r["reason"] for r in refused)
+    assert "nothing is resting" in detail["error"].lower()
+    assert "window" in detail["refused_legs"][0]["reason"].lower()
     assert fake_db.inserted_into("swayam_positions") == []
+    assert fake_db.inserted_into("swayam_orders") == []
+
+
+@pytest.mark.fake_db
+@pytest.mark.real_fills
+def test_a_price_outside_the_exchange_band_rests_nothing_and_names_the_band(fake_db):
+    """The band is the exchange's, read from the FYERS depth call at placement."""
+    with patch("swayam.api.routes.execution.quote_leg", side_effect=lambda **kw: _quote(ltp=100.0)), \
+         patch("swayam.api.routes.execution.band_for_leg",
+               side_effect=lambda **kw: _band(lower=0.05, upper=200.0)), \
+         patch("swayam.services.orders.session_is_over", return_value=False):
+        body = _condor(legs=[
+            _leg("buy", 23800, "PE", 120.0, order_type="LIMIT", limit_price=0.02),
+        ])
+        res = client.post("/api/execute/multi-leg", json=body)
+
+    assert res.status_code == 422, res.text
+    detail = res.json()["detail"]
+    assert "outside" in detail["refused_legs"][0]["reason"]
+    assert "200.00" in detail["refused_legs"][0]["reason"], "the band is named"
+    assert fake_db.inserted_into("swayam_orders") == []
 
 
 @pytest.mark.fake_db

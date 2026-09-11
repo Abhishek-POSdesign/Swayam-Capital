@@ -198,11 +198,25 @@ class _Margin:
     source = "FYERS span margin"
 
 
-def _post(store, path, body, *, quote=fake_quote):
+def _band(lower=0.05, upper=1000.0, tick=0.05):
+    """A band the way the FYERS depth call reports one. Build B."""
+    from swayam.services.price_band import FYERS_DEPTH, PriceBand
+
+    return PriceBand(lower=lower, upper=upper, tick=tick, source=FYERS_DEPTH, symbol="NSE:TEST")
+
+
+def _post(store, path, body, *, quote=fake_quote, session_over=False):
     """One request, with the market, the broker and the vault stood in for."""
     with (
         patch("swayam.api.routes.execution.db", store),
         patch("swayam.api.routes.positions.db", store),
+        # BUILD B. The order book, the exchange's band and the bell. Without
+        # the first of these the resting path would reach the LIVE database,
+        # which the guard would stop, correctly, for the wrong reason.
+        patch("swayam.services.orders._client", return_value=store.client),
+        patch("swayam.api.routes.execution.band_for_leg", side_effect=lambda **kw: _band()),
+        patch("swayam.services.orders.session_is_over", return_value=session_over),
+        patch("swayam.services.order_watcher.invalidate"),
         patch("swayam.api.routes.execution.quote_leg", side_effect=quote),
         patch("swayam.services.fills.quote_leg", side_effect=quote),
         patch("swayam.api.routes.execution.try_get_margin", return_value=(_Margin(), None)),
@@ -380,32 +394,70 @@ def test_a_reverse_closes_one_leg_and_opens_its_opposite():
 # ------------------------------------------------------- his price, not a rule
 
 
-def test_a_limit_the_book_has_not_reached_refuses_in_his_words():
-    """The wording is fixed, because a price and a rule must never read alike.
+def test_a_limit_the_book_has_not_reached_rests_and_the_trade_is_untouched():
+    """BUILD B. His price on the way OUT waits, exactly as it does on the way in.
 
-    On 2026-09-10 his limit price was refused beside red "Unlimited" rule
-    tiles and it read like the hedge rule had blocked him. It had not.
+    This test used to assert a 422. That refusal is the fault Build B removes:
+    his words of 10 September were that a limit "must be sitting in the system
+    till the time the bid and ask reach the price I want". What must be true
+    now is that an order is written, the leg is STILL OPEN, no result row
+    exists and the note was never touched.
     """
     store = FakeStore()
     # Buying back the sold 23,800 call needs the ASK, which is 98.75. Bidding
-    # 95.00 for it will not fill today.
+    # 95.00 for it will not fill today, so it waits for the ask to come down.
     resp, note, _ = _post(
         store,
         "/api/positions/pos-condor-1/legs/3/exit",
         {"order_type": "LIMIT", "limit_price": 95.0},
     )
 
-    assert resp.status_code == 422, resp.text
-    reason = resp.json()["detail"]["refused_legs"][0]["reason"]
-    assert reason.startswith("Your price, not a rule:")
-    assert "the ask is 98.75" in reason
-    assert "Resting orders arrive in the next build" in reason
-    assert "move the price or switch to market" in reason
-    assert "rule" not in reason.replace("not a rule", ""), "a price refusal must not cite a rule"
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "resting"
+    assert body["fill"] is None
+    assert body["resting_count"] == 1
 
-    # NOTHING was written. The leg is still open and the note was not touched.
+    waiting = body["resting"][0]
+    assert waiting["limit_price"] == 95.0
+    assert waiting["side"] == "ask", "buying it back needs the ask"
+    assert waiting["book"] == 98.75
+    assert waiting["kind"] == "exit_leg"
+    assert "rests as an open order" in waiting["how"]
+    assert "not a rule" in waiting["how"]
+
+    # The ORDER was written, with the exit direction on it and the leg named.
+    orders = store.inserts.get("swayam_orders", [])
+    assert len(orders) == 1 and len(orders[0]) == 1
+    order = orders[0][0]
+    assert order["kind"] == "exit_leg"
+    assert order["position_id"] == "pos-condor-1"
+    assert order["leg"]["sequence"] == 3
+    assert order["leg"]["direction"] == "buy", "the ORDER buys back the leg he sold"
+    assert order["status"] == "resting"
+
+    # NOTHING about the trade moved. Four legs open, no result, no note.
     assert len(store.open_legs()) == 4
     assert store.results == []
+    note.assert_not_called()
+
+
+def test_after_the_bell_an_exit_limit_rests_nothing_and_says_to_use_the_window():
+    """His instruction of 2026-09-10: refuse after 15:30, exactly as the close does."""
+    store = FakeStore()
+    resp, note, _ = _post(
+        store,
+        "/api/positions/pos-condor-1/legs/3/exit",
+        {"order_type": "LIMIT", "limit_price": 95.0},
+        session_over=True,
+    )
+
+    assert resp.status_code == 422, resp.text
+    detail = resp.json()["detail"]
+    assert "nothing is resting" in detail["error"].lower()
+    assert "window" in detail["refused_legs"][0]["reason"].lower()
+    assert store.inserts.get("swayam_orders", []) == []
+    assert len(store.open_legs()) == 4
     note.assert_not_called()
 
 

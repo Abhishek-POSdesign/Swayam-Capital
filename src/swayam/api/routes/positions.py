@@ -11,6 +11,7 @@ Provides:
 from datetime import date, datetime, timezone
 import logging
 import time
+import uuid
 from decimal import Decimal
 from typing import Any, Optional
 
@@ -20,7 +21,7 @@ from pydantic import BaseModel, Field
 from swayam.api.journal_writer import append_exit_block
 from swayam.services.execution_safety import mark_journal_status, queue_journal_note
 from swayam.services.structure_name import is_open as _leg_is_open, name_from_legs, resolve_name
-from swayam.services.exit_refusal import reword_if_his_price
+from swayam.services.exit_refusal import is_his_price, reword_if_his_price
 from swayam.services.phase import read_phase
 from swayam.services.targets import evaluate_position as evaluate_targets
 from swayam.services.fills import FillRefused, LegQuote, exit_side_of, resolve_fill, spread_cost_inr
@@ -153,6 +154,14 @@ class LivePositionResponse(BaseModel):
     state: str = "quiet"
     alerts: list[dict[str, Any]] = []
     targets: Optional[dict[str, Any]] = None
+
+    # BUILD B. How many orders are still waiting on this trade, which is the
+    # count Home's band shows as its third figure, and the line the bell puts
+    # there when a resting exit expired and left a leg he meant to be out of.
+    # Both are filled in by `_attach_resting_counts` from ONE read of the
+    # order book, so neither screen counts anything for itself.
+    resting_orders: int = 0
+    orders_warning: Optional[str] = None
 
     # live | closing. Nothing may print LIVE unless this says live.
     market_state: str = "closing"
@@ -652,7 +661,53 @@ def get_positions_live() -> list[LivePositionResponse]:
                 _unpriced_position(pos, reason=reason, market_state=market_state, read_at=read_at)
             )
 
+    # BUILD B. What is WAITING on each of these trades, so Home's band can say
+    # "2 resting" and the desk's card can too, without either of them counting
+    # anything for itself. One read of the order book for the whole reply.
+    _attach_resting_counts(results)
     return results
+
+
+def _attach_resting_counts(results: list[LivePositionResponse]) -> None:
+    """How many orders are waiting on each open trade, and the bell's warning.
+
+    A failure here must never take the position area down: the money on the
+    card is the point, and a missing count says so rather than raising.
+    """
+    if not results:
+        return
+    from swayam.services import orders as book
+
+    try:
+        rows = book.orders_for_day()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Could not read the order book for the live positions: %s", exc)
+        return
+
+    resting: dict[str, int] = {}
+    stranded: dict[str, list[str]] = {}
+    for row in rows:
+        position_id = str(row.get("position_id") or "")
+        if not position_id:
+            continue
+        if row.get("status") in book.OPEN_STATES:
+            resting[position_id] = resting.get(position_id, 0) + 1
+        elif row.get("status") == book.EXPIRED and row.get("kind") in book.EXIT_KINDS:
+            stranded.setdefault(position_id, []).append(book.leg_label(row.get("leg") or {}))
+
+    for result in results:
+        pid = str(result.position_id)
+        result.resting_orders = resting.get(pid, 0)
+        legs = stranded.get(pid)
+        if legs:
+            # HIS INSTRUCTION, 2026-09-10. A resting exit that the bell killed
+            # leaves him holding a leg he meant to be out of, and he must not
+            # discover that by accident.
+            result.orders_warning = (
+                f"You are NOT out of {', '.join(sorted(set(legs)))}. That exit never got your "
+                f"price and expired at 15:30, so the leg is still yours. Check the 15:20 "
+                f"naked-shorts reading before you carry it overnight."
+            )
 
 
 def _unpriced_position(
@@ -1084,8 +1139,204 @@ def _resolve_journal_path(pos: dict[str, Any], position_id: str) -> Optional[str
     return None
 
 
-@router.post("/api/positions/{position_id}/close", response_model=ClosePositionResponse)
-def close_position(position_id: str, req: ClosePositionRequest) -> ClosePositionResponse:
+def _legs_that_would_rest(
+    legs: list[dict[str, Any]],
+    exit_legs: Optional[list[CloseLegItem]],
+    chain_lookup: dict[tuple[float, str], dict[str, Any]],
+    market_open: bool,
+    supplied_only: bool,
+) -> list[dict[str, Any]]:
+    """Which legs of this Exit everything are waiting on HIS PRICE.
+
+    Decided on the chain that has already been read, so it costs nothing extra
+    and happens before a single leg is touched.
+
+    A price he SUPPLIED himself is not an order and never rests: it is his
+    instruction from a terminal and is recorded as supplied. After the bell
+    nothing rests either, and the close keeps its own words about the market
+    being shut.
+    """
+    if supplied_only or not market_open or not exit_legs:
+        return []
+
+    waiting: list[dict[str, Any]] = []
+    for leg in legs:
+        if not _leg_is_open(leg):
+            continue
+        strike = float(leg.get("strike", 0.0))
+        opt_type = str(leg.get("option_type", "CE")).upper()
+        instruction = None
+        for el in exit_legs:
+            if abs(float(el.strike) - strike) < 0.01 and el.option_type.upper() == opt_type:
+                instruction = el
+                break
+        if instruction is None or instruction.is_supplied:
+            continue
+        if str(instruction.order_type or "MARKET").upper() != "LIMIT":
+            continue
+        limit = _opt_float(instruction.limit_price)
+        if limit is None or limit <= 0:
+            continue
+
+        exit_direction = exit_side_of(str(leg.get("direction", "buy")).lower())
+        quote_row = chain_lookup.get((strike, opt_type)) or {}
+        quote = LegQuote(
+            ltp=quote_row.get("ltp"), bid=quote_row.get("bid"), ask=quote_row.get("ask"),
+            spot=None, state="live", market_open=True, as_of=None,
+        )
+        side_price = quote.ask if exit_direction == "buy" else quote.bid
+        if not is_his_price(
+            order_type="LIMIT",
+            book_is_tradeable=quote.tradeable,
+            side_price=side_price,
+            limit_price=limit,
+        ):
+            continue
+        # The book IS there and it has simply not come to his number. Would it
+        # fill right now? If it would, it is not waiting for anything.
+        marketable = (limit >= side_price) if exit_direction == "buy" else (limit <= side_price)
+        if marketable:
+            continue
+        waiting.append({
+            "sequence": int(leg.get("sequence") or 0),
+            "leg": leg,
+            "limit_price": float(limit),
+            "book": side_price,
+            "side": "ask" if exit_direction == "buy" else "bid",
+            "label": f"{exit_direction.upper()} {strike:,.0f} {opt_type}",
+        })
+    return waiting
+
+
+def _close_some_and_rest_the_others(
+    *,
+    position_id: str,
+    pos: dict[str, Any],
+    legs: list[dict[str, Any]],
+    req: ClosePositionRequest,
+    waiting: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Exit everything, when some of it has to wait for his price.
+
+    The legs that can fill go out ONE AT A TIME through the per-leg exit that
+    Build A built, so each one gets its own fill, its own charges, its own
+    line on the note and its own place in the campaign. The legs that cannot
+    fill become open orders. The trade stays open behind them, and the single
+    result row is written by the same code as always, when the last open leg
+    finally closes.
+
+    Nothing here re-implements a close. It presses the buttons that exist.
+    """
+    from swayam.api.routes.execution import (
+        ExitLegRequest,
+        _rest_them,
+        _exit_leg_request,
+        exit_one_leg,
+    )
+    from swayam.services import orders as book
+
+    underlying = str(pos.get("underlying") or "NIFTY")
+    group_id = str(uuid.uuid4())
+    waiting_sequences = {int(w["sequence"]) for w in waiting}
+
+    # The orders first, so that if the book cannot be written NOTHING has been
+    # exited and he is exactly where he started.
+    resting = _rest_them(
+        [
+            {
+                "sequence": w["sequence"],
+                "leg": _exit_leg_request(w["leg"], pos),
+                "label": w["label"],
+                "limit_price": w["limit_price"],
+                "book": w["book"],
+                "side": w["side"],
+            }
+            for w in waiting
+        ],
+        underlying=underlying,
+        strategy_name=pos.get("strategy_name"),
+        kind=book.EXIT_ALL_LEG,
+        position_id=position_id,
+        group_id=group_id,
+    )
+
+    exited: list[dict[str, Any]] = []
+    could_not: list[dict[str, Any]] = []
+    for leg in legs:
+        if not _leg_is_open(leg):
+            continue
+        sequence = int(leg.get("sequence") or 0)
+        if sequence in waiting_sequences:
+            continue
+        instruction = None
+        for el in (req.exit_legs or []):
+            if (abs(float(el.strike) - float(leg.get("strike", 0.0))) < 0.01
+                    and el.option_type.upper() == str(leg.get("option_type", "")).upper()):
+                instruction = el
+                break
+        try:
+            result = exit_one_leg(position_id, sequence, ExitLegRequest(
+                order_type=str((instruction.order_type if instruction else "MARKET") or "MARKET").upper(),
+                limit_price=(_opt_float(instruction.limit_price) if instruction else None),
+                close_reason=req.close_reason,
+                notes=req.notes,
+            ))
+            exited.append(result)
+        except HTTPException as exc:
+            detail = exc.detail
+            refused = detail.get("refused_legs") if isinstance(detail, dict) else None
+            could_not.append({
+                "leg": f"{float(leg.get('strike', 0)):,.0f} {str(leg.get('option_type', '')).upper()}",
+                "reason": str(
+                    (refused[0].get("reason") if refused else None)
+                    or (detail.get("error") if isinstance(detail, dict) else detail)
+                ),
+            })
+
+    still_open = sum(
+        1 for leg in _reread_legs(position_id, legs) if _leg_is_open(leg)
+    )
+    return {
+        "position_id": position_id,
+        "status": "partially_exited",
+        "trade_closed": still_open == 0,
+        "exited": exited,
+        "exited_count": len(exited),
+        "resting": resting,
+        "resting_count": len(resting),
+        "could_not_exit": could_not,
+        "legs_open": still_open,
+        "message": (
+            f"{len(exited)} leg{'' if len(exited) == 1 else 's'} exited. "
+            + (f"{len(resting)} order{'' if len(resting) == 1 else 's'} now waiting for your price; "
+               f"{'it expires' if len(resting) == 1 else 'they expire'} at 15:30 and the trade stays "
+               f"open behind {'it' if len(resting) == 1 else 'them'}. ")
+            + ("You are NOT out of this trade yet." if still_open else "")
+        ).strip(),
+    }
+
+
+def _reread_legs(position_id: str, fallback: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The trade's legs as they stand now, after the per-leg exits above."""
+    try:
+        res = db.client.table("swayam_positions").select("legs").eq("id", position_id).execute()
+        rows = getattr(res, "data", None) or []
+        if rows and isinstance(rows[0].get("legs"), list):
+            return rows[0]["legs"]
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Could not re-read the legs of %s: %s", position_id, exc)
+    return fallback
+
+
+# The response model is declared on ClosePositionResponse and still returned
+# for every close that actually closes. It is NOT declared on the decorator
+# since Build B, because an Exit everything where some legs rest does not
+# close the trade and has no result row: it answers with what filled, what is
+# waiting and what is still open. Forcing that through a model whose
+# realized_pnl_inr is a required float would mean inventing a zero for a trade
+# that has not finished, which is exactly the kind of number he has banned.
+@router.post("/api/positions/{position_id}/close")
+def close_position(position_id: str, req: ClosePositionRequest) -> Any:
     """Closes an open position with Database-before-Journal ordering.
 
     1. Validates position exists and status is 'open'.
@@ -1152,6 +1403,29 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
         holding_days = 0
         time_in_trade_minutes = None
 
+    # BUILD B. BEFORE ANY LEG IS TOUCHED: which of them are waiting on HIS
+    # PRICE rather than on the market.
+    #
+    # An Exit everything where one leg's limit is away from the book used to
+    # refuse the whole close. It now fills what it can and rests the rest, so
+    # he can walk out of three legs of a condor at market and hold out for a
+    # price on the fourth. The trade stays open behind the leg that waits, and
+    # ONE result row is written only when the last open leg actually closes.
+    #
+    # This runs first, on the chain that has already been read, so it costs no
+    # extra call and nothing is half done: either the whole close proceeds as
+    # it always has, or it is handed over to the per-leg path below.
+    market_open = _market_is_open_now() if not supplied_only else True
+    would_rest = _legs_that_would_rest(legs, req.exit_legs, chain_lookup, market_open, supplied_only)
+    if would_rest:
+        return _close_some_and_rest_the_others(
+            position_id=position_id,
+            pos=pos,
+            legs=legs,
+            req=req,
+            waiting=would_rest,
+        )
+
     gross_exit_value = 0.0
     total_entry_charges = 0.0
     total_exit_charges = 0.0
@@ -1159,7 +1433,6 @@ def close_position(position_id: str, req: ClosePositionRequest) -> ClosePosition
     # Every leg as it will be stored back on the row, carrying its own closed
     # state. A trade is a campaign: this is where each leg's own result lives.
     legs_after: list[dict[str, Any]] = []
-    market_open = _market_is_open_now() if not supplied_only else True
     refused: list[dict[str, Any]] = []
 
     for leg in legs:

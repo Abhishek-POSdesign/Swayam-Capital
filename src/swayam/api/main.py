@@ -13,11 +13,12 @@ from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from swayam.api.routes import ai, execution, health, home, journal, lessons, macro, market, notebook, notifications, pinned, positions, readiness, session, strategy, tts, validation
+from swayam.api.routes import ai, execution, health, home, journal, lessons, macro, market, notebook, notifications, orders, pinned, positions, readiness, session, strategy, tts, validation
 from swayam.api.chain_feed import chain_feed
 from swayam.api.spot_feed import SpotFeed
 from swayam.api.ws_manager import ws_manager
 from swayam.fyers_client import fyers_client
+from swayam.services import order_watcher
 
 
 async def _broadcast_tick(frame: dict[str, Any]) -> None:
@@ -51,6 +52,11 @@ async def lifespan(app: FastAPI):
         tasks.append(asyncio.create_task(feed.run(), name="swayam-spot-feed"))
         app.state.chain_feed = chain_feed
         tasks.append(asyncio.create_task(chain_feed.run(), name="swayam-chain-feed"))
+        # Build B. The resting-order watcher rides on the chain feed's
+        # refreshes and never makes a FYERS request of its own, so his waiting
+        # limits are checked against the same book the desk is quoting from.
+        # It only fills while this process is awake and the feed is reading.
+        order_watcher.register(chain_feed)
     try:
         yield
     finally:
@@ -86,6 +92,7 @@ app.include_router(strategy.router)
 app.include_router(validation.router)
 app.include_router(execution.router)
 app.include_router(positions.router)
+app.include_router(orders.router)
 app.include_router(readiness.router)
 app.include_router(ai.router)
 app.include_router(tts.router)

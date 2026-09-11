@@ -170,6 +170,13 @@ class ChainFeed:
             use_files if use_files is not None else os.getenv("SWAYAM_DISABLE_SPOT_FEED") != "1"
         )
 
+        # What to tell after a chain has been refreshed. Build B's resting-order
+        # watcher is the only listener: it reads the book this feed has just
+        # fetched, which is how it can watch his orders without ever adding a
+        # FYERS request of its own. A listener that throws is logged and
+        # dropped from the pass; it can never kill the feed.
+        self._listeners: list[Callable[[str, dict[str, Any]], Any]] = []
+
         self.role: Optional[str] = None
         self.fetches = 0
         self.refusals = 0
@@ -408,7 +415,30 @@ class ChainFeed:
         self.backoff_until = 0.0
         self.last_error = None
         self._store(key, data=data, error=None)
+        await self._tell_listeners(key, data)
         return True
+
+    async def _tell_listeners(self, key: str, data: dict[str, Any]) -> None:
+        """Hands the fresh chain to whatever asked to see it.
+
+        This is how the resting-order watcher sees the market without making a
+        single request of its own. One listener failing is logged and does not
+        stop the others, and never stops the feed.
+        """
+        for listener in list(self._listeners):
+            try:
+                result = listener(key, data)
+                if asyncio.iscoroutine(result):
+                    await result
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("A chain-feed listener failed: %s", exc)
+
+    def on_refresh(self, listener: Callable[[str, dict[str, Any]], Any]) -> None:
+        """Ask to be told, with the chain, every time an expiry is refreshed."""
+        if listener not in self._listeners:
+            self._listeners.append(listener)
 
     # --------------------------------------------------------------- storage
 

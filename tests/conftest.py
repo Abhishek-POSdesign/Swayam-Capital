@@ -236,3 +236,104 @@ def cage_the_vault(tmp_path_factory, request):
 
     with patch("swayam.api.journal_writer._default_vault_base", side_effect=caged_base):
         yield cage
+
+
+# ---------------------------------------------------------------------------
+# THE BROKER CAGE. No unit test may reach FYERS.
+#
+# Added 2026-09-11, from the main chat's review of Build B. One of that build's
+# own tests was making a LIVE market-depth call to FYERS on every run, and
+# nothing said so: it showed up only as a stray line in the captured log.
+#
+# Three reasons that is not acceptable, and none of them is tidiness:
+#
+#   1. His FYERS request budget is finite and shared with the running terminal.
+#      On 2026-09-08, too many requests produced 46 refusals in ten minutes and
+#      blanked the leg prices on his desk. A test suite quietly spending that
+#      budget is spending it while he trades.
+#   2. A test that reaches the network is not deterministic. It passes at
+#      23:00 with the market shut and can fail at 14:00 with it open, and the
+#      failure will look like a code fault.
+#   3. It hid a real bug. The depth call in that test was only there because a
+#      code path was doing something it should not have been doing at all.
+#
+# This is the same shape as the database guard and the vault cage above: the
+# real path still runs, it simply cannot reach him. Opt out with
+# @pytest.mark.real_fyers, which nothing in the suite does.
+# ---------------------------------------------------------------------------
+
+
+class FyersReachedInTest(RuntimeError):
+    """A test tried to call the live broker."""
+
+
+@pytest.fixture(autouse=True)
+def guard_live_fyers(request):
+    """Refuses any test call to the live FYERS API, and says so loudly.
+
+    WHERE THIS STANDS, and why it is here rather than one layer up. It replaces
+    `fyersModel.FyersModel` itself, which is the class that actually opens a
+    socket. Everything above it is ours and is fair game for a test to fake:
+    `FyersClient.model` is exercised by its own test, which fakes this very
+    class and is therefore untouched by this guard. Only a test that reaches
+    the REAL client is caught.
+
+    Raising is not enough on its own: several call sites treat a broker failure
+    as "unavailable" and swallow it, which is correct behaviour in production
+    and would hide the reach here. So every attempt is RECORDED, and a test
+    that made one fails at teardown even if it caught the exception.
+    """
+    if request.node.get_closest_marker("real_fyers"):
+        yield
+        return
+
+    import traceback
+
+    from swayam import fyers_client as client_module
+
+    reached: list[str] = []
+
+    def _caller() -> str:
+        """The line in the project that asked for the broker, not the guard."""
+        for frame in reversed(traceback.extract_stack()[:-2]):
+            name = frame.filename.replace("\\", "/")
+            if "/swayam/" in name and "fyers_client" not in name:
+                return f"{name.split('/swayam/')[-1]}:{frame.lineno} in {frame.name}"
+        return "unknown"
+
+    class RefusedModel:
+        """Stands where the real REST client would be built."""
+
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        def __getattr__(self, name: str):
+            def refuse(*args, **kwargs):
+                where = _caller()
+                reached.append(f"{name}() from {where}")
+                raise FyersReachedInTest(
+                    f"A test tried to call the live FYERS API: {name}() from {where}. "
+                    f"Patch the call, or the function above it, so the suite never "
+                    f"spends his request budget or depends on the market being open."
+                )
+
+            return refuse
+
+    # A model built by an earlier test would be cached on the singleton and
+    # would slip past the patch, so it is forgotten first.
+    client_module.fyers_client._model = None
+    client_module.fyers_client._model_token = None
+
+    with patch.object(client_module.fyersModel, "FyersModel", RefusedModel):
+        yield
+
+    client_module.fyers_client._model = None
+    client_module.fyers_client._model_token = None
+
+    if reached:
+        pytest.fail(
+            f"This test reached the live FYERS API {len(reached)} time(s): "
+            + "; ".join(sorted(set(reached)))
+            + ". No unit test may. Patch it at the call site.",
+            pytrace=False,
+        )

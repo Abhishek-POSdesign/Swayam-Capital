@@ -26,6 +26,7 @@
  */
 
 import { inr, inrExact, num, escapeHtml, istTime, orNA } from '../utils/display.js';
+import { ordersSection } from './orders-panel.js';
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const px = (v) => (isNum(v) ? v.toFixed(2) : '—');
@@ -150,6 +151,12 @@ export class PositionArea {
     this.loading = true;
     this.confirm = null;      // { positionId, sequence, kind, mode, limit, busy, error }
     this.renaming = null;     // a position id
+    // BUILD B. What is waiting for a price, read from /api/orders. `editing`
+    // is the id of the order whose price he has open for typing; a re-price
+    // keeps the order, so this is an edit in place rather than a new order.
+    this.orders = null;
+    this.ordersError = null;
+    this.editingOrder = null;
     this.timer = null;
     this.earlierOpen = this._readEarlierPreference();
     this._bound = false;
@@ -195,10 +202,19 @@ export class PositionArea {
   }
 
   async refresh() {
-    const [openRes, closedRes] = await Promise.allSettled([
+    const [openRes, closedRes, ordersRes] = await Promise.allSettled([
       this.options.fetchOpen ? this.options.fetchOpen() : Promise.resolve([]),
       this.options.fetchClosed ? this.options.fetchClosed() : Promise.resolve([]),
+      this.options.fetchOrders ? this.options.fetchOrders() : Promise.resolve(null),
     ]);
+    if (ordersRes.status === 'fulfilled') {
+      this.orders = ordersRes.value || null;
+      this.ordersError = null;
+    } else {
+      // The orders failing must never take the money on the cards down with
+      // them. The positions are the point; a missing order list says so.
+      this.ordersError = String((ordersRes.reason && ordersRes.reason.message) || ordersRes.reason);
+    }
     if (openRes.status === 'fulfilled') {
       this.open = Array.isArray(openRes.value) ? openRes.value : [];
       this.error = null;
@@ -238,6 +254,7 @@ export class PositionArea {
 
     this.host.innerHTML = `<div class="pa">
       ${this._openSection()}
+      ${ordersSection(this.orders, { error: this.ordersError, editing: this.editingOrder })}
       ${this._closedSection(closedToday, earlier)}
     </div>`;
     this._bind();
@@ -646,6 +663,54 @@ export class PositionArea {
         this.render();
       } else if (act === 'c-send') {
         await this.sendConfirm();
+      // BUILD B. His open orders. A re-price keeps the order, so Modify opens
+      // the price for typing in place and Save sends only the price.
+      } else if (act === 'order-edit') {
+        this.editingOrder = String(args.order || '');
+        this.render();
+        const input = this.host && this.host.querySelector
+          ? this.host.querySelector(`[data-order-price="${this.editingOrder}"]`)
+          : null;
+        if (input && input.focus) input.focus();
+      } else if (act === 'order-edit-cancel') {
+        this.editingOrder = null;
+        this.render();
+      } else if (act === 'order-save') {
+        const orderId = String(args.order || '');
+        const typed = args.value !== undefined ? args.value : this._typedOrderPrice(orderId);
+        const price = parseFloat(typed);
+        if (!Number.isFinite(price) || price <= 0) {
+          this.ordersError = 'A resting order needs a price. Type one, or press Cancel.';
+          this.render();
+          return;
+        }
+        try {
+          await this.options.onModifyOrder(orderId, price);
+          this.editingOrder = null;
+          this.ordersError = null;
+          await this.refresh();
+        } catch (err) {
+          // The order is untouched. Saying which price was refused, and why,
+          // beats a screen that silently keeps the old number.
+          const detail = err && err.detail;
+          this.ordersError = String(
+            (detail && (detail.error || detail)) || (err && err.message) || err,
+          );
+          this.render();
+        }
+      } else if (act === 'order-cancel') {
+        try {
+          await this.options.onCancelOrder(String(args.order || ''));
+          this.editingOrder = null;
+          this.ordersError = null;
+          await this.refresh();
+        } catch (err) {
+          const detail = err && err.detail;
+          this.ordersError = String(
+            (detail && (detail.error || detail)) || (err && err.message) || err,
+          );
+          this.render();
+        }
       } else if (act === 'rename') {
         this.renaming = String(id);
         this.render();
@@ -681,6 +746,18 @@ export class PositionArea {
     try {
       const input = this.host && this.host.querySelector
         ? this.host.querySelector(`[data-rename-input="${id}"]`)
+        : null;
+      return input ? input.value : '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  /** Whatever he has typed into a resting order's price box. */
+  _typedOrderPrice(orderId) {
+    try {
+      const input = this.host && this.host.querySelector
+        ? this.host.querySelector(`[data-order-price="${orderId}"]`)
         : null;
       return input ? input.value : '';
     } catch (_) {
@@ -731,6 +808,7 @@ export class PositionArea {
         id: el.getAttribute('data-pos'),
         seq: el.getAttribute('data-seq'),
         mode: el.getAttribute('data-mode'),
+        order: el.getAttribute('data-order'),
       });
     });
 

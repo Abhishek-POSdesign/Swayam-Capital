@@ -132,11 +132,30 @@ def test_technical_metrics_calculation():
 
 
 def test_nifty_snapshot_institutional_separation():
-    """Asserts FII Cash and F&O are kept in separate fields and never blended."""
+    """Asserts FII Cash and F&O are kept in separate fields and never blended.
+
+    THE BROKER IS STOOD IN FOR, from 2026-09-11. This test mocked the database
+    and not FYERS, so every run of the suite made five real calls to his
+    broker: quotes, history and the option chain. It asserts the SHAPE of the
+    institutional fields, which come from the database, so the market was
+    never the subject. Spending his finite request budget on a shape assertion
+    is what the broker cage in conftest exists to catch.
+    """
     mock_db = MagicMock()
     mock_db.client.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = []
 
-    snap = get_nifty_snapshot_data(is_refresh=True, db=mock_db)
+    from swayam.fyers_client import FyersClientError
+
+    broker = MagicMock()
+    broker.get_nifty_spot.side_effect = FyersClientError("stood in for: no broker in tests")
+    broker.get_option_chain.side_effect = FyersClientError("stood in for: no broker in tests")
+    broker.get_historical_candles.side_effect = FyersClientError("stood in for: no broker in tests")
+    broker.model.quotes.side_effect = FyersClientError("stood in for: no broker in tests")
+    broker.model.history.side_effect = FyersClientError("stood in for: no broker in tests")
+    broker.model.optionchain.side_effect = FyersClientError("stood in for: no broker in tests")
+
+    with patch("swayam.services.nifty_snapshot.fyers_client", broker):
+        snap = get_nifty_snapshot_data(is_refresh=True, db=mock_db)
     inst = snap["fno_pane"]["institutional"]
 
     assert "fii_cash_net_cr" in inst

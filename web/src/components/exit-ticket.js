@@ -71,7 +71,9 @@ export function previewExit(leg, state) {
       ok: false,
       price: null,
       away: true,
-      how: `your price, not a rule · the ${side} is ${px(price)}`,
+      // BUILD B: it does not refuse, it waits. The per-leg note says so in
+      // the same breath as the book, so he can see which legs will go now.
+      how: `rests until the ${side} reaches ${px(limit)} · the ${side} is ${px(price)}`,
     };
   }
   const better = Math.abs(price - limit) >= 0.005;
@@ -411,11 +413,14 @@ export class ExitTicket {
       ? `<div class="xt-refused"><b>${escapeHtml(this.error || 'Nothing was sent.')}</b><ul>${this.refused.map((r) => `<li><b>${escapeHtml(r.leg)}</b> · ${escapeHtml(r.reason)}</li>`).join('')}</ul></div>`
       : this.error ? `<div class="xt-refused"><b>Not exited.</b> ${escapeHtml(this.error)}</div>` : '';
 
+    // BUILD B. A limit the book has not reached no longer refuses the send.
+    // It RESTS as an open order until the book comes to it. The wording is the
+    // mockup's, word for word, and it stays amber: an order that is waiting is
+    // his own instruction, never a rule and never a warning.
     const awayHtml = t.away.length
       ? `<div class="xt-pricenote">
           <span class="chip c-your">your price, not a rule</span>
-          <span>${escapeHtml(t.away.map((l) => legName(l)).join(', '))} ${t.away.length === 1 ? 'is' : 'are'} away from the book, so ${t.away.length === 1 ? 'it' : 'they'} would not fill now and the send is refused.
-          Resting orders arrive in the next build. For now move the price, press Reset, or switch ${t.away.length === 1 ? 'it' : 'them'} to market.</span>
+          <span>${escapeHtml(t.away.map((l) => legName(l)).join(', '))} ${t.away.length === 1 ? 'is' : 'are'} away from the book. ${t.away.length === 1 ? 'It' : 'They'} will rest as open orders until the book reaches your price, inside today's price band, and expire at the bell. The other legs fill now.</span>
         </div>`
       : '';
 
@@ -448,12 +453,14 @@ export class ExitTicket {
         </div>
       </div>
       <div class="xt-actions">
-        <button class="btn pri" type="button" data-x="send-all" ${shut || t.away.length ? 'disabled' : ''}>${only ? 'Exit this leg' : `Exit all ${this.legs.length} legs`}</button>
-        ${only ? '' : `<button class="btn" type="button" data-x="send-one" ${shut || t.away.length ? 'disabled' : ''}>Exit one by one</button>`}
+        <button class="btn pri" type="button" data-x="send-all" ${shut ? 'disabled' : ''}>${only
+          ? (t.away.length ? 'Rest this leg' : 'Exit this leg')
+          : (t.away.length ? 'Send the fills and rest the rest' : `Exit all ${this.legs.length} legs`)}</button>
+        ${only ? '' : `<button class="btn" type="button" data-x="send-one" ${shut ? 'disabled' : ''}>Exit one by one</button>`}
         <span class="why">${shut
           ? escapeHtml(shut)
           : t.away.length
-            ? 'your price, not a rule · move it, press Reset, or switch to market'
+            ? 'your price, not a rule · what cannot fill now waits for the book and expires at 15:30'
             : 'one press, one result · a second press cannot record it twice · what you bought is sold at the bid, what you sold is bought back at the ask'}</span>
       </div>`;
   }
@@ -482,22 +489,51 @@ export class ExitTicket {
 
   _done() {
     const r = this.result || {};
-    const closed = r.last_leg === true || r.status === 'closed';
+    const closed = (r.last_leg === true || r.status === 'closed') && r.status !== 'resting';
     const net = isNum(r.realized_pnl_inr) ? r.realized_pnl_inr : (r.fill && r.fill.net_pnl_inr);
+    // An Exit everything that had to rest a leg answers with `exited`, one
+    // entry per leg that actually went, rather than with a single fill.
+    const partial = Array.isArray(r.exited) ? r.exited : [];
     const legs = this.doneLegs.length
       ? this.doneLegs
-      : (r.fill ? [{ leg: { strike: r.fill.strike, option_type: r.fill.option_type }, res: r }] : []);
+      : partial.length
+        ? partial.map((res) => ({
+            leg: { strike: res.fill && res.fill.strike, option_type: res.fill && res.fill.option_type },
+            res,
+          }))
+        : (r.fill ? [{ leg: { strike: r.fill.strike, option_type: r.fill.option_type }, res: r }] : []);
     const lines = legs.map(({ leg, res }) => {
       const f = (res && res.fill) || {};
       return `<li><span class="st">EXITED</span><div><b>${escapeHtml(legName(leg))}</b>
         <small>${escapeHtml(f.how || '')}${isNum(f.exit_charges_inr) ? ` · charges ${inrExact(f.exit_charges_inr)}` : ''}</small></div>
         <b class="num ${isNum(f.net_pnl_inr) && f.net_pnl_inr >= 0 ? 'up' : 'down'}">${orNA(signed(f.net_pnl_inr))}</b></li>`;
     }).join('');
+    // BUILD B. What went out and what is WAITING are separate, always. He
+    // pressed Exit everything; if one leg is still resting he is NOT out, and
+    // the screen has to say so before anything else.
+    const resting = Array.isArray(r.resting) ? r.resting : [];
+    const stillOpen = isNum(r.legs_open) ? r.legs_open : null;
+    const restingHtml = resting.length
+      ? `<div class="xt-resting">
+          <h3>${resting.length} order${resting.length === 1 ? '' : 's'} resting</h3>
+          <ul class="fills">${resting.map((o) => `<li><span class="st wait">RESTING</span>
+            <div><b>${escapeHtml(o.leg || '')}</b><small>${escapeHtml(o.how || '')}</small></div>
+            <b class="num">${orNA(px(o.limit_price))}</b></li>`).join('')}</ul>
+          <p class="xt-awake">You are NOT out of ${stillOpen ? `${stillOpen} leg${stillOpen === 1 ? '' : 's'} of ` : ''}this trade.
+            A resting order fills only while this terminal is awake and reading prices, so keep a page open,
+            and anything still waiting at 15:30 expires with the leg still yours. Open orders on the desk
+            is where you change a price or cancel.</p>
+        </div>`
+      : '';
+
     return this._header(
-      closed ? 'The trade is closed and its result is in the record.' : 'That leg is out. The trade is still running.',
+      resting.length
+        ? `${lines ? 'Some legs are out. ' : 'Nothing is out. '}${resting.length} order${resting.length === 1 ? '' : 's'} waiting for your price.`
+        : closed ? 'The trade is closed and its result is in the record.' : 'That leg is out. The trade is still running.',
       escapeHtml(r.message || ''),
     ) +
       `<div class="xt-fills"><ul class="fills">${lines}</ul></div>
+      ${restingHtml}
       <div class="xt-foot">
         <div class="kv">
           <span>${closed ? 'Net for the whole trade' : 'Net booked on this leg'}</span><b class="hero ${isNum(net) && net >= 0 ? 'up' : 'down'}">${orNA(signed(net))}</b>

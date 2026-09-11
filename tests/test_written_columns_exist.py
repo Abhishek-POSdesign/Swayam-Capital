@@ -32,6 +32,10 @@ WRITERS = [
     ROOT / "src" / "swayam" / "api" / "routes" / "positions.py",
     ROOT / "src" / "swayam" / "api" / "routes" / "execution.py",
     ROOT / "src" / "swayam" / "services" / "execution_safety.py",
+    # Build B. The order book is the newest thing that writes to his record,
+    # and a resting order that cannot be written is a leg he thinks is waiting
+    # and is not.
+    ROOT / "src" / "swayam" / "services" / "orders.py",
 ]
 
 # Keys a payload may carry that are not columns: filters, and the primary key
@@ -84,16 +88,32 @@ def _written_columns() -> dict[str, set[tuple[str, str]]]:
     for path in WRITERS:
         tree = ast.parse(path.read_text(encoding="utf-8"))
 
+        def _keys_of(dict_node: ast.Dict) -> list[str]:
+            return [
+                k.value for k in dict_node.keys
+                if isinstance(k, ast.Constant) and isinstance(k.value, str)
+            ]
+
         literals: dict[str, list[str]] = {}
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict):
-                keys = [
-                    k.value for k in node.value.keys
-                    if isinstance(k, ast.Constant) and isinstance(k.value, str)
-                ]
+                keys = _keys_of(node.value)
                 for target in node.targets:
                     if isinstance(target, ast.Name):
                         literals[target.id] = keys
+            # A payload built row by row: `rows.append({...})`, then
+            # `.insert(rows)`. Build B's order book writes this way, and
+            # without this the INSERT, which is the write most able to name a
+            # column that does not exist, would be invisible to this test.
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "append"
+                and isinstance(node.func.value, ast.Name)
+                and node.args
+                and isinstance(node.args[0], ast.Dict)
+            ):
+                literals.setdefault(node.func.value.id, []).extend(_keys_of(node.args[0]))
 
         for node in ast.walk(tree):
             if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
@@ -133,7 +153,17 @@ def _table_of(node: ast.AST) -> str | None:
             and isinstance(node.args[0], ast.Constant)
         ):
             return node.args[0].value
-        node = node.func.value if isinstance(node, ast.Call) else node.value
+        # Walk one link back down the chain. A chain can begin at something
+        # that is neither a call nor an attribute (a plain name, or a call on
+        # one, such as `_client().table(...)`), and there the walk simply ends
+        # rather than raising: an unrecognised chain must make this test report
+        # nothing, never crash. It still cannot hide a write, because a write
+        # whose table cannot be read is caught by the assertion below that the
+        # scanner found the writes it is supposed to find.
+        if isinstance(node, ast.Call):
+            node = node.func.value if isinstance(node.func, ast.Attribute) else None
+        else:
+            node = node.value
     return None
 
 
