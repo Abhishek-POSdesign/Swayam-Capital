@@ -173,3 +173,102 @@ may write to the record.
 Five parts, files as clickable links, and the screenshots inline. One bold line
 saying what exists and what does not. **Say plainly whether anything on any page
 still does not match the mockup**, rather than letting him find it.
+
+---
+
+## 5. WHAT THE BUILDER FOUND, AND WHAT SECTION 1.1 GOT WRONG
+
+> Added 2026-09-11 night by the polish chat, on his instruction, while building
+> this. He checked it before approving and said: "you are right and my document
+> was wrong." It is written here, and not only in a chat, for two reasons: so it
+> survives that chat being cleared, and so the next builder does not walk into
+> the same wrong file.
+
+### 5.1 THERE ARE TWO TOKEN SYSTEMS, and 1.1 named only one
+
+Section 1.1 says to change `web/src/styles/swayam-tokens.css`. Doing only that
+would have restyled the Trade Journal and left **the two pages he looks at
+every day exactly as harsh as they were**.
+
+| File | Token names | What it dresses |
+|---|---|---|
+| `web/src/styles/swayam-tokens.css` | `--dl-bg`, `--dl-card`, `--accent-sage`, `--text-primary` | the header, the AI drawer, the Trade Journal page |
+| `web/src/styles/swayam-desk.css` | `--bg`, `--panel`, `--fg`, `--up`, `--down`, `--brand` | **Home, the Strategy Desk, both tickets, the option chain, the targets modal** |
+
+Home and the desk each render inside `<div class="sw-desk">`, so every colour
+on them is resolved from the second file. Its light ground was `#ffffff` with
+`#ffffff` cards, a white sheet; its dark ground was `#0d0f0f`, a cold near-black
+with a green cast. **Both files were changed, every token NAME kept.**
+
+### 5.2 The light theme was wrong in its ACCENTS too, not only its ground
+
+Section 0's table names the light sage. Two more were just as wrong, and all
+three are now Atlas's:
+
+| | Swayam before | Atlas, and now Swayam |
+|---|---|---|
+| Light sage | `#15803d` vivid | `#6f8f65` muted |
+| Light blue | `#2563eb` | `#5e7fb0` |
+| Light coral | `#dc2626` fire-engine | `#b56b5d` |
+| Light amber | `#d97706` | `#b89a44` |
+
+### 5.3 THE MONEY IS NOT AN ACCENT. His warning, and it governs this build.
+
+His words when he approved it: *"`--up` and `--down` are not accents. They are
+the colours he reads his MONEY in, and they are the only colours on the screen
+that are allowed to shout. Atlas has no equivalent, so there is nothing to copy
+and you will be tempted to mute them to match everything else. Do not."*
+
+So: the grounds went calm, the accents went calm, **the money stayed loud**.
+Where the softer ground made green or red harder to pick out, the colour was
+adjusted for CONTRAST, never softened. Their backgrounds moved from solid cool
+tints to `rgba`, so they tint the warm paper instead of sitting on it as a cold
+mint or pink patch.
+
+A tile whose figure is money-coloured is left NEUTRAL for the same reason: a
+sage ground behind a red profit figure fights it. The pastel tints are used only
+where no figure is a result, which is Home's Your money.
+
+### 5.4 The violet: where it was, and it is now gone entirely
+
+One literal violet existed in shipping code, at `web/index.html` line 107:
+
+```
+border-left: 2px solid var(--accent-lilac, #ac9fd2)
+```
+
+**Nobody had ever seen it** because `--accent-lilac` was aliased to blue, so it
+rendered blue every time. The violet was the FALLBACK, and a fallback appears
+only on the day someone deletes the alias. It was a trap with a fuse.
+
+It is gone, and so is the alias: no component referenced `--accent-lilac` any
+more, so all eleven occurrences of the word were removed from the token file.
+**`lilac`, `purple`, `violet` and `#ac9fd2` now return zero across `web/src`
+and `web/index.html`.** Every remaining hit in the repository is in
+documentation or a changelog.
+
+### 5.5 The hardcoded colours: 158 before, 143 after, and what the rest are
+
+| | count |
+|---|---|
+| Literal hexes outside the token file, before | 158 |
+| After | 143 |
+| of which are token DEFINITIONS inside `swayam-desk.css` | 48 |
+| of which are in `src/modules/payoff-chart.js`, which is DEAD | 20 |
+| the rest: `#fff` on a sage or money fill, and `var(--token, #fallback)` safety values | most of the remainder |
+
+### 5.6 `src/modules/payoff-chart.js` IS DEAD CODE
+
+Twenty hardcoded colours, **imported by nothing**. The desk draws its payoff
+with `web/src/components/payoff-svg.js`. It can never follow the theme because
+it never runs. It was deliberately left in place: deleting a file is not a look
+change. **It should be removed in a later pass**, and until then it is a trap
+for anyone who greps this repository for colours.
+
+### 5.7 Dark corners that were not in section 1.4's list
+
+Section 1.4 asks for filled pastel cards and no dark outlines. Four solid
+near-black fills were doing exactly what that rule forbids, and all four are now
+sage: the primary button (`.btn.pri`, which is Exit everything and Execute paper
+trade), Home's Manage button when a target is reached, the exit ticket's pressed
+segment, and the option chain's selected expiry pill.
