@@ -1565,6 +1565,96 @@ week** and knows what he actually reaches for.
    nothing maintaining them. A thing that was built and never deployed looks
    exactly like a thing that works.
 
+### 2.22 12 SEPTEMBER. THE DEPLOY THAT FAILED, AND THE AI PANEL PLAN THAT CORRECTED ME.
+
+#### 2.22.1 ⚠️ THE BUILD FOR #81 FAILED AND THE SITE DID NOT DEPLOY
+
+Merged at 17:06 UTC on 11 September. Its build, `fb76d033`, failed at step 0:
+
+```
+COPY failed: file not found in build context or excluded by .dockerignore:
+stat migrations/: file does not exist
+```
+
+`#81` added `COPY migrations/ ./migrations/` to the `Dockerfile` because the
+new backup refuses to write a schema-less backup. **`.dockerignore` excluded
+`migrations/`.** The backup was proved on the builder's own disk, where the
+folder is simply there. **The image was never built. A path nobody ran.**
+
+**What this cost.** The live site kept serving the image from the `#78` merge,
+which already carried the new look and the clarity pass, so nothing he could see
+was wrong. What was missing was Home's backup line and, more seriously, **the
+module the 02:00 Cloud Run job calls**. That job was left enabled on the
+reasoning that it would "self-heal on the first build after merge" — **and that
+reasoning rested on a build nobody had run.** No backup ran on the night of
+11 September. Nothing was lost: a manual backup of 900 rows was taken that
+afternoon and he has taken no trade since 31 March.
+
+Fixed on `feature/swayam-dockerignore-migrations-058` (#83) by removing the
+line rather than negating it, because directory negation in `.dockerignore` is
+unreliable, **and this time proved by building the image.**
+
+#### 2.22.2 The build machine, measured and settled
+
+First build on `E2_STANDARD_2`: **6m52s**, against a previous average of
+**4m52s** on `E2_HIGHCPU_8`. Two minutes on a build he never watches, against
+roughly ₹2,000 a month. **It stays.** Images now carry their commit SHA.
+
+#### 2.22.3 THE AI PANEL PLAN CORRECTED THE BUILD DOCUMENT IN THREE PLACES
+
+`docs/builds/BUILD_07_AI_PANEL.md` was written as though "So far today" were a
+new feature. **It is not**, and the builder found it before writing a line.
+
+1. **"So far today" already exists** as a card, a route, a service and storage
+   in `swayam_home_snapshot` (migration 014), **with the cost rule already
+   correct**: manual only, 60-minute cache, a cap of 8. The real work is the
+   one-row-a-day storage he asked for, not the feature.
+   **And the trap underneath it:** the daily cap is counted by counting ROWS
+   since IST midnight. Collapse to one row a day and the cap silently becomes
+   one per day. The new table therefore carries `generation_count` and the cap
+   reads that. **Checked by the main chat: `count_grounded_calls_today` is used
+   only inside `so_far_today.py`, so this cannot shift any other cap.**
+2. **Deleting Home's chat zone would have deleted the summary with it.** The
+   summary card is mounted into the chat component's own slot, not into Home.
+   It must be re-parented in the same change.
+3. **There is no speech-to-text anywhere in the repository.** `tts-player.js`
+   reads aloud; nothing listens. The mockup draws the microphone as a
+   first-class control. **That is a build, not a move.**
+
+#### 2.22.4 The panel would have covered the exit ticket, and it is a z-index fact
+
+Read from the stylesheets: both tickets use `.xt-backdrop` at **950**, the
+targets modal at 960, the option chain at 900, and **the AI drawer today sits at
+1000, above both tickets.** The floating panel goes to **800**, below all of
+them, so his rule holds structurally rather than by luck. **To be proven on
+screen, by dragging the panel over the exit ticket and then opening it.**
+
+The page-shift apparatus he rejected lives in `web/src/styles.css` lines 481 to
+520 and again at 549, pushing six containers by `margin-right: 400px` on a body
+class. **All of it comes out.**
+
+#### 2.22.5 His decisions of 12 September
+
+- **The microphone is the browser's own dictation.** Free, nothing to do with
+  the AI's model or cost cap, Chrome and Edge only. **A browser that cannot do
+  it must say so in words and offer typing, never show a dead microphone.**
+  A paid speech service is a different build and touches cost.
+- **The summary does not auto-fold.** `so-far-today-card.js` currently hides
+  itself for the rest of the IST day once expanded, remembered in
+  `localStorage`. The mockup he approved says it stays until he presses
+  Generate again. **The mockup wins; a manual Show and Hide remains.** The
+  clarity pass's folding rule is for explanations, and the summary is content.
+- **The migration backfills the newest summary of each past day** into the new
+  table as it creates it, deleting nothing from the old one, so the record he
+  is paying for starts with what he already owns.
+
+#### 2.22.6 Deleting a conversation orphans its images today
+
+`ai.py:156` writes attachments to `swayam-ai-chat-attachments/{conversation_id}/`
+and **nothing has ever cleaned that folder.** `DELETE /api/ai/conversations/{id}`
+removes the rows and leaves the images. Fixed inside BUILD_07 on his decision of
+11 September: the images go with the conversation.
+
 ### 2.18 THE TRADE JOURNAL PAGE. To be planned WITH him, in its own discussion. Not started.
 
 Opened by him on 2026-09-10 after seeing the page with six real rows. Do not

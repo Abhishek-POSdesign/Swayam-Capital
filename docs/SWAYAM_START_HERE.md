@@ -85,7 +85,21 @@ A browser that sends 75 is ignored.
 
 ## 3. WHAT IS TRUE RIGHT NOW
 
-### Latest first: NINE PULL REQUESTS, A ZERO-FAILURE SUITE, AND THE CLOUD CLEANED, 2026-09-11 late night
+### Latest first: A DEPLOY THAT FAILED, AND THE AI PANEL PLANNED, 2026-09-12
+
+**`docs/PLAN.md` §2.22 is the record of this day.**
+
+| | |
+|---|---|
+| **⚠️ THE BUILD FOR #81 FAILED** | `COPY migrations/` against a `.dockerignore` that excluded it. The image was never built, so Home's backup line and the nightly job's module are NOT live. **The site itself is fine**, serving the `#78` image which already has the new look. Fixed in **#83**, this time proved by building the image |
+| **⚠️ NO BACKUP RAN on the night of 11 September** | The Cloud Run job was enabled on the reasoning that it would heal on the first build after merge, and that build failed. Nothing lost: a manual backup of 900 rows exists from that afternoon |
+| **MERGE ORDER** | **#83 first, wait for its build to go green, then #82.** Only after #83 is green does he register the local nightly task and push his 631 MB of history |
+| **The build machine, settled** | `E2_STANDARD_2` measured at **6m52s** against **4m52s** on the old one. It stays. Images carry their commit SHA |
+| **The AI panel plan CORRECTED the build document** | "So far today" already exists, with its cost rule already right; deleting Home's chat zone would have deleted the summary card with it; and there is no speech-to-text anywhere in the repository. §2.22.3 |
+| **The panel would have covered the exit ticket** | The AI drawer sits at z-index 1000 and both tickets at 950. The panel goes to 800. To be proven on screen, not from the code |
+| **His decisions, 12 September** | Browser dictation for the microphone, with words rather than a dead mic where it is unsupported. The summary does not auto-fold. The migration backfills the newest summary of each past day |
+
+### Earlier: NINE PULL REQUESTS, A ZERO-FAILURE SUITE, AND THE CLOUD CLEANED, 2026-09-11 late night
 
 **`docs/PLAN.md` §2.21 is the full record of this night.** Read it before
 anything else if you are waking into a cleared chat.
