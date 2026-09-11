@@ -216,8 +216,108 @@ both already theme-aware.
 3. **`data/history` still has no copy** until he runs 6(a). It is 631 MB of
    four years of market data existing in exactly one place.
 4. **Two stale checkouts hold the broken lifecycle file.** Section 1.
-5. **The build machine change from PR #78 is still unmeasured.** The first build
-   after that merge is the measurement: under about fifteen minutes and
-   `E2_STANDARD_2` stays; far beyond, or a machine-caused failure, and it
-   reverts in one line.
+5. ~~**The build machine change from PR #78 is still unmeasured.**~~ **MEASURED
+   2026-09-12 — see 9.3. `E2_STANDARD_2` is not a problem.**
 6. **The Home line's appearance is the only unverified thing in this build.**
+7. **#81 shipped a Dockerfile line that could not work and the build failed.**
+   Section 9. Fixed on `feature/swayam-dockerignore-migrations-058`, and this
+   time proved by building the image.
+
+---
+
+## 9. ⚠️ THE BUILD FOR #81 FAILED. THE WORK NEVER WENT LIVE.
+
+**Found by the main chat, 2026-09-12.** The site was never at risk — it kept
+serving the image from #78, which carries the new look. Only #81 was missing.
+
+```
+Step 0: COPY failed: file not found in build context or excluded by
+        .dockerignore: stat migrations/: file does not exist
+```
+
+### 9.1 What was wrong, and why the verification did not catch it
+
+#81 added `COPY migrations/ ./migrations/` to the `Dockerfile`. **`.dockerignore`
+excluded `migrations/`**, so the folder was never in the build context. The two
+files contradicted each other and nothing reconciled them.
+
+**The backup was proven on a developer's disk, where `migrations/` is simply
+present. The image was never built.** Every test that passed — 19 tables, 900
+rows, 21 objects verified — passed outside the container. It was a path nobody
+ran.
+
+**The fix:** `migrations/` **removed** from `.dockerignore`, not re-included
+with a negation, because directory negation in `.dockerignore` is unreliable.
+The folder is 118 KB.
+
+### 9.2 PROVED BY BUILDING THE IMAGE, NOT BY READING THE DOCKERFILE
+
+Cloud Build `5d104148-81e3-4b61-980b-5e8836d0dc39`, **SUCCESS in 2m32s**. The
+build pushed nothing and deployed nothing — no `images:` key — then looked
+inside the image it had just made:
+
+```
+Step #0  Step 15/20 : COPY migrations/ ./migrations/
+
+Step #1  ls -la /app/migrations
+         total 140
+         -rw-rw-rw- 1 root root 18222 000_baseline.sql
+         -rw-rw-rw- 1 root root  4680 001_initial_schema.sql
+         ... every migration present
+
+Step #2  PROOF: _baseline_sql resolved to /app/migrations/000_baseline.sql
+         PROOF: exists = True | bytes = 18222
+```
+
+Step #2 calls **the exact function that would have failed**. The build was cold,
+not cached: `npm ci` installed 52 packages and pip installed its collected
+packages in the same run.
+
+### 9.3 THE BUILD MACHINE, MEASURED AT LAST
+
+**2m32s on `E2_STANDARD_2`**, against a 4m52s average on `E2_HIGHCPU_8`.
+
+**Not a like-for-like comparison, and it should not be quoted as one:** the
+4m52s average covered build + push + deploy, while this run was build plus two
+seconds of verification, with no push and no deploy. **What it does establish is
+that the image build itself is comfortably fast on the default machine** — far
+under the fifteen-minute threshold he set for reverting. The true like-for-like
+is the first real trigger build after this merges.
+
+### 9.4 WHAT THE CODE READS AT RUNTIME, AND WHETHER IT IS IN THE IMAGE
+
+He asked for this sweep because `.dockerignore` also excludes `scripts/`,
+`tests/` and `docs/`.
+
+| What the code reads | Excluded by `.dockerignore`? | In the image? |
+|---|---|---|
+| `migrations/000_baseline.sql` — the backup's schema | **was excluded** | **THE BUG. Now in, and proved** |
+| `src/swayam/data/method_files/` — trading brief, risk and readiness rules | no | **yes**, `COPY src/` |
+| `data/nse_holidays_2026.json`, `data/nifty50_constituents.json` | re-included by negation | **yes**, copied explicitly |
+| `data/backups/<stamp>/` — where the backup writes | `/data/*` excluded | **fine** — created at runtime with `mkdir(parents=True)`, never read from the image |
+| `web/dist/` | excluded from context | **yes** — built in stage 1 and copied from it, not from the context |
+| `scripts/` — the CLI wrappers | **excluded** | **no, and nothing needs it.** The Cloud Run job runs `python -m swayam.services.record_backup`, the module, not the script |
+| `tests/`, `docs/`, `*.md` except README | excluded | no, and nothing reads them at runtime |
+
+**One pre-existing instance of the same shape, not introduced by this build and
+not fixed here:** `src/swayam/local_db.py:87` does
+`from scripts.apply_duckdb_migrations import apply_duckdb_migrations`, and
+`scripts/` is excluded from the image. **It is wrapped in `try/except` with a
+fallback that creates the table directly**, so it degrades rather than breaks,
+and DuckDB is local-backtesting rather than a container path. Worth knowing it
+is there.
+
+### 9.5 THE LESSON, WHICH IS RECORDED IN BUILD_05 §3.5 TOO
+
+> "It heals on the first build after merge" assumed that build would succeed.
+> **An enabled scheduler pointing at an image that does not exist yet is a
+> promise resting on a build nobody had run.**
+
+Two rules follow:
+
+1. **A change to the `Dockerfile` or `.dockerignore` is not verified until an
+   image has been BUILT.** Reading either file proves nothing — they interact,
+   and the interaction is exactly where this failed.
+2. **Do not enable a schedule pointing at an artefact that does not exist yet.**
+   Build it first, or leave the schedule off until something real is behind it.
+   "It will heal itself" is a forecast, not a verification.
