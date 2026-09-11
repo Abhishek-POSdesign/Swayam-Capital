@@ -470,3 +470,105 @@ tests subfolder: check before and after every run.**
 Five parts. In the header, in bold: **what this saved a month, measured, and
 what it did not touch.** A table of every destructive command that was run,
 with its region. And the one bold line saying what exists and what does not.
+
+---
+
+## 7. BUILD C IS CLOSED. What it set out to do, what it cost, what it saved.
+
+**Written 2026-09-12 by the Build C builder chat, as the last thing this build
+owes him. Every figure below was read from the live project, and every figure
+that is calculated rather than read says so.**
+
+### What it set out to do
+
+Stop the waste at its source, clear what had piled up, and turn on the one
+capability he was missing. His framing was the whole rule: *"whenever money is
+required, do not hold if the money provides real value. Otherwise, we'll cut
+it."* So nothing here asked him to approve a saving that cost him something.
+
+### What it actually changed
+
+| | Before | After |
+|---|---|---|
+| Dashboard images | **84** — 35.83 GB | **24** — 10.24 GB, held at ~20 by policy |
+| Cloud Run revisions | **83**, nothing pruning them | **20**, a standing limit inside every deploy |
+| Images carrying a real tag | **1** (`latest`) | every new build tags its **commit SHA** |
+| A documents-only merge | built a 394 MB image and redeployed the live site | **does not build at all** |
+| Build machine | `E2_HIGHCPU_8`, outside the free tier | `E2_STANDARD_2`, inside it |
+| Copies of the terminal open to the internet | **two**, no sign-in, holding live FYERS and Supabase service-role keys | **none** |
+| Backup of his record | **one, by hand, four days stale** | **nightly**, cloud at 02:00 + local at 03:00 |
+| Backup bucket lifecycle | 3 Delete rules all on `db/`, the 30-day one making the others dead, real backups under `supabase/` governed by nothing | **one rule, everything kept a year** |
+| Recorder writes per snapshot | **two** — a backtest could read the same day twice | **one** |
+| The SIGABRT of 10 September | cause unknown | **found and fixed**: a Secret Manager call with no timeout holding a worker past gunicorn's limit |
+
+### What it saved, measured
+
+**Read directly:** the image count, the sizes, the revision count, the trigger
+configuration, the lifecycle rule. **Calculated from Google's published rates:**
+every rupee figure below.
+
+| | Monthly |
+|---|---|
+| Artifact Registry, before | 35.83 GB → **~₹307** |
+| Artifact Registry, now | 10.24 GB → **~₹85** |
+| Build machine, before | ~1,450 build-minutes on a machine with no free tier → **~₹1,970–2,760** |
+| Build machine, now | the same minutes inside the 2,500 free → **₹0** |
+| **Saved, every month** | **roughly ₹2,190–2,980** |
+
+**And the growth that no longer happens.** The image store was growing 4.3 GB a
+day with nothing deleting it. Left alone it reached about **₹1,035/month by the
+end of September and ₹2,175/month by the end of October**, and kept climbing,
+because storage never shrinks on its own. That curve is now flat.
+
+**⚠️ The honest caveat on those rupees.** They are arithmetic on published
+prices, not figures read off a bill. **Swayam Capital has never appeared in a
+billing export**, so no invoice has ever confirmed any of them. The
+build-machine saving in particular was money he was already spending and could
+not see. Treat the direction as certain and the precision as approximate.
+
+### What it cost him
+
+- **In money, nothing.** The one new recurring cost is the backtest-history
+  copy at **₹1.07/month**, and only once he starts it.
+- **In risk, one failed deploy.** #81 shipped a `Dockerfile` line that
+  `.dockerignore` forbade. The build failed, the work did not go live, and the
+  nightly job kept failing against the old image for a day. The site was never
+  affected. Fixed in #83 and proved by building the image.
+- **In deploy time, unmeasured.** A cold build on the new machine took 2m32s,
+  but with no push and no deploy, so it is not comparable to the old 4m52s
+  average. The true comparison is the first trigger build after #83.
+
+### What it did not touch
+
+His trade record. The vault, beyond writing the backup copy and the Data Map
+block he asked for. The recorder's maths. The AI. The Trade Journal page. The
+live service's memory, CPU, concurrency or scaling. **And every pixel of Home
+except one line: the last-backup age.**
+
+### What is still open
+
+1. **The Home backup line has never been looked at.** Its text and behaviour
+   are proven on the running page; **its appearance in either theme is not, and
+   this build does not claim it.** He sees it after the deploy.
+2. **The first history push, ~631 MB, is his to start** —
+   `scripts/nightly_local.py --first-history-push`. Until then his four years of
+   market data exist in exactly one place.
+3. **The 03:00 local task is his to register.** The command is in the handoff.
+4. **`swayam/services/backup_service.py` now has no caller**, only its own
+   passing tests, and it is the module that records an unreadable table as an
+   empty one. Green tests over a module with a known silent failure is the same
+   trap as an undeployed function. Left for the main chat.
+
+### The two lessons worth more than the money
+
+**A thing built and never deployed looks exactly like a thing that works.**
+Three `cron_backup_*` functions sat in the tree for weeks, explaining the
+`db/`, `ai-chat/` and `weekly/` prefixes in his bucket, and looked like a
+backup system. Nothing had ever run them. They are deleted, in git history if
+ever wanted.
+
+**A path nobody ran is not a path that works.** The backup was proven 21
+objects deep on a developer's disk, where `migrations/` is simply present, and
+the image was never built. Reading a `Dockerfile` proves nothing; `Dockerfile`
+and `.dockerignore` interact, and the interaction is where it failed. **Verify
+by invoking, and invoke the thing that will actually run.**
