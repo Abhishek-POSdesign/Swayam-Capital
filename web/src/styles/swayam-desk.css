@@ -539,7 +539,9 @@
 .sw-desk .greeks .na-row { grid-column: 1 / -1; background: var(--panel); padding: 12px 14px; }
 
 /* ---------- So Far Today, on the desk's tokens ---------- */
-.sw-desk .sft-card .cb p { margin: 0 0 10px; line-height: 1.55; font-size: 13.5px; }
+/* HIS REVIEW, 12 September: "everything is written in tiny." The summary is
+   the thing on this card he actually reads, so it is the largest thing on it. */
+.sw-desk .sft-card .cb p { margin: 0 0 12px; line-height: 1.65; font-size: 15px; }
 .sw-desk .sft-setup {
   background: var(--panel-2); border-left: 3px solid var(--brand); padding: 10px 14px;
   border-radius: 0 6px 6px 0; margin-top: 10px; font-weight: 500;
@@ -568,17 +570,19 @@
 }
 .sw-desk .sft-summary .sft-content p:last-child { margin-bottom: 0; }
 .sw-desk .sft-stamp {
-  display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
-  text-transform: uppercase; color: var(--fg-3); margin-bottom: 10px;
+  display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--fg-3); margin-bottom: 12px;
 }
 .sw-desk .sft-model {
-  margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--line);
-  font-size: 11.5px; color: var(--fg-3);
+  margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--line);
+  font-size: 12.5px; color: var(--fg-3);
 }
-.sw-desk .sft-folded { margin: 0; font-size: 13px; color: var(--fg-3); }
-.sw-desk .sft-cap { font-size: 11px; color: var(--fg-3); }
-.sw-desk .sft-empty { align-items: flex-start; text-align: left; }
-.sw-desk .sft-empty p { margin: 0; line-height: 1.55; }
+.sw-desk .sft-folded { margin: 0; font-size: 14px; color: var(--fg-3); }
+.sw-desk .sft-cap { font-size: 12.5px; color: var(--fg-3); }
+.sw-desk .sft-empty { align-items: flex-start; text-align: left; font-size: 15px; }
+.sw-desk .sft-empty p { margin: 0; line-height: 1.65; }
+.sw-desk .sft-sources a { font-size: 13px; }
+.sw-desk .sft-error { font-size: 13.5px; line-height: 1.55; padding: 10px 14px; }
 
 /* ---------- chat attachments: a thumbnail beside the file name, not a billboard ---------- */
 .chat-att { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 6px; }

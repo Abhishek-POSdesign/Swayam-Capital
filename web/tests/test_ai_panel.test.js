@@ -23,6 +23,7 @@ import {
   clampSize,
   clampPosition,
   applyResize,
+  leadingAxis,
   DEFAULT_W,
   DEFAULT_H,
   MIN_W,
@@ -31,6 +32,10 @@ import {
   PANEL_PLACE_KEY,
 } from '../src/components/ai-panel-frame.js';
 import { AIChatPanel } from '../src/components/ai-chat.js';
+
+// Some rules live in CSS the test DOM cannot hold, so they are read from
+// the source itself. A guard against them being deleted, not a render test.
+const chatSource = readFileSync(new URL('../src/components/ai-chat.js', import.meta.url), 'utf8');
 
 // ---------------------------------------------------------------- fake DOM
 //
@@ -52,6 +57,9 @@ function fakeEl(rect = { left: 100, top: 100, width: DEFAULT_W, height: DEFAULT_
       remove(name) { el.classes.delete(name); },
       contains(name) { return el.classes.has(name); },
     },
+    listeners: {},
+    addEventListener(type, fn) { el.listeners[type] = fn; },
+    removeEventListener() {},
     setAttribute(k, v) { el.attrs[k] = v; },
     getAttribute(k) { return el.attrs[k]; },
     appendChild(child) { el.children.push(child); return child; },
@@ -96,21 +104,40 @@ function fakeWindow(innerWidth = 1600, innerHeight = 1000) {
 
 // =========================================================== the geometry
 
-describe('The panel stops at half his window, and never gets smaller than a chat', () => {
-  it('clamps width and height to half the window', () => {
-    const big = clampSize(5000, 5000, 1600, 1000);
-    expect(big.w).toBe(800);
-    expect(big.h).toBe(500);
+describe('A half of his screen is a HALF, and never smaller than a chat', () => {
+  // HIS CORRECTION, 12 September 2026: "half horizontally means the full
+  // horizontal area's height is half, and the full length width is half."
+  // The first build capped both at half, which is a QUARTER of his screen.
+  it('lets the axis he is pulling reach the whole window', () => {
+    const wide = clampSize(5000, 5000, 1600, 1000, 'w');
+    expect(wide.w).toBe(1600 - 16);   // the full width, less the edge gap
+    expect(wide.h).toBe(500);         // and the other axis held at half
+
+    const tall = clampSize(5000, 5000, 1600, 1000, 'h');
+    expect(tall.h).toBe(1000 - 16);
+    expect(tall.w).toBe(800);
+  });
+
+  it('never lets both axes past half at once, whatever the lead says', () => {
+    const both = clampSize(5000, 5000, 1600, 1000, null);
+    expect(both.w).toBe(800);
+    expect(both.h).toBe(500);
+  });
+
+  it('leaves a window that fits well inside the rule alone', () => {
+    const small = clampSize(460, 460, 1600, 1000, 'w');
+    expect(small.w).toBe(460);
+    expect(small.h).toBe(460);
   });
 
   it('refuses to shrink below a usable chat', () => {
-    const tiny = clampSize(10, 10, 1600, 1000);
+    const tiny = clampSize(10, 10, 1600, 1000, 'w');
     expect(tiny.w).toBe(MIN_W);
     expect(tiny.h).toBe(MIN_H);
   });
 
   it('keeps the minimum even on a window too small to halve', () => {
-    const squeezed = clampSize(400, 400, 300, 200);
+    const squeezed = clampSize(400, 400, 300, 200, 'w');
     expect(squeezed.w).toBe(MIN_W);
     expect(squeezed.h).toBe(MIN_H);
   });
@@ -154,10 +181,29 @@ describe('All eight handles, and the far edge stays put', () => {
     expect(out.y + out.h).toBe(box.y + box.h);
   });
 
-  it('hits the half-window ceiling and stops there', () => {
-    const out = applyResize('se', box, 9000, 9000, 1600, 1000);
-    expect(out.w).toBe(800);
-    expect(out.h).toBe(500);
+  it('names the axis he is actually pulling, even on a corner', () => {
+    expect(leadingAxis('e', 50, 0)).toBe('w');
+    expect(leadingAxis('n', 0, 50)).toBe('h');
+    expect(leadingAxis('se', 200, 30)).toBe('w');   // mostly sideways
+    expect(leadingAxis('se', 30, 200)).toBe('h');   // mostly downwards
+  });
+
+  it('pulls the east edge all the way to the far side of the screen', () => {
+    const out = applyResize('e', box, 9000, 0, 1600, 1000);
+    expect(out.w).toBe(1600 - 16);
+    expect(out.h).toBe(box.h);
+  });
+
+  it('pulls the bottom edge all the way down the screen', () => {
+    const out = applyResize('s', box, 0, 9000, 1600, 1000);
+    expect(out.h).toBe(1000 - 16);
+    expect(out.w).toBe(box.w);
+  });
+
+  it('holds the other axis at half once one of them is past half', () => {
+    const wide = applyResize('se', box, 9000, 9000, 1600, 1000);
+    expect(wide.w).toBe(1600 - 16);
+    expect(wide.h).toBe(500);
   });
 });
 
@@ -187,6 +233,7 @@ describe('It opens small every time, and remembers only where it was', () => {
     frame.size = { w: 800, h: 500 };
     frame._place();
     expect(el.style.width).toBe('800px');
+    expect(el.style.height).toBe('500px');
 
     frame.close();
     frame.open();
@@ -363,6 +410,43 @@ describe('The conversation panel itself', () => {
     const del = calls.filter((c) => c.method === 'DELETE');
     expect(del).toHaveLength(1);
     expect(del[0].url).toContain('/api/ai/conversations/abc-123');
+  });
+
+  it('has no coloured edge down one side of it', () => {
+    // HIS REVIEW, 12 September: "why is there a left-side color edge? It is
+    // not required." A 2px blue border left over from when this was a drawer
+    // glued to the right of the screen.
+    const shell = chatSource.slice(
+      chatSource.indexOf('      .ai-panel {'),
+      chatSource.indexOf('      .ai-panel__header {')
+    );
+    expect(shell.length).toBeGreaterThan(50);
+    expect(shell).not.toContain('border-left');
+  });
+
+  it('dresses its own scrollbars instead of leaving the browser to do it', () => {
+    // Read from the source, because the test DOM does not keep what is put
+    // into a <style> tag.
+    expect(chatSource).toContain('::-webkit-scrollbar-thumb');
+    expect(chatSource).toContain('scrollbar-width: thin');
+    // And the desk behind it must not scroll when the conversation runs out.
+    expect(chatSource).toContain('overscroll-behavior: contain');
+  });
+
+  it('says who said each message, the way the mockup does', () => {
+    const panel = new AIChatPanel(container);
+    panel._render();
+    const pane = document.getElementById('ai-messages');
+    const before = pane.children.length;
+    panel._appendMessage('user', 'what is it worth');
+    panel._appendMessage('assistant', 'about this much');
+    expect(pane.children.length).toBe(before + 2);
+
+    const labels = pane.children.flatMap((m) => (m.children || []))
+      .filter((c) => String(c.className || '').includes('ai-message__who'))
+      .map((c) => c.textContent);
+    expect(labels).toContain('You');
+    expect(labels).toContain('Partner');
   });
 
   it('shows no microphone where the browser cannot dictate, and says what to do instead', () => {

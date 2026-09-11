@@ -236,7 +236,14 @@ class SwayamApp {
       this.aiChat = new AIChatPanel(aiContainer);
       await this.aiChat.init();
 
-      this.aiFrame = new AIPanelFrame(aiContainer);
+      this.aiFrame = new AIPanelFrame(aiContainer, {
+        // The panel closes itself from its own cross, so the launcher has to
+        // hear about it from the panel and not only from this class.
+        onClose: () => {
+          this.isAIDrawerOpen = false;
+          this._showLauncher(true);
+        },
+      });
       this.aiFrame.mount();
     }
 
@@ -255,20 +262,29 @@ class SwayamApp {
   openAIDrawer() {
     if (this.aiFrame) this.aiFrame.open();
     this.isAIDrawerOpen = true;
+    this._showLauncher(false);
   }
 
   closeAIDrawer() {
     if (this.aiFrame) this.aiFrame.close();
     this.isAIDrawerOpen = false;
+    this._showLauncher(true);
   }
 
   toggleAIDrawer() {
     if (this.aiFrame) {
       this.aiFrame.toggle();
       this.isAIDrawerOpen = this.aiFrame.isOpen;
+      this._showLauncher(!this.isAIDrawerOpen);
       return;
     }
     this.isAIDrawerOpen = false;
+  }
+
+  /** The button that opens the partner is furniture under an open partner. */
+  _showLauncher(show) {
+    const orb = document.getElementById('floating-ai-launcher-btn');
+    if (orb) orb.hidden = !show;
   }
 
   navigateTo(page, updateHistory = true) {

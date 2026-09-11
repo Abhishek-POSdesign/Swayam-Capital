@@ -630,6 +630,11 @@ body {
   filter: brightness(1.06);
 }
 
+/* `display: flex` above beats a bare `hidden` attribute, so hiding the orb
+   while the panel is open needs saying out loud. Found on the running page:
+   the orb was marked hidden and drawn anyway. */
+.ai-floating-launcher[hidden] { display: none; }
+
 /* Range Slider Primitives (Sensibull-pattern) */
 input[type="range"].swayam-slider-blue,
 input[type="range"].swayam-slider-amber {

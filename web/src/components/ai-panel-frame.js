@@ -32,15 +32,19 @@
 export const PANEL_PLACE_KEY = 'swayam-ai-panel-place';
 
 /** Four or five lines. The size it opens at, every time, however big it was. */
-export const DEFAULT_W = 360;
-// 280 rather than the mockup's 250, because the header became two rows
-// once it was measured at this width. Four or five lines of conversation
-// is the thing he asked for; the number was never the point.
-export const DEFAULT_H = 280;
+/**
+ * What it opens at. HIS REVIEW of 12 September: "the texts are so tiny...
+ * What are you saving this space for? Is it rented?" The type inside the
+ * panel went up by roughly a third, so the window it opens at went up with
+ * it. This is still small against a 1440-wide screen, and it holds five or
+ * six readable lines of conversation, which is what he asked for.
+ */
+export const DEFAULT_W = 460;
+export const DEFAULT_H = 460;
 
-/** Below this it stops being usable as a chat. */
-export const MIN_W = 260;
-export const MIN_H = 150;
+/** Below this it stops being usable as a chat at the size the type is now. */
+export const MIN_W = 320;
+export const MIN_H = 220;
 
 /** Where it sits when attached: clear of the launcher in the bottom-right. */
 const DOCK_RIGHT = 22;
@@ -55,17 +59,38 @@ const TINY_H = 44;
 export const HANDLE_EDGES = ['n', 's', 'w', 'e', 'nw', 'ne', 'sw', 'se'];
 
 /**
- * The ceiling he asked for: half the window across and half the window down.
- * "I want to be able to resize the window half vertically, like I'm chatting
- * with you like this, or half horizontally if I want to."
+ * THE CEILING, CORRECTED BY HIM ON 12 SEPTEMBER.
+ *
+ * His words on 11 September: "I want to be able to resize the window half
+ * vertically, like I'm chatting with you like this, or half horizontally if I
+ * want to." That was first built as half the width AND half the height, which
+ * is a QUARTER of his screen, and he said so: "Half horizontally means the
+ * full horizontal area's height is half, and the full length width is half."
+ *
+ * A half of his screen is a half. Either:
+ *   - the left or right half: FULL height, half width. The shape he chats in.
+ *   - the top or bottom half: FULL width, half height.
+ *
+ * So each dimension may reach the whole window, but NOT BOTH AT ONCE. The
+ * axis he is actually pulling is the one that gets to grow; the other is held
+ * at half. `lead` says which axis that is: 'w', 'h', or null for a gesture
+ * that is neither, where both are held at half.
  */
-export function clampSize(w, h, winW, winH) {
-  const maxW = Math.max(MIN_W, Math.floor(winW / 2));
-  const maxH = Math.max(MIN_H, Math.floor(winH / 2));
-  return {
-    w: Math.max(MIN_W, Math.min(Math.round(w), maxW)),
-    h: Math.max(MIN_H, Math.min(Math.round(h), maxH)),
-  };
+export function clampSize(w, h, winW, winH, lead = null) {
+  const halfW = Math.max(MIN_W, Math.floor(winW / 2));
+  const halfH = Math.max(MIN_H, Math.floor(winH / 2));
+  const fullW = Math.max(MIN_W, winW - EDGE_GAP * 2);
+  const fullH = Math.max(MIN_H, winH - EDGE_GAP * 2);
+
+  let outW = Math.max(MIN_W, Math.min(Math.round(w), lead === 'w' ? fullW : halfW));
+  let outH = Math.max(MIN_H, Math.min(Math.round(h), lead === 'h' ? fullH : halfH));
+
+  // Belt and braces: never both past half, whatever the lead said.
+  if (outW > halfW && outH > halfH) {
+    if (lead === 'w') outH = halfH;
+    else outW = halfW;
+  }
+  return { w: outW, h: outH };
 }
 
 /** Keeps the panel's top-left on screen whatever the window has just done. */
@@ -74,6 +99,20 @@ export function clampPosition(x, y, w, h, winW, winH) {
     x: Math.max(EDGE_GAP, Math.min(Math.round(x), Math.max(EDGE_GAP, winW - w - EDGE_GAP))),
     y: Math.max(EDGE_GAP, Math.min(Math.round(y), Math.max(EDGE_GAP, winH - h - EDGE_GAP))),
   };
+}
+
+/**
+ * Which axis is he actually pulling. An edge handle answers itself; a corner
+ * is decided by which way his hand moved further, so a corner drag that is
+ * mostly sideways behaves like a sideways drag.
+ */
+export function leadingAxis(edges, dx, dy) {
+  const horizontal = edges.indexOf('e') > -1 || edges.indexOf('w') > -1;
+  const vertical = edges.indexOf('n') > -1 || edges.indexOf('s') > -1;
+  if (horizontal && !vertical) return 'w';
+  if (vertical && !horizontal) return 'h';
+  if (!horizontal && !vertical) return null;
+  return Math.abs(dx) >= Math.abs(dy) ? 'w' : 'h';
 }
 
 /** What a drag of `dx, dy` on one handle does to a box. Pure, so it is testable. */
@@ -85,7 +124,7 @@ export function applyResize(edges, box, dx, dy, winW, winH) {
   if (edges.indexOf('s') > -1) h = box.h + dy;
   if (edges.indexOf('n') > -1) h = box.h - dy;
 
-  const size = clampSize(w, h, winW, winH);
+  const size = clampSize(w, h, winW, winH, leadingAxis(edges, dx, dy));
   // Pulling the west or north edge moves the opposite corner's anchor, so the
   // edge under his pointer is the one that moves and the far edge stays put.
   const x = edges.indexOf('w') > -1 ? box.x + box.w - size.w : box.x;
@@ -160,6 +199,7 @@ export class AIPanelFrame {
     this._addHandles();
     this._bindHeader();
     this._bindControls();
+    this._bindWheel();
     if (!this._bound && this.win) {
       this.win.addEventListener('resize', () => {
         if (this.isOpen) this._place();
@@ -172,6 +212,38 @@ export class AIPanelFrame {
       });
       this._bound = true;
     }
+  }
+
+  /**
+   * THE WHEEL STOPS AT THE PANEL'S EDGE.
+   *
+   * His report of 12 September: "sometimes the back window scrolls." The panel
+   * is `position: fixed`, which stops it MOVING with the page but does nothing
+   * to stop a wheel over it reaching the page. Four things inside it really do
+   * scroll and they keep the wheel; everywhere else it is swallowed, so the
+   * desk never slides out from under him while he is reading the panel.
+   */
+  _bindWheel() {
+    if (!this.el || this.el.dataset.aipWheel === '1') return;
+    this.el.dataset.aipWheel = '1';
+    this.el.addEventListener(
+      'wheel',
+      (e) => {
+        const scroller = e.target && e.target.closest
+          ? e.target.closest('.ai-messages, .ai-history-list, .ai-textarea, .ai-settings-view__body, .ai-sheet-scrim')
+          : null;
+        if (!scroller) {
+          e.preventDefault();
+          return;
+        }
+        // A scroller already at its end would chain to the page; contain it.
+        const up = e.deltaY < 0;
+        const atTop = scroller.scrollTop <= 0;
+        const atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
+        if ((up && atTop) || (!up && atBottom)) e.preventDefault();
+      },
+      { passive: false }
+    );
   }
 
   _addHandles() {
@@ -188,32 +260,56 @@ export class AIPanelFrame {
     });
   }
 
+  /**
+   * THE GESTURE LIVES ON THE WINDOW, NOT ON THE THING HE GRABBED.
+   *
+   * HIS REPORT, 12 September: "sometimes, when I try to catch it and drag it,
+   * it doesn't drag." The move and release listeners used to sit on the handle
+   * itself, so a drag that outran the pointer, or a browser that refused the
+   * pointer capture, left the gesture behind. Listening on the window means
+   * once he has pressed, the panel follows his hand until he lets go, wherever
+   * that hand goes.
+   */
+  _track(onMove) {
+    const win = this.win;
+    if (!win) return;
+    const move = (e) => onMove(e);
+    const up = () => {
+      this._drag = null;
+      this._resize = null;
+      win.removeEventListener('pointermove', move);
+      win.removeEventListener('pointerup', up);
+      win.removeEventListener('pointercancel', up);
+      if (this.doc && this.doc.body) this.doc.body.classList.remove('aip-dragging');
+    };
+    win.addEventListener('pointermove', move);
+    win.addEventListener('pointerup', up);
+    win.addEventListener('pointercancel', up);
+    if (this.doc && this.doc.body) this.doc.body.classList.add('aip-dragging');
+  }
+
   _bindHandle(handle) {
     handle.addEventListener('pointerdown', (e) => {
       this._detachInPlace();
       const box = { x: this.place.x, y: this.place.y, w: this.size.w, h: this.size.h };
       this._resize = { edges: handle.dataset.edge, x: e.clientX, y: e.clientY, box };
-      try { handle.setPointerCapture(e.pointerId); } catch (_) {}
       if (e.preventDefault) e.preventDefault();
+      this._track((ev) => {
+        if (!this._resize) return;
+        const next = applyResize(
+          this._resize.edges,
+          this._resize.box,
+          ev.clientX - this._resize.x,
+          ev.clientY - this._resize.y,
+          this._winW(),
+          this._winH()
+        );
+        this.size = { w: next.w, h: next.h };
+        this.place.x = next.x;
+        this.place.y = next.y;
+        this._place();
+      });
     });
-    handle.addEventListener('pointermove', (e) => {
-      if (!this._resize) return;
-      const next = applyResize(
-        this._resize.edges,
-        this._resize.box,
-        e.clientX - this._resize.x,
-        e.clientY - this._resize.y,
-        this._winW(),
-        this._winH()
-      );
-      this.size = { w: next.w, h: next.h };
-      this.place.x = next.x;
-      this.place.y = next.y;
-      this._place();
-    });
-    const stop = () => { this._resize = null; };
-    handle.addEventListener('pointerup', stop);
-    handle.addEventListener('pointercancel', stop);
   }
 
   _bindHeader() {
@@ -227,17 +323,14 @@ export class AIPanelFrame {
       this._detachInPlace();
       const r = this.el.getBoundingClientRect();
       this._drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
-      try { head.setPointerCapture(e.pointerId); } catch (_) {}
+      if (e.preventDefault) e.preventDefault();
+      this._track((ev) => {
+        if (!this._drag) return;
+        this.place.x = ev.clientX - this._drag.dx;
+        this.place.y = ev.clientY - this._drag.dy;
+        this._place();
+      });
     });
-    head.addEventListener('pointermove', (e) => {
-      if (!this._drag) return;
-      this.place.x = e.clientX - this._drag.dx;
-      this.place.y = e.clientY - this._drag.dy;
-      this._place();
-    });
-    const stop = () => { this._drag = null; };
-    head.addEventListener('pointerup', stop);
-    head.addEventListener('pointercancel', stop);
   }
 
   /** The four chrome controls the mockup draws, wired if they are present. */
@@ -264,6 +357,7 @@ export class AIPanelFrame {
     this._addHandles();
     this._bindHeader();
     this._bindControls();
+    this._bindWheel();
     if (this.isOpen) this._place();
   }
 
@@ -284,7 +378,10 @@ export class AIPanelFrame {
   _place() {
     const winW = this._winW();
     const winH = this._winH();
-    const size = clampSize(this.size.w, this.size.h, winW, winH);
+    // No lead: this is a re-fit, not a gesture, so whatever he last set is
+    // kept if it still fits and is pulled back inside the rule if it does not.
+    const lead = this.size.w > this.size.h ? 'w' : 'h';
+    const size = clampSize(this.size.w, this.size.h, winW, winH, lead);
     this.size = size;
 
     this.el.style.width = `${size.w}px`;
@@ -310,6 +407,13 @@ export class AIPanelFrame {
     }
 
     if (this.storage) writePlace(this.storage, this.place);
+
+    // The composer sizes itself against the panel, so it has to hear about it.
+    if (this.win && typeof this.win.dispatchEvent === 'function') {
+      try {
+        this.win.dispatchEvent(new CustomEvent('swayam-ai-panel-resized'));
+      } catch (_) {}
+    }
   }
 
   // --------------------------------------------------------------- actions

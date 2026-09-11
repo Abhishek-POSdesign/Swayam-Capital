@@ -127,7 +127,7 @@ export class AIChatPanel {
           <textarea
             class="ai-textarea"
             id="ai-textarea"
-            rows="2"
+            rows="3"
             placeholder="Speak, or type here"
           ></textarea>
           <input type="file" id="ai-file-input" accept="image/png,image/jpeg,image/webp,image/gif" style="display: none;" />
@@ -251,6 +251,48 @@ export class AIChatPanel {
 
     // The microphone, which is either real or absent with a reason.
     this._setUpDictation();
+
+    // The composer grows with what he types and with the window he stretches.
+    textarea.addEventListener('input', () => this._sizeComposer());
+    if (typeof window !== 'undefined') {
+      window.addEventListener('swayam-ai-panel-resized', () => this._sizeComposer());
+    }
+    this._sizeComposer();
+  }
+
+  /**
+   * HOW BIG THE BOX HE TYPES IN IS.
+   *
+   * HIS REVIEW, 12 September: "my prompt container is small. It should be
+   * bigger than this and can also grow with the size if I stretch horizontally
+   * and vertically, plus a little bit more as the text grows. This panel...
+   * should at least be able to carry 5 or 6 lines when there are 5 or 6 lines,
+   * not unnecessarily big."
+   *
+   * So: three lines to start; it grows line by line as he types, up to six
+   * lines or two fifths of the window, whichever is smaller, and that ceiling
+   * itself rises when he stretches the window. Past the ceiling the box scrolls
+   * rather than eating the conversation above it.
+   */
+  _sizeComposer() {
+    const ta = document.getElementById('ai-textarea');
+    if (!ta) return;
+    const panel = document.getElementById('ai-sidebar-container');
+    const panelH = panel && typeof panel.getBoundingClientRect === 'function'
+      ? panel.getBoundingClientRect().height
+      : 0;
+
+    const line = 23;          // 15px at 1.55
+    const padding = 24;       // the box's own top and bottom
+    const floor = line * 3 + padding;
+    const sixLines = line * 6 + padding;
+    const shareOfWindow = panelH ? Math.round(panelH * 0.4) : sixLines;
+    const ceiling = Math.max(floor, Math.min(sixLines, shareOfWindow));
+
+    ta.style.height = 'auto';
+    const wanted = ta.scrollHeight;
+    ta.style.height = `${Math.max(floor, Math.min(wanted, ceiling))}px`;
+    ta.style.overflowY = wanted > ceiling ? 'auto' : 'hidden';
   }
 
   // ------------------------------------------------------------ dictation
@@ -523,6 +565,13 @@ export class AIChatPanel {
     div.classList.add('ai-message', role === 'user' ? 'ai-message--user' : 'ai-message--assistant');
     if (isStreaming) div.setAttribute('id', 'ai-streaming-msg');
 
+    // Who said it. The mockup puts a small label above every message and it
+    // is what makes a wall of text read as a conversation.
+    const who = document.createElement('div');
+    who.className = 'ai-message__who';
+    who.textContent = role === 'user' ? 'You' : 'Partner';
+    div.appendChild(who);
+
     const inner = document.createElement('div');
     inner.classList.add('ai-message__content');
 
@@ -596,6 +645,7 @@ export class AIChatPanel {
     this._clearPendingImage();
 
     textarea.value = '';
+    this._sizeComposer();
     textarea.disabled = true;
     document.getElementById('ai-btn-send').disabled = true;
     this._clearError();
@@ -607,6 +657,10 @@ export class AIChatPanel {
     const assistantDiv = document.createElement('div');
     assistantDiv.classList.add('ai-message', 'ai-message--assistant');
     assistantDiv.id = 'ai-streaming-msg';
+    const streamWho = document.createElement('div');
+    streamWho.className = 'ai-message__who';
+    streamWho.textContent = 'Partner';
+    assistantDiv.appendChild(streamWho);
     const inner = document.createElement('div');
     inner.classList.add('ai-message__content');
     inner.innerHTML = '<span class="ai-typing">▋</span>';
@@ -948,51 +1002,69 @@ export class AIChatPanel {
     const style = document.createElement('style');
     style.id = 'ai-panel-styles';
     style.textContent = `
+      /* ------------------------------------------------------------------
+         THE PANEL'S TYPE SCALE. HIS REVIEW, 12 September 2026.
+
+         It was 11 to 13px throughout and he could not read it: "the texts are
+         so tiny... What are you saving this space for? Is it rented?"
+         The body is 15px now and everything is ranged against that. Nothing
+         in this panel is below 12px, and the two things he reads most, the
+         conversation and what he is typing, are the largest.
+         ------------------------------------------------------------------ */
       .ai-panel {
         display: flex;
         flex-direction: column;
         height: 100%;
+        min-height: 0;
         background: var(--dl-card);
-        border-left: 2px solid var(--accent-blue);
         font-family: var(--font-sans, system-ui, sans-serif);
-        font-size: 13px;
+        font-size: 15px;
         color: var(--dl-fg);
+        /* NO LEFT EDGE. There was a 2px blue border here, left over from when
+           this was a drawer glued to the right of the screen. A floating
+           window has one quiet border on all four sides, and it is on
+           .ai-float-panel where the window itself is described. */
       }
+
+      /* Two rows: a title bar he drags by, then the conversation's toolbar.
+         The sage tint is the mockup's, and it is what makes the header read as
+         a header rather than as more panel. */
       .ai-panel__header {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 12px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 9px;
+        padding: 11px 14px;
         border-bottom: 1px solid var(--dl-line);
-        background: var(--dl-rail);
+        background: var(--accent-sage-tint);
         flex-shrink: 0;
       }
-      /* Two rows: a title bar, then the conversation's toolbar. */
-      .ai-panel__header { flex-direction: column; align-items: stretch; gap: 7px; padding: 8px 11px; }
       .ai-panel__titlebar {
-        display: flex; align-items: center; gap: 6px; min-width: 0;
-        cursor: grab; touch-action: none;
+        display: flex; align-items: center; gap: 9px; min-width: 0;
+        cursor: grab; touch-action: none; user-select: none;
       }
       .ai-panel__titlebar:active { cursor: grabbing; }
-      .ai-panel__titlebar .ai-panel__conv-title { margin-right: auto; }
-      .ai-panel__titlebar .ai-panel__title + .ai-icon-btn { margin-left: auto; }
-      .ai-panel__toolbar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-      /* Left side shrinks (title/convo-title truncate) so the right-side controls —
-         including the ⚙ settings gear — are NEVER pushed off the 370px panel edge.
-         (Bug: a past chat's conversation title used to shove the gear off-screen.) */
-      .ai-panel__header-left { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; overflow: hidden; }
-      .ai-panel__header-right { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
-      .ai-panel__icon { font-size: 16px; color: var(--accent-sage); }
-      .ai-panel__title { font-weight: 600; font-size: 14px; color: var(--dl-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+      .ai-panel__toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+      .ai-panel__header button { cursor: pointer; }
+
+      .ai-panel__dot {
+        width: 9px; height: 9px; border-radius: 50%;
+        background: var(--accent-sage); flex: 0 0 auto;
+      }
+      .ai-panel__title {
+        font-weight: 800; font-size: 15px; color: var(--dl-fg);
+        letter-spacing: -0.01em; white-space: nowrap; flex-shrink: 0;
+      }
       .ai-panel__conv-title {
-        font-size: 11px;
-        color: var(--dl-fg-3);
-        max-width: 84px;
+        font-size: 12.5px;
+        color: var(--dl-fg-2);
+        margin-right: auto;
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        flex-shrink: 1;
       }
+
       .ai-panel__body {
         flex: 1;
         overflow: hidden;
@@ -1004,54 +1076,64 @@ export class AIChatPanel {
       .ai-messages {
         flex: 1;
         overflow-y: auto;
-        padding: 12px;
+        /* The conversation reaching its end must not start scrolling the desk
+           behind it. HIS REPORT: "sometimes I scroll. Sometimes the AI panel
+           scrolls. Sometimes the back window scrolls." */
+        overscroll-behavior: contain;
+        padding: 16px;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 14px;
         min-height: 0;
       }
-      .ai-message { display: flex; }
-      .ai-message--user { justify-content: flex-end; }
-      .ai-message--assistant { justify-content: flex-start; }
+      .ai-message { display: flex; flex-direction: column; }
+      .ai-message--user { align-items: flex-end; }
+      .ai-message--assistant { align-items: flex-start; }
       .ai-message__content {
-        max-width: 85%;
-        padding: 8px 12px;
-        border-radius: 10px;
-        line-height: 1.5;
+        max-width: 92%;
+        padding: 11px 14px;
+        border-radius: 13px;
+        font-size: 15px;
+        line-height: 1.65;
         word-break: break-word;
       }
-      /* Same treatment as the Home chat, for the same reason: a pale tint on
-         his own messages, nothing at all behind the AI's. */
+      /* The mockup's shape: his own words tinted, the partner's on a ground of
+         their own, each with a small label saying who said it. */
       .ai-message--user .ai-message__content {
         background: var(--accent-sage-tint);
         color: var(--dl-fg);
-        border-bottom-right-radius: 3px;
+        border-bottom-right-radius: 4px;
       }
       .ai-message--assistant .ai-message__content {
-        max-width: 100%;
-        background: none;
+        background: var(--dl-card-2);
         color: var(--dl-fg);
-        border: none;
-        padding: 6px 2px;
+        border-bottom-left-radius: 4px;
+      }
+      .ai-message__who {
+        font-size: 11px; font-weight: 700; letter-spacing: 0.07em;
+        text-transform: uppercase; color: var(--dl-fg-3); margin-bottom: 5px;
+        padding: 0 3px;
       }
       .ai-message__content code {
-        font-family: 'JetBrains Mono', monospace;
-        background: var(--dl-card-2);
-        padding: 1px 4px;
-        border-radius: 3px;
-        font-size: 12px;
+        font-family: var(--font-mono, monospace);
+        background: var(--dl-card);
+        padding: 2px 5px;
+        border-radius: 4px;
+        font-size: 13.5px;
       }
       .ai-message__content pre {
-        background: var(--dl-card-2);
-        padding: 8px;
-        border-radius: 6px;
+        background: var(--dl-card);
+        padding: 11px;
+        border-radius: 8px;
         overflow-x: auto;
-        font-size: 12px;
-        font-family: 'JetBrains Mono', monospace;
+        font-size: 13.5px;
+        font-family: var(--font-mono, monospace);
       }
-      .ai-message__content ul { padding-left: 18px; margin: 4px 0; }
-      .ai-message__content li { margin: 2px 0; }
-      .ai-message__content strong { font-weight: 600; }
+      .ai-message__content ul { padding-left: 20px; margin: 6px 0; }
+      .ai-message__content li { margin: 3px 0; }
+      .ai-message__content strong { font-weight: 700; }
+      .ai-message__content p { margin: 0 0 9px; }
+      .ai-message__content p:last-child { margin-bottom: 0; }
       .ai-typing {
         display: inline-block;
         animation: blink 1s step-end infinite;
@@ -1062,29 +1144,38 @@ export class AIChatPanel {
       .ai-panel__input-area {
         display: flex;
         align-items: flex-end;
-        gap: 8px;
-        padding: 10px 14px;
+        gap: 9px;
+        padding: 12px 14px;
         border-top: 1px solid var(--dl-line);
         background: var(--dl-card);
         flex-shrink: 0;
       }
+      /* WHAT HE TYPES IN. HIS REVIEW: "my prompt container is small. It should
+         be bigger than this and can also grow with the size if I stretch...
+         plus a little bit more as the text grows."
+         Three lines to start, growing with the text up to a share of the
+         window, and the share itself grows when he stretches the window. The
+         growing is done in _sizeComposer(); this only sets the floor. */
       .ai-textarea {
         flex: 1;
         resize: none;
         background: var(--dl-card-2);
         border: 1px solid var(--dl-line);
         color: var(--dl-fg);
-        border-radius: 8px;
-        padding: 8px 10px;
+        border-radius: 12px;
+        padding: 11px 14px;
         font-family: inherit;
-        font-size: 13px;
+        font-size: 15px;
         outline: none;
-        line-height: 1.4;
+        line-height: 1.55;
+        min-height: 78px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
       }
       .ai-textarea:focus { border-color: var(--accent-sage); }
       .ai-panel__footer {
-        padding: 6px 14px;
-        font-size: 11px;
+        padding: 9px 14px;
+        font-size: 12.5px;
         color: var(--dl-fg-3);
         border-top: 1px solid var(--dl-line);
         background: var(--dl-rail);
@@ -1096,28 +1187,30 @@ export class AIChatPanel {
       }
       .ai-footer-model { white-space: nowrap; }
       .ai-error {
-        margin: 6px 12px;
-        padding: 6px 10px;
+        margin: 10px 16px;
+        padding: 10px 13px;
         background: var(--accent-coral-tint, rgba(221, 129, 112, 0.17));
         border: 1px solid var(--accent-coral);
         border-radius: 6px;
         color: var(--accent-coral);
-        font-size: 12px;
+        font-size: 13.5px;
+        line-height: 1.5;
       }
       .ai-error-inline { color: var(--accent-coral); }
       .ai-btn {
-        background: var(--dl-card-2);
+        background: var(--dl-card);
         border: 1px solid var(--dl-line);
         color: var(--dl-fg);
-        padding: 5px 10px;
-        border-radius: 6px;
+        padding: 8px 13px;
+        border-radius: 9px;
         cursor: pointer;
-        font-size: 12px;
+        font-size: 13.5px;
+        font-weight: 600;
         transition: all 0.15s;
         white-space: nowrap;
       }
-      .ai-btn:hover { background: var(--dl-line); }
-      .ai-btn--sm { padding: 4px 8px; font-size: 11px; }
+      .ai-btn:hover { background: var(--dl-card-2); border-color: var(--dl-fg-3); }
+      .ai-btn--sm { padding: 7px 12px; font-size: 13px; }
       .ai-btn--ghost { background: transparent; border-color: transparent; }
       .ai-btn--primary {
         /* Sage, because the terminal's accent is sage and this panel was the
@@ -1127,9 +1220,11 @@ export class AIChatPanel {
         border-color: var(--accent-sage);
         color: var(--text-inverse);
         font-weight: 700;
-        min-width: 64px;
+        min-width: 84px;
         flex-shrink: 0;
-        height: 36px;
+        height: 46px;
+        font-size: 14.5px;
+        border-radius: 12px;
       }
       .ai-btn--primary:hover { opacity: 0.9; }
       .ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -1138,7 +1233,7 @@ export class AIChatPanel {
         right: 0;
         top: 0;
         bottom: 0;
-        width: 280px;
+        width: min(320px, 82%);
         background: var(--dl-card);
         border-left: 1px solid var(--dl-line);
         z-index: 100;
@@ -1149,16 +1244,17 @@ export class AIChatPanel {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 10px 14px;
+        padding: 12px 16px;
         border-bottom: 1px solid var(--dl-line);
-        font-weight: 600;
+        font-weight: 800;
+        font-size: 15px;
         color: var(--dl-fg);
       }
-      .ai-history-list { list-style: none; padding: 8px 0; margin: 0; overflow-y: auto; flex: 1; }
+      .ai-history-list { list-style: none; padding: 8px 0; margin: 0; overflow-y: auto; overscroll-behavior: contain; flex: 1; }
       .ai-history-item {
-        padding: 8px 14px;
+        padding: 11px 16px;
         cursor: pointer;
-        font-size: 13px;
+        font-size: 14px;
         border-bottom: 1px solid var(--dl-line);
         color: var(--dl-fg-2);
         transition: background 0.1s;
@@ -1171,11 +1267,11 @@ export class AIChatPanel {
       /* Header: settings gear + model pill */
       .ai-panel { position: relative; }
       .ai-icon-btn {
-        width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent;
-        color: var(--dl-fg-3); cursor: pointer; font-size: 15px; display: flex;
+        width: 34px; height: 34px; border-radius: 9px; border: none; background: transparent;
+        color: var(--dl-fg-2); cursor: pointer; font-size: 17px; line-height: 1; display: flex;
         align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s;
       }
-      .ai-icon-btn:hover { color: var(--dl-fg); background: var(--dl-card-2); }
+      .ai-icon-btn:hover { color: var(--dl-fg); background: var(--accent-sage-tint-hover); }
 
       /* Assistant message meta row: model tag + Play/Save */
       .ai-message--assistant { flex-direction: column; align-items: flex-start; }
@@ -1184,13 +1280,13 @@ export class AIChatPanel {
         margin-top: 3px; padding: 0 2px; width: 100%;
       }
       .ai-msg-model {
-        font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--dl-fg-3); opacity: 0.75;
+        font-family: var(--font-mono, monospace); font-size: 11.5px; color: var(--dl-fg-3);
       }
       .ai-msg-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
       .ai-msg-action {
-        background: none; border: 0; color: var(--dl-fg-3); font-family: inherit;
-        font-size: 12px; font-weight: 500; cursor: pointer; display: inline-flex;
-        align-items: center; gap: 4px; padding: 2px 4px; border-radius: 5px;
+        background: none; border: 0; color: var(--dl-fg-2); font-family: inherit;
+        font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex;
+        align-items: center; gap: 5px; padding: 4px 7px; border-radius: 7px;
       }
       .ai-msg-action:hover { color: var(--accent-sage); }
       .ai-msg-action.saved { color: var(--accent-sage); cursor: default; }
@@ -1255,6 +1351,32 @@ export class AIChatPanel {
       }
       .ai-set-preview:hover { color: var(--accent-sage); border-color: var(--accent-sage); }
 
+      /* THE SCROLLBAR. HIS REVIEW: "this scroller is the default Windows
+         scroller: bulkier, not same-color-aligned, and looks bad. I need a
+         same-color-aligned, sleek, minimal scroller." Every scrolling area
+         inside the panel, in both themes, from the tokens. */
+      .ai-float-panel *,
+      .ai-float-panel { scrollbar-width: thin; scrollbar-color: var(--dl-track) transparent; }
+      .ai-float-panel ::-webkit-scrollbar { width: 9px; height: 9px; }
+      .ai-float-panel ::-webkit-scrollbar-track { background: transparent; }
+      .ai-float-panel ::-webkit-scrollbar-thumb {
+        background: var(--dl-track); border-radius: 999px;
+        border: 3px solid transparent; background-clip: content-box;
+      }
+      .ai-float-panel ::-webkit-scrollbar-thumb:hover {
+        background: var(--dl-fg-3); background-clip: content-box;
+      }
+      .ai-float-panel ::-webkit-scrollbar-corner { background: transparent; }
+
+      /* The keyboard has to be able to see where it is. */
+      .ai-float-panel :focus-visible {
+        outline: 2px solid var(--accent-sage); outline-offset: 2px; border-radius: 8px;
+      }
+
+      /* While a drag or a resize is happening, nothing on the page underneath
+         may start selecting text under his hand. */
+      body.aip-dragging { user-select: none; cursor: default; }
+
       /* ---------------------------------------------------------------
          BUILD_07. The floating panel's own controls.
          Every colour here is a token. No hex, in either theme.
@@ -1280,9 +1402,9 @@ export class AIChatPanel {
       /* The microphone is a first-class control, his words. It is only ever
          rendered when the browser really can dictate. */
       .ai-mic {
-        width: 38px; height: 38px; border-radius: 50%; flex: 0 0 auto;
+        width: 46px; height: 46px; border-radius: 50%; flex: 0 0 auto;
         background: var(--accent-sage-tint); border: 1px solid var(--dl-line);
-        color: var(--dl-fg); font-size: 15px; cursor: pointer;
+        color: var(--dl-fg); font-size: 19px; cursor: pointer;
         display: flex; align-items: center; justify-content: center;
         transition: background 0.15s, border-color 0.15s;
       }
@@ -1291,11 +1413,11 @@ export class AIChatPanel {
         background: var(--accent-sage); border-color: var(--accent-sage);
         color: var(--text-inverse);
       }
-      .ai-tool { width: 38px; height: 38px; border: 1px solid var(--dl-line); border-radius: 8px; font-size: 16px; }
+      .ai-tool { width: 46px; height: 46px; border: 1px solid var(--dl-line); border-radius: 12px; font-size: 19px; }
 
       /* What he can do instead, when dictation is not available. */
       .ai-dictation-note {
-        margin: 0; padding: 0 14px 8px; font-size: 11.5px; line-height: 1.45;
+        margin: 0; padding: 0 14px 11px; font-size: 13.5px; line-height: 1.5;
         color: var(--dl-fg-2); background: var(--dl-card); flex-shrink: 0;
       }
 
@@ -1316,7 +1438,7 @@ export class AIChatPanel {
         border: none; cursor: pointer; font-size: 11px; line-height: 1;
         display: flex; align-items: center; justify-content: center;
       }
-      .ai-att-info { font-size: 0.72rem; color: var(--dl-fg-3); }
+      .ai-att-info { font-size: 13px; color: var(--dl-fg-2); }
 
       /* Delete asks first. The sheet covers the PANEL, never the page, so it
          can never land on top of an exit ticket. */
@@ -1326,14 +1448,15 @@ export class AIChatPanel {
         justify-content: center; padding: 10px; overflow-y: auto;
       }
       .ai-sheet-scrim[hidden] { display: none; }
-      .ai-sheet { color: var(--dl-fg); font-size: 12.5px; }
-      .ai-sheet h3 { margin: 0 0 8px; font-size: 15px; font-weight: 800; }
-      .ai-sheet p { margin: 0 0 10px; color: var(--dl-fg-2); line-height: 1.5; }
-      .ai-sheet ul { margin: 0 0 12px; padding-left: 17px; color: var(--dl-fg-2); line-height: 1.5; }
+      .ai-sheet { color: var(--dl-fg); font-size: 14px; }
+      .ai-sheet h3 { margin: 0 0 10px; font-size: 17px; font-weight: 800; }
+      .ai-sheet p { margin: 0 0 12px; color: var(--dl-fg-2); line-height: 1.55; }
+      .ai-sheet ul { margin: 0 0 14px; padding-left: 19px; color: var(--dl-fg-2); line-height: 1.55; }
       .ai-sheet li { margin: 3px 0; }
       .ai-sheet__row { display: flex; gap: 8px; justify-content: flex-end; }
 
       /* Shrunk to the bar: the header stays, everything else goes. */
+      .aip-tiny .ai-panel__toolbar,
       .aip-tiny .ai-panel__body,
       .aip-tiny .ai-panel__input-area,
       .aip-tiny .ai-att-preview,
