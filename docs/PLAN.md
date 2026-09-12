@@ -3932,9 +3932,47 @@ answers in his words.**
   the event, the discussion of what was announced comes before any new
   trade. **Open:** which events are high-impact is his list; he named RBI,
   the Fed and the Budget. US CPI is not yet on it.
-- *Desk question 1, may the partner name a specific adjustment, strike and
-  all, on a live position:* not yet answered; the event rule answered the
-  event half of the scene. Re-asked without the event.
+- **Desk question 1, may the partner name a specific adjustment, strike
+  and all, on a live position. YES, his, 2026-09-12 late night:** "It can
+  take the strike name and advise. That is not a problem because it can
+  calculate faster than me, so I should use it, but with a reason, with a
+  calculation, with a number, not just blank, blank, buy this call or put.
+  There must be a reason and a number supporting it." So on a live
+  position the partner may say "buy the 24,300 call" when the sentence
+  also carries why, the calculation and the number it rests on. A bare
+  instruction is never allowed. This is §2.17.10 item 6 applied to a
+  position he already holds.
+- **The high-impact event list. His instruction, the same night:** the
+  examples he gave (RBI, the Fed, the Budget) were examples, not the list.
+  The list is to be drawn from what exists and kept IN THE TERMINAL in
+  advance, so the day-before warning needs no fresh judgement. **What
+  exists:** `swayam_macro_events` (migration 015), fed by the Trading
+  Economics API, with a `highlighted` flag set weekly by a Gemini curation
+  that picks three to five events, and an `impact_brief`; `event_time` is
+  empty on every row (§2.17.11). **What is missing:** his fixed list of
+  event TYPES that count as high impact, which the curation must obey
+  rather than choose, and the time of each event in IST, because a print
+  after the close (India CPI 17:30 IST, US CPI 18:00 IST, the Fed 23:30
+  IST) hits the next session's open, so "the day of the event" for those
+  means the overnight that follows. **Mentor's draft list, for his edit,
+  from the two research passes, the existing table and his own words:**
+  - India, scheduled: RBI policy decision; the Union Budget and any interim
+    budget; India CPI; India GDP (quarterly); India IIP; general election
+    results day; monthly NIFTY expiry day (his own rule, calendars).
+  - Global, scheduled: US Fed decision; US CPI; US non-farm payrolls; US
+    GDP.
+  - Unscheduled, high impact when they happen: war or border escalation,
+    a major tariff or sanctions announcement, a bank or broker failure, a
+    surprise RBI action, a SEBI or exchange circular that changes F&O
+    rules.
+  - Medium, listed so they are not mistaken for high: India WPI, RBI
+    minutes, ECB and Bank of Japan decisions, China data, crude and OPEC
+    decisions, state elections.
+  **The build, when he says, to a builder via the main chat's loop:** a
+  table of event types with an impact class and the release time in IST,
+  the weekly curation constrained to it, `event_time` filled, and the desk
+  and the partner reading the same table. Not this chat's to build; this
+  chat owns the list and its words.
 
 **Pipes this needs, for a later build, none of it now.** A manual way for the
 partner to ask for a run and read the report back; the engine runs on his PC
