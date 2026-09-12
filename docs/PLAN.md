@@ -3916,6 +3916,26 @@ verified Indian-market facts with their sources, and the mentor's own view,
 marked as such. The vault chat may rename or move it; the prompt file then
 follows.
 
+**THE DESK, begun 2026-09-12 late night, before the chat was cleared. His
+answers in his words.**
+- **The event rule, given in answer to the first desk scene:** "We will not
+  keep any position open on the day the event is happening. Either we will
+  close the position one day before the high-impact event, like RBI, US
+  Fed, or anything which has a very high impact on the market, or budget,
+  or I am available on the system, on the computer, to manage manually. If
+  I am not available, I will square off the trade one day before and enter
+  into the new trade after it, after a discussion about what is really
+  there in the data, in the announcement, in the event, and how we can
+  create a strategy around it." **What this gives the partner:** the day
+  before a high-impact event it says so, names the open position, and puts
+  the two choices to him: close today, or be at the desk tomorrow. After
+  the event, the discussion of what was announced comes before any new
+  trade. **Open:** which events are high-impact is his list; he named RBI,
+  the Fed and the Budget. US CPI is not yet on it.
+- *Desk question 1, may the partner name a specific adjustment, strike and
+  all, on a live position:* not yet answered; the event rule answered the
+  event half of the scene. Re-asked without the event.
+
 **Pipes this needs, for a later build, none of it now.** A manual way for the
 partner to ask for a run and read the report back; the engine runs on his PC
 and the report reaches the live site the way the outbox does (§2.19). The
@@ -3986,10 +4006,13 @@ work goes.
   there." So layer 3 has two homes in the vault: draft, where a named
   structure is born and lives while it is tested; final, never edited in
   place. A named structure enters draft the same day; it reaches final when
-  he says. **Proposed by the mentor, awaiting his yes:** the partner writes
-  only into draft; moving to final is his hand, never its, which is his
-  "it has the power to document things, not to change the document" of
-  §2.17.10 item 6 applied to the folders.
+  he says. **Settled by him, 2026-09-12 late night, replacing the mentor's
+  line:** "I can move it to the final from the draft, and AI as well, but
+  it has to be final. I should confirm: okay, it is final, the draft has
+  become final now. Either I move it or AI moves it. It doesn't really
+  matter. Until I say it is final and closed, it will stay in the draft
+  folder." So the rule is the WORD, not the hand: nothing leaves draft
+  until he says final and closed; after that, either may move it.
 
 #### 2.17.15 THE KNOWLEDGE BASE. His ask of 2026-09-12 night. To be planned WITH him. Not started.
 
