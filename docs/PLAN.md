@@ -4144,7 +4144,7 @@ rules, date-sensitive charges, and a four-level approval standard.
   base, and it is still worth building.
 
 **The two prompts written tonight.**
-- `docs/LIBRARY_DOWNLOAD_PROMPT.md`, phase two for Antigravity: fetch only
+- `docs/LIBRARY_DOWNLOAD_PROMPT.md`, phase two for Antigravity. **FINAL, combined on 2026-09-12 night with the backtester chat's correction run** (`00 - Developer Logs/LIBRARY_AUDIT_BY_BACKTESTER_2026-09-12.md`: one of eleven section-A items was really fetched, A8; A9 and A10 were marked complete with no file, and A10 carried rupee margin figures from no circular). The combined prompt files A1 first, redoes A9 for options, strips the invented figures, then the rest, under one status rule: a file on disk or "needs his browser", no third status. Fetch only
   the list above, official sources, verify each file from its own pages,
   file into `03 - Knowledge/Trading/Library/` with one index per item and a
   top index, paid shelf listed as "awaiting his copy", one report back.
