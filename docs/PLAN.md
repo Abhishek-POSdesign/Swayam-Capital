@@ -2298,6 +2298,24 @@ document held earlier, so read it before anything else here.**
 
 ---
 
+#### WHAT A BACKTEST IS FOR. His sentence, 2026-09-12. Read this before the rest.
+
+> "The backtest's purpose is to find out what the most predictable ways the market
+> behaves are and bet on those predictable behaviours instead of copying and pasting
+> everything that happened in the past."
+
+**Every design decision in this section answers to that sentence.** A backtest here
+is not a reconstruction of the past and it is not accounting. It is a search for
+behaviour that repeats, tested under the conditions he faces **now**.
+
+That is why his charges rule follows from it rather than being a separate opinion:
+**the market is historical, the cost of doing business is current** (§2.16.9). It is
+also why his own trades are experience rather than test material (§2.16.0), and why
+a result reports plan-adherence before profit. Anything that drifts towards
+replaying history faithfully is drifting away from the question he is asking.
+
+---
+
 #### 2.16.0 CLEAN SLATE, BUT NOT A CLOSED BOOK. His words, refined 2026-09-10.
 
 **This section was written once too absolutely and he corrected it. Read the
@@ -2894,40 +2912,63 @@ downloaded files agree with it.
 
 ---
 
-##### THE ONE THING FOUND WHILE ANSWERING THIS, AND IT BLOCKS THE BACKTESTER
+##### HIS RULE ON CHARGES, WHICH SETTLES POINT 1 AND OVERTURNS WHAT THIS SECTION FIRST SAID. 2026-09-12 night.
 
-**⚠️ THE CHARGE ENGINE CANNOT COST A TRADE BETWEEN 1 APRIL 2023 AND 31 MARCH 2026.
-That is three of his four and a half years.** Found by invoking it, not by reading
-it, 2026-09-12.
+**This section first reported that the charge engine cannot cost a trade between
+1 April 2023 and 31 March 2026, and called that a blocker on the backtester. He
+corrected it, and he is right. It is not a blocker, because the backtester should
+never ask for a historical charge in the first place.**
 
-`services/charges.py` holds exactly two dated rate sets: one effective
-2022-04-01 to 2023-03-31, and one effective 2026-04-01 onwards. Asked for any date
-in between it raises `ChargeScheduleUnavailable`: "No charge schedule covers
-01 Jun 2024. A trade cannot be costed with rates that were not in force."
+> "It doesn't really matter what the charges were in 2023, 2024, or 2025. All the
+> backtests must follow the current year's charges. The charges might be less than
+> that time. What matters is what the charges are today in the backtest. Market
+> moves matter in the past, but the charges should be current. Only then will I get
+> the real picture."
 
-| Date asked | Answer |
+> "The backtest's purpose is to find out what the most predictable ways the market
+> behaves are and bet on those predictable behaviours instead of copying and
+> pasting everything that happened in the past."
+
+**THE PRINCIPLE, AND IT DRAWS A LINE THROUGH THE WHOLE ENGINE. The market is
+historical. The cost of doing business is current.**
+
+A backtest is not accounting for a trade he might have made in 2023. It asks a
+question about today: **if this market behaviour repeats, do I make money on it
+now, paying what I actually pay now?** Costing an old structure at old rates
+answers a question nobody is asking, and it would pass a strategy on charges he
+will never again enjoy.
+
+**What that settles, concretely:**
+
+| Follows the trade's own date | Follows TODAY |
 |---|---|
-| 2022-06-01 | Works |
-| 2023-06-01, 2024-06-01, 2024-11-01, 2025-06-01 | **Refuses** |
-| 2026-06-01 | Works |
+| Every price, high, low and close | Brokerage, STT, exchange transaction charge, clearing, SEBI fee, stamp duty, GST |
+| Which strikes existed and which actually traded | The lot size, so a structure is sized the way he would size it now |
+| The contract's real expiry date, holiday shifts included | Margin rules, including the calendar expiry-day rule |
+| Whether the market was open at all | |
 
-**The engine is behaving correctly and this is not a bug in it.** It refuses rather
-than guessing, which is exactly the no-fake-data rule working as intended, and it
-is why CLAUDE.md is right to call it the only correct charge model in the
-repository. **But it means the backtester cannot report a net number on most of his
-window until the missing schedules are added.** Since his first pass criterion is
-that net profit must beat twice the charges (§2.16.5c), a backtest of 2023, 2024 or
-2025 cannot even be scored today.
+**So the engine calls `charges.py` with today's date, never the trade's date**, and
+every result says so, in the same breath as it names its data tier. A reader must
+never mistake a backtest for historical accounting.
 
-**What it needs, and deliberately not written from memory:** the rate sets for
-2023-04-01 onwards, taken from the **Income Tax Department STT text that is on the
-Library fetch list**. Both research passes state that STT on an option sale rose to
-0.10% of premium with effect from 1 October 2024 and to 0.15% from 1 April 2026.
-**Those figures are not entered here, because a charge rate copied from a research
-report is exactly the kind of number this project refuses.** They go in once the
-primary text is in the Library and has been read.
+**Two consequences worth stating because they are both in his favour.**
 
-**This puts the Library on the backtester's critical path rather than beside it.**
+1. **This makes the test harder to pass, not easier.** Today's charges are the
+   highest they have been in his window, and STT on the sell side rose again on
+   1 April 2026. Applying them to older data is the conservative direction.
+2. **It closes the 2022 and 2023 lot-size gap as well**, by exactly the same logic.
+   That value exists in no file he holds, and under this rule it is not wanted:
+   a structure is sized at today's 65 because 65 is what he would trade now.
+
+**What `services/charges.py` still needs: nothing.** Its current schedule is
+`fyers-standard-2026-04`, sourced from "FYERS charges list, read 2026-09-08" and
+cross-checked against Zerodha's published charges. That is the schedule the
+backtester uses for every trade at every date. The 2022-04 schedule stays where it
+is and keeps its own separate job, costing his own historical records when he
+reflects on them, which is not backtesting.
+
+**And it takes the Library off the backtester's critical path.** The earlier claim
+that it was on it was wrong and depended on the mistake above.
 
 ---
 
@@ -2963,15 +3004,19 @@ force.** Not edited here; that file belongs to the main chat.
 - **Lot size is covered from 2024 onwards by the data itself**, the NSE
   `lot_size` column.
 
-**⚠️ THE REAL GAP: the lot size for 2022 and 2023 exists nowhere.** The legacy NSE
-file format carries no lot column, so it is NULL rather than guessed (§2.15.8). And
-`services/contract_master.py` resolves the lot from the **live** FYERS contract
-master, which does not list expired contracts, so it cannot answer for a past date
-at all. **`services/margin.py` calls `get_lot_size(underlying, expiry)`, so a
-historical margin figure would silently use a live answer.** The backtester must
-never call that path; it needs a dated lot table, and 2022 to 2023 has to come from
-the NSE lot-size circulars on the fetch list. **A backtest of his 2022 era using 65
-overstates everything by a fifth.**
+**THE LOT SIZE NEEDS NO HISTORY AT ALL, by his charges rule above.** The measured
+history is kept because it is true and because it matters when reading his own 2022
+records, but **a backtest sizes every structure at today's 65**, because 65 is what
+he would trade now and the backtest is a question about now. The legacy file's NULL
+lot column stops being a gap the moment that is settled.
+
+**One live trap remains and it is worth naming.** `services/contract_master.py`
+resolves the lot from the **live** FYERS contract master, which does not list
+expired contracts, and `services/margin.py` calls `get_lot_size(underlying,
+expiry)`. For a past expiry that call cannot answer honestly. **Under his rule the
+backtester wants today's lot anyway, so the fix is to ask for today's lot
+explicitly rather than to ask about a 2022 expiry and hope.** Asking about a dead
+expiry is how a silent wrong answer gets in.
 
 **2. Execution quality: whether the leg was tradeable and whether the price was
 stale. ADOPTED, and half of it is already measured.**
@@ -3041,36 +3086,35 @@ Checked against `docs/LIBRARY_DOWNLOAD_PROMPT.md` as it stands after PR #96, and
 referred to by its own item numbers so the next download prompt can absorb this
 directly.
 
-1. **Item A6 must become mandatory, and it must cover 2023 to 2025.** A6 asks for
-   the Budget 2026 STT change and adds "also the Finance Act 2024 STT provision **if
-   it is available**". For the backtester that second half is not optional: it is
-   the change that fills part of the three-year hole above. **And neither covers
-   2023-04-01 to the 2024 change**, which is the rest of the hole. Without all
-   three, most of his window cannot be costed at all.
-2. **NSE lot-size circulars for 2022, 2023 and 2024. Item A4 covers only the 2025
-   change to 65.** His own files carry the lot from 2024 onwards, so the true gap is
-   **2022 and 2023, which exists in no file he holds**, plus a primary source for
-   the two 2024 changes his data shows on 2024-04-26 and 2024-11-22. A backtest of
-   his 2022 era using today's 65 overstates everything by a fifth.
-3. **NSE's India VIX methodology document**, `nseindia.com`, because the whole
-   volatility path of §2.16.5b labels with VIX and nobody in this project has read
-   how it is computed. A measure used as a regime label should be understood.
-4. **NSE's own note on how the derivatives closing price is computed.** It was
-   proved empirically to be a half-hour weighted average (§2.15.8) and that proof
-   drives the rule that a backtest may never fill at a daily close. **A primary
-   source would turn a measurement into a citation.**
-5. **The SEBI and NSE circulars on margin for calendar spreads**, specifically the
-   February 2025 rule that a calendar gets no margin benefit on the day its near
-   leg expires. Ten of his twenty-one historical trades were calendars, the
-   terminal does not model this, and CLAUDE.md already says he must be told before
-   his first one.
-6. **NSE's contract specification history for weekly expiry introduction and
-   removal**, to know which weekly contracts existed in 2022 and 2023 rather than
-   inferring it from what traded.
+**Shortened on 2026-09-12 night by his charges rule above.** Two of the six
+requests first written here were for historical STT rates and historical lot-size
+circulars. **Both are withdrawn: the backtester uses today's figures, so it never
+needs either.** What is left is four documents, and every one of them is about
+something CURRENT that the engine relies on and nobody here has read.
 
-**Not wanted:** more strategy literature. §2.16.0 settles that strategies come out
-of his head, not out of a book, and a library of setups would quietly become the
-thing a strategy is copied from.
+1. **NSE's India VIX methodology document**, from `nseindia.com`. The whole
+   volatility path of §2.16.5b labels regimes with VIX and nobody in this project
+   has read how the number is computed. **A measure used as a regime label should be
+   understood by whoever labels with it.** This is the one I would fetch first.
+2. **NSE's own note on how the derivatives closing price is computed.** It was
+   proved empirically to be a weighted average of the last half hour (§2.15.8), and
+   that proof is what forbids a backtest from ever filling at a daily close. **A
+   primary source turns our measurement into a citation**, and that rule is load
+   bearing for every result the engine will produce.
+3. **The current SEBI and NSE margin framework for index option spreads**, and
+   specifically the rule that a calendar gets no margin benefit on the day its near
+   leg expires. Margin is a cost of doing business, so by his own rule the
+   **current** framework is the one that matters, not the one in force in 2022. Ten
+   of his twenty-one historical trades were calendars, the terminal does not model
+   this, and CLAUDE.md already says he must be told before his first one.
+4. **The current NSE contract specification for NIFTY options**, as one file:
+   expiry schedule, strike intervals, the strike band actually listed around spot,
+   and settlement. The engine has to know which strikes it may legitimately build a
+   structure from **today**, and today's specification is the answer under his rule.
+
+**Not wanted, and the reason is his own:** more strategy literature. §2.16.0 settles
+that strategies come out of his head. A library of setups would quietly become the
+thing a strategy gets copied from.
 
 **(b) Does this chat want its own research pass? Yes, on exactly one thing.**
 
