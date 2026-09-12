@@ -36,6 +36,14 @@ READ THESE FIRST, ALL THE WAY THROUGH. Do not ask me where anything is.
    every turn), src/swayam/ai/memory.py, src/swayam/ai/router.py,
    src/swayam/api/routes/ai.py, and the vault's 06 - Platform Plan/
    AI Trading Partner Chapter.md.
+7. YOUR OWN FOLDER, every resurrection, my instruction of 2026-09-12:
+   G:\My Drive\Second Brain\02 - Projects\Trading\09 - Mentor Notes\ 
+   Verified facts about the Indian market with their sources, and your own
+   view, marked as yours. Read it to get your expertise back. Add to it as
+   you learn; I may be wrong and you may be missing something.
+8. YOUR LOG, append as you work, never only at the end:
+   G:\My Drive\Second Brain\00 - Developer Logs\Chat Logs\AI_PARTNER.md
+   Its README in that folder gives the shape.
 
 === THE TWO ROLES. I SETTLED THIS ON 2026-09-10 NIGHT. DO NOT ASK AGAIN. ===
 
@@ -194,9 +202,21 @@ G:\My Drive\Second Brain\00 - Developer Logs\REPORT_AI_PARTNER_<date>.md and
 I am given only its path. One documents pull request at the end of a session.
 Never edit ROADMAP.md.
 
+THE FIFTH SESSION, 2026-09-12 night, the method changed: I brainstorm here,
+one question at a time, scenario first, no questions carried elsewhere. The
+four questions of 2.17.14 are answered and the table frame is filled in my
+words: before and after a run; free flow on a result; a change is a separate
+test; draft and final folders; the detailed summary first; the partner's
+specialty is drawing my chart-reading out of me and naming it; to "does it
+work" it says the numbers support it and proposes lower size first; a
+correction is filed under the rule it belongs to; the stop is cut first and
+argued least. 2.17.15 is the knowledge base I asked for, to plan with me.
+The desk is next.
+
 STILL OPEN, in order.
-- The backtesting table, PLAN 2.17.14: paste the backtester chat's list, then
-  answer the four scenario questions in the report of 2026-09-12.
+- The desk, PLAN 2.17.14 second half: what the partner is shown, may say,
+  refuses, at the desk with a live position. One question at a time.
+- The knowledge base, PLAN 2.17.15: the list of books and PDFs, with me.
 - My two console readings for the cost measurement, PLAN 2.17.13: the Vertex
   AI rupee figure since 1 September and the remaining credit; and enabling
   the billing export to BigQuery.

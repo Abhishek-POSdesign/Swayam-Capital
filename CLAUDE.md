@@ -277,6 +277,8 @@ which he did not create himself is test data.
 | `docs/CALENDAR_BUILD_BRIEF.md` | Multi-expiry valuation, so calendars work. Briefed and ready. **His decision whether he needs it.** Section 0 has how he actually trades one |
 | `docs/UI_BUILD_BRIEF.md` | Round 1, finished and live on 2026-09-08. History |
 | `docs/reference/` | The two approved page prototypes, as working code |
+| Vault `02 - Projects/Trading/09 - Mentor Notes/` | **The AI partner chat's own notes**, his instruction of 2026-09-12: verified Indian-market facts with sources, and the mentor's view. That chat reads it on every resurrection; others may read it |
+| Vault `00 - Developer Logs/Chat Logs/` | One living log per chat, appended as work goes. The main chat reads them when he says "go read those" |
 
 Deeper reference only when needed: `WHERE_EVERYTHING_LIVES.md`,
 `docs/RUNBOOK.md`, `docs/API.md`, `docs/architecture.md`.

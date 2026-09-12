@@ -3203,27 +3203,107 @@ cycle appeared and how long it lasted. The strategy under test, as written.
 The engine's report exactly as the engine produced it, before the partner has
 said a word about it. The data window and tier. The findings so far. His
 history only when he brings it in, labelled flawed every time.
+- **The report it is handed, his, 2026-09-12:** "It should get the summary,
+  but the detailed summary. If it doesn't understand the summary and cannot
+  guide me on the summary, AI has to think and do the reasoning. If it
+  couldn't reason through the summary, then it can ask for the table." So
+  the engine's detailed summary every time; the partner reasons over it
+  first; the trade-by-trade table only when the summary is not enough, and
+  it asks.
+- **On cost and the credit, his, the same night:** dense work while the
+  Google credit lasts, to 29 September; after that real money, so "there
+  will be design changes in the last week of September, especially for the
+  AI cost; we might change the AI if required. If I'm fully satisfied with
+  the Gemini, a 5, 10, 20% cost up and down doesn't really matter."
+  **Mentor's correction, accepted into the record:** the engine runs on his
+  PC over the files on his disk (§2.19) and costs nothing on any date; the
+  credit pays only for the partner's messages. "Dense" therefore means talk
+  freely with the partner until the 29th; the runs are free before and
+  after.
 
 **What it MAY say.** Define any term or structure on the spot, so he does not
 open a book. Turn what he says into one written, testable hypothesis, one
-variable at a time. Object before a run when the logic does not hold: a rule
+variable at a time.
+- **Its specialty at the table, his, 2026-09-12, in his words:** "I can never
+  be able to say the rules because I'm bad at that. My history in all
+  trading was seeing the chart, feeling it, and entering it... I was very
+  good at that: reading the chart. Why was I not very profitable? Only
+  because of my discipline, overtrading, and revenge trading. Those were my
+  problems, not the chart reading. It was hard for me to name or tell the
+  scenario when the scenario is building. This is something I want as a
+  specialty of my AI partner. Ask me questions. It can ask me for drawings,
+  images, and screenshots of the charts I'm seeing, and I'm telling it. Then
+  it can give them the names and the rules." **So the partner may offer
+  measurable versions of HIS idea**, drawn out of him by questions and
+  screenshots, for him to pick and correct. The idea is his; the words and
+  numbers are the partner's; the measuring is the engine's. That is not
+  strategy printing, and the line is: a rule the partner names is born from
+  a chart he showed it, never from the partner's own head. Two facts: the
+  terminal's chat already accepts a pasted screenshot (BUILD-11.7), so this
+  needs no new pipe; and this naming work is being done with him today by
+  the backtester chat (§2.16.4), and the partner takes it over once it
+  exists. Object before a run when the logic does not hold: a rule
 the engine cannot measure, a fill that depends on a price nobody could trade
 at, a window chosen because it looks good. Explain why a result looks the way
 it does, with the source named. Propose the single next variation. Name a
 structure with him. Draft the finding note, for his yes.
 
 **What it REFUSES.** To score its own idea; the number comes from the engine.
+- **What "does it work?" gets instead of a verdict, his, 2026-09-12:** "A
+  smart trading partner would say, Yes, the number supports it. These are
+  the numbers, a small summary. Then say, Let's try it with a lower size
+  first, and when it proves in the real market, then we can increase the
+  size. A smarter way for an unproven strategy in the real market." So the
+  partner may say the numbers support it, because the numbers are the
+  engine's; it reads them back short; and it proposes the path the roadmap
+  already sets, one lot first, size earned by the record (`ROADMAP.md` §1,
+  horizon 2). Any actual size or cap remains his hand.
 To say a strategy works before it has run on data he did not use to design
 it. To state a figure that is not in the engine's report. To pick a window
 that flatters a result. To change the strategy between runs without saying
 so. To write a finding without his yes. To build a strategy out of his past
 trades. To turn a backtest into a trade to take today.
 
-**How he corrects it.** He says the engine's number is right but the reading
-of it is wrong about how a human trades it. The partner writes his correction
-as one dated line in his words, reads it back, and applies it to the next
-hypothesis. Where that line lives is the correction question of §2.17.10
-item 4, still open.
+**How he corrects it. Settled by him, 2026-09-12 night.** "There must be a
+rulebook AI will have, and the correction must be related to some
+paragraph, some rule, or something. It must search where this correction
+belongs and add the correction in that rule, paragraph, chapter, or
+whatever it is. If it's a new thing, then a correction book, a file, a
+correction note where it would be added." So: the partner holds a rulebook;
+a correction is filed against the rule it belongs to, found by search, and
+appended under that rule, dated, in his words; only a correction that fits
+no rule goes to a corrections note. **Mentor's line, so it fits the draft
+and final folders of question 4:** the partner appends under a rule and
+never rewrites the rule's own wording; if the rule sits in final, the
+correction is filed pointing at it and he decides when the rule goes back to
+draft. This closes §2.17.10 item 4.
+
+**The stop, his correction of the mentor's scene, 2026-09-12 night.** The
+mentor had written a scene in which he holds through a stop. Wrong about
+him: "I will be very serious with the stop loss. I was always very serious
+with the stop loss. If there is a stop loss hit, my emotions or smartness
+should not come into line. Maybe 1 in 100 times there should be some market
+condition clearly telling, after a debate with the AI, No, this is a
+temporary spike in the option price which settles in 5 to 10 minutes. It
+happens on expiries or some news days, but most of the time we will respect
+our stop loss. The first reaction should be exit. If required, a small
+discussion. If I can convince with the real reason which is there, then only
+we will stop. Otherwise we will cut the trade. That is the most important
+rule: cut the trade at the stop loss. Live to die another day." **Rule for
+the partner, at the table and at the desk:** at a stop hit its first word is
+exit; the least discussion of all is about the stop; only a real,
+present reason he states can stop the cut, and it is his call.
+
+**The mentor's own folder, his instruction, 2026-09-12 night.** "Create a
+folder in the vault and write in your CLAUDE.md file that you must read that
+after every resurrection, to get some expertise about the Indian market. You
+can also put your thoughts and your view in it. I might be wrong, and you
+might be missing something." Created:
+`02 - Projects/Trading/09 - Mentor Notes/`, read on every resurrection
+(`SUCCESSOR_AI_PARTNER.md` item 7, and the repo `CLAUDE.md` table). It holds
+verified Indian-market facts with their sources, and the mentor's own view,
+marked as such. The vault chat may rename or move it; the prompt file then
+follows.
 
 **Pipes this needs, for a later build, none of it now.** A manual way for the
 partner to ask for a run and read the report back; the engine runs on his PC
@@ -3231,9 +3311,167 @@ and the report reaches the live site the way the outbox does (§2.19). The
 findings ledger, in the vault, mirrored. Caching, because these sessions are
 long.
 
-**Four questions for him, scenario first, to be asked after the backtester's
-list is pasted.** Recorded in the report of 2026-09-12 and in
-`SUCCESSOR_AI_PARTNER.md`.
+**The method, his, 2026-09-12 night, replacing the report rule of the same
+day.** The brainstorm happens WITH him, in the mentor chat. No questions are
+carried to the main chat and the main chat does not answer for him. He
+narrates what he imagines the partner to be; the mentor corrects him only
+where the technical side says a thing cannot work or would mislead him, says
+so where he is right and writes it down, and where he is unclear asks ONE
+simple question at a time, scenario first. No lists of questions to take
+away. The four questions below are asked that way, one by one, then the
+frame above is filled in his words: shown, may say, refuses, corrected; the
+backtesting table first, the desk second. The mentor's log is
+`00 - Developer Logs/Chat Logs/AI_PARTNER.md` in the vault, appended as the
+work goes.
+
+**His answers, in his words, dated, as they come.**
+
+- *Question 1, objecting before or after a run.* **Both, 2026-09-12.** "In the
+  backtest, I'll discuss both before the start and after. We will come to
+  some parameters: if the result comes out like this, then we will think
+  like this. If the result comes out like this, then we think like this.
+  When the results come out, we discuss again." So a run has a written
+  before: the objection, the hypothesis, and what each kind of result will
+  mean, agreed before the engine starts. Then a written after. This is the
+  vault's own tuning discipline (written hypothesis, explicit success and
+  failure criteria) applied at the table; he arrived at it himself.
+  **And a role he set the same night:** through the backtesting phase the
+  mentor is a second advisor at the table, reading the partner's notes and
+  his discussion with it (the mentor can read `swayam_ai_messages`, proven
+  2026-09-11). After backtesting, only the terminal's partner is required;
+  the mentor is called only when the partner does not work as it should,
+  makes mistakes, or errs.
+- *Question 2, the first sentence of a result.* **No fixed pattern,
+  2026-09-12.** "We will not be bound by too many rules: first say this,
+  first say that. If there is a result, I will not be blind to the result. I
+  will also read the result... It will be a free-flow discussion on the
+  result. We should touch every aspect, whether a win or a loss, success or
+  a failure, but I don't want a fixed linear pattern." So: the ENGINE's
+  written report keeps the §2.16 order, plan adherence, charges, spread,
+  tier, then profit, because that is the shape of the paper on the table;
+  the PARTNER's discussion of it is free, and must touch every aspect.
+  **And a correction he gave with it:** "My past swing trade result will
+  have nothing to do with the future backtesting. That was a different
+  scenario, a different market, a different pattern, and a different me...
+  Do not remove that reference. That is the history used when required, but
+  nothing is the same as before." The partner never argues about today from
+  2022; the history stays for when he reaches for it.
+- *Question 3, one variable at a time.* **A change is a separate test,
+  2026-09-12.** "I will not do that. I will test the strategy as it is, and if
+  I have to change the wings or something, I will call it a separate test
+  and compare the results. If I do so, then AI is to warn me of the
+  consequences, the real consequences. That is important." So: the strategy
+  runs as written; every change is its own named test, compared against the
+  first; and if two changes are ever stacked in one run, the partner warns
+  him of the real consequence, that the result cannot say which change did
+  it, and then runs what he asked. It warns; it never blocks.
+- *Question 4, naming.* **A draft folder and a final folder, 2026-09-12.**
+  "We will carry a draft folder and a final folder. In the draft folder, we
+  will have things that we will change, iterate, test, and discuss. Once that
+  is final, it will reach the final one. If we have to make any changes to
+  any final strategy or final plan, we will bring it back to the draft one.
+  We will make the changes, then shift it to final. The final one will
+  remain unchanged. We will not go into the final one folder and change it
+  there." So layer 3 has two homes in the vault: draft, where a named
+  structure is born and lives while it is tested; final, never edited in
+  place. A named structure enters draft the same day; it reaches final when
+  he says. **Proposed by the mentor, awaiting his yes:** the partner writes
+  only into draft; moving to final is his hand, never its, which is his
+  "it has the power to document things, not to change the document" of
+  §2.17.10 item 6 applied to the folders.
+
+#### 2.17.15 THE KNOWLEDGE BASE. His ask of 2026-09-12 night. To be planned WITH him. Not started.
+
+His words: "We have to give some knowledge base. I cannot have my AI depend
+on Google search all the time. Yes, it will do Google search all the time to
+make sure its knowledge base and the current market scenario match and do
+not contradict each other. There should be a knowledge base, some books, and
+some PDFs that are very highly rated for trading, not for investing, for
+strategies, and for setups, like Zerodha Varsity, and discipline. My
+favourite book is Best Loser Wins... These have to be fed into the vault,
+and you have to plan a list. It just has to check, through web browsing,
+that there is no contradictory element present before advising me on that."
+
+**What already exists, read from the vault on 2026-09-12.** Summaries, not
+the books: `02 - Projects/Trading/00 - Reference/Influences/` (Hougaard,
+Minervini, Theta Gainer, Subasish Pani) and `03 - Knowledge/Trading/`
+(Mark Douglas twice, Schwager, Edwards and Magee, Guy Cohen, Parag Parikh,
+the NSE options workbook; Van Tharp and the VRD Nation delta framework; five
+Zerodha Varsity modules). The vault's `Self-Improving Agent Integration.md`
+already planned the pipe: his own PDFs dropped into a folder, chunked,
+embedded into a `swayam_knowledge_base` table, every answer able to cite.
+
+**To discuss with him, one question at a time, later:** the list of books
+and PDFs, trading not investing, strategies, setups and discipline; the
+folder they drop into; and the rule that the partner checks the web for a
+contradiction before it advises from a book. **On cost, a fact:** Google's
+grounding is free for the first 5,000 queries a month on the Gemini 3
+models (§2.17.13), and his volume is a few hundred, so a check before
+advising is affordable; whether it is every time or a manual button is a
+design choice for the desk, under the standing cost rule.
+
+**His plan for building it, 2026-09-12 night, and the mentor's assessment:
+good, with two guards.** His words: "First create a full, proper knowledge
+base with every good, excellent, free source available, or a source
+available at minimum cost. I'm not hiding away from a one-time payment if I
+can get PDFs that I can store... I don't want you to create that database
+because you are an expensive one. I will only use you for brainstorming,
+not for the manual labour. You write a plan. I will hand the plan to a lower
+model like Sonnet or even Antigravity, which has Google grounding. That will
+do the research, find, download, and inject. You will just monitor and
+plan." The library serves three readers: the partner, the backtester chat's
+planning, and the mentor's own questions. **The desk brainstorm does not
+wait for it; both run.**
+
+**The two guards, rules for whoever does the labour.**
+1. **Free and legal, or bought by him.** Every source is listed with its
+   link, its price, and whether it may be downloaded. Free and lawful
+   sources are fetched. Paid books are never fetched from anywhere: the list
+   says where to buy, he buys, he drops the file in. No copy from a site
+   that has no right to give it. A book that is not his is fake data of a
+   different kind.
+2. **Two phases.** Phase one, the labour a cheap chat can do now: source,
+   list, fetch the free ones, file into the vault with an index. Phase two,
+   a build: the pipeline that lets the terminal's partner read and cite
+   them, planned in the vault's `Self-Improving Agent Integration.md` as
+   loop 4 and never built. The main chat plans it when he says. **Flag for
+   that plan:** thirty books as embeddings could take a large share of the
+   free database (§2.19 measured 15 MB used of 500); where the embeddings
+   live is that plan's decision, not tonight's.
+
+**Phase one, the shape of the prompt for the cheaper chat. The mentor
+writes the full prompt as its own fence when he says go; this is what it
+will contain.**
+- **Read first:** this section, §2.17.7 (what the partner is for),
+  `CLAUDE.md` (his two rules, and that the vault is caged during tests),
+  and the existing library in the vault: `03 - Knowledge/Trading/` and
+  `00 - Reference/Influences/`, so nothing is duplicated.
+- **Scope, his:** trading, not investing. Options structures and their
+  management, Indian market mechanics (NSE, SEBI, expiries, margins,
+  charges), price action, backtesting method, and discipline. His
+  favourite, *Best Loser Wins*, is owned as an audiobook; the PDF is paid.
+- **Step 1, the candidate list, for his yes before anything is fetched.**
+  Title, author, year, what it teaches, why it is rated, price, link, free
+  or paid, and a one-line reason it belongs. Free and lawful first: Zerodha
+  Varsity (already summarised, fetch the full modules), NSE and SEBI
+  publications, exchange circulars, academic papers on options and Indian
+  index behaviour, reputable free books. Then paid, with the price.
+- **Step 2, after his yes:** fetch the free ones, save the file, and write
+  one index note per source: title, source link, date fetched, licence or
+  reason it is free, and a five-line summary written from the file itself.
+  Paid ones: an index note with "awaiting his copy" until he drops it in.
+- **Where they go:** a `Library/` folder under `03 - Knowledge/Trading/`,
+  one subfolder per source, with `_Library Index.md` at the top. Proposed;
+  the vault chat may place it elsewhere.
+- **Rules:** every claim in an index note comes from the file, never from
+  memory; grounding calls counted and reported; nothing written to the
+  trading project's Method or Journal folders; the vault cage stays; the
+  handoff lists every file written with its size and source.
+- **Cost:** the research is a bounded task; report the number of grounded
+  searches and the model used so it lands in the AI-cost record.
+
+**Step 0 is his:** the categories above, and the first titles he wants,
+said in this chat, one at a time when he is back. Then the prompt is written.
 
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 
