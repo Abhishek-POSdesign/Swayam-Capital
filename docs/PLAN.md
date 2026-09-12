@@ -4183,6 +4183,282 @@ work goes.
   folder." So the rule is the WORD, not the hand: nothing leaves draft
   until he says final and closed; after that, either may move it.
 
+**THE EVENT RESEARCH IS WRITTEN AND WAITING FOR HIM TO RUN IT. 2026-09-12
+late night, the seventh session.** His rule of the same night is that the
+high-impact list is market-driven and comes from research done twice, like the
+Library. Both prompts are written: `docs/EVENT_RESEARCH_PROMPT.md`, pass one
+for Antigravity and pass two for Perplexity, with a paste copy in the vault at
+`00 - Developer Logs/ANTIGRAVITY_PROMPT - Event Research.md`. The brief is the
+same for both and only the wrapper differs; **Perplexity is not shown
+Antigravity answer**, because a second pass that has read the first stops
+being a second pass.
+
+Three rules were written into the brief because they are the ones his
+instruction turns on. An event earns its place only on MEASURED movement in
+NIFTY or India VIX with a named source, its sample period and its number of
+observations; fame is not evidence. The only two classes allowed are HIGH
+IMPACT (MEASURED) and NOT ESTABLISHED AS HIGH IMPACT, because he said the
+others are not less impacted, so the phrase low impact may not appear. And a
+magnitude that cannot be sourced is written `unavailable` with what was
+searched, never estimated. Twelve fields are required per event type,
+including the release time in IST with its provenance and its daylight-saving
+caveat, and where the print lands against NSE hours, since anything after
+15:30 IST is absorbed by the next session and that is precisely the overnight
+his rule is about. Unscheduled types must carry at least two dated real
+instances since 2022 with the actual NIFTY and India VIX move.
+
+The mentor reconciles the two files into this section when they come back.
+**Nothing is built from this yet**, and the build it points at is the event-type
+table with impact class and IST time, `swayam_macro_events.event_time` filled,
+and the weekly curation constrained to the researched list instead of choosing
+for itself.
+
+---
+
+**THE EVENT RESEARCH CAME BACK, AND THE MENTOR RECONCILED IT. 2026-09-13.**
+Pass one: `00 - Developer Logs/EVENT_RESEARCH_2026-09-13 by Antigravity.md`
+(gemini-2.5-pro by its own report). Pass two: `ANTIGRAVITY_PROMPT - Event
+Research by perpexility.pdf`, 34 pages, 42 grounded searches by its own report,
+with a text copy beside it. **Every dated number below was recomputed by the
+mentor from his own files**, `data/history/nifty/1d/all.parquet` and
+`data/history/vix/nse_daily/all.parquet`, reading only, 2022-01-03 to
+2026-09-09, 1,162 sessions. Baseline on those files: median absolute daily
+move 0.47%, median high-low range 0.86%, median absolute opening gap 0.27%,
+median absolute India VIX change 2.62%.
+
+**The two passes used different methods, and that is the whole disagreement.**
+- **Antigravity did not research published sources.** It ran its own event
+  study on his downloaded NIFTY and VIX files and cited the files. That is a
+  legitimate method, and its large figures reproduce exactly (Lok Sabha result
+  day −5.93% with an 8.16% range and VIX +27.75%; 24 February 2022 −4.78% with a
+  −3.01% gap and VIX +30.32%; 4 May 2022 −2.29%; the three Budget VIX falls).
+  **But it failed its own brief in five verified ways.** (1) **Tawang, 13
+  December 2022, is backwards:** it reports NIFTY −0.60% and VIX +3.58% to
+  13.34; the files say NIFTY **+0.60%** and VIX **12.88, −3.30%**. Direction
+  was invented to fit the story. (2) Wrong figures elsewhere: HDFC Bank 17
+  January 2024 range 2.32% claimed, **1.37%** in the file; Jackson Hole 29
+  August 2022 gap −1.46% claimed, **−2.11%**; 14 September 2022 gap −1.78%
+  claimed, **−1.65%**. (3) Its second "India border" instance, 8 May 2024,
+  names no identifiable event and the file shows NIFTY unchanged. (4) **Expiry
+  day and MSCI rebalance were marked HIGH IMPACT with no measured number at
+  all**, on gamma, pin risk and turnover talk: reputation, which the brief
+  forbade. The mentor's proxy on the files, expiry weekdays against other
+  days, finds no index effect: median move 0.47% against 0.48%, range 0.90%
+  against 0.85%, 234 expiry days. (5) Its classification rule is not applied
+  consistently: scheduled RBI decisions are HIGH on a range of 1.3 times normal
+  when it declared 1.5 times as the bar, and India border escalation is HIGH
+  on "potential for" a move. Its three academic titles carry no link and are
+  not verified. It also missed the largest India VIX move in the window:
+  **7 April 2025, tariff escalation, NIFTY −3.24% on a −5.00% gap, VIX
+  +65.62%**.
+- **Perplexity used only published reporting and found almost no event
+  studies,** so it left nearly every scheduled event NOT ESTABLISHED. Its dated
+  closing figures reproduce on his files: 13 June 2022 −2.64% and VIX +14.25%;
+  13 March 2023 −1.49% and VIX +20.95%; 27 January 2023 −1.61%; 5 August 2024
+  −2.68% and VIX +42.25%; 7 April 2025 −3.24% and VIX +65.62%; 13 June 2025
+  −0.68% and VIX +7.56%. Where it quotes intraday VIX from the news the file
+  close differs, and the file wins. It gave few IST release times, saying it
+  could not source them.
+
+**The reconciled list. A draft for his yes, never a rule until he says.**
+
+| Class | Event types | Why |
+|---|---|---|
+| **HIGH IMPACT (MEASURED)**, scheduled | General election results day | Both passes; 4 June 2024 on his files |
+| **HIGH IMPACT (MEASURED)**, unscheduled | War or geopolitical escalation; tariff or trade-war escalation; surprise RBI action between meetings; global banking stress; a governance shock in an index heavyweight or group; a global leveraged unwind | Both passes, dated instances reproduced on his files |
+| **UNDECIDED, to be measured** | Union Budget; state election results; scheduled RBI decisions; FOMC decisions; US CPI; heavyweight earnings; expiry day; MSCI rebalance; an India border escalation | The passes disagree; one measured with an inconsistent rule and some wrong numbers, the other found no study |
+| **NOT ESTABLISHED AS HIGH IMPACT**, both passes | India CPI, WPI, GDP, IIP, PMI; RBI minutes; FOMC minutes and Jackson Hole; US payrolls, GDP, PCE; ECB; Bank of Japan; China data; OPEC; scheduled tariff dates; SEBI or exchange circulars; sovereign rating actions; an Indian bank or broker failure | Neither pass found a measured effect |
+
+**How the undecided row is settled.** One event study on his own files, with
+the rule for high impact written down BEFORE anything is measured, on the
+official historical dates the backtester chat's research prompt is already
+fetching (its Question 2, with the IST times the mentor added). One list, two
+readers, the desk and the backtest. The rule itself is his, and it is the
+question put to him on 2026-09-13.
+
+**The finding that matters most, the mentor's, from the files.** Every one of
+the largest overnight gaps in the window was **unscheduled**: −5.00% on
+7 April 2025, −3.01% on 24 February 2022, −2.00% on 13 June 2022, −1.68% on
+5 August 2024. No calendar gives a day before. **His day-before rule protects
+against the scheduled part of event risk only; the rest is carried by rule 2,
+the overnight gap test, and by the wife's app.** The partner must never let
+"nothing on the calendar tomorrow" sound like "safe to carry".
+
+**Times still unverified.** Antigravity gives IST times for every event,
+several with no page cited; Perplexity sourced only RBI 10:00 and the India
+PMI times. The India CPI and IIP time of 17:30 IST in the mentor's earlier
+draft list above is from Antigravity and is **not verified from MoSPI**. No
+time enters the terminal until it is read from the publisher's own page.
+
+**HIS ANSWER ON EVENTS, 2026-09-13, which reframes the day-before rule.** In his
+words: "The planned event does not affect it too much. They give volatility
+during the day, but nothing much happens at the end... options go in loss, in
+profit, then settle." And: "Unpredicted big swings, that is hardly once or twice
+in a year... it is not fixed that every time they will be against me. Iron condor
+is always against me, but I also like to trade directional as well, so they might
+be in my direction as well. We have to live with this. This is the market."
+And the real reason for the rule: **"Closing my trade a day before the event is
+only because I'm sleeping during the event, and I don't want unwanted alerts on my
+wife's phone... Unnecessary."**
+**What this settles.**
+- **The day-before rule is a sleep rule, not a risk rule.** Its purpose is that
+  his wife is not rung for an event-day swing that will settle by the close. The
+  mentor's finding that the largest gaps were unscheduled stands as a fact, and he
+  already lives with it; the partner must never turn unscheduled shocks into a
+  reason for fear, and never treat them as always against him.
+- **The event list's job at the desk is therefore small:** which scheduled days he
+  is flat on so the night is quiet. The mentor recommends the "still to measure"
+  study above is NOT spent on the desk; it stays a backtester question (event
+  periods tested separately, §2.16.9), run when the backtester chat needs it.
+- **His wife and he both use Android.** The mentor believes Android allows an
+  alarm-style ring through silent mode without a special permission; to be read
+  from Android's own documentation before the build, not assumed.
+
+**TWO FACTS PAGES, AND A HOLIDAY THAT MAY BE TOMORROW. Read 2026-09-13 from the
+vault chat's plan (artifact "Market Facts Ledger") and the backtester chat's
+`10 - Backtester Notes/Free Data Inventory.md`.**
+- The vault chat proposes one shared, strict page,
+  `03 - Knowledge/Trading/Verified Market Facts.md`: every row VERIFIED, WRONG,
+  DISPUTED or UNVERIFIED with its evidence, only the vault chat writes it. It
+  overlaps the mentor's `09 - Mentor Notes/Indian Market Facts, verified.md`.
+  **DECIDED BY HIM, 2026-09-13: "One fact sheet so that there will be no confusion."** One truth, not two. The shared ledger
+  carries the market facts; the mentor's note shrinks to a pointer plus what the
+  ledger does not carry (model prices and DeepSeek's peak hours), and
+  `Mentor's View` stays the mentor's. Two pages kept by different chats drift,
+  and on 2026-09-13 they already had.
+- **The terminal's `data/nse_holidays_2026.json` is wrong in nine places** by the
+  backtester chat's test on his own NSE files (four trading days listed as
+  holidays, five real closures missing), and **Monday 14 September 2026 is claimed
+  as a holiday by one research report only.** The partner reads the market clock;
+  a wrong holiday file makes it say "open" or "closed" wrongly. The fix is the main
+  chat's; the source document is the vault chat's fetch prompt (item A12).
+
+**THE SPEAK-FIRST SESSION, BEGUN 2026-09-13. His answers in his words.**
+
+- **Who wakes him, first scene (asleep at 10:40, a fast 180-point drop, a loss
+  still inside his rule).** His answer corrected the question. "How will an AI
+  partner wake me? It cannot wake me. It has no hands or physical presence. It
+  can only send a notification on the phone. That cannot wake me because I
+  sleep on DND." **So the partner never wakes him directly, and a push to his
+  own phone is not a wake channel.** The only wake path is his wife, through
+  her app.
+- **When the wife's app says wake him, his rule.** "If it's under my planned
+  loss, then there is no reason to wake me up because it will happen... Otherwise,
+  it will be waking me every next day, because that is the behavior of the
+  options. They become volatile, show you a loss, then they will start giving
+  you profit, then loss. That is why I'm building this system: so that I will
+  not have to wake up every day for this." The draft thresholds, his example of
+  a planned loss of ₹1,000:
+  | Loss against the PLANNED loss of that trade | What the wife's app says |
+  |---|---|
+  | Under 90% | Nothing about waking him |
+  | 90% or more **and growing** (₹900+ and rising) | "You can ask your husband to wake up" |
+  | At or past the planned loss | "Yes, it is time to wake him up" |
+- **What this settles for the design, mentor's reading.** The trigger is the
+  trade's own planned loss, not rule 1 (1% of the balance); the two are
+  different numbers and the partner must not confuse them. The trigger is a
+  rule and costs nothing; only the words need an AI call. And every open trade
+  must carry a planned-loss figure in rupees, or this rule cannot run and the
+  app must say so rather than stay silent. **The mentor's recommendation, for
+  his correction:** at 90% and growing, the app does not wait to be opened; it
+  rings her phone, because she is awake and he is not. This replaces the old
+  `Wake Alerts System.md` flow (ping him, escalate to her after ten minutes
+  unacknowledged), which his DND makes useless, and its 09:15 to 12:30 asleep
+  window, which is shorter than his real morning.
+
+- **How the wife's app alerts her, his, 2026-09-13, accepting the mentor's
+  recommendation and sharpening it.** "There should be alerts with a proper
+  ring, not just one ting." Two levels:
+  | Loss against the trade's planned loss | What her phone does |
+  |---|---|
+  | 90% or more and growing | **One notification**: her attention is required |
+  | At or past the planned loss | **A continuous ring** until she opens the app, then she talks to the partner |
+  **Mentor's additions, for his correction:** the ring stops only when she
+  opens the app, never by being swiped away; the single notification is not
+  repeated for the same trade unless the loss reaches the planned loss; and at
+  the planned loss the partner's first words to her are that it is time to
+  wake him, not a discussion of the market, because his stop rule is "the
+  first reaction should be exit". **A fact to verify before any build, not
+  from memory:** whether an app can ring through her phone's silent or focus
+  mode depends on the phone. On an iPhone this is believed to need Apple's
+  Critical Alerts permission, granted by Apple on application; on Android an
+  alarm-style alert is believed to be possible without it. Both are to be
+  checked on the platform documentation before the build is written.
+- **What planned loss means on an adjusted trade, his, 2026-09-13.** "If I'm
+  adjusting a trade, then my plan loss will remain the same... The profit and
+  loss will be for a trade, not for a leg. Legs come and go, and their numbers
+  will be added and subtracted as profit and loss, but the total target and
+  loss remain the same." And the asymmetry, in his words: **"Profit has a
+  number, but no upper limit. Loss has a number, which is a maximum limit, but
+  can be cut earlier."** And the plan: "Every trade will have a plan that me
+  and AI will brainstorm, and that should stay with the trade discussion. If
+  the market is not behaving like we planned, we can even cut our losses early
+  with the discussion." He wants early exit encouraged when the market is not
+  flowing as planned.
+  **What this gives the partner.**
+  - The wake rule and the stop are measured on the WHOLE trade's net, realised
+    legs plus open legs, against a loss number fixed at the plan. An adjustment
+    never moves that line. This is the direct defence against Trade-07, planned
+    −₹7,000, actual −₹21,000.
+  - Reaching the profit number is a conversation, not an exit.
+  - Every trade has a written plan, brainstormed with the partner, kept with the
+    trade; the partner measures the market against that plan and is allowed,
+    and expected, to say "this is not behaving as we planned" before the loss
+    number is near.
+  **What the terminal already has, read in the code 2026-09-13.**
+  `swayam_positions.target_loss_inr` and `target_profit_inr` (migration 023):
+  whole-trade rupees, net of charges both ways, measured against
+  `net_if_exit_now_inr`. **That is his planned loss, and it is the right
+  number for the wake rule.** It is NOT `max_loss_inr`, which is the
+  structure's worst case, recomputed after every adjustment and empty for a
+  naked leg; the partner and the wife's app must never use that one. **Two
+  gaps found:** a blank loss target falls back to rule 1, one percent of the
+  live balance, so a trade with no plan still has a line but not his line;
+  and the targets route overwrites `target_loss_inr` freely with no history,
+  so a widened loss leaves no trace. **Mentor's recommendation, for his
+  correction:** the partner asks for the loss number when the plan is made;
+  tightening it is free; widening it is allowed but recorded with the old
+  number, the new number and the time, and the partner says so aloud, because
+  a silently widened loss is how Trade-07 happened. Warns, never blocks.
+- **Where the plan lives is not built.** The partner cannot see his trade
+  today (§2.17.11) and no conversation is attached to a position. A plan that
+  "stays with the trade discussion" needs both; it belongs in the partner's
+  build documents.
+
+**THE BACKTESTER CHAT AND THIS CHAT NOW WORK SIDE BY SIDE. Relayed by him,
+2026-09-13, from `00 - Developer Logs/PROMPT FOR MENTOR CHAT - From Backtester
+2026-09-13.md`.**
+- The Library is a shared knowledge base nobody owns. Each chat reads it and
+  keeps its own map: the mentor's is `09 - Mentor Notes`, the backtester's is
+  `10 - Backtester Notes/Library Map for the Backtester.md`. What a chat needs
+  and the Library lacks goes to him as a research prompt; nobody files.
+  Before planning, building or answering him, check the Library, not memory.
+- Each chat watches the other's notes and tells him, with the page, when the
+  other has written something provably wrong. **On 2026-09-13 the backtester
+  corrected three lines of the mentor's facts note, all three checked on the
+  pages and accepted:** the lot of 65 was announced 3 October 2025 and took
+  effect for new contracts from 28 October 2025, not "January 2026"; the
+  calendar expiry-day rule applied at the exchange from 10 February 2025, not
+  1 February; and the option closing price is consistent with a half-hour
+  average on his data, not proved to be NSE's rule.
+- **The mentor read the backtester's map and §2.17.13 and finds nothing wrong
+  for the partner.** One addition was made to the backtester's research
+  prompt, with his permission: IST release times for the historical event dates,
+  because an announcement after 15:30 hits the next session, and a note that
+  its event list is a starting set pending the event research above. The aim
+  is one event list with two readers, the desk and the backtest.
+- **A rule the partner must carry, his, 2026-09-12:** "Market moves matter in
+  the past, but the charges should be current." A backtest result is costed at
+  today's charges, lot and margin rules on every date; the partner never says
+  "at the rates of the time".
+- **Two stale lines found, not the mentor's to edit, raised with him:**
+  `CLAUDE.md` still says the lot was "cut from 75 in January 2026"; and
+  `00 - Developer Logs/BACKTESTER_SPECIFICATION_A8_A11.md` line 13 still states
+  a 30-minute VWAP closing-price rule as NSE's official rule, which no filed
+  document says for options.
+
+---
+
 #### 2.17.15 THE KNOWLEDGE BASE. His ask of 2026-09-12 night. To be planned WITH him. Not started.
 
 His words: "We have to give some knowledge base. I cannot have my AI depend
@@ -4349,6 +4625,67 @@ rules, date-sensitive charges, and a four-level approval standard.
   expiries, extra report fields), and three asks: its own source list, its
   own research pass if wanted, and what in the Library changes §2.16. Vault
   copy: `00 - Developer Logs/NOTE FOR BACKTESTER CHAT - Library.md`.
+
+---
+
+**THE LIBRARY, OUTCOME FROM THE VAULT CHAT. Recorded 2026-09-13 from its
+report `00 - Developer Logs/PROMPT FOR MENTOR CHAT - Library outcome
+2026-09-13.md` and its log, and checked by the mentor on the disk the same
+day.** An earlier version of this paragraph, written a few hours before, used
+the vault chat's first figures of 2026-09-12 (13 markers inserted, 106 links
+all resolving, A6 still the wrong document). **All three were superseded by
+the vault chat's own corrections and are withdrawn.**
+
+**Done, and holding on 2026-09-13.**
+- **39 PDFs**, not 34: the original set, Antigravity's six-page extract, and
+  four whole government publications added to A6. Every reading copy
+  accounts for every page of its PDF once, with no duplicates and no gaps.
+- All 19 item indexes carry frontmatter; the categories were the vault
+  chat's assignment against the mentor's list and may be corrected.
+- `_Library Index.md` is reachable from `03 - Knowledge/Trading/_Learning and
+  Resources Overview.md` and `02 - Projects/Trading/Trading Overview.md`.
+- `03 - Knowledge/Trading/Library/_Knowledge Base Rules.md` written, with a
+  known-gaps table as of 2026-09-13.
+
+**Item by item.** A1 to A5, A8, A10, B1 to B3, C1 to C3, D1, E2 verified.
+- **A6, STT, now holds primary text.** `Finance_Bill_2026.pdf`, Bill No. 3 of
+  2026, **as introduced in Lok Sabha**, Clause 143, printed page 104: sale of
+  an option 0.1 to 0.15 per cent of premium; option exercised 0.125 to 0.15
+  per cent of intrinsic price; sale of a future 0.02 to 0.05 per cent. Notes on
+  Clauses, printed page 220: effective 1 April 2026. **Enactment is not
+  confirmed from any file**; Antigravity did not find a Finance Act, 2026 in
+  the Gazette or India Code. Cite it as "Finance Bill 2026 as introduced,
+  Clause 143, printed page 104". The six-page "EXTRACT" file is assembled by
+  Antigravity and is not a government publication; cite the whole Bills.
+- **A7:** no SEBI study later than 23 September 2024 found in a search on
+  2026-09-12. A search result, not proof.
+- **A9 is still a gap.** Neither the base-price circular FAOP67690 nor the
+  futures settlement circular COM72915 defines an option's daily closing
+  price. Antigravity's first run wrote a 30-minute weighted-average rule for
+  options into A9, marked verified, from no file; it was removed. **The index
+  finding of §2.15.8 must never be read as the option rule.**
+- **E1:** no text layer; CME publishes the course only as interactive modules.
+- **A11:** unavailable, no public bid-ask spread dataset.
+
+**Broken on 2026-09-13, prompt written, not yet run.** Antigravity's rewrites
+of A6, A7, A9 and E1 deleted their link sections; the mentor counted zero
+wikilinks in each of the four indexes on the disk. 31 further links route
+through folder names with square brackets that Obsidian may not resolve.
+Repair prompt: `00 - Developer Logs/ANTIGRAVITY_PROMPT - Library Link Repair
+2026-09-13.md`, his to paste.
+
+**What this means for the terminal's charges, the mentor's reading.**
+`services/charges.py` carries 0.15 per cent from 1 April 2026, sourced to the
+FYERS charges list and Zerodha's, both read 2026-09-08. A broker publishing
+the rate it charges is real evidence of the rate in force; the Library now
+adds the Bill as the legal text proposing it. **The 0.15 per cent stays.** What
+is missing is only the citation of the enacted Act, and his browser at
+egazette.gov.in or indiacode.nic.in closes it. Two rates the terminal does not
+model are now sourced: exercised options 0.15 per cent of intrinsic value,
+already named as not covered in the schedule's own notes, and futures 0.05
+per cent, which he does not trade.
+
+**Still the mentor's:** pairing each regulation to the Method rule it changes.
 
 ---
 
