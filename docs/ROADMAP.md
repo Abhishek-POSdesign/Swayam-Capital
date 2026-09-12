@@ -252,7 +252,11 @@ generic engine.
    history (1-minute candles for the fifteen strikes either side of NIFTY's
    close at expiry, for every expiry from December 2019; corrected with his
    explicit yes on 2026-09-13, after the backtester chat measured both facts
-   on his own files), FYERS' index minute candles, and NSE's official daily
+   on his own files) [HELD FOR DISCUSSION, his instruction of 2026-09-13
+   night: what is LOADED is January 2022 onward, his window; December 2019
+   is what FYERS can serve. He may want older NIFTY index data, not for
+   backtesting, but to find more proofs when naming structures. To be
+   settled with him in the backtester chat; this bracket stays until then], FYERS' index minute candles, and NSE's official daily
    file, all free and already downloaded. Plus our own recorder from PLAN §2.10, which now records
    real spot and implied volatility, accumulating forward. **The window is 2022
    onwards, his decision of 2026-09-10:** the market before and after Corona are
