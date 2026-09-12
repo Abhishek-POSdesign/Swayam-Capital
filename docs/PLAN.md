@@ -3193,6 +3193,47 @@ is his habit, or this tax is charged.
 
 ---
 
+#### 2.16.11 THE FREE DATA, AGAINST HIS THREE-YEAR MINIMUM. And the research phase closed. 2026-09-13.
+
+**His requirement:** at least three years of history, four if possible, from his
+2022 window. **His decision on paid data:** no paid historical tick data "until I
+am trading with crore-plus capital". NSE's own tick data is enterprise-priced and
+its undertaking may forbid use that guides trading. **No email to NSE is needed.**
+
+**The always-accessible inventory is in his vault:**
+`02 - Projects/Trading/10 - Backtester Notes/Free Data Inventory.md`. Summary,
+every figure counted on his PC:
+
+| What | Free source | Years in his window | Three years? |
+|---|---|---|---|
+| NIFTY index, minute and daily | FYERS | 4 yr 8 mo | **Yes, and four** |
+| Every NIFTY option, daily | NSE daily F&O file | 4 yr 8 mo | **Yes, and four** |
+| India VIX, daily | NSE archive | 4 yr 8 mo | **Yes, and four** |
+| Every NIFTY option, every minute, every strike | FYERS expired contracts | first bars 2023-12-22, dense from January 2024: **about 2 yr 8 mo** | **No, about four months short** |
+| Live bid and ask | His recorder | from 2026-09-10 | No; grows daily |
+
+**The one gap against his minimum is minute-level option prices.** A strategy that
+decides once a day can be tested on 4 yr 8 mo, using the daily tier for 2022 and
+2023. A strategy that depends on the minute inside his window can be tested on
+about 2 yr 8 mo of option prices. Two free tests might close it, both waiting:
+re-probing whether FYERS now serves expired minutes before 2024, which needs the
+token refreshed; and Upstox's free historical API, which documents minute data
+from January 2022 but is unverified for expired options and needs an account only
+he can open.
+
+**Also verified 2026-09-13:** both NSE daily file formats already carry NIFTY
+**futures** rows, 3 FUTIDX rows on 2022-10-20 and IDF rows on 2026-08-05; the
+current loader keeps options only. And the six sessions missing from the NSE store
+against the index bars are the weekend and Diwali special sessions, which the
+downloader skips.
+
+**THE RESEARCH PHASE IS CLOSED.** What remains before building is not research: a
+few documents to file (NSE's closing-price page, the 2026 holiday circular), the
+token refresh, his decisions on the four vocabulary items and the sizing ladder,
+and a six-part plain-English plan for the first build.
+
+---
+
 ### 2.17 THE AI AS A TRADING PARTNER. His job description, 2026-09-10.
 
 **He asked for this to be written down so he never has to explain it again.
