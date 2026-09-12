@@ -3246,7 +3246,21 @@ work goes.
 
 **His answers, in his words, dated, as they come.**
 
-- *Question 1, objecting before or after a run.* Not yet answered.
+- *Question 1, objecting before or after a run.* **Both, 2026-09-12.** "In the
+  backtest, I'll discuss both before the start and after. We will come to
+  some parameters: if the result comes out like this, then we will think
+  like this. If the result comes out like this, then we think like this.
+  When the results come out, we discuss again." So a run has a written
+  before: the objection, the hypothesis, and what each kind of result will
+  mean, agreed before the engine starts. Then a written after. This is the
+  vault's own tuning discipline (written hypothesis, explicit success and
+  failure criteria) applied at the table; he arrived at it himself.
+  **And a role he set the same night:** through the backtesting phase the
+  mentor is a second advisor at the table, reading the partner's notes and
+  his discussion with it (the mentor can read `swayam_ai_messages`, proven
+  2026-09-11). After backtesting, only the terminal's partner is required;
+  the mentor is called only when the partner does not work as it should,
+  makes mistakes, or errs.
 - *Question 2, the first sentence of a result.* Not yet answered.
 - *Question 3, one variable at a time.* Not yet answered.
 - *Question 4, naming.* Not yet answered.
