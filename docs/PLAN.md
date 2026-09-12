@@ -3037,11 +3037,21 @@ describes his last two years.**
 **(a) What is needed for strategy building and is NOT on the fetch list.** In
 priority order, most of it dull and none of it a book:
 
-1. **The Income Tax Department STT text covering 2023, 2024 and 2025**, not only
-   2024 and 2026. It is already on the list for two years; it is the three-year
-   hole above that blocks the engine.
-2. **NSE lot-size circulars for 2022 and 2023**, which is the one contract fact
-   that exists in no file he holds.
+Checked against `docs/LIBRARY_DOWNLOAD_PROMPT.md` as it stands after PR #96, and
+referred to by its own item numbers so the next download prompt can absorb this
+directly.
+
+1. **Item A6 must become mandatory, and it must cover 2023 to 2025.** A6 asks for
+   the Budget 2026 STT change and adds "also the Finance Act 2024 STT provision **if
+   it is available**". For the backtester that second half is not optional: it is
+   the change that fills part of the three-year hole above. **And neither covers
+   2023-04-01 to the 2024 change**, which is the rest of the hole. Without all
+   three, most of his window cannot be costed at all.
+2. **NSE lot-size circulars for 2022, 2023 and 2024. Item A4 covers only the 2025
+   change to 65.** His own files carry the lot from 2024 onwards, so the true gap is
+   **2022 and 2023, which exists in no file he holds**, plus a primary source for
+   the two 2024 changes his data shows on 2024-04-26 and 2024-11-22. A backtest of
+   his 2022 era using today's 65 overstates everything by a fifth.
 3. **NSE's India VIX methodology document**, `nseindia.com`, because the whole
    volatility path of §2.16.5b labels with VIX and nobody in this project has read
    how it is computed. A measure used as a regime label should be understood.
