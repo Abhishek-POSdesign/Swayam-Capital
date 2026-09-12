@@ -43,14 +43,14 @@ as far back as the newest backup.
   630.5 MiB across 160 objects in `gs://swayam-backups/history/`. Before that it
   existed on one disk in my house, and the minute bars alone took 90 minutes and
   8,576 requests to FYERS to source.
-- **⚠️ Row 1 is only as safe as the newest backup, and as of 12 September 2026
-  the NIGHTLY CLOUD BACKUP IS FAILING.** The job runs, reads all 19 tables, and
-  is then refused when it tries to write: its service account
-  `swayam-dashboard-sa` has no permission on `gs://swayam-backups`. **It fails
-  loudly rather than reporting success**, which is the behaviour I want, but it
-  means the newest backup is still the one taken by hand on 11 September at
-  16:46 UTC. The local 03:00 half is registered and working. **Until the
-  permission is granted, a backup only exists when it is taken by hand.**
+- **Row 1 is only as safe as the newest backup.** The nightly cloud job had
+  never succeeded until 12 September 2026: its service account had no write
+  permission on `gs://swayam-backups`, and it failed loudly rather than
+  reporting success, which is the behaviour I want. One grant of
+  `objectCreator` fixed it, and `supabase/2026-09-11T21-33-51Z` is the first
+  backup written by the job itself. **What is still unproven: an unattended
+  02:00 run.** The first one is the night of 12 to 13 September. The local
+  03:00 half is registered and working.
 
 ---
 
