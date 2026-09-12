@@ -4263,6 +4263,17 @@ A9 relabelled by instrument. **Verified inside the documents, with pages:**
   (87.7% loss-makers); Antigravity filed the September 2024 study. Whether
   SEBI has published a 2025 or 2026 update is unconfirmed either way.
 
+**Phase three, the convert run, mentor's decision 2026-09-12 late night.** For
+the Second Brain's graph and for anything that later reads the Library, a
+PDF is the wrong shape: Obsidian cannot link into or search a PDF, and the
+partner's future pipeline reads text. So each PDF gets a verbatim,
+page-marked markdown beside it; the PDF stays as the source of record; no
+summary, no cleaning that touches a number; pages with no text layer are
+flagged, never guessed; the three Market Pulse issues converted only in
+their F&O, statistics and macro sections. `docs/LIBRARY_CONVERT_PROMPT.md`,
+paste copy `00 - Developer Logs/ANTIGRAVITY_PROMPT - Library Convert.md`.
+His vault chat links the index notes afterwards.
+
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 
 **Why it came up.** He has one free Supabase account with two projects:
