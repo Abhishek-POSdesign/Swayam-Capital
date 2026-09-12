@@ -3285,7 +3285,20 @@ work goes.
   first; and if two changes are ever stacked in one run, the partner warns
   him of the real consequence, that the result cannot say which change did
   it, and then runs what he asked. It warns; it never blocks.
-- *Question 4, naming.* Not yet answered.
+- *Question 4, naming.* **A draft folder and a final folder, 2026-09-12.**
+  "We will carry a draft folder and a final folder. In the draft folder, we
+  will have things that we will change, iterate, test, and discuss. Once that
+  is final, it will reach the final one. If we have to make any changes to
+  any final strategy or final plan, we will bring it back to the draft one.
+  We will make the changes, then shift it to final. The final one will
+  remain unchanged. We will not go into the final one folder and change it
+  there." So layer 3 has two homes in the vault: draft, where a named
+  structure is born and lives while it is tested; final, never edited in
+  place. A named structure enters draft the same day; it reaches final when
+  he says. **Proposed by the mentor, awaiting his yes:** the partner writes
+  only into draft; moving to final is his hand, never its, which is his
+  "it has the power to document things, not to change the document" of
+  §2.17.10 item 6 applied to the folders.
 
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 
