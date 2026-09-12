@@ -3410,6 +3410,69 @@ models (§2.17.13), and his volume is a few hundred, so a check before
 advising is affordable; whether it is every time or a manual button is a
 design choice for the desk, under the standing cost rule.
 
+**His plan for building it, 2026-09-12 night, and the mentor's assessment:
+good, with two guards.** His words: "First create a full, proper knowledge
+base with every good, excellent, free source available, or a source
+available at minimum cost. I'm not hiding away from a one-time payment if I
+can get PDFs that I can store... I don't want you to create that database
+because you are an expensive one. I will only use you for brainstorming,
+not for the manual labour. You write a plan. I will hand the plan to a lower
+model like Sonnet or even Antigravity, which has Google grounding. That will
+do the research, find, download, and inject. You will just monitor and
+plan." The library serves three readers: the partner, the backtester chat's
+planning, and the mentor's own questions. **The desk brainstorm does not
+wait for it; both run.**
+
+**The two guards, rules for whoever does the labour.**
+1. **Free and legal, or bought by him.** Every source is listed with its
+   link, its price, and whether it may be downloaded. Free and lawful
+   sources are fetched. Paid books are never fetched from anywhere: the list
+   says where to buy, he buys, he drops the file in. No copy from a site
+   that has no right to give it. A book that is not his is fake data of a
+   different kind.
+2. **Two phases.** Phase one, the labour a cheap chat can do now: source,
+   list, fetch the free ones, file into the vault with an index. Phase two,
+   a build: the pipeline that lets the terminal's partner read and cite
+   them, planned in the vault's `Self-Improving Agent Integration.md` as
+   loop 4 and never built. The main chat plans it when he says. **Flag for
+   that plan:** thirty books as embeddings could take a large share of the
+   free database (§2.19 measured 15 MB used of 500); where the embeddings
+   live is that plan's decision, not tonight's.
+
+**Phase one, the shape of the prompt for the cheaper chat. The mentor
+writes the full prompt as its own fence when he says go; this is what it
+will contain.**
+- **Read first:** this section, §2.17.7 (what the partner is for),
+  `CLAUDE.md` (his two rules, and that the vault is caged during tests),
+  and the existing library in the vault: `03 - Knowledge/Trading/` and
+  `00 - Reference/Influences/`, so nothing is duplicated.
+- **Scope, his:** trading, not investing. Options structures and their
+  management, Indian market mechanics (NSE, SEBI, expiries, margins,
+  charges), price action, backtesting method, and discipline. His
+  favourite, *Best Loser Wins*, is owned as an audiobook; the PDF is paid.
+- **Step 1, the candidate list, for his yes before anything is fetched.**
+  Title, author, year, what it teaches, why it is rated, price, link, free
+  or paid, and a one-line reason it belongs. Free and lawful first: Zerodha
+  Varsity (already summarised, fetch the full modules), NSE and SEBI
+  publications, exchange circulars, academic papers on options and Indian
+  index behaviour, reputable free books. Then paid, with the price.
+- **Step 2, after his yes:** fetch the free ones, save the file, and write
+  one index note per source: title, source link, date fetched, licence or
+  reason it is free, and a five-line summary written from the file itself.
+  Paid ones: an index note with "awaiting his copy" until he drops it in.
+- **Where they go:** a `Library/` folder under `03 - Knowledge/Trading/`,
+  one subfolder per source, with `_Library Index.md` at the top. Proposed;
+  the vault chat may place it elsewhere.
+- **Rules:** every claim in an index note comes from the file, never from
+  memory; grounding calls counted and reported; nothing written to the
+  trading project's Method or Journal folders; the vault cage stays; the
+  handoff lists every file written with its size and source.
+- **Cost:** the research is a bounded task; report the number of grounded
+  searches and the model used so it lands in the AI-cost record.
+
+**Step 0 is his:** the categories above, and the first titles he wants,
+said in this chat, one at a time when he is back. Then the prompt is written.
+
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 
 **Why it came up.** He has one free Supabase account with two projects:
