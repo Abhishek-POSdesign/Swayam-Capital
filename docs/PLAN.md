@@ -3231,9 +3231,25 @@ and the report reaches the live site the way the outbox does (§2.19). The
 findings ledger, in the vault, mirrored. Caching, because these sessions are
 long.
 
-**Four questions for him, scenario first, to be asked after the backtester's
-list is pasted.** Recorded in the report of 2026-09-12 and in
-`SUCCESSOR_AI_PARTNER.md`.
+**The method, his, 2026-09-12 night, replacing the report rule of the same
+day.** The brainstorm happens WITH him, in the mentor chat. No questions are
+carried to the main chat and the main chat does not answer for him. He
+narrates what he imagines the partner to be; the mentor corrects him only
+where the technical side says a thing cannot work or would mislead him, says
+so where he is right and writes it down, and where he is unclear asks ONE
+simple question at a time, scenario first. No lists of questions to take
+away. The four questions below are asked that way, one by one, then the
+frame above is filled in his words: shown, may say, refuses, corrected; the
+backtesting table first, the desk second. The mentor's log is
+`00 - Developer Logs/Chat Logs/AI_PARTNER.md` in the vault, appended as the
+work goes.
+
+**His answers, in his words, dated, as they come.**
+
+- *Question 1, objecting before or after a run.* Not yet answered.
+- *Question 2, the first sentence of a result.* Not yet answered.
+- *Question 3, one variable at a time.* Not yet answered.
+- *Question 4, naming.* Not yet answered.
 
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 
