@@ -4090,6 +4090,38 @@ work goes.
   folder." So the rule is the WORD, not the hand: nothing leaves draft
   until he says final and closed; after that, either may move it.
 
+**THE EVENT RESEARCH IS WRITTEN AND WAITING FOR HIM TO RUN IT. 2026-09-12
+late night, the seventh session.** His rule of the same night is that the
+high-impact list is market-driven and comes from research done twice, like the
+Library. Both prompts are written: `docs/EVENT_RESEARCH_PROMPT.md`, pass one
+for Antigravity and pass two for Perplexity, with a paste copy in the vault at
+`00 - Developer Logs/ANTIGRAVITY_PROMPT - Event Research.md`. The brief is the
+same for both and only the wrapper differs; **Perplexity is not shown
+Antigravity answer**, because a second pass that has read the first stops
+being a second pass.
+
+Three rules were written into the brief because they are the ones his
+instruction turns on. An event earns its place only on MEASURED movement in
+NIFTY or India VIX with a named source, its sample period and its number of
+observations; fame is not evidence. The only two classes allowed are HIGH
+IMPACT (MEASURED) and NOT ESTABLISHED AS HIGH IMPACT, because he said the
+others are not less impacted, so the phrase low impact may not appear. And a
+magnitude that cannot be sourced is written `unavailable` with what was
+searched, never estimated. Twelve fields are required per event type,
+including the release time in IST with its provenance and its daylight-saving
+caveat, and where the print lands against NSE hours, since anything after
+15:30 IST is absorbed by the next session and that is precisely the overnight
+his rule is about. Unscheduled types must carry at least two dated real
+instances since 2022 with the actual NIFTY and India VIX move.
+
+The mentor reconciles the two files into this section when they come back.
+**Nothing is built from this yet**, and the build it points at is the event-type
+table with impact class and IST time, `swayam_macro_events.event_time` filled,
+and the weekly curation constrained to the researched list instead of choosing
+for itself.
+
+---
+
 #### 2.17.15 THE KNOWLEDGE BASE. His ask of 2026-09-12 night. To be planned WITH him. Not started.
 
 His words: "We have to give some knowledge base. I cannot have my AI depend
@@ -4256,6 +4288,44 @@ rules, date-sensitive charges, and a four-level approval standard.
   expiries, extra report fields), and three asks: its own source list, its
   own research pass if wanted, and what in the Library changes §2.16. Vault
   copy: `00 - Developer Logs/NOTE FOR BACKTESTER CHAT - Library.md`.
+
+---
+
+**THE LIBRARY IS FINISHED AND LINKED. Done by the vault chat, 2026-09-12,
+recorded here by the mentor after reading its log and checking the disk.**
+Item 1 of the mentor resume order is closed. From `Chat Logs/VAULT.md`: the
+convert run happened; all 34 PDFs in the 19 folders were checked page by page
+against the real page counts read with PyMuPDF, not against Antigravity own
+report; 25 of 34 were already clean and the other 9 shared one cause, the
+converter dropping a page with no text layer instead of marking it; 13 markers
+were inserted across 7 files, each saying no text layer on this page in the
+source PDF; unexplained gaps across the whole Library, zero. Frontmatter was
+added to all 19 `_index.md` files; the three Market Pulse issues were confirmed
+to declare which pages they converted and which they skipped; 106 wikilinks
+were resolved and all 106 hold; and A9 file sizes were corrected from the disk,
+where the item index was wrong and the master index had been right.
+`03 - Knowledge/Trading/Library/_Knowledge Base Rules.md` was written, eight
+sections, and the Library is now reachable from both
+`03 - Knowledge/Trading/_Learning and Resources Overview.md` and
+`02 - Projects/Trading/Trading Overview.md`.
+
+**Checked by the mentor on the disk the same night, not from the report:** 19
+folders, 34 PDFs, 61 markdown files, and the rules note present at 5,765 bytes.
+
+**What the vault chat could not close, and it is not vault work.** A6 and E1
+have zero pages with a text layer, so neither can be given a reading copy
+without OCR or a re-download of a text PDF. **A6 is also still the wrong
+document**, a page capture rather than the securities transaction tax text for
+1 April 2026, and **A9 is still the wrong document**, the base-price circular
+rather than the definition of an option closing price. Whether SEBI has
+published a trader study newer than September 2024 is still unconfirmed. All
+four go to Antigravity or his browser, not to the vault.
+
+**One judgement it handed back to the mentor, correctly.** Its item indexes
+link to `01 - Method/Method Overview` as the entry point rather than to the
+individual rule each circular changes, because pairing a circular to a rule is
+a judgement about his method and it would have been guessing. The mentor owns
+that pairing.
 
 ---
 
