@@ -13,6 +13,13 @@ With the dry run, a deployment can be proved in the cloud the moment it lands:
 it returns the row count, the NIFTY level it read, and how many rows came back
 with a real implied volatility. The scheduler never sends it, so the recording
 path is exactly as it was.
+
+A third way in, `?gate_at=<ISO datetime>`, answers ONE question and does nothing
+else: would the market gate let a recording through at that instant. It reads no
+token, calls no broker and touches no bucket. It exists because the gate only
+ever judges "now", so a holiday could not be asked of the deployed copy until
+the morning it mattered. Added on 13 September 2026 to prove, on a Sunday, that
+the deployed recorder knew Monday 14 September was Ganesh Chaturthi.
 """
 
 from datetime import datetime, timezone
@@ -71,10 +78,52 @@ def _summarise(df) -> dict:
     }
 
 
+def _gate_at(request) -> str | None:
+    """The `?gate_at=` value when one was sent as text, otherwise None."""
+    if request is None:
+        return None
+    try:
+        args = getattr(request, "args", None)
+        value = args.get("gate_at") if args is not None else None
+    except Exception:  # noqa: BLE001 - a malformed request simply does not ask
+        return None
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
 @http_decorator
 def record_snapshot(request):
     """HTTP Cloud Function handler for recording options chain snapshots."""
     now_utc = datetime.now(timezone.utc)
+
+    asked = _gate_at(request)
+    if asked is not None:
+        try:
+            when = datetime.fromisoformat(asked.replace("Z", "+00:00"))
+            if when.tzinfo is None:
+                raise ValueError("no timezone")
+        except ValueError:
+            return (
+                json.dumps({
+                    "status": "error",
+                    "error": f"gate_at must be an ISO datetime with a timezone, got {asked!r}",
+                }),
+                400,
+                {"Content-Type": "application/json"},
+            )
+        market_open, reason = is_market_open(when)
+        logger.info(f"Gate asked for {when.isoformat()}: {reason}")
+        return (
+            json.dumps({
+                "status": "gate",
+                "gate_at": when.isoformat(),
+                "market_open": market_open,
+                "reason": reason,
+                "wrote_anything": False,
+            }),
+            200,
+            {"Content-Type": "application/json"},
+        )
+
     dry_run = _wants_dry_run(request)
 
     if not dry_run:
