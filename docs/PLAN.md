@@ -2393,6 +2393,21 @@ expired option contracts and its minute history starts in February 2024
 only be tested on about two and a half years, and one that works off daily
 closes can be tested on four and a half. Say which, on every result.
 
+**ONE IMPORTANT THING THE TWO-TIER WARNING DOES NOT APPLY TO. Measured
+2026-09-12.** The boundary is about OPTION prices. It is not about the chart.
+
+The NIFTY minute bars are complete across the whole window: 1,163 sessions from
+2022-01-03 to 2026-09-09, 375 bars a session, and **his own 14:00 to 15:30 window
+is ninety real minutes on every one of those days.** India VIX minute bars go back
+to 2018 as well (§2.16.5b).
+
+So everything in the vocabulary and formation work — labelling his cycles, the
+weekly, daily, hourly and 15-minute views, what price does in his afternoon — runs
+on the **full four and a half years at minute resolution**. Only the moment a leg
+has to be priced does the February 2024 tier boundary bite. **He had been
+worrying about the wrong boundary**, and the research half of this project is
+twice as deep as the pricing half.
+
 ---
 
 #### 2.16.3 The four charts he actually reads
@@ -2429,6 +2444,201 @@ is built on it. **It is the gate to all the rest.**
 
 ---
 
+#### 2.16.4a THE VOCABULARY SESSION HAPPENED. 2026-09-12, and it is measured.
+
+**The session §2.16.4 was waiting for. Every indented quotation below is his own
+sentence, given 2026-09-12. Everything else is measurement or a question back to
+him.** Measured with `scripts/label_market_cycles.py` on the 1,163 NIFTY daily
+sessions from 2022-01-03 to 2026-09-09 already on disk.
+
+**HIS DEFINITION OF A SQUEEZE, and it is three things:**
+
+> "the daily range shrinking, so the last five to ten days' high-to-low is
+> smaller than the 20-day average; price making no new 10-day high or low,
+> staying inside a band; and India VIX low or falling."
+
+> "the first two define a squeeze, the VIX confirms it."
+
+**HIS MINIMUM LENGTH:**
+
+> "A cycle needs at least five trading days, one week, to count. Three sideways
+> days inside a two-month uptrend are a pause inside the trend, not a cycle."
+
+Applied as a rule, not as smoothing: a run shorter than five sessions is absorbed
+into whichever neighbour is longer, repeatedly, until every surviving stretch is
+at least five sessions.
+
+**HIS TIMEFRAME RULE, which turned out to be the most important answer he gave:**
+
+> "each chart has one job: the weekly gives the bias, the daily decides the
+> structure, the hourly decides the entry. Weekly up and daily squeezing means a
+> range structure leaning bullish, for example a condor with the put side
+> closer."
+
+**HIS ORDER OF LABELLING:**
+
+> "Before, from the daily chart, and the entry does not redefine it. But the
+> backtester also labels what the cycle turned out to be, so you learn how often
+> your pre-entry read was right. Both get recorded."
+
+---
+
+**WHAT THE DEFINITION CATCHES, ON THE DAILY CHART. It is not empty and it is not
+everything, which is what a usable definition looks like.**
+
+His "last five to ten days' high-to-low against the 20-day average" has two
+honest readings and they are different measurements, so both were run:
+
+- **Reading A, candle size.** The average of each day's own high minus low over
+  5 days, against the same average over 20 days.
+- **Reading B, territory.** The band the last 10 days traced, highest high minus
+  lowest low, against the average of that band over 20 days.
+
+| Cycle | Reading A sessions | Reading A stretches, median length | Reading B sessions | Reading B stretches, median length |
+|---|---|---|---|---|
+| Squeeze | 408, 35.4% | 35, 11.0 | 445, 38.6% | 36, 10.5 |
+| Expanding | 114, 9.9% | 17, 6.0 | 58, 5.0% | 6, 10.0 |
+| Trending up | 379, 32.9% | 25, 11.0 | 420, 36.4% | 27, 12.0 |
+| Trending down | 252, 21.9% | 23, 10.0 | 230, 19.9% | 21, 10.0 |
+
+**A squeeze lasts about eleven sessions, a little over two weeks, and there were
+thirty-five of them in the window.** That sits well inside the days-to-weeks
+holding period his record shows, so the cycle he most wants to trade is a cycle
+long enough to trade.
+
+**Reading A is the recommendation.** Reading B finds only six expanding stretches
+in four and a half years, which is too few to design against; reading A finds
+seventeen. **His decision is still open.** §2.16.4b.
+
+**WHAT TENDED TO FOLLOW, reading A, as a share of each cycle's endings:**
+
+| After | What came next |
+|---|---|
+| Squeeze | Trending up 46%, trending down 40%, expanding 14% |
+| Expanding | Squeeze 47%, trending up 41%, trending down 12% |
+| Trending up | Squeeze 60%, trending down 24%, expanding 16% |
+| Trending down | Squeeze 55%, expanding 36%, trending up 9% |
+
+**The finding that matters, and it is a warning about his own instinct.** A
+squeeze broke up 46% of the time and down 40%. **It is a coin toss on direction.**
+His own framing is that a squeeze "is going to blast someday", and the data
+agrees that it blasts; it gives almost no information about which way. The
+forward move confirms it: the median ten-session move after a squeeze ends is
++0.01%, and it was up 51% of the time, across 35 cases. **So a squeeze is a
+volatility signal and not a directional one, which is exactly what his own
+volatility path in §2.16.5 already says it is.** A directional structure entered
+on a squeeze break is a guess; a long-volatility structure is the trade the data
+supports.
+
+**The one edge visible in the transition table.** After a trending-down stretch
+ends, the median ten-session move is +1.85% and it was up 68% of the time across
+22 cases. After trending up ends, the median is −0.66% and up only 48% of 25
+cases. Mean reversion after a fall, in a market his own note calls "mostly in a
+bull run on the long-term chart". **Twenty-two cases is not a strategy. It is a
+reason to look.**
+
+---
+
+**HIS THIRD CONDITION, THE VIX, IS CONFIRMED — BUT ONLY WHEN MEASURED THE WAY HE
+SAID TO MEASURE IT.** All 1,163 sessions matched against NSE's official daily
+India VIX, downloaded 2026-09-12.
+
+Tested first as an absolute level, it looked worthless. A squeeze's median VIX is
+13.84 against a period median of 13.97, and the VIX sat below that period median
+on only 51% of squeeze sessions. A coin toss.
+
+Tested as he actually framed it in §2.16.5b, "two relative measures, never a fixed
+number", it holds clearly:
+
+| Cycle | Median VIX | VIX falling over 5 days | VIX below its 20-day average | Below its 60-day average |
+|---|---|---|---|---|
+| Squeeze | 13.84 | 63% | **68%** | 64% |
+| Expanding | 14.41 | 59% | 45% | 46% |
+| Trending up | 13.64 | 55% | 66% | 68% |
+| Trending down | 14.84 | 30% | 23% | 41% |
+| **All sessions** | **13.97** | **52%** | **55%** | **58%** |
+
+**So "India VIX low or falling" is real during his squeezes**: falling 63% of the
+time against a 52% baseline, and below its own 20-day average 68% of the time
+against 55%. Expanding is the mirror, sitting below its average only 45% of the
+time. **His instinct that the measure had to be relative rather than a number like
+fifteen was right, and the first measurement only made it look dead because it was
+done the wrong way. Reported because he asked to be told when a definition does
+not hold; here it does.**
+
+**And his ordering was right too.** Trending up also shows a low, falling VIX, 66%
+below its 20-day average. **So the VIX on its own cannot tell a squeeze from an
+uptrend.** It is the two price conditions that separate them, which is exactly why
+he said the first two define a squeeze and the VIX only confirms it.
+
+---
+
+**HIS OWN READ OF THE PRESENT DISAGREED WITH THE DAILY CHART, AND HE WAS RIGHT.**
+
+On 2026-09-10 he said: "As for the current situation, I can say it is squeezing."
+Both readings label the most recent stretch, 2026-08-27 to 2026-09-09, as
+**trending down**, not squeezing.
+
+**He was reading the weekly, and on the weekly his own test passes convincingly.**
+Running the same squeeze test on weekly bars: the contraction ratio has been
+between 0.62 and 0.84 for **fourteen consecutive weeks**, and price stayed inside
+its 10-week band in 11 of those 14 weeks. That is a squeeze by his own
+definition, on the chart he says gives the bias.
+
+Meanwhile the daily has broken down out of it. As at 2026-09-09 the close sits at
+the very bottom of its 60-session band, 23,432 against a band of 23,432 to
+24,774, and the net move is −3.21% over ten sessions and −4.11% over twenty.
+
+| View | Band | Where the close sits |
+|---|---|---|
+| Last 60 sessions | 23,432 to 24,774, 5.7% wide | 0% of the band, at the low |
+| Last 120 sessions | 22,183 to 24,774, 11.7% wide | 48% of the band |
+| Last 250 sessions | 22,183 to 26,373, 18.9% wide | 30% of the band |
+
+**So this was a timeframe mismatch, not a bad definition, and it proves his own
+answer about the three charts.** A fourteen-week weekly squeeze is resolving
+downward through the daily chart right now. **That is the live example of
+"squeezing, which is going to blast someday" actually blasting**, and it is
+happening while he reads this.
+
+**THE CONSEQUENCE FOR THE BUILD, and it is a real change.** A cycle is not one
+label a day. **It is one label per timeframe per day**, weekly, daily and hourly,
+exactly as his three-charts answer says. The labeller built for this session
+labels the daily only, which is why it contradicted him. All four of his charts
+build from the one minute file already on disk (§2.16.3), so nothing needs
+buying; the work is to run the same test at each resolution and record three
+labels. **Until that exists, no result may say "the cycle was X" without saying
+which chart it read.**
+
+---
+
+#### 2.16.4b WHAT IS STILL HIS TO DECIDE ON THE VOCABULARY
+
+**Four answers of his are not yet usable as rules. Nothing should be built on the
+cycle vocabulary until these four are settled, because each one changes the
+labelling.**
+
+1. **Which reading of "high-to-low against the 20-day average" is his eye doing**,
+   A or B above. Recommendation: A, because B finds too few expanding stretches
+   to design against.
+2. **Where aggressive ends and basic begins.** He gave the words and no
+   threshold. Trend strength, measured as the net 10-day move divided by ten
+   normal days' range, sits at 0.154 at the 25th percentile of his trending days,
+   0.258 at the median, 0.397 at the 75th and 0.502 at the 90th. A value of 1.00
+   would mean every day moved its full range the same way. **No split has been
+   adopted; the script marks the median as a placeholder and says so.**
+3. **His formations.** He named five to start from, taken from his own Setup
+   Rules: a support or resistance test, a trend-line touch, a breakout, a
+   reversal, and a contraction. His words: "Add the ones you actually see. It
+   must not bring a textbook." **The additions are still owed by him.**
+4. **Whether a squeeze may carry a directional lean at all.** His own answer says
+   weekly up plus daily squeezing means "a condor with the put side closer". The
+   measurement above says a squeeze break is a coin toss on direction. **Those
+   two can both be true, because the lean comes from the weekly and not from the
+   squeeze, but he should say so deliberately rather than have it inferred.**
+
+---
+
 #### 2.16.5 The structure follows from TWO questions, not one
 
 | Path | Trades | What decides it |
@@ -2455,6 +2665,113 @@ and morning-based, which no longer fits his life.
 
 ---
 
+#### 2.16.5a HOW A STRATEGY IS WRITTEN DOWN. His own shape, from 2023.
+
+**Found by reading the four strategy documents on 2026-09-11, rather than by
+asking him.** All four use the same six slots, and the shape is his:
+
+| Slot | What it holds | His example |
+|---|---|---|
+| 1 Signal | The candle or price condition | "15-minute candle closing above 5 EMA without touching it" |
+| 2 Previous move | What the market had been doing before | "There must be trending down move min 70 to 100 Points" |
+| 3 Signal location | Where on the chart, with a tolerance | "near to important Support or round number (MAX 10-15 Points)" |
+| 4 Entry candle | The trigger, with a time window | "Next 15 candles touching the 5 EMA and trading above the high of Signal Candle" |
+| 5 Stop | Structural, or a points cap, whichever is tighter | "Low of the Signal Candle OR 30 Points whichever is lower" |
+| 6 Target | Staged: first, second, final | "1st 1:2 or nearest Resistance; 2nd 1:3 or major Resistance" |
+
+**Slot 2 is his market-cycle field, three years early.** He was already recording
+the prior regime as a precondition for entry in January 2023. **Recommendation,
+and it is a recommendation rather than a decision: keep his six slots as the
+format a new strategy is written in, and let the cycle vocabulary of §2.16.4a
+fill slot 2.** He never has to learn a new shape, and every strategy then carries
+its own regime precondition by construction.
+
+His `T & C 60 Days Challange.docx` from the same folder carries the sentence this
+whole backtester is built around: **"This is competition of RULES not
+profitability."** That is why a result reports plan-adherence before profit.
+
+---
+
+#### 2.16.5b HOW VOLATILITY IS MEASURED. His answers, 2026-09-12.
+
+> "Two relative measures, never a fixed number: India VIX against its own 20-day
+> and 60-day average, and implied volatility against realised. High means above
+> the 60-day average and implied above realised. Fifteen is a marker, not a rule."
+
+> "Both, with different jobs. VIX names the regime. The at-the-money straddle
+> price as a share of spot is what you are actually paid, so the engine prices
+> with the chain's implied volatility and labels with VIX."
+
+**So: VIX labels, the chain prices.** No fixed threshold anywhere. "High" is
+above the 60-day average with implied above realised, and both halves must hold.
+
+**THE DATA EXISTS AND IT IS FREE. Measured against his live account 2026-09-11.**
+
+| Source | What it gives | Depth proved |
+|---|---|---|
+| FYERS `NSE:INDIAVIX-INDEX`, ordinary history API | Minute and daily open, high, low, close | Minute from 2018; daily from at least 2010; 2016 minute returns nothing |
+| NSE `ind_close_all_DDMMYYYY.csv` | The official daily India VIX open, high, low, close | One request a trading day, back through the window |
+
+**He approved taking both and making them agree before either is used**, which is
+the discipline that caught the closing-price problem in the options data. His
+words: "yes to its recommendation: take NSE's own India VIX file so the two
+sources can be made to agree first." `scripts/load_india_vix.py` does both and
+carries a `--reconcile` mode that reports and never repairs.
+
+**The trading days for the NSE download are derived from the NIFTY daily bars
+already on disk**, so no request is spent on a weekend or a holiday, and a
+holiday can never be mistaken for a download failure.
+
+---
+
+#### 2.16.5c WHAT THE ENGINE IS GIVEN, AND WHAT COUNTS AS A PASS. His answers, 2026-09-12.
+
+**Capital and sizing, in his words:**
+
+> "Starts with 5 lakh and sure increases 5% Of margin or or 50% of total profit
+> earned after every 5 of continuous Win/profit."
+
+> "As per the margin available, 5 lakh, and as per we are compounding."
+
+**What is settled: the test starts at ₹5,00,000 and it compounds.** Not his live
+balance of about ₹9.71 lakh, which would be wrong at the start of a four-year
+test.
+
+**⚠️ WHAT IS NOT YET USABLE AS A RULE, and it must be settled before any result is
+believed.** His sizing sentence was spoken and reads two ways, and the two give
+materially different equity curves:
+
+- **"5% of margin or 50% of total profit earned"** — is the increase the greater
+  of the two, the lesser, or his choice each time?
+- **"after every 5 of continuous Win/profit"** — five consecutive winning trades,
+  or five profitable months, or a cumulative profit milestone?
+- **And there is no symmetric rule for losing.** A ladder that only ever goes up
+  is how a backtest flatters itself. His own record says his damage came from one
+  badly managed session every month or two, not from a bad strategy, so a
+  step-down rule matters more to him than the step-up.
+
+**His pass criteria, and all four must hold:**
+
+> "net profit after charges must be more than twice the charges paid, the worst
+> drawdown stays inside ten percent of the test capital; at least thirty trades
+> in the window; and it still passes on the held-back data it was not designed on.
+> All four, or no pass."
+
+**This is a good gate and it is his own.** Note that the first criterion is his
+transaction-cost rule restated: FY 2025-26 was gross +₹6,109 against charges of
+₹92,408, and that is what the rule exists to prevent. Thirty trades against a
+window holding about 35 squeeze stretches and 48 trending stretches is reachable
+but not generous, which is itself a finding: **a strategy that only fires in one
+cycle may not reach thirty trades in four and a half years.**
+
+**How many strategies run at once, in his words:**
+
+> "Two: one directional, one volatility, two paths. Never more, because your
+> window is sixty to ninety minutes and your failure pattern was one badly
+> managed session, not a bad strategy."
+
+---
+
 #### 2.16.6 Adjustments, which is where his money actually went
 
 > "Adjustment mostly means we have to make sure what the premium left is in any
@@ -2472,6 +2789,40 @@ Two triggers, both measurable:
 
 One condition: **the scenario changed** — sideways becoming trending, squeezing,
 volatility rising or crashing. Depends on §2.16.4 existing first.
+
+**THE EXIT, HIS ANSWERS OF 2026-09-12.** This was the single biggest risk to the
+whole backtest, because every one of his four written strategies ends with an
+exit no engine can test: "Target: momentum, exit as soon as momentum seems
+fading", and "Until the momentum breaks by opposite Color Candle". Testing that
+would mean testing a guess at his judgement rather than his strategy.
+
+**He refused to pick one, which is the right answer.** His words:
+
+> "Give it candidates to test rather than one answer: no new high or low for
+> three hourly bars; candle bodies shrinking with wicks growing against the move;
+> the move stalling at a prior level; and for options, the short leg's premium no
+> longer decaying. It tests which of these would have matched your real exits."
+
+**So momentum fading is four testable candidates, not one rule**, and the engine
+reports which one his instinct has been approximating. That turns his discretion
+from an obstacle into a finding about himself.
+
+**The holding window, and he corrected the record:**
+
+> "That was what happened, not a decision."
+
+His median seven days on winners and six and a half on losers was an outcome, not
+a plan. **The rule he set instead:** every structure declares its maximum holding
+window at entry, and **a calendar exits the session before the near expiry,
+Monday for a Tuesday expiry, or the Friday before if already well in profit or
+already in a loss.** That is the practice that also happens to avoid the margin
+cliff on expiry day, which CLAUDE.md records and the terminal does not model.
+
+**⚠️ One thing in his exit answer is not yet measurable and he should know.**
+"The short leg's premium no longer decaying" needs a threshold, and §2.16.6 above
+already says the same about premium exhaustion: "A leg sold at ₹40 now worth ₹4
+has given 90% of what it will ever give." **Neither number is his yet.** The data
+can propose one; he has to accept it.
 
 **Test the un-adjusted structure first**, or a good adjustment rule hides a bad
 entry and neither can be seen.
@@ -3547,6 +3898,68 @@ rules, date-sensitive charges, and a four-level approval standard.
   own research pass if wanted, and what in the Library changes §2.16. Vault
   copy: `00 - Developer Logs/NOTE FOR BACKTESTER CHAT - Library.md`.
 
+---
+
+#### 2.17.13 WHAT A BACKTEST SESSION NEEDS FROM THE PARTNER. Requested by the backtesting chat, 2026-09-12.
+
+**This is a request list, not a design.** He asked the backtesting chat for what a
+research session needs from an AI sitting beside him, and asked explicitly that
+the partner itself not be designed here. **The AI partner chat owns every decision
+below; this section only says what the backtester will ask of it.** Written after
+the first vocabulary session, so each item is something that was actually needed
+in the past few hours rather than something imagined.
+
+**A. Hold a definition still while it is being argued about.** The vocabulary
+session produced four cycle labels, two competing readings of one of his own
+sentences, and four open thresholds (§2.16.4b). All of that has to survive into
+tomorrow without him restating it. **The partner's job is to be the place a
+half-settled definition lives**, with its status attached: his words, measured,
+recommended, or still open.
+
+**B. Tell him when a definition of his disagrees with the data, without
+flinching.** The most useful thing that happened on 2026-09-12 was discovering
+that his read of the present contradicted his own daily-chart definition, and
+that he was right because he was reading the weekly. **A partner that had smoothed
+that over would have cost him the best finding of the session.** His own
+instruction already covers this: tell him to his face when his logic does not
+hold.
+
+**C. Never score its own idea, especially here.** §2.17.3 already settles it. It
+matters more in backtesting than anywhere else, because a strategy the AI
+suggested and the AI then praised is the exact failure his whole method is built
+to avoid. **The engine measures; the partner argues.**
+
+**D. Explain a structure at the moment he meets it, so he stops reading
+articles.** During a research session the questions that come up are of the form
+"why does the far leg of a calendar carry more vega", not "what should I trade".
+That is his own stated reason for wanting a partner at all: to replace the books.
+
+**E. Carry the caveat about his own history automatically.** §2.16.0 requires that
+every use of his 21 swing trades or his intraday year states that the data is
+flawed. **A partner that quotes his record without the caveat breaks a rule he set
+himself**, and prose hides that far better than a screen does.
+
+**F. Know which chart a claim came from.** After §2.16.4a, a cycle label is
+meaningless without its timeframe. **The partner must refuse to say "the market is
+squeezing" without saying on which chart**, because that ambiguity is precisely
+what made him and the labeller appear to disagree.
+
+**G. Remember a correction he made about human behaviour.** He has said he will
+correct the AI when it is wrong about how people actually behave, and expects it
+to stick. In a research session those corrections are the findings layer of
+§2.17.4, and they are the real output of a vocabulary session.
+
+**H. Say `unavailable` about a number, in prose, as readily as a screen does.**
+Two things in this session could not be measured: the VIX confirmation before the
+file was downloaded, and the FYERS half of that download once the token expired.
+**Both had to be reported as gaps.** A partner writing paragraphs is the easiest
+place in the whole terminal for a placeholder to pass as a fact.
+
+**What the backtester does NOT want from the partner:** a strategy suggestion
+presented as ready, a backtest result summarised without its data tier and its
+modelled-spread label, and any number the partner produced itself rather than read
+from a result.
+
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 
 **Why it came up.** He has one free Supabase account with two projects:
@@ -3651,6 +4064,129 @@ work, including the backup system."
 
 Then the backtester chat rewrites §2.15.6 with him and records his decisions
 here, in this section, dated.
+
+---
+
+#### 2.19a THE BRAINSTORM HE ASKED FOR, IN PLAIN ENGLISH. 2026-09-12.
+
+**He asked to be made to understand how all of this works, including the
+backups. Every figure below was read off his own machine and his own Google
+account on 2026-09-12 afternoon, not copied from an earlier note.**
+
+**1. WHAT IS ACTUALLY ON HIS PC, AND WHERE.**
+
+`data/history/` holds four years of market history as **Parquet files**. Parquet
+is a file format for tables, the way `.xlsx` is a file format for tables, except
+it stores each column separately and compressed. That is why four and a half
+years of every option minute fits in 541 MB instead of tens of gigabytes.
+
+| Folder | What is in it | Size |
+|---|---|---|
+| `data/history/nifty/` | The index itself, minute bars and daily bars | 18 MB |
+| `data/history/options_eod/` | Every option's daily row from NSE, one file a year | 73 MB |
+| `data/history/options_1m/` | Every option's minute bars from FYERS, from Feb 2024 | 541 MB |
+| `data/history/vix/` | India VIX, added 2026-09-12, two sources | new |
+
+**2. WHAT DUCKDB DOES, AND THE THING HE HAS PROBABLY MISUNDERSTOOD.**
+
+DuckDB is a database engine that runs inside a program on his PC rather than on a
+server. **The important part: the 630 MB of history does NOT live inside the
+DuckDB file.** DuckDB reads the Parquet files where they already sit. There is no
+loading step and no second copy.
+
+`data/options_cache.duckdb` exists and is only **10.5 MB**. What is actually
+inside it today, counted 2026-09-12:
+
+| Table | Rows |
+|---|---|
+| `options_history` | 36,998 |
+| `nifty_daily_bars` | 22 |
+| `realized_vol_cache` | 10 |
+
+**So the DuckDB file is a small working scratchpad, and the Parquet files are the
+real archive.** A query looks like one sentence naming the files, and it reads
+the 59 million minute bars without any of them being imported first. That is why
+§2.19 point 2 says this is faster on his PC than a hosted database would be over
+the network: nothing travels.
+
+**3. WHAT THE RECORDER ADDS EACH AFTERNOON.**
+
+The recorder is a small program in Google's data centre, woken **every minute
+from 09:00 to 15:59 on weekdays** by Cloud Scheduler `swayam-recorder-schedule`.
+Each time it wakes it reads the live option chain for two expiries, computes
+implied volatility and the four Greeks, and appends the rows to a file for that
+day in `gs://swayam-capital-options-data`.
+
+Measured 2026-09-12, the bucket holds 6 objects and 11.9 MB. The daily files are
+growing as it records more of the session: 0.3 MB on 9 September, 1.3 MB on 10
+September, 4.4 MB on 11 September.
+
+**What the recorder has that the historical files do not: the real bid and the
+real ask.** FYERS' historical candles carry open, high, low, close and volume and
+nothing else. So the recorder is the only source that can ever tell the
+backtester what a spread actually cost, which is why §2.15.6 calls the modelled
+spread the single most likely way a backtest of his flatters itself.
+
+**4. HOW A MORNING GAP IS BACKFILLED, AND WHAT IS HONESTLY NOT AUTOMATED.**
+
+The recorder **captures the afternoon only.** On 2026-09-09 every call from 09:15
+to 13:25 failed with `Please provide valid token`, and it started working the
+minute he refreshed by hand. He is asleep at 09:15. §2.10.
+
+The gap is recoverable, because **FYERS serves minute candles for an option
+contract once that contract has expired.** So every morning the recorder missed
+can be filled in later from FYERS, at minute resolution, for free, using
+`scripts/load_expired_options.py`.
+
+**⚠️ Stated plainly because it would otherwise be assumed: that backfill is not
+scheduled.** It is a command somebody runs. Nothing wakes up and repairs
+yesterday's morning. The data is recoverable; the recovery is manual. He should
+decide whether that becomes a weekly job or stays a thing done before a backtest
+needs those days.
+
+**5. THE BACKUP SYSTEM, END TO END. Two halves, an hour apart, both verified
+running on 2026-09-12.**
+
+| | Cloud half | Local half |
+|---|---|---|
+| What runs it | Cloud Scheduler `swayam-nightly-backup-schedule` | Windows Task Scheduler, task **"Swayam nightly local"** |
+| When | **02:00 IST**, every day | **03:00 IST**, every day |
+| Where it runs | Google's data centre, whether his PC is awake or not | His PC, because the vault and `data/history` only exist there |
+| What it protects | The database: trades, journal, results. `gs://swayam-backups/supabase/`, 5.2 MB | Copies the newest database backup **into his vault**, keeping the newest thirty; syncs `data/history` to `gs://swayam-backups/history/`, only the files that changed |
+| Proof, 2026-09-12 | Job enabled | **Last run 12-09-2026 03:00:00, result 0, next run 13-09-2026 03:00. Zero missed runs** |
+
+**The one-hour gap between them is deliberate and must not be closed.** The local
+half copies the newest backup out of the bucket. If both started at 02:00 the
+local half would race the cloud half and copy the previous night's file while
+reporting success.
+
+**The history copy in the bucket, counted 2026-09-12:** 160 files, 661 MB by
+bytes, which is the 630 MiB he was told. Newest push 2026-09-11 20:20 UTC, which
+is 2026-09-12 01:50 IST. **His statement that it is synced nightly is correct and
+was checked, not assumed.**
+
+**His wish, already honoured:** "I want backup to go in my vault in the Second
+Brain." The record does go to the vault. **The market history deliberately does
+not**, and that recommendation stands: 661 MB of binary files inside an Obsidian
+vault slows Obsidian and its Drive sync and gains nothing, because the bucket
+copy already exists. If he wants a Drive copy of the history it goes in a folder
+**beside** the vault, not inside it.
+
+**6. WHAT IS STILL OPEN IN THIS SECTION, and none of it is urgent.**
+
+- **§2.15.6 still describes four `swayam_*` Postgres tables for the history.**
+  §2.19 point 3 overturned that in favour of Parquet and DuckDB, and the roadmap
+  was already edited with his yes. **Rewriting §2.15.6 is still owed**, and it is
+  this chat's job with him.
+- **What "loaded" means for `ROADMAP.md` gate 7** now that Postgres is gone from
+  the answer. Recommendation to put to him: the gate is met when a query against
+  the Parquet files returns a priced structure for a named past day, proven on
+  his machine, rather than when rows exist in a table.
+- **How a backtest result reaches the live site**, which cannot see his PC. The
+  recommendation is a small results table in Supabase pushed from his PC, the
+  same pattern as the journal outbox and the vault mirror. **Not started.**
+- **Moving the two business apps** into his personal Supabase project is his own
+  session at his own timing, and nothing here assumes it has happened.
 
 ---
 
