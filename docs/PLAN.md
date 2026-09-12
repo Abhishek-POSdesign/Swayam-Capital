@@ -3141,6 +3141,58 @@ market cycles with a number whose definition nobody in this project has read.
 
 ---
 
+#### 2.16.10 THE KNOWLEDGE BASE, AND WORKING BESIDE THE AI PARTNER. His instruction, 2026-09-13.
+
+**The Trading Library now exists**, at `03 - Knowledge/Trading/Library/` in his
+vault: 19 items from free, official sources, each with its PDF as the source of
+record, a reading copy, and an index. Its rules for every chat are
+`_Knowledge Base Rules.md` in the same folder. **It is where this project goes
+to find the reality**, whenever something is planned, built or asked.
+
+**How the backtester uses it, his rules:**
+
+1. **Read it, never add to it.** It is shared by every chat, the mentor, the
+   main chat and the partner inside the terminal later.
+2. **The backtester builds its own map out of it**, because what the backtester
+   does not need another tool might. The map is in his vault:
+   `02 - Projects/Trading/10 - Backtester Notes/Library Map for the Backtester.md`,
+   beside the mentor's `09 - Mentor Notes`. It cites by item code and page, and
+   marks what this chat read itself.
+3. **Anything missing is asked of him, or handed to him as a research prompt**,
+   which he runs twice on two tools. The first is
+   `00 - Developer Logs/PROMPT FOR RESEARCH - Backtester needs 2026-09-13.md`:
+   historical bid and ask for NIFTY options, free and paid; historical event
+   dates from 2022; and how an option's daily closing price is computed.
+4. **Paid sources are open to him if their value is shown.** The one candidate
+   so far is historical quote data, because the modelled spread is the largest
+   unmeasured error in every result (§2.15.6). No recommendation until the
+   research returns with real prices and licences.
+
+**Working beside the AI partner, his instruction:** his next work is mostly the
+backtester and the AI partner, side by side, beside normal testing. **The partner
+will be live in the backtest, helping him run it.** Each chat keeps an eye on the
+other's work and does its own job in parallel. What the backtester needs from the
+partner is already written in §2.17.13. A prompt putting the mentor chat on the
+same page is in his vault at
+`00 - Developer Logs/PROMPT FOR MENTOR CHAT - From Backtester 2026-09-13.md`.
+
+**Three facts read from library pages by this chat, 2026-09-13, that correct
+earlier wording:**
+
+| Fact | Library page | What it corrects |
+|---|---|---|
+| The lot change to 65 was announced **3 October 2025**, effective for new contracts **28 October 2025**, old lot kept to the 30 December 2025 expiry | A4, page 1 | "Cut from 75 in January 2026" in CLAUDE.md and the mentor's facts note. His NSE files agree: 65 first appears 2025-10-29 |
+| The calendar expiry-day margin rule applied from **10 February 2025** | A10, NSE Clearing circular 005/2025, page 1 | "1 February 2025", which is SEBI's date in A1, section 5.2, pages 3 to 4, not the date the exchange applied it |
+| **No filed document defines how an option's daily closing price is computed** | A9 is a gap | §2.15.8 says the half-hour average was "proved rather than assumed". **What his data shows is strong evidence consistent with it, not proof of NSE's rule.** The rule that a backtest never fills at a daily close does not depend on it: only 31% of daily option rows traded at all |
+
+**A tax the charge engine does not model, found in A6:** STT on an **exercised**
+option, 0.15% of intrinsic price, per Finance Bill 2026 as introduced, Clause 143
+(enactment not confirmed from a file). **The backtester must never let an
+in-the-money leg reach expiry uncosted**: either the exit is forced first, which
+is his habit, or this tax is charged.
+
+---
+
 ### 2.17 THE AI AS A TRADING PARTNER. His job description, 2026-09-10.
 
 **He asked for this to be written down so he never has to explain it again.
