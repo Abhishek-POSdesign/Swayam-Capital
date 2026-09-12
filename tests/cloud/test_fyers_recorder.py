@@ -180,3 +180,31 @@ def test_the_scheduler_never_triggers_a_dry_run():
     assert status == 200
     assert json.loads(resp)["status"] == "recorded"
     writer.assert_called_once()
+
+
+def test_the_gate_can_be_asked_about_a_future_instant_and_does_nothing_else():
+    """Proves a holiday on the deployed copy before the morning it matters."""
+    req = MagicMock()
+    req.args = {"gate_at": "2026-09-14T03:30:00Z"}  # 09:00 IST, Ganesh Chaturthi
+
+    with patch("main.get_fyers_access_token") as token,          patch("main.fetch_options_snapshot") as fetch,          patch("main.storage.Client") as storage_client,          patch("main.append_and_dedupe_to_gcs") as writer:
+        resp, status, _ = record_snapshot(req)
+
+    body = json.loads(resp)
+    assert status == 200
+    assert body["status"] == "gate"
+    assert body["market_open"] is False
+    assert body["reason"] == "Market closed: 2026-09-14 is an NSE trading holiday."
+    assert body["wrote_anything"] is False
+    token.assert_not_called()
+    fetch.assert_not_called()
+    storage_client.assert_not_called()
+    writer.assert_not_called()
+
+
+def test_a_gate_question_without_a_timezone_is_refused():
+    req = MagicMock()
+    req.args = {"gate_at": "2026-09-14T09:00:00"}
+    resp, status, _ = record_snapshot(req)
+    assert status == 400
+    assert json.loads(resp)["status"] == "error"

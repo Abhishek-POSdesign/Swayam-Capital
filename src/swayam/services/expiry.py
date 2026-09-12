@@ -42,11 +42,16 @@ def get_nse_holidays() -> set[date]:
             with open(HOLIDAYS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 for year_key, list_items in data.items():
+                    # Only year keys hold holidays. "source" and "fetched" say
+                    # where the list came from; reading them as years threw and
+                    # left the desk believing there were no holidays at all.
+                    if not str(year_key).isdigit():
+                        continue
                     for item in list_items:
                         d = date.fromisoformat(item["date"])
                         holidays.add(d)
         except Exception as e:
-            logger.error("Failed to load NSE holidays file %s: %e", HOLIDAYS_FILE, e)
+            logger.error("Failed to load NSE holidays file %s: %s", HOLIDAYS_FILE, e)
 
     _cached_holidays = holidays
     return holidays

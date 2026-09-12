@@ -11,7 +11,7 @@ Function is deployed from `cloud/recorder/` alone and cannot read `data/`. These
 tests fail if the copy drifts.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 import json
 from pathlib import Path
 import sys
@@ -39,14 +39,53 @@ def test_the_recorders_calendar_is_the_repositorys_calendar():
     ), "the recorder's holiday calendar has drifted from data/nse_holidays_2026.json"
 
 
-def test_the_calendar_covers_this_year_and_the_next():
+def _calendar_must_cover(today: date) -> list[int]:
+    """This year always. The coming year only from 1 December.
+
+    NSE publishes the next year's holidays late in the year. Before it does,
+    any date for that year is a guess, and a guess in this file is fake data:
+    the 2027 list that used to live here was exactly that. From 1 December a
+    missing coming year is a real gap, and this fails loudly so it is fetched.
+    """
+    years = [today.year]
+    if today.month == 12:
+        years.append(today.year + 1)
+    return years
+
+
+def test_the_calendar_covers_this_year_and_from_december_the_next():
     holidays = load_nse_holidays()
-    assert 2026 in holidays and 2027 in holidays
-    assert len(holidays[2026]) > 10
+    today = datetime.now(IST).date()
+    for year in _calendar_must_cover(today):
+        assert year in holidays, (
+            f"The NSE holiday calendar has no {year}. From 1 December the coming year "
+            "is required: fetch NSE's trading holiday master and add it to "
+            "data/nse_holidays_2026.json and cloud/recorder/nse_holidays.json."
+        )
+    assert len(holidays[today.year]) > 10
+
+
+def test_the_coming_year_is_only_demanded_from_december():
+    assert _calendar_must_cover(date(2026, 9, 13)) == [2026]
+    assert _calendar_must_cover(date(2026, 11, 30)) == [2026]
+    assert _calendar_must_cover(date(2026, 12, 1)) == [2026, 2027]
+
+
+def test_the_calendar_says_where_it_came_from():
+    raw = json.loads(REPO_CALENDAR.read_text(encoding="utf-8"))
+    assert raw["source"].startswith("https://www.nseindia.com/")
+    assert date.fromisoformat(raw["fetched"])
+
+
+def test_it_does_not_record_on_ganesh_chaturthi_monday_14_september():
+    """The day the old calendar did not know about, found on 13 September."""
+    is_open, reason = is_market_open(datetime(2026, 9, 14, 9, 0, tzinfo=IST))
+    assert is_open is False
+    assert reason == "Market closed: 2026-09-14 is an NSE trading holiday."
 
 
 def test_it_does_not_record_on_a_trading_holiday():
-    # Diwali, Laxmi Pujan, a Tuesday, mid-session.
+    # Diwali-Balipratipada, a Tuesday, mid-session.
     diwali = datetime(2026, 11, 10, 11, 30, tzinfo=IST)
     is_open, reason = is_market_open(diwali)
     assert is_open is False
