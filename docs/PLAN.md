@@ -4122,6 +4122,81 @@ for itself.
 
 ---
 
+**THE EVENT RESEARCH CAME BACK, AND THE MENTOR RECONCILED IT. 2026-09-13.**
+Pass one: `00 - Developer Logs/EVENT_RESEARCH_2026-09-13 by Antigravity.md`
+(gemini-2.5-pro by its own report). Pass two: `ANTIGRAVITY_PROMPT - Event
+Research by perpexility.pdf`, 34 pages, 42 grounded searches by its own report,
+with a text copy beside it. **Every dated number below was recomputed by the
+mentor from his own files**, `data/history/nifty/1d/all.parquet` and
+`data/history/vix/nse_daily/all.parquet`, reading only, 2022-01-03 to
+2026-09-09, 1,162 sessions. Baseline on those files: median absolute daily
+move 0.47%, median high-low range 0.86%, median absolute opening gap 0.27%,
+median absolute India VIX change 2.62%.
+
+**The two passes used different methods, and that is the whole disagreement.**
+- **Antigravity did not research published sources.** It ran its own event
+  study on his downloaded NIFTY and VIX files and cited the files. That is a
+  legitimate method, and its large figures reproduce exactly (Lok Sabha result
+  day −5.93% with an 8.16% range and VIX +27.75%; 24 February 2022 −4.78% with a
+  −3.01% gap and VIX +30.32%; 4 May 2022 −2.29%; the three Budget VIX falls).
+  **But it failed its own brief in five verified ways.** (1) **Tawang, 13
+  December 2022, is backwards:** it reports NIFTY −0.60% and VIX +3.58% to
+  13.34; the files say NIFTY **+0.60%** and VIX **12.88, −3.30%**. Direction
+  was invented to fit the story. (2) Wrong figures elsewhere: HDFC Bank 17
+  January 2024 range 2.32% claimed, **1.37%** in the file; Jackson Hole 29
+  August 2022 gap −1.46% claimed, **−2.11%**; 14 September 2022 gap −1.78%
+  claimed, **−1.65%**. (3) Its second "India border" instance, 8 May 2024,
+  names no identifiable event and the file shows NIFTY unchanged. (4) **Expiry
+  day and MSCI rebalance were marked HIGH IMPACT with no measured number at
+  all**, on gamma, pin risk and turnover talk: reputation, which the brief
+  forbade. The mentor's proxy on the files, expiry weekdays against other
+  days, finds no index effect: median move 0.47% against 0.48%, range 0.90%
+  against 0.85%, 234 expiry days. (5) Its classification rule is not applied
+  consistently: scheduled RBI decisions are HIGH on a range of 1.3 times normal
+  when it declared 1.5 times as the bar, and India border escalation is HIGH
+  on "potential for" a move. Its three academic titles carry no link and are
+  not verified. It also missed the largest India VIX move in the window:
+  **7 April 2025, tariff escalation, NIFTY −3.24% on a −5.00% gap, VIX
+  +65.62%**.
+- **Perplexity used only published reporting and found almost no event
+  studies,** so it left nearly every scheduled event NOT ESTABLISHED. Its dated
+  closing figures reproduce on his files: 13 June 2022 −2.64% and VIX +14.25%;
+  13 March 2023 −1.49% and VIX +20.95%; 27 January 2023 −1.61%; 5 August 2024
+  −2.68% and VIX +42.25%; 7 April 2025 −3.24% and VIX +65.62%; 13 June 2025
+  −0.68% and VIX +7.56%. Where it quotes intraday VIX from the news the file
+  close differs, and the file wins. It gave few IST release times, saying it
+  could not source them.
+
+**The reconciled list. A draft for his yes, never a rule until he says.**
+
+| Class | Event types | Why |
+|---|---|---|
+| **HIGH IMPACT (MEASURED)**, scheduled | General election results day | Both passes; 4 June 2024 on his files |
+| **HIGH IMPACT (MEASURED)**, unscheduled | War or geopolitical escalation; tariff or trade-war escalation; surprise RBI action between meetings; global banking stress; a governance shock in an index heavyweight or group; a global leveraged unwind | Both passes, dated instances reproduced on his files |
+| **UNDECIDED, to be measured** | Union Budget; state election results; scheduled RBI decisions; FOMC decisions; US CPI; heavyweight earnings; expiry day; MSCI rebalance; an India border escalation | The passes disagree; one measured with an inconsistent rule and some wrong numbers, the other found no study |
+| **NOT ESTABLISHED AS HIGH IMPACT**, both passes | India CPI, WPI, GDP, IIP, PMI; RBI minutes; FOMC minutes and Jackson Hole; US payrolls, GDP, PCE; ECB; Bank of Japan; China data; OPEC; scheduled tariff dates; SEBI or exchange circulars; sovereign rating actions; an Indian bank or broker failure | Neither pass found a measured effect |
+
+**How the undecided row is settled.** One event study on his own files, with
+the rule for high impact written down BEFORE anything is measured, on the
+official historical dates the backtester chat's research prompt is already
+fetching (its Question 2, with the IST times the mentor added). One list, two
+readers, the desk and the backtest. The rule itself is his, and it is the
+question put to him on 2026-09-13.
+
+**The finding that matters most, the mentor's, from the files.** Every one of
+the largest overnight gaps in the window was **unscheduled**: −5.00% on
+7 April 2025, −3.01% on 24 February 2022, −2.00% on 13 June 2022, −1.68% on
+5 August 2024. No calendar gives a day before. **His day-before rule protects
+against the scheduled part of event risk only; the rest is carried by rule 2,
+the overnight gap test, and by the wife's app.** The partner must never let
+"nothing on the calendar tomorrow" sound like "safe to carry".
+
+**Times still unverified.** Antigravity gives IST times for every event,
+several with no page cited; Perplexity sourced only RBI 10:00 and the India
+PMI times. The India CPI and IIP time of 17:30 IST in the mentor's earlier
+draft list above is from Antigravity and is **not verified from MoSPI**. No
+time enters the terminal until it is read from the publisher's own page.
+
 **THE SPEAK-FIRST SESSION, BEGUN 2026-09-13. His answers in his words.**
 
 - **Who wakes him, first scene (asleep at 10:40, a fast 180-point drop, a loss
