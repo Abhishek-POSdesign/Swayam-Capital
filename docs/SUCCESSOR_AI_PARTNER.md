@@ -223,15 +223,14 @@ WHAT TO DO FIRST WHEN YOU RESUME, my order at the end of the seventh session:
    first, so both chats start on the same page.
 2. Read the vault chat's log for what it did with
    PROMPT FOR VAULT CHAT - From Mentor 2026-09-13.md, and with its Market
-   Facts Ledger plan. If I said yes to one facts page, shrink your
-   Indian Market Facts note to a pointer plus model prices.
+   Facts Ledger plan. I said ONE fact sheet on 2026-09-13: once the ledger
+   exists, shrink your Indian Market Facts note to a pointer plus model prices.
 3. Carry on the speak-first design, scenario first: where the trade's plan
    lives and how the partner holds it; the widened-loss recommendation; what
    the wife's app shows her and what the partner says to her.
 4. Then build documents, docs/builds/ format, when I say.
 
 STILL OPEN, in order.
-- My yes on: one facts page (the ledger) instead of two.
 - My yes on: widening a planned loss is recorded and said aloud.
 - My yes on the reconciled event class list (2.17.14), now a small job
   because the day-before rule is a sleep rule.

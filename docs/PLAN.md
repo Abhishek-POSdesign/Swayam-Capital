@@ -4321,7 +4321,7 @@ vault chat's plan (artifact "Market Facts Ledger") and the backtester chat's
   `03 - Knowledge/Trading/Verified Market Facts.md`: every row VERIFIED, WRONG,
   DISPUTED or UNVERIFIED with its evidence, only the vault chat writes it. It
   overlaps the mentor's `09 - Mentor Notes/Indian Market Facts, verified.md`.
-  **Mentor's recommendation, put to him:** one truth, not two. The shared ledger
+  **DECIDED BY HIM, 2026-09-13: "One fact sheet so that there will be no confusion."** One truth, not two. The shared ledger
   carries the market facts; the mentor's note shrinks to a pointer plus what the
   ledger does not carry (model prices and DeepSeek's peak hours), and
   `Mentor's View` stays the mentor's. Two pages kept by different chats drift,
