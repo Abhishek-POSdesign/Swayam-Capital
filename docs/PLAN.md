@@ -3071,12 +3071,169 @@ again; the STALE line leads. Delete the file locally and ask; the partner
 refuses to describe the terminal and says why. The test file fails on a
 31st bullet and on a bullet without a pointer.
 
-**Open, for him or the main chat.** The staleness thresholds. Whether the
-panel shows the date. Whether the build should also stamp the image with its
-commit and build time as environment variables in `cloudbuild.yaml`, so the
-partner can say "the site you are on was built on" alongside "the state file
-was written on"; a one-line change, and the mentor recommends it, later, not
-in this build.
+**APPROVED AS WRITTEN, 2026-09-12, by the main chat after its rebuild, relayed
+by him. NOT BUILT. It builds when he says.** The three open choices, answered
+the same day:
+1. **Staleness thresholds stay at three and seven days.**
+2. **The panel shows the file's date in its title bar.**
+3. **The build stamp in `cloudbuild.yaml` is a later change, not this one.**
+
+---
+
+#### 2.17.13 THE MODELS AND WHAT THEY COST. Read from the price pages on 2026-09-12, never from memory. The homework of 11 September.
+
+**What the terminal uses today**, from `.env` and the code: chat on
+`gemini-3.1-pro-preview` through Vertex AI, falling back to `gemini-2.5-pro`;
+compaction and lessons on `gemini-2.5-flash-lite`; the grounded "So far today"
+on `gemini-2.5-flash` with Google Search. **Real usage to date, from
+`swayam_ai_usage_daily`:** 22 requests, 86,155 input and 6,249 output tokens
+by the app's own approximation, estimated ₹10.26 in the life of the terminal.
+On 2026-09-11 a chat message averaged **3,905 input and 268 output tokens**.
+
+**Prices, USD per million tokens, quoted from the pages named.** Google bills
+his account in rupees at its own SKU rate; the app's 83-to-the-dollar is an
+assumption in `config.py`, not a measured rate.
+
+| Model | Input | Output | Where read |
+|---|---|---|---|
+| Gemini 3.1 Pro Preview, global | $2.00 (≤200k), $4.00 (>200k); cached $0.20 | $12.00 (≤200k), $18.00 | Vertex pricing page, Gemini 3 table |
+| Gemini 2.5 Pro | $1.25 (≤200k), $2.50; cached $0.125 | $10.00, $15.00 | Vertex pricing page, Gemini 2.5 table |
+| Gemini 2.5 Flash | $0.30; cached $0.03 | $2.50 | same |
+| Gemini 2.5 Flash Lite | $0.10; cached $0.01 | $0.40 | same |
+| **Gemini 3.8 Flash, new** | $0.75 to 31 Dec 2026, then $1.50 | $3.75, then $7.50 | Vertex pricing page banner and Gemini 3 table |
+| Claude Sonnet 5 | $2.00; cache hit $0.20 | $10.00 | Vertex pricing page (same on platform.claude.com) |
+| Claude Opus 5 | $5.00; cache hit $0.50 | $25.00 | platform.claude.com/docs pricing; **not found on the Vertex page** |
+| Claude Haiku 4.5 | $1.00 | $5.00 | both pages |
+| Claude Fable 5.1 | $10.00; cache hit $0.25 | $50.00 | both pages |
+| DeepSeek V4 Pro | $0.66 off-peak, **$1.32 peak**; cache hit $0.022/$0.044 | $1.98 off-peak, **$3.96 peak** | api-docs.deepseek.com pricing |
+| DeepSeek Flash (V4.1) | $0.15 off-peak, $0.30 peak | $0.60, $1.20 | same |
+
+Grounding with Google Search on Vertex: **5,000 queries a month free across
+the Gemini 3 models, then $14 per 1,000.** The 2.5-model grounding line on the
+Vertex page was not read; the Gemini API page says 1,500 requests a day free,
+then $35 per 1,000, for 2.5 Flash. "So far today" is capped at 8 a day, about
+176 a month, so grounding is not where his money goes.
+
+**Two things about DeepSeek the price page settles and one it does not.**
+Peak is "01:00 - 04:00 and 06:00 - 10:00 UTC, Monday through Friday", and
+06:00 to 10:00 UTC is **11:30 to 15:30 IST: his entire window is peak.** V4
+Pro continues after 14 September 2026 "with the billing method remaining
+unchanged". **The page says nothing about where requests are processed or
+how long they are kept.** Before his trading record and his rules go through
+it, that has to be found from DeepSeek's terms, not assumed.
+
+**What a message costs, computed from the prices above at 83 to the dollar.**
+Two shapes: today's measured message, and the shape the partner will have
+once it carries the state file, his trade and the findings, assumed at
+10,000 input and 400 output tokens.
+
+| Model | Today's message | Planned message | A month of 660 messages, planned shape |
+|---|---|---|---|
+| Gemini 3.1 Pro Preview | ₹0.92 | ₹2.06 | ≈ ₹1,360 |
+| Gemini 2.5 Pro | ₹0.63 | ₹1.37 | ≈ ₹900 |
+| Gemini 3.8 Flash, introductory | ₹0.33 | ₹0.75 | ≈ ₹500 |
+| Gemini 2.5 Flash | ₹0.15 | ₹0.33 | ≈ ₹220 |
+| Claude Sonnet 5 | ₹0.87 | ₹1.99 | ≈ ₹1,310 |
+| Claude Opus 5 | ₹2.18 | ₹4.98 | ≈ ₹3,290 |
+| Claude Haiku 4.5 | ₹0.44 | ₹1.00 | ≈ ₹660 |
+| DeepSeek V4 Pro, peak | ₹0.52 | ₹1.23 | ≈ ₹810 |
+| Claude Fable 5.1 | ₹4.35 | ₹9.96 | ≈ ₹6,570 |
+
+660 messages is 30 a day for 22 trading days, an assumption for comparison;
+his real rate while testing has been about 5 a day. **Prompt caching changes
+these figures materially**: the persona and context block repeat every turn,
+and a cache hit costs a tenth of the input price on Gemini and Claude. The
+app does not use caching today.
+
+**Where the money will actually go: the backtesting table.** A session there
+carries result tables and long reasoning, plausibly 30,000 to 60,000 input
+tokens a turn. At 3.1 Pro that is ₹5 to ₹10 a message and a fifty-message
+session is ₹250 to ₹500. That is the session type to measure before choosing
+a model, and the one where caching pays.
+
+**The mentor's recommendation, quality first as he said.** Stay on 3.1 Pro
+through the credit and measure. Shortlist for the test after 29 September:
+Gemini 3.8 Flash for the everyday desk turns, Sonnet 5 as the second thinking
+model because it can be paid for by the same Google credit through Vertex,
+and DeepSeek V4 Pro only after its data handling is read and with the peak
+price used, not the off-peak one. Do not decide on price alone: the only
+quality evidence that counts is his own sessions, judged by him.
+
+**How a month of Gemini on the Google credit will be measured before
+29 September. Checked from this machine: `gcloud` can see the billing
+account (`010610-56A8FD-B55A28`, INR, open) but has no command for costs or
+credits, and `bq` is broken here. So the figures need his hands, once each.**
+1. **Now, a baseline.** Billing → Reports, service "Vertex AI", 1 September to
+   today: one rupee figure. Billing → Credits: the remaining credit and its
+   expiry date. He writes both here.
+2. **Now, the pipe: enable Billing export to BigQuery**, "standard usage
+   cost", into a dataset in `swayam-capital`. The BigQuery API is already
+   enabled; the data is a few kilobytes a day. From the next day every SKU's
+   cost lands daily, readable by a script. **This is the pipe for "AI cost is
+   a trading expense"**, and it outlives the credit.
+3. **Until the 29th, use the partner normally.** The app's estimate
+   accumulates in `swayam_ai_usage_daily`.
+4. **On the 29th, calibrate.** The Vertex AI cost for 13 to 28 September from
+   the export against the sum of the app's `estimated_cost_inr` for the same
+   days. The ratio corrects the estimate, and the cost line stops being a
+   guess. Record the ratio here.
+5. **A small build, when he says:** record the model's own usage figures from
+   the response instead of characters divided by four, and price the model
+   that actually answered rather than the 2.5 Pro rate for everything.
+
+---
+
+#### 2.17.14 THE PARTNER AT THE BACKTESTING TABLE. A draft frame, 2026-09-12, awaiting the backtester chat's list. Shaped like §2.17.7.
+
+**Why this is the one that matters.** His words, 2026-09-12: "Backtesting is
+where I will need it most." The backtester chat is drafting what a session
+needs from a partner; he will paste it into the mentor chat, and this frame
+is filled from it. Nothing below is settled.
+
+**The table.** His vocabulary for the market's cycles, measured on 2022
+onward (§2.16.4). His formations, from his own list. A strategy he designs
+and names, written as rules. The engine on his PC over the Parquet files in
+DuckDB (§2.19), filling from minute bars, never from a daily close (§2.15.8).
+A result reported in his order: plan adherence first, then charges per leg,
+then the spread marked as modelled, then the data tier, then profit (§2.16).
+And the findings ledger, layer 3, which does not exist yet.
+
+**What the partner is SHOWN.** The vocabulary definitions and how often each
+cycle appeared and how long it lasted. The strategy under test, as written.
+The engine's report exactly as the engine produced it, before the partner has
+said a word about it. The data window and tier. The findings so far. His
+history only when he brings it in, labelled flawed every time.
+
+**What it MAY say.** Define any term or structure on the spot, so he does not
+open a book. Turn what he says into one written, testable hypothesis, one
+variable at a time. Object before a run when the logic does not hold: a rule
+the engine cannot measure, a fill that depends on a price nobody could trade
+at, a window chosen because it looks good. Explain why a result looks the way
+it does, with the source named. Propose the single next variation. Name a
+structure with him. Draft the finding note, for his yes.
+
+**What it REFUSES.** To score its own idea; the number comes from the engine.
+To say a strategy works before it has run on data he did not use to design
+it. To state a figure that is not in the engine's report. To pick a window
+that flatters a result. To change the strategy between runs without saying
+so. To write a finding without his yes. To build a strategy out of his past
+trades. To turn a backtest into a trade to take today.
+
+**How he corrects it.** He says the engine's number is right but the reading
+of it is wrong about how a human trades it. The partner writes his correction
+as one dated line in his words, reads it back, and applies it to the next
+hypothesis. Where that line lives is the correction question of §2.17.10
+item 4, still open.
+
+**Pipes this needs, for a later build, none of it now.** A manual way for the
+partner to ask for a run and read the report back; the engine runs on his PC
+and the report reaches the live site the way the outbox does (§2.19). The
+findings ledger, in the vault, mirrored. Caching, because these sessions are
+long.
+
+**Four questions for him, scenario first, to be asked after the backtester's
+list is pasted.** Recorded in the report of 2026-09-12 and in
+`SUCCESSOR_AI_PARTNER.md`.
 
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 

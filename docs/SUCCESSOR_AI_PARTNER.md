@@ -175,10 +175,31 @@ chat to design a "state of the terminal" file. The design is in PLAN
 2.17.12, brought back before building, as asked. The main chat keeps the file;
 this chat designed the pipe and the persona side.
 
+THE FOURTH SESSION, 2026-09-12 night. The main chat, rebuilt, approved the
+state-of-the-terminal design as written, with thresholds three and seven
+days, the panel showing the file's date, and the build stamp deferred. PLAN
+2.17.12. It builds when I say. The mentor read the price pages and wrote
+2.17.13: what the terminal uses, what each model costs per message and per
+month, why DeepSeek's peak window is my whole window, and how a month of
+Gemini on the Google credit is measured before 29 September, with two
+console readings and a billing export that need my hands. It drafted 2.17.14,
+the partner at the backtesting table, shaped like 2.17.7, waiting for the
+list the backtester chat is writing for me. Facts I gave it: the AI panel is
+live and floats; Home has no chat and keeps a saved daily summary; the partner
+still cannot see my open trade the way the desk sees it and that fix is not
+built; the backtester chat is on my market vocabulary.
+
+REPORT RULE, from 2026-09-12: the handoff is a FILE at
+G:\My Drive\Second Brain\00 - Developer Logs\REPORT_AI_PARTNER_<date>.md and
+I am given only its path. One documents pull request at the end of a session.
+Never edit ROADMAP.md.
+
 STILL OPEN, in order.
-- The state-of-the-terminal design, PLAN 2.17.12: his yes, then who builds it
-  (a builder chat, not this one), the staleness threshold, and whether the
-  panel shows the date.
+- The backtesting table, PLAN 2.17.14: paste the backtester chat's list, then
+  answer the four scenario questions in the report of 2026-09-12.
+- My two console readings for the cost measurement, PLAN 2.17.13: the Vertex
+  AI rupee figure since 1 September and the remaining credit; and enabling
+  the billing export to BigQuery.
 - Correction: I did not understand the question. PLAN 2.17.10 item 4 says how
   to ask it properly. Ask it that way.
 - SETTLED 2026-09-11: it may advise and recommend a SETUP, a view, a scenario,
@@ -186,8 +207,8 @@ STILL OPEN, in order.
   view and research. It may never say "buy this, sell this, go long, go
   short", never place an order, never create a full trade for me. PLAN
   2.17.10 item 6.
-- The cost cap numbers, once you have done the model research and we have a
-  measured month on the Google credit, which runs to 29 September 2026.
+- The cost cap numbers, after the 29 September calibration. The model research
+  is done, PLAN 2.17.13.
 - Which documents are law. Parked. For now, the latest merged commit wins.
 
 YOUR STANDING JOBS, every session, before you say anything to me:
