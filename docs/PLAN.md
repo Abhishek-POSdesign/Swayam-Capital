@@ -2881,6 +2881,211 @@ market before and after Corona are different markets.
 
 ---
 
+#### 2.16.9 THE LIBRARY NOTE, ANSWERED. 2026-09-12 night.
+
+**The AI partner chat sent seven backtesting points raised by his second research
+pass, and asked which were already covered, which are adopted, and which
+rejected. Answered below, each one measured against his own data or against the
+running code rather than against either research report.**
+
+The second pass is the more careful of the two and **it is right about the things
+that matter.** Where it corrected the first pass on Indian contract rules, his own
+downloaded files agree with it.
+
+---
+
+##### THE ONE THING FOUND WHILE ANSWERING THIS, AND IT BLOCKS THE BACKTESTER
+
+**⚠️ THE CHARGE ENGINE CANNOT COST A TRADE BETWEEN 1 APRIL 2023 AND 31 MARCH 2026.
+That is three of his four and a half years.** Found by invoking it, not by reading
+it, 2026-09-12.
+
+`services/charges.py` holds exactly two dated rate sets: one effective
+2022-04-01 to 2023-03-31, and one effective 2026-04-01 onwards. Asked for any date
+in between it raises `ChargeScheduleUnavailable`: "No charge schedule covers
+01 Jun 2024. A trade cannot be costed with rates that were not in force."
+
+| Date asked | Answer |
+|---|---|
+| 2022-06-01 | Works |
+| 2023-06-01, 2024-06-01, 2024-11-01, 2025-06-01 | **Refuses** |
+| 2026-06-01 | Works |
+
+**The engine is behaving correctly and this is not a bug in it.** It refuses rather
+than guessing, which is exactly the no-fake-data rule working as intended, and it
+is why CLAUDE.md is right to call it the only correct charge model in the
+repository. **But it means the backtester cannot report a net number on most of his
+window until the missing schedules are added.** Since his first pass criterion is
+that net profit must beat twice the charges (§2.16.5c), a backtest of 2023, 2024 or
+2025 cannot even be scored today.
+
+**What it needs, and deliberately not written from memory:** the rate sets for
+2023-04-01 onwards, taken from the **Income Tax Department STT text that is on the
+Library fetch list**. Both research passes state that STT on an option sale rose to
+0.10% of premium with effect from 1 October 2024 and to 0.15% from 1 April 2026.
+**Those figures are not entered here, because a charge rate copied from a research
+report is exactly the kind of number this project refuses.** They go in once the
+primary text is in the Library and has been read.
+
+**This puts the Library on the backtester's critical path rather than beside it.**
+
+---
+
+##### THE SEVEN POINTS
+
+**1. Point-in-time contract rules. PARTLY COVERED, and the gaps are now measured.**
+
+Settled from NSE's own daily files already on disk, which neither research pass
+could do:
+
+| | What his own data says |
+|---|---|
+| **Expiry weekday** | Thursday every year 2018 to 2024. **Last Thursday weekly expiry 2025-08-28, first Tuesday 2025-09-02.** 2026 is Tuesday. The second pass's date of 1 September 2025 is correct |
+| **Lot size** | 50 until 2024-04-25, then 25 from 2024-04-26, then 75 appearing from 2024-11-22, 75 through 2025, **65 first appearing 2025-10-29** and the only lot from 2026-01-01 |
+| **Holiday-shifted expiries** | Real and already visible: a handful of Wednesday expiries every year to 2024 and Monday expiries in 2026 |
+
+**So CLAUDE.md and the second pass were both half right about the lot**, and the
+data reconciles them: 65 applied to new contracts from late October 2025 and became
+the only live lot in January 2026. **CLAUDE.md's sentence "cut from 75 in January
+2026" is imprecise and should say October 2025 for new contracts, January 2026 in
+force.** Not edited here; that file belongs to the main chat.
+
+**Three findings that reduce the work rather than add to it:**
+
+- **Expiry weekday needs no change log at all.** The backtester never computes
+  which Thursday or Tuesday a contract expired on. Every contract in the data
+  carries its own real `expiry_date`, holiday shifts included. **A dated expiry
+  rule would be a second source of truth and a chance to be wrong.**
+- **Holidays 2022 to 2025 are not needed either**, which answers point 6. Sessions
+  are derived from the NIFTY daily bars, so a day either has a bar or was not a
+  session, and expiry shifts are already in the expiry dates. `nse_holidays_2026.json`
+  serves the live recorder, which is a different job.
+- **Lot size is covered from 2024 onwards by the data itself**, the NSE
+  `lot_size` column.
+
+**⚠️ THE REAL GAP: the lot size for 2022 and 2023 exists nowhere.** The legacy NSE
+file format carries no lot column, so it is NULL rather than guessed (§2.15.8). And
+`services/contract_master.py` resolves the lot from the **live** FYERS contract
+master, which does not list expired contracts, so it cannot answer for a past date
+at all. **`services/margin.py` calls `get_lot_size(underlying, expiry)`, so a
+historical margin figure would silently use a live answer.** The backtester must
+never call that path; it needs a dated lot table, and 2022 to 2023 has to come from
+the NSE lot-size circulars on the fetch list. **A backtest of his 2022 era using 65
+overstates everything by a fifth.**
+
+**2. Execution quality: whether the leg was tradeable and whether the price was
+stale. ADOPTED, and half of it is already measured.**
+
+§2.16.7 already fills from minute bars, never a daily close, and labels a modelled
+spread as modelled. The second pass's two additions are accepted as requirements:
+
+- **Was the strike tradeable at the decision minute.** Already measured at daily
+  resolution for the older tier: in 2022 and 2023 an option traded on 81% of
+  contract-days within 1% of spot, 59% at 3 to 5% away, and 37% beyond 8%. So a
+  condor's far wings in the older tier are frequently a price nobody dealt at.
+  **The rule adopted: a leg whose contract shows no trade in the relevant bar may
+  not be filled.**
+- **Was the last traded price stale.** Adopted as a labelled field rather than a
+  silent filter, and it is only answerable at minute resolution, so it is another
+  thing that separates the pre-February-2024 tier from the rest.
+
+**3. A four-level approval standard. ADOPTED, and it is stricter than §2.16.7.**
+
+§2.16.7 already has held-out data and walk-forward. **It does not have the two
+parts that give the standard its teeth, and both are adopted:**
+
+- **The test sample is used ONCE, after the rule is frozen.** A second look at it
+  turns it into development data. This has to be enforced by record, not by
+  intention, which is why point 4 matters.
+- **Signals recorded before outcomes are known** in the paper stage.
+
+**4. An experiment register, including the failed trials. ADOPTED. It was not in
+§2.16 and its absence was a real hole.**
+
+Without it, "it still passes on held-out data" means nothing, because nobody can
+tell whether it is the first rule tried or the fortieth. **Every parameter
+combination tried is recorded with its result, before the next one is tried, and a
+final result reports how many combinations preceded it.** This is the mechanical
+counterpart to his own sentence "This is competition of RULES not profitability".
+
+**5. Event periods tested separately. ADOPTED with one change of emphasis.**
+
+RBI, Budget, elections, gap days and volatility spikes, yes. **But the more useful
+cut for him is his own cycle vocabulary from §2.16.4a**, because that is the
+language he actually thinks in and it is now measured. Events are a second cut, not
+the first one. Both are cheap once the labels exist.
+
+**6. Holiday-adjusted expiries and settlement. ANSWERED ABOVE, and no work is
+needed for 2022 to 2025.** See point 1.
+
+**7. Extra report fields. ADOPTED, appended to his order, never in front of it.**
+
+His order stands exactly as §2.16 has it: plan-adherence first, then charges, then
+the spread and its label, then the data tier, then profit. **Added after those:
+median trade, drawdown duration, tail loss, and cost as a share of gross profit.**
+
+**The last of those is the one that matters most to him and it should be prominent
+within the charges block, not at the end.** His FY 2025-26 was gross +₹6,109
+against charges of ₹92,408, and his three paper trades on 2026-09-10 were gross
++₹195 against charges of ₹585. **Cost as a share of gross is the number that
+describes his last two years.**
+
+---
+
+##### WHAT THIS CHAT ASKS FOR IN RETURN
+
+**(a) What is needed for strategy building and is NOT on the fetch list.** In
+priority order, most of it dull and none of it a book:
+
+1. **The Income Tax Department STT text covering 2023, 2024 and 2025**, not only
+   2024 and 2026. It is already on the list for two years; it is the three-year
+   hole above that blocks the engine.
+2. **NSE lot-size circulars for 2022 and 2023**, which is the one contract fact
+   that exists in no file he holds.
+3. **NSE's India VIX methodology document**, `nseindia.com`, because the whole
+   volatility path of §2.16.5b labels with VIX and nobody in this project has read
+   how it is computed. A measure used as a regime label should be understood.
+4. **NSE's own note on how the derivatives closing price is computed.** It was
+   proved empirically to be a half-hour weighted average (§2.15.8) and that proof
+   drives the rule that a backtest may never fill at a daily close. **A primary
+   source would turn a measurement into a citation.**
+5. **The SEBI and NSE circulars on margin for calendar spreads**, specifically the
+   February 2025 rule that a calendar gets no margin benefit on the day its near
+   leg expires. Ten of his twenty-one historical trades were calendars, the
+   terminal does not model this, and CLAUDE.md already says he must be told before
+   his first one.
+6. **NSE's contract specification history for weekly expiry introduction and
+   removal**, to know which weekly contracts existed in 2022 and 2023 rather than
+   inferring it from what traded.
+
+**Not wanted:** more strategy literature. §2.16.0 settles that strategies come out
+of his head, not out of a book, and a library of setups would quietly become the
+thing a strategy is copied from.
+
+**(b) Does this chat want its own research pass? Yes, on exactly one thing.**
+
+**How Indian index options were actually filled, in size, at the minute, from 2022
+to now.** Not option theory. The single largest unquantified error in any result
+this engine will produce is the modelled spread before the recorder existed
+(§2.15.6 names it as the most likely way a backtest of his flatters itself), and
+the honest position today is that nobody knows how wrong it is. Worth two tools:
+whether any free or cheap source carries historical bid and ask or even a spread
+statistic for NIFTY options before February 2024; and what published research says
+about NIFTY option bid-ask spreads by moneyness and time of day.
+
+**One other pass, lower priority: the deflated Sharpe ratio and probability of
+backtest overfitting applied to small samples.** His pass criterion is thirty
+trades. Those two measures were designed for hundreds. **Whether they say anything
+useful at thirty is a real question and the answer may be no**, in which case the
+experiment register in point 4 carries the whole load.
+
+**(c) Reading the Library once it exists. Agreed.** The folder
+`03 - Knowledge/Trading/Library/` did not exist yet when this was written, checked
+2026-09-12 night. What in it changes §2.16 gets written here, dated, and the first
+thing read is the STT text, because of the three-year hole.
+
+---
+
 ### 2.17 THE AI AS A TRADING PARTNER. His job description, 2026-09-10.
 
 **He asked for this to be written down so he never has to explain it again.
