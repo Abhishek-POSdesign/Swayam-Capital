@@ -4274,6 +4274,36 @@ their F&O, statistics and macro sections. `docs/LIBRARY_CONVERT_PROMPT.md`,
 paste copy `00 - Developer Logs/ANTIGRAVITY_PROMPT - Library Convert.md`.
 His vault chat links the index notes afterwards.
 
+#### 2.17.16 HOW THE MENTOR WORKS WITH HIM. Settled 2026-09-12 late night, his answers to the three questions before the chat was cleared.
+
+1. **What comes first when the chat resumes:** check Antigravity's convert
+   report against the disk; then write a simple prompt for his Obsidian
+   vault chat on how to create knowledge-base rules for the Library, so
+   every chat, this one and the backtester, can pick up the knowledge it
+   needs for discussing, planning and mentoring, and this chat can mentor
+   the terminal's partner from it. Then the desk. Then build.
+2. **The desk questions are asked BEFORE the chat is cleared, not after.**
+   His rule: a chat is cleared only between pieces of work, never in the
+   middle of one. "First you ask me your desk questions, you update them,
+   then only will we clear the chat."
+3. **This chat writes everything about the AI**, the build documents
+   included, in the main chat's format. **The main chat monitors only:** it
+   reads, and if it finds a gap it tells him, he tells this chat, and this
+   chat corrects its own work. The main chat has no authority to change it.
+   "You are the boss for this work, and this is your responsibility."
+4. **No pull request until the session's questions are answered and
+   written.** His correction, the same night: a PR opened before the
+   answers forces a second PR for the answers. One PR per session, opened
+   when the session's writing is complete, and he is told plainly when
+   nothing more is coming onto it.
+5. **Before any handover, four documents are checked, not assumed:**
+   `CLAUDE.md`, this chat's log, the handover documents
+   (`SWAYAM_START_HERE.md`, `CHAT_PROMPTS.md`), and the successor prompt,
+   which must carry how to talk to him, how the chats went, what was just
+   done, and everything needed to start again without explanation. His
+   words: a lost baton costs "20 to 30% of context, millions of tokens, and
+   hours of mine."
+
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 
 **Why it came up.** He has one free Supabase account with two projects:

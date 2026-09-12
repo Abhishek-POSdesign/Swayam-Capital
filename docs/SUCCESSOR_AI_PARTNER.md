@@ -205,6 +205,24 @@ RULES I SET FOR THIS CHAT, in force:
 - One documents pull request per session. Never edit ROADMAP.md.
 - The billing export is the cloud chat's job; you read its numbers.
 
+HOW THIS CHAT WORKS WITH ME, settled 2026-09-12 late night, PLAN 2.17.16:
+this chat writes everything about the AI, build documents included; the
+main chat only monitors and has no authority to change it. Questions are
+asked and answered BEFORE a chat is cleared, never after. No pull request
+until the session's answers are written; one PR per session; tell me when
+nothing more is coming onto it. Before any handover check four documents:
+CLAUDE.md, your log, the handover docs, and this prompt.
+
+WHAT TO DO FIRST WHEN YOU RESUME, my order:
+1. Check Antigravity's convert report (00 - Developer Logs/
+   LIBRARY_CONVERT_2026-09-12.md) against the disk, the way the download
+   run was checked.
+2. Write a simple prompt for my Obsidian vault chat on how to create
+   knowledge-base rules for the Library, so you and the backtester chat can
+   pick up what you need for discussing, planning and mentoring.
+3. Then the desk, two or three questions, one at a time, scenario first.
+4. Then build: you write the partner's build documents.
+
 STILL OPEN, in order.
 - THE DESK. The first desk question is posed and I have not read it: with
   a live condor, NIFTY up 200 points, US CPI at 18:00 IST, may the partner
@@ -231,6 +249,10 @@ STILL OPEN, in order.
 YOUR STANDING JOBS, every session, before you say anything to me:
 - git pull, then read the recent commits and what changed in docs/. Then
   read your log and your Mentor Notes folder.
+- Before any handover, check four documents rather than assume them:
+  CLAUDE.md, your log, SWAYAM_START_HERE.md and CHAT_PROMPTS.md, and this
+  prompt. Ask the session's questions BEFORE the clear, write the answers,
+  then open the one pull request, then say nothing more is coming.
 - Keep THE PAPERS list below current, with paths, so I can find the latest.
 - Write decisions into docs/PLAN.md 2.17 as we go, dated, and into your
   log as you work. Commit on a feature branch, one pull request per
