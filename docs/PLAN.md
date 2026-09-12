@@ -4220,6 +4220,49 @@ presented as ready, a backtest result summarised without its data tier and its
 modelled-spread label, and any number the partner produced itself rather than read
 from a result.
 
+**THE LIBRARY EXISTS. Verified by the mentor on the disk and inside the
+files, 2026-09-12 night, not from Antigravity's report.** After the combined
+prompt ran: 19 item folders under `03 - Knowledge/Trading/Library/`, 41
+files, every PDF opens, page counts as reported, every source URL on an
+official domain (sebi.gov.in, nseindia.com and nsearchives, nseclearing.in,
+api.nism.ac.in, rbi.org.in, mospi.gov.in, incometaxindia.gov.in,
+zerodha.com, davidhbailey.com, cmegroup.com, optionseducation.org), an
+`_index.md` in every folder, the top index with the paid shelf and the video
+channels, the invented margin rupees gone from the specification note, and
+A9 relabelled by instrument. **Verified inside the documents, with pages:**
+- A1, SEBI circular 2024/132: §5.2 "Removal of calendar spread treatment on
+  the Expiry Day" is on page 3, effective 1 February 2025; one weekly-expiry
+  index per exchange from 20 November 2024 (page 6); contract value not
+  less than ₹15 lakh at introduction (page 5).
+- A2, SEBI circular of 26 May 2025: expiry days limited to Tuesday or
+  Thursday per exchange (page 2).
+- A3, NSE FAOP68747 of 25 June 2025: NIFTY weekly expiry moves from
+  Thursday to Tuesday for contracts expiring on or after 1 September 2025.
+- A4, NSE FAOP70616 of October 2025: NIFTY market lot 75 to 65.
+- A7, SEBI study of 23 September 2024 (FY22 to FY24): 91.1% of individual
+  traders lost money in FY24, average net loss ₹1.20 lakh; 92.8% over the
+  three years, ₹1.81 lakh crore; 7.2% profitable. Every figure in the index
+  note found in the PDF.
+- A8, the India VIX white paper: verified by the backtester chat.
+- A10, NCL circular 005/2025 of 9 January 2025: the exchange side of the
+  expiry-day calendar rule.
+**Not verified, two gaps and one question, for the next run or his browser:**
+- **A6 is not the STT text.** The PDF holds no text and the markdown is a
+  capture of the Income Tax Department's STT rules index page: no option
+  rate, nothing dated 2026. The primary text of the 1 April 2026 change is
+  still not on the disk. Fetch the Budget 2026 FAQ
+  (`incometaxindia.gov.in/documents/20117/15766092/FAQs-Budget-2026.pdf`)
+  and the Finance Act 2024 STT provision, or his browser.
+- **A9 still does not define the option closing price.** The options file is
+  NSE FAOP67690 on BASE price (the next day's base is the close price or a
+  theoretical price); it does not say how an option's close price is
+  computed. The backtester's rule stands on its own measurement (§2.15.8);
+  the citation is still missing. Also the A9 index note states a file size
+  that does not match the disk (190,094 against 134,355 bytes).
+- **A7 may not be the latest.** The Perplexity pass cited FY26 findings
+  (87.7% loss-makers); Antigravity filed the September 2024 study. Whether
+  SEBI has published a 2025 or 2026 update is unconfirmed either way.
+
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 
 **Why it came up.** He has one free Supabase account with two projects:
