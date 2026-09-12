@@ -3203,6 +3203,23 @@ cycle appeared and how long it lasted. The strategy under test, as written.
 The engine's report exactly as the engine produced it, before the partner has
 said a word about it. The data window and tier. The findings so far. His
 history only when he brings it in, labelled flawed every time.
+- **The report it is handed, his, 2026-09-12:** "It should get the summary,
+  but the detailed summary. If it doesn't understand the summary and cannot
+  guide me on the summary, AI has to think and do the reasoning. If it
+  couldn't reason through the summary, then it can ask for the table." So
+  the engine's detailed summary every time; the partner reasons over it
+  first; the trade-by-trade table only when the summary is not enough, and
+  it asks.
+- **On cost and the credit, his, the same night:** dense work while the
+  Google credit lasts, to 29 September; after that real money, so "there
+  will be design changes in the last week of September, especially for the
+  AI cost; we might change the AI if required. If I'm fully satisfied with
+  the Gemini, a 5, 10, 20% cost up and down doesn't really matter."
+  **Mentor's correction, accepted into the record:** the engine runs on his
+  PC over the files on his disk (§2.19) and costs nothing on any date; the
+  credit pays only for the partner's messages. "Dense" therefore means talk
+  freely with the partner until the 29th; the runs are free before and
+  after.
 
 **What it MAY say.** Define any term or structure on the spot, so he does not
 open a book. Turn what he says into one written, testable hypothesis, one
