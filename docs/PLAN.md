@@ -3135,8 +3135,9 @@ experiment register in point 4 carries the whole load.
 
 **(c) Reading the Library once it exists. Agreed.** The folder
 `03 - Knowledge/Trading/Library/` did not exist yet when this was written, checked
-2026-09-12 night. What in it changes §2.16 gets written here, dated, and the first
-thing read is the STT text, because of the three-year hole.
+2026-09-12 night. What in it changes §2.16 gets written here, dated. **The first
+thing read is the India VIX methodology**, because §2.16.4a already labels his
+market cycles with a number whose definition nobody in this project has read.
 
 ---
 
