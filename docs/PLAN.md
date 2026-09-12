@@ -4122,6 +4122,73 @@ for itself.
 
 ---
 
+**THE SPEAK-FIRST SESSION, BEGUN 2026-09-13. His answers in his words.**
+
+- **Who wakes him, first scene (asleep at 10:40, a fast 180-point drop, a loss
+  still inside his rule).** His answer corrected the question. "How will an AI
+  partner wake me? It cannot wake me. It has no hands or physical presence. It
+  can only send a notification on the phone. That cannot wake me because I
+  sleep on DND." **So the partner never wakes him directly, and a push to his
+  own phone is not a wake channel.** The only wake path is his wife, through
+  her app.
+- **When the wife's app says wake him, his rule.** "If it's under my planned
+  loss, then there is no reason to wake me up because it will happen... Otherwise,
+  it will be waking me every next day, because that is the behavior of the
+  options. They become volatile, show you a loss, then they will start giving
+  you profit, then loss. That is why I'm building this system: so that I will
+  not have to wake up every day for this." The draft thresholds, his example of
+  a planned loss of ₹1,000:
+  | Loss against the PLANNED loss of that trade | What the wife's app says |
+  |---|---|
+  | Under 90% | Nothing about waking him |
+  | 90% or more **and growing** (₹900+ and rising) | "You can ask your husband to wake up" |
+  | At or past the planned loss | "Yes, it is time to wake him up" |
+- **What this settles for the design, mentor's reading.** The trigger is the
+  trade's own planned loss, not rule 1 (1% of the balance); the two are
+  different numbers and the partner must not confuse them. The trigger is a
+  rule and costs nothing; only the words need an AI call. And every open trade
+  must carry a planned-loss figure in rupees, or this rule cannot run and the
+  app must say so rather than stay silent. **The mentor's recommendation, for
+  his correction:** at 90% and growing, the app does not wait to be opened; it
+  rings her phone, because she is awake and he is not. This replaces the old
+  `Wake Alerts System.md` flow (ping him, escalate to her after ten minutes
+  unacknowledged), which his DND makes useless, and its 09:15 to 12:30 asleep
+  window, which is shorter than his real morning.
+
+**THE BACKTESTER CHAT AND THIS CHAT NOW WORK SIDE BY SIDE. Relayed by him,
+2026-09-13, from `00 - Developer Logs/PROMPT FOR MENTOR CHAT - From Backtester
+2026-09-13.md`.**
+- The Library is a shared knowledge base nobody owns. Each chat reads it and
+  keeps its own map: the mentor's is `09 - Mentor Notes`, the backtester's is
+  `10 - Backtester Notes/Library Map for the Backtester.md`. What a chat needs
+  and the Library lacks goes to him as a research prompt; nobody files.
+  Before planning, building or answering him, check the Library, not memory.
+- Each chat watches the other's notes and tells him, with the page, when the
+  other has written something provably wrong. **On 2026-09-13 the backtester
+  corrected three lines of the mentor's facts note, all three checked on the
+  pages and accepted:** the lot of 65 was announced 3 October 2025 and took
+  effect for new contracts from 28 October 2025, not "January 2026"; the
+  calendar expiry-day rule applied at the exchange from 10 February 2025, not
+  1 February; and the option closing price is consistent with a half-hour
+  average on his data, not proved to be NSE's rule.
+- **The mentor read the backtester's map and §2.17.13 and finds nothing wrong
+  for the partner.** One addition was made to the backtester's research
+  prompt, with his permission: IST release times for the historical event dates,
+  because an announcement after 15:30 hits the next session, and a note that
+  its event list is a starting set pending the event research above. The aim
+  is one event list with two readers, the desk and the backtest.
+- **A rule the partner must carry, his, 2026-09-12:** "Market moves matter in
+  the past, but the charges should be current." A backtest result is costed at
+  today's charges, lot and margin rules on every date; the partner never says
+  "at the rates of the time".
+- **Two stale lines found, not the mentor's to edit, raised with him:**
+  `CLAUDE.md` still says the lot was "cut from 75 in January 2026"; and
+  `00 - Developer Logs/BACKTESTER_SPECIFICATION_A8_A11.md` line 13 still states
+  a 30-minute VWAP closing-price rule as NSE's official rule, which no filed
+  document says for options.
+
+---
+
 #### 2.17.15 THE KNOWLEDGE BASE. His ask of 2026-09-12 night. To be planned WITH him. Not started.
 
 His words: "We have to give some knowledge base. I cannot have my AI depend
