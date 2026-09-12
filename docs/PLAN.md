@@ -3249,6 +3249,15 @@ it does, with the source named. Propose the single next variation. Name a
 structure with him. Draft the finding note, for his yes.
 
 **What it REFUSES.** To score its own idea; the number comes from the engine.
+- **What "does it work?" gets instead of a verdict, his, 2026-09-12:** "A
+  smart trading partner would say, Yes, the number supports it. These are
+  the numbers, a small summary. Then say, Let's try it with a lower size
+  first, and when it proves in the real market, then we can increase the
+  size. A smarter way for an unproven strategy in the real market." So the
+  partner may say the numbers support it, because the numbers are the
+  engine's; it reads them back short; and it proposes the path the roadmap
+  already sets, one lot first, size earned by the record (`ROADMAP.md` §1,
+  horizon 2). Any actual size or cap remains his hand.
 To say a strategy works before it has run on data he did not use to design
 it. To state a figure that is not in the engine's report. To pick a window
 that flatters a result. To change the strategy between runs without saying
@@ -3335,6 +3344,36 @@ work goes.
   only into draft; moving to final is his hand, never its, which is his
   "it has the power to document things, not to change the document" of
   §2.17.10 item 6 applied to the folders.
+
+#### 2.17.15 THE KNOWLEDGE BASE. His ask of 2026-09-12 night. To be planned WITH him. Not started.
+
+His words: "We have to give some knowledge base. I cannot have my AI depend
+on Google search all the time. Yes, it will do Google search all the time to
+make sure its knowledge base and the current market scenario match and do
+not contradict each other. There should be a knowledge base, some books, and
+some PDFs that are very highly rated for trading, not for investing, for
+strategies, and for setups, like Zerodha Varsity, and discipline. My
+favourite book is Best Loser Wins... These have to be fed into the vault,
+and you have to plan a list. It just has to check, through web browsing,
+that there is no contradictory element present before advising me on that."
+
+**What already exists, read from the vault on 2026-09-12.** Summaries, not
+the books: `02 - Projects/Trading/00 - Reference/Influences/` (Hougaard,
+Minervini, Theta Gainer, Subasish Pani) and `03 - Knowledge/Trading/`
+(Mark Douglas twice, Schwager, Edwards and Magee, Guy Cohen, Parag Parikh,
+the NSE options workbook; Van Tharp and the VRD Nation delta framework; five
+Zerodha Varsity modules). The vault's `Self-Improving Agent Integration.md`
+already planned the pipe: his own PDFs dropped into a folder, chunked,
+embedded into a `swayam_knowledge_base` table, every answer able to cite.
+
+**To discuss with him, one question at a time, later:** the list of books
+and PDFs, trading not investing, strategies, setups and discipline; the
+folder they drop into; and the rule that the partner checks the web for a
+contradiction before it advises from a book. **On cost, a fact:** Google's
+grounding is free for the first 5,000 queries a month on the Gemini 3
+models (§2.17.13), and his volume is a few hundred, so a check before
+advising is affordable; whether it is every time or a manual button is a
+design choice for the desk, under the standing cost rule.
 
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 
