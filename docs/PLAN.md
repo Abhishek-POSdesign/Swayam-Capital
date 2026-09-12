@@ -3141,6 +3141,99 @@ market cycles with a number whose definition nobody in this project has read.
 
 ---
 
+#### 2.16.10 THE KNOWLEDGE BASE, AND WORKING BESIDE THE AI PARTNER. His instruction, 2026-09-13.
+
+**The Trading Library now exists**, at `03 - Knowledge/Trading/Library/` in his
+vault: 19 items from free, official sources, each with its PDF as the source of
+record, a reading copy, and an index. Its rules for every chat are
+`_Knowledge Base Rules.md` in the same folder. **It is where this project goes
+to find the reality**, whenever something is planned, built or asked.
+
+**How the backtester uses it, his rules:**
+
+1. **Read it, never add to it.** It is shared by every chat, the mentor, the
+   main chat and the partner inside the terminal later.
+2. **The backtester builds its own map out of it**, because what the backtester
+   does not need another tool might. The map is in his vault:
+   `02 - Projects/Trading/10 - Backtester Notes/Library Map for the Backtester.md`,
+   beside the mentor's `09 - Mentor Notes`. It cites by item code and page, and
+   marks what this chat read itself.
+3. **Anything missing is asked of him, or handed to him as a research prompt**,
+   which he runs twice on two tools. The first is
+   `00 - Developer Logs/PROMPT FOR RESEARCH - Backtester needs 2026-09-13.md`:
+   historical bid and ask for NIFTY options, free and paid; historical event
+   dates from 2022; and how an option's daily closing price is computed.
+4. **Paid sources are open to him if their value is shown.** The one candidate
+   so far is historical quote data, because the modelled spread is the largest
+   unmeasured error in every result (§2.15.6). No recommendation until the
+   research returns with real prices and licences.
+
+**Working beside the AI partner, his instruction:** his next work is mostly the
+backtester and the AI partner, side by side, beside normal testing. **The partner
+will be live in the backtest, helping him run it.** Each chat keeps an eye on the
+other's work and does its own job in parallel. What the backtester needs from the
+partner is already written in §2.17.13. A prompt putting the mentor chat on the
+same page is in his vault at
+`00 - Developer Logs/PROMPT FOR MENTOR CHAT - From Backtester 2026-09-13.md`.
+
+**Three facts read from library pages by this chat, 2026-09-13, that correct
+earlier wording:**
+
+| Fact | Library page | What it corrects |
+|---|---|---|
+| The lot change to 65 was announced **3 October 2025**, effective for new contracts **28 October 2025**, old lot kept to the 30 December 2025 expiry | A4, page 1 | "Cut from 75 in January 2026" in CLAUDE.md and the mentor's facts note. His NSE files agree: 65 first appears 2025-10-29 |
+| The calendar expiry-day margin rule applied from **10 February 2025** | A10, NSE Clearing circular 005/2025, page 1 | "1 February 2025", which is SEBI's date in A1, section 5.2, pages 3 to 4, not the date the exchange applied it |
+| **No filed document defines how an option's daily closing price is computed** | A9 is a gap | §2.15.8 says the half-hour average was "proved rather than assumed". **What his data shows is strong evidence consistent with it, not proof of NSE's rule.** The rule that a backtest never fills at a daily close does not depend on it: only 31% of daily option rows traded at all |
+
+**A tax the charge engine does not model, found in A6:** STT on an **exercised**
+option, 0.15% of intrinsic price, per Finance Bill 2026 as introduced, Clause 143
+(enactment not confirmed from a file). **The backtester must never let an
+in-the-money leg reach expiry uncosted**: either the exit is forced first, which
+is his habit, or this tax is charged.
+
+---
+
+#### 2.16.11 THE FREE DATA, AGAINST HIS THREE-YEAR MINIMUM. And the research phase closed. 2026-09-13.
+
+**His requirement:** at least three years of history, four if possible, from his
+2022 window. **His decision on paid data:** no paid historical tick data "until I
+am trading with crore-plus capital". NSE's own tick data is enterprise-priced and
+its undertaking may forbid use that guides trading. **No email to NSE is needed.**
+
+**The always-accessible inventory is in his vault:**
+`02 - Projects/Trading/10 - Backtester Notes/Free Data Inventory.md`. Summary,
+every figure counted on his PC:
+
+| What | Free source | Years in his window | Three years? |
+|---|---|---|---|
+| NIFTY index, minute and daily | FYERS | 4 yr 8 mo | **Yes, and four** |
+| Every NIFTY option, daily | NSE daily F&O file | 4 yr 8 mo | **Yes, and four** |
+| India VIX, daily | NSE archive | 4 yr 8 mo | **Yes, and four** |
+| Every NIFTY option, every minute, every strike | FYERS expired contracts | first bars 2023-12-22, dense from January 2024: **about 2 yr 8 mo** | **No, about four months short** |
+| Live bid and ask | His recorder | from 2026-09-10 | No; grows daily |
+
+**The one gap against his minimum is minute-level option prices.** A strategy that
+decides once a day can be tested on 4 yr 8 mo, using the daily tier for 2022 and
+2023. A strategy that depends on the minute inside his window can be tested on
+about 2 yr 8 mo of option prices. Two free tests might close it, both waiting:
+re-probing whether FYERS now serves expired minutes before 2024, which needs the
+token refreshed; and Upstox's free historical API, which documents minute data
+from January 2022 but is unverified for expired options and needs an account only
+he can open.
+
+**Also verified 2026-09-13:** both NSE daily file formats already carry NIFTY
+**futures** rows, 3 FUTIDX rows on 2022-10-20 and IDF rows on 2026-08-05; the
+current loader keeps options only. And the six sessions missing from the NSE store
+against the index bars are the weekend and Diwali special sessions, which the
+downloader skips.
+
+**THE RESEARCH PHASE IS CLOSED.** What remains before building is not research: a
+few documents to file (NSE's closing-price page, the 2026 holiday circular), the
+token refresh, his decisions on the four vocabulary items and the sizing ladder,
+and a six-part plain-English plan for the first build.
+
+---
+
 ### 2.17 THE AI AS A TRADING PARTNER. His job description, 2026-09-10.
 
 **He asked for this to be written down so he never has to explain it again.
