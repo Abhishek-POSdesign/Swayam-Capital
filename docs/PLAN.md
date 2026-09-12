@@ -3264,11 +3264,46 @@ that flatters a result. To change the strategy between runs without saying
 so. To write a finding without his yes. To build a strategy out of his past
 trades. To turn a backtest into a trade to take today.
 
-**How he corrects it.** He says the engine's number is right but the reading
-of it is wrong about how a human trades it. The partner writes his correction
-as one dated line in his words, reads it back, and applies it to the next
-hypothesis. Where that line lives is the correction question of §2.17.10
-item 4, still open.
+**How he corrects it. Settled by him, 2026-09-12 night.** "There must be a
+rulebook AI will have, and the correction must be related to some
+paragraph, some rule, or something. It must search where this correction
+belongs and add the correction in that rule, paragraph, chapter, or
+whatever it is. If it's a new thing, then a correction book, a file, a
+correction note where it would be added." So: the partner holds a rulebook;
+a correction is filed against the rule it belongs to, found by search, and
+appended under that rule, dated, in his words; only a correction that fits
+no rule goes to a corrections note. **Mentor's line, so it fits the draft
+and final folders of question 4:** the partner appends under a rule and
+never rewrites the rule's own wording; if the rule sits in final, the
+correction is filed pointing at it and he decides when the rule goes back to
+draft. This closes §2.17.10 item 4.
+
+**The stop, his correction of the mentor's scene, 2026-09-12 night.** The
+mentor had written a scene in which he holds through a stop. Wrong about
+him: "I will be very serious with the stop loss. I was always very serious
+with the stop loss. If there is a stop loss hit, my emotions or smartness
+should not come into line. Maybe 1 in 100 times there should be some market
+condition clearly telling, after a debate with the AI, No, this is a
+temporary spike in the option price which settles in 5 to 10 minutes. It
+happens on expiries or some news days, but most of the time we will respect
+our stop loss. The first reaction should be exit. If required, a small
+discussion. If I can convince with the real reason which is there, then only
+we will stop. Otherwise we will cut the trade. That is the most important
+rule: cut the trade at the stop loss. Live to die another day." **Rule for
+the partner, at the table and at the desk:** at a stop hit its first word is
+exit; the least discussion of all is about the stop; only a real,
+present reason he states can stop the cut, and it is his call.
+
+**The mentor's own folder, his instruction, 2026-09-12 night.** "Create a
+folder in the vault and write in your CLAUDE.md file that you must read that
+after every resurrection, to get some expertise about the Indian market. You
+can also put your thoughts and your view in it. I might be wrong, and you
+might be missing something." Created:
+`02 - Projects/Trading/09 - Mentor Notes/`, read on every resurrection
+(`SUCCESSOR_AI_PARTNER.md` item 7, and the repo `CLAUDE.md` table). It holds
+verified Indian-market facts with their sources, and the mentor's own view,
+marked as such. The vault chat may rename or move it; the prompt file then
+follows.
 
 **Pipes this needs, for a later build, none of it now.** A manual way for the
 partner to ask for a run and read the report back; the engine runs on his PC
