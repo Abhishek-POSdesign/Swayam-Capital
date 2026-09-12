@@ -3916,6 +3916,102 @@ verified Indian-market facts with their sources, and the mentor's own view,
 marked as such. The vault chat may rename or move it; the prompt file then
 follows.
 
+**THE DESK, begun 2026-09-12 late night, before the chat was cleared. His
+answers in his words.**
+- **The event rule, given in answer to the first desk scene:** "We will not
+  keep any position open on the day the event is happening. Either we will
+  close the position one day before the high-impact event, like RBI, US
+  Fed, or anything which has a very high impact on the market, or budget,
+  or I am available on the system, on the computer, to manage manually. If
+  I am not available, I will square off the trade one day before and enter
+  into the new trade after it, after a discussion about what is really
+  there in the data, in the announcement, in the event, and how we can
+  create a strategy around it." **What this gives the partner:** the day
+  before a high-impact event it says so, names the open position, and puts
+  the two choices to him: close today, or be at the desk tomorrow. After
+  the event, the discussion of what was announced comes before any new
+  trade. **Open:** which events are high-impact is his list; he named RBI,
+  the Fed and the Budget. US CPI is not yet on it.
+- **Desk question 1, may the partner name a specific adjustment, strike
+  and all, on a live position. YES, his, 2026-09-12 late night:** "It can
+  take the strike name and advise. That is not a problem because it can
+  calculate faster than me, so I should use it, but with a reason, with a
+  calculation, with a number, not just blank, blank, buy this call or put.
+  There must be a reason and a number supporting it." So on a live
+  position the partner may say "buy the 24,300 call" when the sentence
+  also carries why, the calculation and the number it rests on. A bare
+  instruction is never allowed. This is §2.17.10 item 6 applied to a
+  position he already holds.
+- **The high-impact event list. His instruction, the same night:** the
+  examples he gave (RBI, the Fed, the Budget) were examples, not the list.
+  The list is to be drawn from what exists and kept IN THE TERMINAL in
+  advance, so the day-before warning needs no fresh judgement. **What
+  exists:** `swayam_macro_events` (migration 015), fed by the Trading
+  Economics API, with a `highlighted` flag set weekly by a Gemini curation
+  that picks three to five events, and an `impact_brief`; `event_time` is
+  empty on every row (§2.17.11). **What is missing:** his fixed list of
+  event TYPES that count as high impact, which the curation must obey
+  rather than choose, and the time of each event in IST, because a print
+  after the close (India CPI 17:30 IST, US CPI 18:00 IST, the Fed 23:30
+  IST) hits the next session's open, so "the day of the event" for those
+  means the overnight that follows. **Mentor's draft list, for his edit,
+  from the two research passes, the existing table and his own words:**
+  - India, scheduled: RBI policy decision; the Union Budget and any interim
+    budget; India CPI; India GDP (quarterly); India IIP; general election
+    results day; monthly NIFTY expiry day (his own rule, calendars).
+  - Global, scheduled: US Fed decision; US CPI; US non-farm payrolls; US
+    GDP.
+  - Unscheduled, high impact when they happen: war or border escalation,
+    a major tariff or sanctions announcement, a bank or broker failure, a
+    surprise RBI action, a SEBI or exchange circular that changes F&O
+    rules.
+  - Medium, listed so they are not mistaken for high: India WPI, RBI
+    minutes, ECB and Bank of Japan decisions, China data, crude and OPEC
+    decisions, state elections.
+  **CORRECTED BY HIM the same night; the draft list above is withdrawn as
+  a rule and kept only as a starting point for the research.** "I will not
+  have any of my personal list of the event, at least not for the first
+  year, or never. It will always be market-driven: what the market fears
+  or enjoys, which events impact VIX, the volatility index. That has to go
+  through research, and that has to be listed as high-impact. Others are
+  not less impacted." So: the high-impact list comes from research, done
+  twice like the library (§2.17.15), on which scheduled and unscheduled
+  events have actually moved NIFTY and India VIX, and it is stored in the
+  terminal in advance with times in IST. The events not on it are not
+  called low impact. **The build, when he says:** a table of event types
+  with the researched impact class and the IST time, the weekly curation
+  constrained to it, `event_time` filled, the desk and the partner reading
+  the same table.
+- **Desk question 2, may the partner speak first. YES, and wider than
+  asked, his, 2026-09-12 late night:** "My AI will never be restricted from
+  speaking first. It can leave a message for me. I cannot be sitting all
+  the time at the computer. We have to design some system where I will get
+  some way to wake up and see my running trades. It can leave a message
+  when I come back, or send a push notification as soon as I wake up, or I
+  can see it on my phone. It can speak without me asking: Abhishek, you
+  might be missing this, this is what's happening, there is some kind of
+  news, you must look at your trade. It has authority to speak or leave a
+  message anytime it sees a reason, like a trading partner rightly would."
+  **Needs its own session, his instruction: design with the mentor first,
+  then build.** Mentor's note for that session, not a decision: the
+  triggers (rule 1 room, an event eve, a gap, a news item) can be rules and
+  free; the words the partner speaks are an AI call it initiates, so that
+  session must reconcile "speaks first" with the standing cost rule by a
+  daily cap on unprompted messages, never by silence. The existing pieces
+  it builds on: `06 - Platform Plan/Wake Alerts System.md` in the vault,
+  the roadmap's mandatory prerequisite for real money; the notification
+  devices table (migration 016); browser push and Telegram infrastructure
+  from BUILD-11.8 and 11.11, activation-gated.
+- **The side app for his wife, his idea, 2026-09-12 late night, rules
+  later:** "I will also be building a basic side app which will only show
+  my running positions. That will be for my wife because I sleep during the
+  night shift, till 1 pm. The market gaps up or down 200, 300, 400 points;
+  events are dated, but wars, bankruptcies, conflicts and political
+  announcements are surprises. My wife can open the app and talk to AI: is
+  there anything important I should know, is there anything serious, should
+  I wake up Abhishek?" This is the Wake Alerts System's escalation to his
+  wife, given a screen and a voice. Same session as the one above.
+
 **Pipes this needs, for a later build, none of it now.** A manual way for the
 partner to ask for a run and read the report back; the engine runs on his PC
 and the report reaches the live site the way the outbox does (§2.19). The
@@ -3986,10 +4082,13 @@ work goes.
   there." So layer 3 has two homes in the vault: draft, where a named
   structure is born and lives while it is tested; final, never edited in
   place. A named structure enters draft the same day; it reaches final when
-  he says. **Proposed by the mentor, awaiting his yes:** the partner writes
-  only into draft; moving to final is his hand, never its, which is his
-  "it has the power to document things, not to change the document" of
-  §2.17.10 item 6 applied to the folders.
+  he says. **Settled by him, 2026-09-12 late night, replacing the mentor's
+  line:** "I can move it to the final from the draft, and AI as well, but
+  it has to be final. I should confirm: okay, it is final, the draft has
+  become final now. Either I move it or AI moves it. It doesn't really
+  matter. Until I say it is final and closed, it will stay in the draft
+  folder." So the rule is the WORD, not the hand: nothing leaves draft
+  until he says final and closed; after that, either may move it.
 
 #### 2.17.15 THE KNOWLEDGE BASE. His ask of 2026-09-12 night. To be planned WITH him. Not started.
 
@@ -4262,6 +4361,47 @@ A9 relabelled by instrument. **Verified inside the documents, with pages:**
 - **A7 may not be the latest.** The Perplexity pass cited FY26 findings
   (87.7% loss-makers); Antigravity filed the September 2024 study. Whether
   SEBI has published a 2025 or 2026 update is unconfirmed either way.
+
+**Phase three, the convert run, mentor's decision 2026-09-12 late night.** For
+the Second Brain's graph and for anything that later reads the Library, a
+PDF is the wrong shape: Obsidian cannot link into or search a PDF, and the
+partner's future pipeline reads text. So each PDF gets a verbatim,
+page-marked markdown beside it; the PDF stays as the source of record; no
+summary, no cleaning that touches a number; pages with no text layer are
+flagged, never guessed; the three Market Pulse issues converted only in
+their F&O, statistics and macro sections. `docs/LIBRARY_CONVERT_PROMPT.md`,
+paste copy `00 - Developer Logs/ANTIGRAVITY_PROMPT - Library Convert.md`.
+His vault chat links the index notes afterwards.
+
+#### 2.17.16 HOW THE MENTOR WORKS WITH HIM. Settled 2026-09-12 late night, his answers to the three questions before the chat was cleared.
+
+1. **What comes first when the chat resumes:** check Antigravity's convert
+   report against the disk; then write a simple prompt for his Obsidian
+   vault chat on how to create knowledge-base rules for the Library, so
+   every chat, this one and the backtester, can pick up the knowledge it
+   needs for discussing, planning and mentoring, and this chat can mentor
+   the terminal's partner from it. Then the desk. Then build.
+2. **The desk questions are asked BEFORE the chat is cleared, not after.**
+   His rule: a chat is cleared only between pieces of work, never in the
+   middle of one. "First you ask me your desk questions, you update them,
+   then only will we clear the chat."
+3. **This chat writes everything about the AI**, the build documents
+   included, in the main chat's format. **The main chat monitors only:** it
+   reads, and if it finds a gap it tells him, he tells this chat, and this
+   chat corrects its own work. The main chat has no authority to change it.
+   "You are the boss for this work, and this is your responsibility."
+4. **No pull request until the session's questions are answered and
+   written.** His correction, the same night: a PR opened before the
+   answers forces a second PR for the answers. One PR per session, opened
+   when the session's writing is complete, and he is told plainly when
+   nothing more is coming onto it.
+5. **Before any handover, four documents are checked, not assumed:**
+   `CLAUDE.md`, this chat's log, the handover documents
+   (`SWAYAM_START_HERE.md`, `CHAT_PROMPTS.md`), and the successor prompt,
+   which must carry how to talk to him, how the chats went, what was just
+   done, and everything needed to start again without explanation. His
+   words: a lost baton costs "20 to 30% of context, millions of tokens, and
+   hours of mine."
 
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 

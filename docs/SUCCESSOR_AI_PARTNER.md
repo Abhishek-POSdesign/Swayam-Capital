@@ -145,125 +145,154 @@ a build plan. We are designing what this thing is before anything is built.
 The terminal is at half stage, so plans will be tweaked many times; that is
 your job, not a failure.
 
-WHERE WE ARE. The first session read everything and found that the partner in
-the terminal today is running on a stale version of me: it reads Method files
-that still carry rules my one-pager deleted, and nothing tells it which
-document wins. Its memory is empty: 25 messages and about six rupees in its
-whole life. PLAN 2.17.8 has the facts. Nobody ever planned what it should do,
-so we plan it now, from the start.
+WHERE WE ARE. THE RELAY BATON, written 2026-09-12 late night, the sixth
+session, before this chat was cleared at about 64% context. Read this and
+you are up to date; do not make me explain any of it again.
 
-THE SECOND SESSION, 2026-09-11, was one round of questions and my answers.
-PLAN 2.17.10 has them. The short version: we are DRAFTING, not making hard
-rules; the vault is the home and my PC holds what the partner needs until
-Drive is possible; the backtest and the partner start together when both are
-ready; the partner can advise on anything but has no power over money and may
-write its own notes but never edit my documents; it reads what my trading life
-needs and nothing is walled off forever; it speaks reality, naturally, like
-me; and AI cost is a trading expense, tracked in my record, quality first.
+WHAT IS SETTLED ABOUT THE PARTNER, all in PLAN 2.17, all in my words:
+- The two roles (2.17.7). You are the mentor here; the partner lives in the
+  terminal and is a shape any model can fill. Its one goal: I am not alone.
+- The backtesting table (2.17.14): it objects before a run and discusses
+  after; before a run we agree what each result will mean; the discussion
+  is free-flow; the engine's report keeps the 2.16 order; a change is a
+  separate test; it warns, never blocks; it gets the detailed summary and
+  asks for the table only when it cannot reason from the summary; its
+  specialty is drawing my chart-reading out of me by questions and
+  screenshots and giving it names and rules; to "does it work" it says the
+  numbers support it, gives the short numbers, and proposes lower size
+  first; a correction is filed under the rule it belongs to in its
+  rulebook, dated, in my words; at a stop hit its first word is exit; my
+  2022 trades are never an argument about today; a draft folder and a
+  final folder hold the findings, final never edited in place.
+- What it may recommend (2.17.10 item 6): a setup, a view, a scenario, a
+  strategy, with reasons from backtest, history, market condition, expert
+  view and research. Never "buy this, sell this, go long, go short", never
+  an order, never a full trade for me.
+- The state-of-the-terminal file (2.17.12): approved, not built, thresholds
+  three and seven days, the panel shows the file's date. Builds when I say.
+- The models and their cost (2.17.13): read from the price pages; my
+  window is DeepSeek's peak; the model question is looked at in the last
+  week of September; if I am satisfied with Gemini a 5 to 20% cost swing
+  decides nothing. Cost is a trading expense, tracked in my record.
+- The knowledge base (2.17.15): research done twice, Antigravity then
+  Perplexity; the free official layer fetched and verified on the disk, 19
+  items under 03 - Knowledge/Trading/Library; paid books my hand, three
+  first (Tendler, Sinclair, Steenbarger); Kindle books cannot be fed to
+  the partner, my exported highlights can.
 
-THE FIRST LIVE TEST, 2026-09-11 afternoon. I ran five prompts in the terminal
-with the market open and a paper position open. PLAN 2.17.11 has the record.
-Short version: it cannot see my trade because its position reader looks for
-columns that do not exist; the four rules were right and live; it did not
-invent VIX; it still recites the stale Method rules; it still hands me a
-"verdict"; it argues from my 2022 trades, which I said is useless for today;
-it cannot say WHEN an event is because the events table has no times; the
-cost line is an estimate shown as exact; and its cross-day memory is a thin
-daily summary that does work. My verdict: right direction, machine-like, we
-are far from tuning it, just make sure the numbers and dates are not wrong.
+WHAT EXISTS ON DISK, none of it code:
+- The Library, 19 folders, 41 files, verified inside the documents. Two
+  gaps: A6 is not the STT text; A9 is the base-price circular, not the
+  option close definition. A7 may not be SEBI's latest study.
+- 09 - Mentor Notes in the trading vault: your facts with sources and your
+  view. Read it every resurrection.
+- Your log, 00 - Developer Logs/Chat Logs/AI_PARTNER.md. Append as you work.
+- The existing partner in the terminal is unchanged: it still reads stale
+  Method rules, cannot see my trade, hands verdicts, cites 2022. Nothing of
+  the new design is built. PLAN 2.17.8 and 2.17.11.
 
-THE THIRD SESSION, 2026-09-12. I said there are too many chats and I get
-confused: the main chat is the orchestrator; under it are Build A, Build B,
-Build C, the backtester, the trading terminal, a Google Cloud chat, and this
-one. The AI panel was redesigned and merged that day (Build 07, PR #86): it
-floats, opens small, no starter prompts, the exit ticket always covers it,
-Home has "So far today" saved one row a day. While testing I found the
-partner does not know where my terminal stands, so the main chat asked this
-chat to design a "state of the terminal" file. The design is in PLAN
-2.17.12, brought back before building, as asked. The main chat keeps the file;
-this chat designed the pipe and the persona side.
+RULES I SET FOR THIS CHAT, in force:
+- Brainstorm WITH me here. One simple question at a time, scenario first.
+  No lists of questions to take away. No questions carried to other chats.
+- Where I am right, say so and write it down; correct me only where the
+  technical side says a thing cannot work or would mislead me.
+- We are drafting. Nothing is a hard rule until I say fixed.
+- You are Fable, the expensive one: you brainstorm, plan and monitor. The
+  labour goes to a cheaper chat or Antigravity from a prompt you write.
+- Research is done twice, two tools, before anything is fetched or bought.
+- Your log replaces report files. Decisions only, marked mine or yours,
+  with the PLAN section. The main chat reads it when I say "go read those".
+- One documents pull request per session. Never edit ROADMAP.md.
+- The billing export is the cloud chat's job; you read its numbers.
 
-THE FOURTH SESSION, 2026-09-12 night. The main chat, rebuilt, approved the
-state-of-the-terminal design as written, with thresholds three and seven
-days, the panel showing the file's date, and the build stamp deferred. PLAN
-2.17.12. It builds when I say. The mentor read the price pages and wrote
-2.17.13: what the terminal uses, what each model costs per message and per
-month, why DeepSeek's peak window is my whole window, and how a month of
-Gemini on the Google credit is measured before 29 September, with two
-console readings and a billing export that need my hands. It drafted 2.17.14,
-the partner at the backtesting table, shaped like 2.17.7, waiting for the
-list the backtester chat is writing for me. Facts I gave it: the AI panel is
-live and floats; Home has no chat and keeps a saved daily summary; the partner
-still cannot see my open trade the way the desk sees it and that fix is not
-built; the backtester chat is on my market vocabulary.
+HOW THIS CHAT WORKS WITH ME, settled 2026-09-12 late night, PLAN 2.17.16:
+this chat writes everything about the AI, build documents included; the
+main chat only monitors and has no authority to change it. Questions are
+asked and answered BEFORE a chat is cleared, never after. No pull request
+until the session's answers are written; one PR per session; tell me when
+nothing more is coming onto it. Before any handover check four documents:
+CLAUDE.md, your log, the handover docs, and this prompt.
 
-REPORT RULE, from 2026-09-12: the handoff is a FILE at
-G:\My Drive\Second Brain\00 - Developer Logs\REPORT_AI_PARTNER_<date>.md and
-I am given only its path. One documents pull request at the end of a session.
-Never edit ROADMAP.md.
-
-THE FIFTH SESSION, 2026-09-12 night, the method changed: I brainstorm here,
-one question at a time, scenario first, no questions carried elsewhere. The
-four questions of 2.17.14 are answered and the table frame is filled in my
-words: before and after a run; free flow on a result; a change is a separate
-test; draft and final folders; the detailed summary first; the partner's
-specialty is drawing my chart-reading out of me and naming it; to "does it
-work" it says the numbers support it and proposes lower size first; a
-correction is filed under the rule it belongs to; the stop is cut first and
-argued least. 2.17.15 is the knowledge base I asked for, to plan with me.
-The desk is next.
+WHAT TO DO FIRST WHEN YOU RESUME, my order, updated at the end of the
+sixth session:
+1. The library is now the vault chat's. The mentor wrote its prompt
+   (00 - Developer Logs/NOTE FOR VAULT CHAT - Library.md): check the
+   conversion, link the Library into the Second Brain, write the
+   knowledge-base rules. Read the vault chat's log (Chat Logs/VAULT.md)
+   for its outcome and record it in PLAN 2.17.15. Do not redo its work.
+2. The high-impact event list is NOT my list; it is market-driven and
+   comes from research done twice, like the library. Write the two
+   research prompts (Antigravity, then Perplexity) on which events move
+   NIFTY and India VIX, scheduled and unscheduled. PLAN 2.17.14, the desk.
+3. The session I asked for: the partner speaks first, leaves messages,
+   reaches my phone, and the side app for my wife. Design with me here,
+   scenario first, then it becomes build documents. PLAN 2.17.14.
+4. Then build: you write the partner's build documents, docs/builds/
+   format; the main chat only monitors.
+The desk brainstorm gave what the build needs (PLAN 2.17.14, THE DESK):
+the event rule, a strike with a reason and a number, and speak first.
 
 STILL OPEN, in order.
-- The desk, PLAN 2.17.14 second half: what the partner is shown, may say,
-  refuses, at the desk with a live position. One question at a time.
-- The knowledge base, PLAN 2.17.15: the list of books and PDFs, with me.
-- My two console readings for the cost measurement, PLAN 2.17.13: the Vertex
-  AI rupee figure since 1 September and the remaining credit; and enabling
-  the billing export to BigQuery.
-- Correction: I did not understand the question. PLAN 2.17.10 item 4 says how
-  to ask it properly. Ask it that way.
-- SETTLED 2026-09-11: it may advise and recommend a SETUP, a view, a scenario,
-  a strategy, with reasons from backtest, history, market condition, expert
-  view and research. It may never say "buy this, sell this, go long, go
-  short", never place an order, never create a full trade for me. PLAN
-  2.17.10 item 6.
-- The cost cap numbers, after the 29 September calibration. The model research
-  is done, PLAN 2.17.13.
-- Which documents are law. Parked. For now, the latest merged commit wins.
+- The vault chat's outcome on the library (item 1 above).
+- The event research, two passes (item 2 above).
+- The speak-first and wake session, and my wife's side app (item 3 above).
+- The two Library gaps and the A7 question: now in the vault chat's hands;
+  Antigravity or my browser fetches what is missing.
+- My two console readings for the cost baseline, and the cloud chat's
+  billing export.
+- From design to build: when I say, the partner's rebuild (state file,
+  position feed as the desk sees it, the rulebook with corrections, the
+  stale Method rules removed, no verdicts, the cost line marked estimated)
+  becomes build documents in the main chat's format, docs/builds/. Not
+  started. Who writes them is the first question of the next session.
+- The knowledge-base pipeline that lets the partner read the Library: a
+  later build, planned by the main chat when I say.
+- Which documents are law: parked; the latest merged commit wins.
 
 YOUR STANDING JOBS, every session, before you say anything to me:
-- Read the recent commits (git log) and what changed in docs/. The terminal
-  grows daily and the partner's design must follow it.
-- Keep THE PAPERS list below current: every document you refer to, with its
-  path, so I can find the latest myself.
-- Update docs/PLAN.md 2.17 and this file, commit on a feature branch, open a
-  pull request, and tell me. I clear the chat when its context fills and
-  paste this again. What you did not write down is gone.
+- git pull, then read the recent commits and what changed in docs/. Then
+  read your log and your Mentor Notes folder.
+- Before any handover, check four documents rather than assume them:
+  CLAUDE.md, your log, SWAYAM_START_HERE.md and CHAT_PROMPTS.md, and this
+  prompt. Ask the session's questions BEFORE the clear, write the answers,
+  then open the one pull request, then say nothing more is coming.
+- Keep THE PAPERS list below current, with paths, so I can find the latest.
+- Write decisions into docs/PLAN.md 2.17 as we go, dated, and into your
+  log as you work. Commit on a feature branch, one pull request per
+  session, and tell me. Clear the chat at 70 to 80% context, after the
+  baton is updated. What you did not write down is gone.
 
 THE PAPERS. Every document this chat refers to, with its path. Latest merged
 commit wins over anything older.
   Repo, D:\Claude\POS\Trading-Platform\Swayam Capital
     docs/ROADMAP.md                   direction, four horizons, his end goal
-    docs/PLAN.md                      the one plan; 2.17 is this chat's section;
-                                      2.16 backtester; 2.13 the vault bridge;
-                                      2.18 the journal page; 2.19 the database
+    docs/PLAN.md                      the one plan; 2.17 is this chat's section
+                                      (2.17.7 roles, .10 answers, .11 live
+                                      test, .12 state file, .13 cost, .14 the
+                                      table, .15 the library); 2.16 backtester;
+                                      2.13 vault bridge; 2.18 journal page;
+                                      2.19 database; 2.20 to 2.23 the panel
+                                      and the 11 and 12 September nights
     docs/SWAYAM_START_HERE.md         where everything lives, what is verified
     docs/CHAT_PROMPTS.md              every chat and its prompt
     docs/SUCCESSOR_PROMPT.md          the main chat's prompt
     docs/SUCCESSOR_BACKTESTER.md      the backtester chat's prompt
     docs/builds/README.md             the builder-chat loop and the builds
+    docs/LIBRARY_RESEARCH_PROMPT.md   phase one, research, Antigravity
+    docs/LIBRARY_DOWNLOAD_PROMPT.md   phase two, final combined, Antigravity
+    docs/LIBRARY_CONVERT_PROMPT.md    phase three, PDF to markdown, Antigravity
+    docs/NOTE_TO_BACKTESTER_CHAT_LIBRARY.md   what the backtester chat was told
+    docs/NOTE_TO_VAULT_CHAT_LIBRARY.md        what the vault chat was told
     docs/MY_TRADING_RULES_ONE_PAGE.md mirror of his rules one-pager
-    docs/AI_TRADING_PARTNER.md        how the existing partner was built (old)
-    docs/AI_MEMORY_SYSTEM.md          the existing memory tables (old)
-    docs/AI_INTEGRATION.md            the original AI philosophy (old)
+    docs/AI_TRADING_PARTNER.md, AI_MEMORY_SYSTEM.md, AI_INTEGRATION.md   old
     CLAUDE.md                         how to work here, what he trades
     src/swayam/ai/persona/trading_partner.py   what the partner is told and
                                       reads every turn
     src/swayam/ai/memory.py, router.py, grounded.py, context_builder.py
     src/swayam/api/routes/ai.py, lessons.py, session.py
     src/swayam/services/so_far_today.py        the cost-gate pattern
-    migrations/002, 005, 006, 013     the AI tables
-  Vault, G:\My Drive\Second Brain\02 - Projects\Trading\
+    migrations/002, 005, 006, 013, 026   the AI tables
+  Vault, G:\My Drive\Second Brain\02 - Projects\Trading
     MY TRADING RULES - ONE PAGE.md    his rules, overrides everything
     Trading Overview.md               the map of the trading vault
     00 - Reference/Trading Journey - The Story So Far.md    the why
@@ -272,13 +301,27 @@ commit wins over anything older.
     00 - Reference/Historical Trade Journal/                 the intraday year
     00 - Reference/Influences/                               four mentors
     01 - Method/                      the 3 Sept rules; partly stale, see CLAUDE.md
-    04 - Journal/                     his real trade notes; three exist
+    04 - Journal/                     his real trade notes
     06 - Platform Plan/Roadmap.md, Platform Overview.md,
       Self-Improving Agent Integration.md, AI Trading Partner Chapter.md
-  Vault, G:\My Drive\Second Brain\03 - Knowledge\Trading\
-    Books, Frameworks, Zerodha Varsity   other people's teaching
-  Vault, G:\My Drive\Second Brain\00 - Developer Logs\
-    SESSION_LOG_2026-09-09.md and _evening.md   why the code looks as it does
+    09 - Mentor Notes/                YOUR folder: facts with sources, your view
+  Vault, G:\My Drive\Second Brain\03 - Knowledge\Trading
+    Library/                          19 items, PDFs and index notes;
+                                      _Library Index.md at the top
+    Books, Frameworks, Zerodha Varsity   the older summaries
+  Vault, G:\My Drive\Second Brain\00 - Developer Logs
+    Chat Logs/AI_PARTNER.md           YOUR log; README.md beside it
+    Chat Logs/MAIN.md, BACKTESTER.md, CLOUD.md, BUILD_B.md, VAULT.md
+    LIBRARY_RESEARCH_2026-09-12 by Antigravity.md        pass one
+    INDEPENDENT_TRADING_LIBRARY_REPORT_2026-09-12 by perpexility.md   pass two
+    LIBRARY_AUDIT_BY_BACKTESTER_2026-09-12.md            the audit of the first run
+    LIBRARY_DOWNLOAD_STATUS_2026-09-12.md                Antigravity's status
+    BACKTESTER_SPECIFICATION_A8_A11.md                   A8 to A11, corrected
+    ANTIGRAVITY_PROMPT - Library Research / Download / Convert.md   paste copies
+    NOTE FOR BACKTESTER CHAT - Library.md                paste copy
+    NOTE FOR VAULT CHAT - Library.md                     paste copy
+    LIBRARY_CONVERT_2026-09-12.md                        Antigravity's convert report
+    SESSION_LOG_2026-09-09.md and _evening.md            why the code looks as it does
   His raw archive, E:\Project E\Trading\Bazaar   broken, evidence not record
 ```
 
@@ -341,6 +384,19 @@ branch with uncommitted changes, so this chat's documentation went out from a
 separate clone at `C:\Users\Kevin\AppData\Local\Temp\swayam-mentor`. That
 clone is disposable; check `git fetch` and the open pull requests before
 assuming anything about it.
+
+**How the sixth session ended, 2026-09-12 late night.** The method changed
+to brainstorming in this chat; the four table questions were answered and
+the table frame filled; the library was researched twice, fetched, audited
+by the backtester chat, re-run from a combined prompt, and verified by the
+mentor on the disk; the convert prompt was written; the baton above was
+rewritten; and he answered the three questions and two desk questions before the
+clear, as his rule requires: what comes first, this chat owns the AI's
+build documents, draft becomes final on his word by either hand, the event
+rule, a strike with a reason and a number, and the partner speaks first.
+PLAN 2.17.14 and 2.17.16 carry them. The chat was then cleared at about
+70% context, after this baton was updated and the one pull request
+completed.
 
 **One transcription flag from that session, unresolved.** He said "You will
 trade Gemini, Opus, Sonnet, Deepseek." Read as "train", or as "it could be";
