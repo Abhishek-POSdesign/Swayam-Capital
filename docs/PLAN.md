@@ -3968,11 +3968,49 @@ answers in his words.**
   - Medium, listed so they are not mistaken for high: India WPI, RBI
     minutes, ECB and Bank of Japan decisions, China data, crude and OPEC
     decisions, state elections.
-  **The build, when he says, to a builder via the main chat's loop:** a
-  table of event types with an impact class and the release time in IST,
-  the weekly curation constrained to it, `event_time` filled, and the desk
-  and the partner reading the same table. Not this chat's to build; this
-  chat owns the list and its words.
+  **CORRECTED BY HIM the same night; the draft list above is withdrawn as
+  a rule and kept only as a starting point for the research.** "I will not
+  have any of my personal list of the event, at least not for the first
+  year, or never. It will always be market-driven: what the market fears
+  or enjoys, which events impact VIX, the volatility index. That has to go
+  through research, and that has to be listed as high-impact. Others are
+  not less impacted." So: the high-impact list comes from research, done
+  twice like the library (§2.17.15), on which scheduled and unscheduled
+  events have actually moved NIFTY and India VIX, and it is stored in the
+  terminal in advance with times in IST. The events not on it are not
+  called low impact. **The build, when he says:** a table of event types
+  with the researched impact class and the IST time, the weekly curation
+  constrained to it, `event_time` filled, the desk and the partner reading
+  the same table.
+- **Desk question 2, may the partner speak first. YES, and wider than
+  asked, his, 2026-09-12 late night:** "My AI will never be restricted from
+  speaking first. It can leave a message for me. I cannot be sitting all
+  the time at the computer. We have to design some system where I will get
+  some way to wake up and see my running trades. It can leave a message
+  when I come back, or send a push notification as soon as I wake up, or I
+  can see it on my phone. It can speak without me asking: Abhishek, you
+  might be missing this, this is what's happening, there is some kind of
+  news, you must look at your trade. It has authority to speak or leave a
+  message anytime it sees a reason, like a trading partner rightly would."
+  **Needs its own session, his instruction: design with the mentor first,
+  then build.** Mentor's note for that session, not a decision: the
+  triggers (rule 1 room, an event eve, a gap, a news item) can be rules and
+  free; the words the partner speaks are an AI call it initiates, so that
+  session must reconcile "speaks first" with the standing cost rule by a
+  daily cap on unprompted messages, never by silence. The existing pieces
+  it builds on: `06 - Platform Plan/Wake Alerts System.md` in the vault,
+  the roadmap's mandatory prerequisite for real money; the notification
+  devices table (migration 016); browser push and Telegram infrastructure
+  from BUILD-11.8 and 11.11, activation-gated.
+- **The side app for his wife, his idea, 2026-09-12 late night, rules
+  later:** "I will also be building a basic side app which will only show
+  my running positions. That will be for my wife because I sleep during the
+  night shift, till 1 pm. The market gaps up or down 200, 300, 400 points;
+  events are dated, but wars, bankruptcies, conflicts and political
+  announcements are surprises. My wife can open the app and talk to AI: is
+  there anything important I should know, is there anything serious, should
+  I wake up Abhishek?" This is the Wake Alerts System's escalation to his
+  wife, given a screen and a voice. Same session as the one above.
 
 **Pipes this needs, for a later build, none of it now.** A manual way for the
 partner to ask for a run and read the report back; the engine runs on his PC

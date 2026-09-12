@@ -213,28 +213,31 @@ until the session's answers are written; one PR per session; tell me when
 nothing more is coming onto it. Before any handover check four documents:
 CLAUDE.md, your log, the handover docs, and this prompt.
 
-WHAT TO DO FIRST WHEN YOU RESUME, my order:
-1. Check Antigravity's convert report (00 - Developer Logs/
-   LIBRARY_CONVERT_2026-09-12.md) against the disk, the way the download
-   run was checked.
-2. Write a simple prompt for my Obsidian vault chat on how to create
-   knowledge-base rules for the Library, so you and the backtester chat can
-   pick up what you need for discussing, planning and mentoring.
-3. Then the desk, two or three questions, one at a time, scenario first.
-4. Then build: you write the partner's build documents.
+WHAT TO DO FIRST WHEN YOU RESUME, my order, updated at the end of the
+sixth session:
+1. The library is now the vault chat's. The mentor wrote its prompt
+   (00 - Developer Logs/NOTE FOR VAULT CHAT - Library.md): check the
+   conversion, link the Library into the Second Brain, write the
+   knowledge-base rules. Read the vault chat's log (Chat Logs/VAULT.md)
+   for its outcome and record it in PLAN 2.17.15. Do not redo its work.
+2. The high-impact event list is NOT my list; it is market-driven and
+   comes from research done twice, like the library. Write the two
+   research prompts (Antigravity, then Perplexity) on which events move
+   NIFTY and India VIX, scheduled and unscheduled. PLAN 2.17.14, the desk.
+3. The session I asked for: the partner speaks first, leaves messages,
+   reaches my phone, and the side app for my wife. Design with me here,
+   scenario first, then it becomes build documents. PLAN 2.17.14.
+4. Then build: you write the partner's build documents, docs/builds/
+   format; the main chat only monitors.
+The desk brainstorm gave what the build needs (PLAN 2.17.14, THE DESK):
+the event rule, a strike with a reason and a number, and speak first.
 
 STILL OPEN, in order.
-- THE DESK. The first desk question is posed and I have not read it: with
-  a live condor, NIFTY up 200 points, US CPI at 18:00 IST, may the partner
-  name a specific adjustment with reasons, or must it stop at the risk and
-  the choices and leave the strikes to me? Ask it again, scenario first.
-- The convert run: I paste 00 - Developer Logs/ANTIGRAVITY_PROMPT - Library
-  Convert.md into Antigravity (PDF to verbatim markdown, page-marked). Then
-  my vault chat links the index notes into the Second Brain.
-- The two Library gaps and the A7 question, for the next Antigravity run
-  or my browser.
-- Your line for my yes: the partner writes only into the draft folder;
-  moving to final is my hand.
+- The vault chat's outcome on the library (item 1 above).
+- The event research, two passes (item 2 above).
+- The speak-first and wake session, and my wife's side app (item 3 above).
+- The two Library gaps and the A7 question: now in the vault chat's hands;
+  Antigravity or my browser fetches what is missing.
 - My two console readings for the cost baseline, and the cloud chat's
   billing export.
 - From design to build: when I say, the partner's rebuild (state file,
@@ -279,6 +282,7 @@ commit wins over anything older.
     docs/LIBRARY_DOWNLOAD_PROMPT.md   phase two, final combined, Antigravity
     docs/LIBRARY_CONVERT_PROMPT.md    phase three, PDF to markdown, Antigravity
     docs/NOTE_TO_BACKTESTER_CHAT_LIBRARY.md   what the backtester chat was told
+    docs/NOTE_TO_VAULT_CHAT_LIBRARY.md        what the vault chat was told
     docs/MY_TRADING_RULES_ONE_PAGE.md mirror of his rules one-pager
     docs/AI_TRADING_PARTNER.md, AI_MEMORY_SYSTEM.md, AI_INTEGRATION.md   old
     CLAUDE.md                         how to work here, what he trades
@@ -315,6 +319,8 @@ commit wins over anything older.
     BACKTESTER_SPECIFICATION_A8_A11.md                   A8 to A11, corrected
     ANTIGRAVITY_PROMPT - Library Research / Download / Convert.md   paste copies
     NOTE FOR BACKTESTER CHAT - Library.md                paste copy
+    NOTE FOR VAULT CHAT - Library.md                     paste copy
+    LIBRARY_CONVERT_2026-09-12.md                        Antigravity's convert report
     SESSION_LOG_2026-09-09.md and _evening.md            why the code looks as it does
   His raw archive, E:\Project E\Trading\Bazaar   broken, evidence not record
 ```
@@ -384,10 +390,13 @@ to brainstorming in this chat; the four table questions were answered and
 the table frame filled; the library was researched twice, fetched, audited
 by the backtester chat, re-run from a combined prompt, and verified by the
 mentor on the disk; the convert prompt was written; the baton above was
-rewritten; and he was asked three questions for the next session (what
-comes first, who writes the build documents, the draft-only line). His
-answers, if given, are in PLAN 2.17 and the log. The desk question is still
-unread. The chat was then cleared at about 64% context.
+rewritten; and he answered the three questions and two desk questions before the
+clear, as his rule requires: what comes first, this chat owns the AI's
+build documents, draft becomes final on his word by either hand, the event
+rule, a strike with a reason and a number, and the partner speaks first.
+PLAN 2.17.14 and 2.17.16 carry them. The chat was then cleared at about
+70% context, after this baton was updated and the one pull request
+completed.
 
 **One transcription flag from that session, unresolved.** He said "You will
 trade Gemini, Opus, Sonnet, Deepseek." Read as "train", or as "it could be";
