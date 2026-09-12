@@ -249,9 +249,11 @@ generic engine.
 **Milestones, in order, no dates:**
 
 1. **Data sourced.** Done on the night of 2026-09-09: FYERS' expired-contract
-   history (1-minute candles for every expired NIFTY strike from February 2024),
-   FYERS' index minute candles, and NSE's official daily file, all free and
-   already downloaded. Plus our own recorder from PLAN §2.10, which now records
+   history (1-minute candles for the fifteen strikes either side of NIFTY's
+   close at expiry, for every expiry from December 2019; corrected with his
+   explicit yes on 2026-09-13, after the backtester chat measured both facts
+   on his own files), FYERS' index minute candles, and NSE's official daily
+   file, all free and already downloaded. Plus our own recorder from PLAN §2.10, which now records
    real spot and implied volatility, accumulating forward. **The window is 2022
    onwards, his decision of 2026-09-10:** the market before and after Corona are
    different markets. Older data exists because it was free; it is not used
