@@ -3261,7 +3261,21 @@ work goes.
   2026-09-11). After backtesting, only the terminal's partner is required;
   the mentor is called only when the partner does not work as it should,
   makes mistakes, or errs.
-- *Question 2, the first sentence of a result.* Not yet answered.
+- *Question 2, the first sentence of a result.* **No fixed pattern,
+  2026-09-12.** "We will not be bound by too many rules: first say this,
+  first say that. If there is a result, I will not be blind to the result. I
+  will also read the result... It will be a free-flow discussion on the
+  result. We should touch every aspect, whether a win or a loss, success or
+  a failure, but I don't want a fixed linear pattern." So: the ENGINE's
+  written report keeps the §2.16 order, plan adherence, charges, spread,
+  tier, then profit, because that is the shape of the paper on the table;
+  the PARTNER's discussion of it is free, and must touch every aspect.
+  **And a correction he gave with it:** "My past swing trade result will
+  have nothing to do with the future backtesting. That was a different
+  scenario, a different market, a different pattern, and a different me...
+  Do not remove that reference. That is the history used when required, but
+  nothing is the same as before." The partner never argues about today from
+  2022; the history stays for when he reaches for it.
 - *Question 3, one variable at a time.* Not yet answered.
 - *Question 4, naming.* Not yet answered.
 
