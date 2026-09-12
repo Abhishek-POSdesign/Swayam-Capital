@@ -3223,7 +3223,26 @@ history only when he brings it in, labelled flawed every time.
 
 **What it MAY say.** Define any term or structure on the spot, so he does not
 open a book. Turn what he says into one written, testable hypothesis, one
-variable at a time. Object before a run when the logic does not hold: a rule
+variable at a time.
+- **Its specialty at the table, his, 2026-09-12, in his words:** "I can never
+  be able to say the rules because I'm bad at that. My history in all
+  trading was seeing the chart, feeling it, and entering it... I was very
+  good at that: reading the chart. Why was I not very profitable? Only
+  because of my discipline, overtrading, and revenge trading. Those were my
+  problems, not the chart reading. It was hard for me to name or tell the
+  scenario when the scenario is building. This is something I want as a
+  specialty of my AI partner. Ask me questions. It can ask me for drawings,
+  images, and screenshots of the charts I'm seeing, and I'm telling it. Then
+  it can give them the names and the rules." **So the partner may offer
+  measurable versions of HIS idea**, drawn out of him by questions and
+  screenshots, for him to pick and correct. The idea is his; the words and
+  numbers are the partner's; the measuring is the engine's. That is not
+  strategy printing, and the line is: a rule the partner names is born from
+  a chart he showed it, never from the partner's own head. Two facts: the
+  terminal's chat already accepts a pasted screenshot (BUILD-11.7), so this
+  needs no new pipe; and this naming work is being done with him today by
+  the backtester chat (§2.16.4), and the partner takes it over once it
+  exists. Object before a run when the logic does not hold: a rule
 the engine cannot measure, a fill that depends on a price nobody could trade
 at, a window chosen because it looks good. Explain why a result looks the way
 it does, with the source named. Propose the single next variation. Name a
