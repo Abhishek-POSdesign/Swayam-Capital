@@ -4290,6 +4290,49 @@ PMI times. The India CPI and IIP time of 17:30 IST in the mentor's earlier
 draft list above is from Antigravity and is **not verified from MoSPI**. No
 time enters the terminal until it is read from the publisher's own page.
 
+**HIS ANSWER ON EVENTS, 2026-09-13, which reframes the day-before rule.** In his
+words: "The planned event does not affect it too much. They give volatility
+during the day, but nothing much happens at the end... options go in loss, in
+profit, then settle." And: "Unpredicted big swings, that is hardly once or twice
+in a year... it is not fixed that every time they will be against me. Iron condor
+is always against me, but I also like to trade directional as well, so they might
+be in my direction as well. We have to live with this. This is the market."
+And the real reason for the rule: **"Closing my trade a day before the event is
+only because I'm sleeping during the event, and I don't want unwanted alerts on my
+wife's phone... Unnecessary."**
+**What this settles.**
+- **The day-before rule is a sleep rule, not a risk rule.** Its purpose is that
+  his wife is not rung for an event-day swing that will settle by the close. The
+  mentor's finding that the largest gaps were unscheduled stands as a fact, and he
+  already lives with it; the partner must never turn unscheduled shocks into a
+  reason for fear, and never treat them as always against him.
+- **The event list's job at the desk is therefore small:** which scheduled days he
+  is flat on so the night is quiet. The mentor recommends the "still to measure"
+  study above is NOT spent on the desk; it stays a backtester question (event
+  periods tested separately, §2.16.9), run when the backtester chat needs it.
+- **His wife and he both use Android.** The mentor believes Android allows an
+  alarm-style ring through silent mode without a special permission; to be read
+  from Android's own documentation before the build, not assumed.
+
+**TWO FACTS PAGES, AND A HOLIDAY THAT MAY BE TOMORROW. Read 2026-09-13 from the
+vault chat's plan (artifact "Market Facts Ledger") and the backtester chat's
+`10 - Backtester Notes/Free Data Inventory.md`.**
+- The vault chat proposes one shared, strict page,
+  `03 - Knowledge/Trading/Verified Market Facts.md`: every row VERIFIED, WRONG,
+  DISPUTED or UNVERIFIED with its evidence, only the vault chat writes it. It
+  overlaps the mentor's `09 - Mentor Notes/Indian Market Facts, verified.md`.
+  **Mentor's recommendation, put to him:** one truth, not two. The shared ledger
+  carries the market facts; the mentor's note shrinks to a pointer plus what the
+  ledger does not carry (model prices and DeepSeek's peak hours), and
+  `Mentor's View` stays the mentor's. Two pages kept by different chats drift,
+  and on 2026-09-13 they already had.
+- **The terminal's `data/nse_holidays_2026.json` is wrong in nine places** by the
+  backtester chat's test on his own NSE files (four trading days listed as
+  holidays, five real closures missing), and **Monday 14 September 2026 is claimed
+  as a holiday by one research report only.** The partner reads the market clock;
+  a wrong holiday file makes it say "open" or "closed" wrongly. The fix is the main
+  chat's; the source document is the vault chat's fetch prompt (item A12).
+
 **THE SPEAK-FIRST SESSION, BEGUN 2026-09-13. His answers in his words.**
 
 - **Who wakes him, first scene (asleep at 10:40, a fast 180-point drop, a loss

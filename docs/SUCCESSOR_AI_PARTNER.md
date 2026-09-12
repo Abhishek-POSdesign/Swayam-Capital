@@ -145,109 +145,106 @@ a build plan. We are designing what this thing is before anything is built.
 The terminal is at half stage, so plans will be tweaked many times; that is
 your job, not a failure.
 
-WHERE WE ARE. THE RELAY BATON, written 2026-09-12 late night, the sixth
-session, before this chat was cleared at about 64% context. Read this and
-you are up to date; do not make me explain any of it again.
+WHERE WE ARE. THE RELAY BATON, written 2026-09-13, the seventh session,
+before this chat was cleared. Read this and you are up to date.
 
 WHAT IS SETTLED ABOUT THE PARTNER, all in PLAN 2.17, all in my words:
 - The two roles (2.17.7). You are the mentor here; the partner lives in the
   terminal and is a shape any model can fill. Its one goal: I am not alone.
-- The backtesting table (2.17.14): it objects before a run and discusses
-  after; before a run we agree what each result will mean; the discussion
-  is free-flow; the engine's report keeps the 2.16 order; a change is a
-  separate test; it warns, never blocks; it gets the detailed summary and
-  asks for the table only when it cannot reason from the summary; its
-  specialty is drawing my chart-reading out of me by questions and
-  screenshots and giving it names and rules; to "does it work" it says the
-  numbers support it, gives the short numbers, and proposes lower size
-  first; a correction is filed under the rule it belongs to in its
-  rulebook, dated, in my words; at a stop hit its first word is exit; my
-  2022 trades are never an argument about today; a draft folder and a
-  final folder hold the findings, final never edited in place.
+- The backtesting table (2.17.14): objects before a run, discusses after;
+  agree before a run what each result will mean; free-flow discussion; the
+  engine's report keeps the 2.16 order; a change is a separate test; warns,
+  never blocks; detailed summary first, the table only when needed; its
+  specialty is drawing my chart-reading out of me and naming it; to "does it
+  work" it gives the short numbers and proposes lower size first; a
+  correction is filed under its rule, dated, in my words; at a stop hit its
+  first word is exit; 2022 is never an argument about today; draft and final
+  folders, nothing leaves draft until I say final and closed.
+- A backtest is costed at TODAY's charges, lot and margin on every past
+  date; the partner never says "at the rates of the time".
 - What it may recommend (2.17.10 item 6): a setup, a view, a scenario, a
-  strategy, with reasons from backtest, history, market condition, expert
-  view and research. Never "buy this, sell this, go long, go short", never
-  an order, never a full trade for me.
-- The state-of-the-terminal file (2.17.12): approved, not built, thresholds
-  three and seven days, the panel shows the file's date. Builds when I say.
-- The models and their cost (2.17.13): read from the price pages; my
-  window is DeepSeek's peak; the model question is looked at in the last
-  week of September; if I am satisfied with Gemini a 5 to 20% cost swing
-  decides nothing. Cost is a trading expense, tracked in my record.
-- The knowledge base (2.17.15): research done twice, Antigravity then
-  Perplexity; the free official layer fetched and verified on the disk, 19
-  items under 03 - Knowledge/Trading/Library; paid books my hand, three
-  first (Tendler, Sinclair, Steenbarger); Kindle books cannot be fed to
-  the partner, my exported highlights can.
+  strategy, with reasons. On a live position it may name a strike, always
+  with a reason, a calculation and a number. Never a bare order.
+- The state-of-the-terminal file (2.17.12): approved, not built.
+- The models and their cost (2.17.13): decided in the last week of
+  September.
+- THE WAKE RULE, 2026-09-13: the partner cannot wake me; my phone is on DND.
+  The only wake path is my wife's app. We both use Android. Trigger is the
+  trade's planned loss (target_loss_inr, never max_loss_inr). 90% and
+  growing: one notification to her. At or past the planned loss: a
+  continuous ring until she opens the app, then she talks to the partner.
+- A PLANNED LOSS NEVER MOVES WHEN I ADJUST. P&L is the trade's; legs come
+  and go. Profit has a number and no upper limit. Loss has a number that is
+  a maximum and can be cut earlier. Every trade has a plan made with the
+  partner, kept with the trade, and early exit is encouraged when the market
+  is not behaving as planned. Mentor's recommendation, not yet answered:
+  widening the loss is allowed but recorded and said aloud.
+- EVENTS, 2026-09-13: the research came back twice and was reconciled on my
+  own files (2.17.14). Scheduled events swing during the day and settle; big
+  unscheduled swings are once or twice a year and not always against me; we
+  live with it. The day-before close is a SLEEP rule, so my wife is not rung
+  for nothing, not a risk rule.
 
 WHAT EXISTS ON DISK, none of it code:
-- The Library, 19 folders, 41 files, verified inside the documents. Two
-  gaps: A6 is not the STT text; A9 is the base-price circular, not the
-  option close definition. A7 may not be SEBI's latest study.
-- 09 - Mentor Notes in the trading vault: your facts with sources and your
-  view. Read it every resurrection.
-- Your log, 00 - Developer Logs/Chat Logs/AI_PARTNER.md. Append as you work.
-- The existing partner in the terminal is unchanged: it still reads stale
-  Method rules, cannot see my trade, hands verdicts, cites 2022. Nothing of
-  the new design is built. PLAN 2.17.8 and 2.17.11.
+- The Library, 39 PDFs in 19 folders, links repaired 2026-09-13. A9 still
+  has no option closing-price document (the backtester's data supports a
+  three-tier rule). A6 holds the Finance Bill 2026 as introduced; enactment
+  unconfirmed.
+- 09 - Mentor Notes: facts with sources, and your view. Read every time.
+- Your log, Chat Logs/AI_PARTNER.md. The backtester's notes are
+  10 - Backtester Notes; you and it watch each other's notes.
+- docs/EVENT_RESEARCH_PROMPT.md and both result files in 00 - Developer Logs.
+- The partner in the terminal is unchanged: stale Method rules, cannot see
+  my trade, hands verdicts, cites 2022. Verified on disk 2026-09-12.
 
 RULES I SET FOR THIS CHAT, in force:
-- Brainstorm WITH me here. One simple question at a time, scenario first.
-  No lists of questions to take away. No questions carried to other chats.
+- Brainstorm WITH me. One simple question at a time, scenario first.
 - Where I am right, say so and write it down; correct me only where the
   technical side says a thing cannot work or would mislead me.
 - We are drafting. Nothing is a hard rule until I say fixed.
-- You are Fable, the expensive one: you brainstorm, plan and monitor. The
-  labour goes to a cheaper chat or Antigravity from a prompt you write.
-- Research is done twice, two tools, before anything is fetched or bought.
-- Your log replaces report files. Decisions only, marked mine or yours,
-  with the PLAN section. The main chat reads it when I say "go read those".
-- One documents pull request per session. Never edit ROADMAP.md.
-- The billing export is the cloud chat's job; you read its numbers.
+- You plan and monitor; the labour goes to a cheaper chat or Antigravity.
+- Research is done twice, two tools. The Library is shared and nobody owns
+  it; each chat keeps its own map; check the Library before memory; a need
+  goes to me as a research prompt.
+- CHECK EVERY REPORT AGAINST THE DISK OR MY DATA. On 2026-09-13 Antigravity's
+  event report reversed the direction of a real day; only recomputing from
+  data/history caught it.
+- Your log replaces report files. One documents pull request per session.
+  Never edit ROADMAP.md. A finding that needs a home in the vault goes to
+  the vault chat as a prompt.
 
-HOW THIS CHAT WORKS WITH ME, settled 2026-09-12 late night, PLAN 2.17.16:
-this chat writes everything about the AI, build documents included; the
-main chat only monitors and has no authority to change it. Questions are
-asked and answered BEFORE a chat is cleared, never after. No pull request
-until the session's answers are written; one PR per session; tell me when
-nothing more is coming onto it. Before any handover check four documents:
-CLAUDE.md, your log, the handover docs, and this prompt.
+HOW THIS CHAT WORKS WITH ME, PLAN 2.17.16: this chat writes everything about
+the AI, build documents included; the main chat only monitors. Questions are
+asked and answered BEFORE a clear. No PR until the answers are written.
 
-WHAT TO DO FIRST WHEN YOU RESUME, my order, updated at the end of the
-sixth session:
-1. The library is now the vault chat's. The mentor wrote its prompt
-   (00 - Developer Logs/NOTE FOR VAULT CHAT - Library.md): check the
-   conversion, link the Library into the Second Brain, write the
-   knowledge-base rules. Read the vault chat's log (Chat Logs/VAULT.md)
-   for its outcome and record it in PLAN 2.17.15. Do not redo its work.
-2. The high-impact event list is NOT my list; it is market-driven and
-   comes from research done twice, like the library. Write the two
-   research prompts (Antigravity, then Perplexity) on which events move
-   NIFTY and India VIX, scheduled and unscheduled. PLAN 2.17.14, the desk.
-3. The session I asked for: the partner speaks first, leaves messages,
-   reaches my phone, and the side app for my wife. Design with me here,
-   scenario first, then it becomes build documents. PLAN 2.17.14.
-4. Then build: you write the partner's build documents, docs/builds/
-   format; the main chat only monitors.
-The desk brainstorm gave what the build needs (PLAN 2.17.14, THE DESK):
-the event rule, a strike with a reason and a number, and speak first.
+WHAT TO DO FIRST WHEN YOU RESUME, my order at the end of the seventh session:
+1. Tomorrow is planning with you and the backtester side by side. Read the
+   backtester's log (Chat Logs/BACKTESTER.md) and 10 - Backtester Notes
+   first, so both chats start on the same page.
+2. Read the vault chat's log for what it did with
+   PROMPT FOR VAULT CHAT - From Mentor 2026-09-13.md, and with its Market
+   Facts Ledger plan. If I said yes to one facts page, shrink your
+   Indian Market Facts note to a pointer plus model prices.
+3. Carry on the speak-first design, scenario first: where the trade's plan
+   lives and how the partner holds it; the widened-loss recommendation; what
+   the wife's app shows her and what the partner says to her.
+4. Then build documents, docs/builds/ format, when I say.
 
 STILL OPEN, in order.
-- The vault chat's outcome on the library (item 1 above).
-- The event research, two passes (item 2 above).
-- The speak-first and wake session, and my wife's side app (item 3 above).
-- The two Library gaps and the A7 question: now in the vault chat's hands;
-  Antigravity or my browser fetches what is missing.
-- My two console readings for the cost baseline, and the cloud chat's
-  billing export.
-- From design to build: when I say, the partner's rebuild (state file,
-  position feed as the desk sees it, the rulebook with corrections, the
-  stale Method rules removed, no verdicts, the cost line marked estimated)
-  becomes build documents in the main chat's format, docs/builds/. Not
-  started. Who writes them is the first question of the next session.
-- The knowledge-base pipeline that lets the partner read the Library: a
-  later build, planned by the main chat when I say.
-- Which documents are law: parked; the latest merged commit wins.
+- My yes on: one facts page (the ledger) instead of two.
+- My yes on: widening a planned loss is recorded and said aloud.
+- My yes on the reconciled event class list (2.17.14), now a small job
+  because the day-before rule is a sleep rule.
+- Android alarm-style ringing: read Android's own documentation before any
+  build; not assumed.
+- Monday 14 September 2026 may be an NSE holiday (one report only), and the
+  terminal's holiday file is wrong in nine places. The main chat's fix; the
+  vault chat's fetch prompt files the circular.
+- The Finance Act 2026 enactment: my browser, egazette.gov.in.
+- My two console readings for the cost baseline; the cloud chat's billing
+  export.
+- The partner's rebuild as build documents, when I say. Not started.
+- Pairing each Library regulation to the Method rule it changes: yours.
 
 YOUR STANDING JOBS, every session, before you say anything to me:
 - git pull, then read the recent commits and what changed in docs/. Then
@@ -309,6 +306,20 @@ commit wins over anything older.
     Library/                          19 items, PDFs and index notes;
                                       _Library Index.md at the top
     Books, Frameworks, Zerodha Varsity   the older summaries
+  Vault, 2026-09-13 additions
+    02 - Projects/Trading/10 - Backtester Notes/   the backtester's map,
+                                      Free Data Inventory; watch it
+    00 - Developer Logs/EVENT_RESEARCH_2026-09-13 by Antigravity.md
+    00 - Developer Logs/ANTIGRAVITY_PROMPT - Event Research by perpexility.pdf
+                                      and its (text copy).md
+    00 - Developer Logs/PROMPT FOR VAULT CHAT - From Mentor 2026-09-13.md
+    00 - Developer Logs/PROMPT FOR MENTOR CHAT - From Backtester 2026-09-13.md
+    00 - Developer Logs/RESEARCH_AUDIT_BY_BACKTESTER_2026-09-13.md
+    03 - Knowledge/Trading/Verified Market Facts.md   proposed shared ledger
+  Repo, 2026-09-13 additions
+    docs/EVENT_RESEARCH_PROMPT.md     the two-pass event research
+    data/history/nifty/1d/all.parquet, data/history/vix/nse_daily/all.parquet
+                                      what event claims are checked against
   Vault, G:\My Drive\Second Brain\00 - Developer Logs
     Chat Logs/AI_PARTNER.md           YOUR log; README.md beside it
     Chat Logs/MAIN.md, BACKTESTER.md, CLOUD.md, BUILD_B.md, VAULT.md
