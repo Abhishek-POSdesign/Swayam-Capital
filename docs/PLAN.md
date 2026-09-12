@@ -3276,7 +3276,15 @@ work goes.
   Do not remove that reference. That is the history used when required, but
   nothing is the same as before." The partner never argues about today from
   2022; the history stays for when he reaches for it.
-- *Question 3, one variable at a time.* Not yet answered.
+- *Question 3, one variable at a time.* **A change is a separate test,
+  2026-09-12.** "I will not do that. I will test the strategy as it is, and if
+  I have to change the wings or something, I will call it a separate test
+  and compare the results. If I do so, then AI is to warn me of the
+  consequences, the real consequences. That is important." So: the strategy
+  runs as written; every change is its own named test, compared against the
+  first; and if two changes are ever stacked in one run, the partner warns
+  him of the real consequence, that the result cannot say which change did
+  it, and then runs what he asked. It warns; it never blocks.
 - *Question 4, naming.* Not yet answered.
 
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
