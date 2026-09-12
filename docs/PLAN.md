@@ -3470,8 +3470,17 @@ will contain.**
 - **Cost:** the research is a bounded task; report the number of grounded
   searches and the model used so it lands in the AI-cost record.
 
-**Step 0 is his:** the categories above, and the first titles he wants,
-said in this chat, one at a time when he is back. Then the prompt is written.
+**Step 0, given by him the same night, and the prompt written.** His
+categories: discipline, technical, macro, futures and options, day trading,
+part-time trading, swing trading, "and more". The research prompt for
+Antigravity is `docs/LIBRARY_RESEARCH_PROMPT.md`, with a paste copy in the
+vault at `00 - Developer Logs/ANTIGRAVITY_PROMPT - Library Research.md`. It
+is research only: downloads nothing, lists sources marked free and lawful,
+free to read online, or paid with the rupee price, Indian context first,
+skips what the vault already holds, and writes ONE file,
+`00 - Developer Logs/LIBRARY_RESEARCH_2026-09-12.md`, for him to act on when
+he is back. Fetching and filing is the next prompt, after his yes on the
+list.
 
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 
