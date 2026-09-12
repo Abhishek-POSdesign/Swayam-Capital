@@ -3482,6 +3482,71 @@ skips what the vault already holds, and writes ONE file,
 he is back. Fetching and filing is the next prompt, after his yes on the
 list.
 
+**The two passes, and his rule, 2026-09-12 night.** Antigravity ran the
+prompt and wrote `LIBRARY_RESEARCH_2026-09-12 by Antigravity.md` (25
+searches, 7 pages fetched, Gemini 3.8 Flash, by its own count). He then ran
+an independent pass through Perplexity, which wrote
+`INDEPENDENT_TRADING_LIBRARY_REPORT_2026-09-12 by perpexility.md`. **His
+rule: research is done twice, by two tools, then the plan is made, free or
+paid, and how.** Both files are in `00 - Developer Logs/`.
+
+**What the second pass corrected in the first, kept here so it is not
+re-learned.** The 2024 SEBI circular does not by itself set the Tuesday
+expiry or the lot of 65; those came from separate 2025 actions, and the
+backtester needs each as its own dated source. The April 2026 STT change was
+missing. The retail-loss statistic was the older year. The "Trading
+Psychology India handbook" could not be verified and its site sells
+software. Superlatives ("the only", "the definitive") were unsupported. Some
+free PDFs were linked from third-party hosts rather than the publisher.
+Prices are approximate and move. And the first pass under-weighted what
+matters most to the backtester: execution quality, point-in-time contract
+rules, date-sensitive charges, and a four-level approval standard.
+
+**The reconciled decision, mentor's, for his yes.**
+- **Fetch now, free and lawful, official sources only:** the SEBI 2024
+  circular and the 2025 expiry-day circulars; NSE's Tuesday-expiry and
+  lot-65 circulars and the contract specification; the Income Tax
+  Department's STT texts (2024 and 2026); SEBI's individual-trader studies,
+  latest edition read from the file; the NISM Series VIII workbook from
+  NISM's own free portal (`api.nism.ac.in/cmp/`, confirmed 2026-09-12), not
+  the third-party copy the first pass linked; NSE's option strategies
+  module; Zerodha Varsity modules 2, 5, 6, 9, 10 in full; NSE Market Pulse,
+  three issues; RBI's policy report and MPC resolution; the MoSPI and RBI
+  calendars; the Bailey and Lopez de Prado papers; CME and OCC course text.
+  NSE pages refused an automated reader on 2026-09-12, so some will come
+  back marked "needs his browser" rather than fetched from a mirror.
+- **Buy, his hand, in the order both passes agree:** The Mental Game of
+  Trading, Positional Option Trading, The Daily Trading Coach; about ₹4,500
+  at the prices the first pass read, which move. Later: Shannon, Aronson
+  (after the backtester is running), Bellafiore, Natenberg. Best Loser Wins
+  is paid only; he owns the audiobook.
+- **Skip:** the unverified handbook; generic day-trading and part-time
+  books beyond one each; advanced position-sizing mathematics for now;
+  any promotional Indian site above books and regulators.
+- **A fact that changes his plan, and he should hear it plainly:** a Kindle
+  book carries DRM. It can be read; it cannot be filed into the vault or
+  fed to the partner, and stripping the protection is not lawful. So for
+  commercial books the partner gets his own highlights and notes, which
+  Kindle lets him export, plus the vault summaries; the books themselves
+  stay on his shelf. Only the official PDFs and open-access papers become
+  files the partner can read. That is the honest shape of the knowledge
+  base, and it is still worth building.
+
+**The two prompts written tonight.**
+- `docs/LIBRARY_DOWNLOAD_PROMPT.md`, phase two for Antigravity: fetch only
+  the list above, official sources, verify each file from its own pages,
+  file into `03 - Knowledge/Trading/Library/` with one index per item and a
+  top index, paid shelf listed as "awaiting his copy", one report back.
+  Vault copy: `00 - Developer Logs/ANTIGRAVITY_PROMPT - Library Download.md`.
+- `docs/NOTE_TO_BACKTESTER_CHAT_LIBRARY.md`, for the backtester chat: what
+  was done and how, what is being fetched, the seven backtesting points the
+  second pass raised (point-in-time lot and expiry rules, execution
+  quality, the four-level approval standard, an experiment register of
+  rejected trials, event periods tested separately, holiday-adjusted
+  expiries, extra report fields), and three asks: its own source list, its
+  own research pass if wanted, and what in the Library changes §2.16. Vault
+  copy: `00 - Developer Logs/NOTE FOR BACKTESTER CHAT - Library.md`.
+
 ### 2.19 THE DATABASE. Discussed with him 2026-09-10 evening; he agreed; the backtester chat brainstorms it with him next.
 
 **Why it came up.** He has one free Supabase account with two projects:
