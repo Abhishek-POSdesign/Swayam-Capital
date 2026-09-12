@@ -4291,41 +4291,64 @@ rules, date-sensitive charges, and a four-level approval standard.
 
 ---
 
-**THE LIBRARY IS FINISHED AND LINKED. Done by the vault chat, 2026-09-12,
-recorded here by the mentor after reading its log and checking the disk.**
-Item 1 of the mentor resume order is closed. From `Chat Logs/VAULT.md`: the
-convert run happened; all 34 PDFs in the 19 folders were checked page by page
-against the real page counts read with PyMuPDF, not against Antigravity own
-report; 25 of 34 were already clean and the other 9 shared one cause, the
-converter dropping a page with no text layer instead of marking it; 13 markers
-were inserted across 7 files, each saying no text layer on this page in the
-source PDF; unexplained gaps across the whole Library, zero. Frontmatter was
-added to all 19 `_index.md` files; the three Market Pulse issues were confirmed
-to declare which pages they converted and which they skipped; 106 wikilinks
-were resolved and all 106 hold; and A9 file sizes were corrected from the disk,
-where the item index was wrong and the master index had been right.
-`03 - Knowledge/Trading/Library/_Knowledge Base Rules.md` was written, eight
-sections, and the Library is now reachable from both
-`03 - Knowledge/Trading/_Learning and Resources Overview.md` and
-`02 - Projects/Trading/Trading Overview.md`.
+**THE LIBRARY, OUTCOME FROM THE VAULT CHAT. Recorded 2026-09-13 from its
+report `00 - Developer Logs/PROMPT FOR MENTOR CHAT - Library outcome
+2026-09-13.md` and its log, and checked by the mentor on the disk the same
+day.** An earlier version of this paragraph, written a few hours before, used
+the vault chat's first figures of 2026-09-12 (13 markers inserted, 106 links
+all resolving, A6 still the wrong document). **All three were superseded by
+the vault chat's own corrections and are withdrawn.**
 
-**Checked by the mentor on the disk the same night, not from the report:** 19
-folders, 34 PDFs, 61 markdown files, and the rules note present at 5,765 bytes.
+**Done, and holding on 2026-09-13.**
+- **39 PDFs**, not 34: the original set, Antigravity's six-page extract, and
+  four whole government publications added to A6. Every reading copy
+  accounts for every page of its PDF once, with no duplicates and no gaps.
+- All 19 item indexes carry frontmatter; the categories were the vault
+  chat's assignment against the mentor's list and may be corrected.
+- `_Library Index.md` is reachable from `03 - Knowledge/Trading/_Learning and
+  Resources Overview.md` and `02 - Projects/Trading/Trading Overview.md`.
+- `03 - Knowledge/Trading/Library/_Knowledge Base Rules.md` written, with a
+  known-gaps table as of 2026-09-13.
 
-**What the vault chat could not close, and it is not vault work.** A6 and E1
-have zero pages with a text layer, so neither can be given a reading copy
-without OCR or a re-download of a text PDF. **A6 is also still the wrong
-document**, a page capture rather than the securities transaction tax text for
-1 April 2026, and **A9 is still the wrong document**, the base-price circular
-rather than the definition of an option closing price. Whether SEBI has
-published a trader study newer than September 2024 is still unconfirmed. All
-four go to Antigravity or his browser, not to the vault.
+**Item by item.** A1 to A5, A8, A10, B1 to B3, C1 to C3, D1, E2 verified.
+- **A6, STT, now holds primary text.** `Finance_Bill_2026.pdf`, Bill No. 3 of
+  2026, **as introduced in Lok Sabha**, Clause 143, printed page 104: sale of
+  an option 0.1 to 0.15 per cent of premium; option exercised 0.125 to 0.15
+  per cent of intrinsic price; sale of a future 0.02 to 0.05 per cent. Notes on
+  Clauses, printed page 220: effective 1 April 2026. **Enactment is not
+  confirmed from any file**; Antigravity did not find a Finance Act, 2026 in
+  the Gazette or India Code. Cite it as "Finance Bill 2026 as introduced,
+  Clause 143, printed page 104". The six-page "EXTRACT" file is assembled by
+  Antigravity and is not a government publication; cite the whole Bills.
+- **A7:** no SEBI study later than 23 September 2024 found in a search on
+  2026-09-12. A search result, not proof.
+- **A9 is still a gap.** Neither the base-price circular FAOP67690 nor the
+  futures settlement circular COM72915 defines an option's daily closing
+  price. Antigravity's first run wrote a 30-minute weighted-average rule for
+  options into A9, marked verified, from no file; it was removed. **The index
+  finding of §2.15.8 must never be read as the option rule.**
+- **E1:** no text layer; CME publishes the course only as interactive modules.
+- **A11:** unavailable, no public bid-ask spread dataset.
 
-**One judgement it handed back to the mentor, correctly.** Its item indexes
-link to `01 - Method/Method Overview` as the entry point rather than to the
-individual rule each circular changes, because pairing a circular to a rule is
-a judgement about his method and it would have been guessing. The mentor owns
-that pairing.
+**Broken on 2026-09-13, prompt written, not yet run.** Antigravity's rewrites
+of A6, A7, A9 and E1 deleted their link sections; the mentor counted zero
+wikilinks in each of the four indexes on the disk. 31 further links route
+through folder names with square brackets that Obsidian may not resolve.
+Repair prompt: `00 - Developer Logs/ANTIGRAVITY_PROMPT - Library Link Repair
+2026-09-13.md`, his to paste.
+
+**What this means for the terminal's charges, the mentor's reading.**
+`services/charges.py` carries 0.15 per cent from 1 April 2026, sourced to the
+FYERS charges list and Zerodha's, both read 2026-09-08. A broker publishing
+the rate it charges is real evidence of the rate in force; the Library now
+adds the Bill as the legal text proposing it. **The 0.15 per cent stays.** What
+is missing is only the citation of the enacted Act, and his browser at
+egazette.gov.in or indiacode.nic.in closes it. Two rates the terminal does not
+model are now sourced: exercised options 0.15 per cent of intrinsic value,
+already named as not covered in the schedule's own notes, and futures 0.05
+per cent, which he does not trade.
+
+**Still the mentor's:** pairing each regulation to the Method rule it changes.
 
 ---
 
