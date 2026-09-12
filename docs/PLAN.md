@@ -4155,6 +4155,65 @@ for itself.
   unacknowledged), which his DND makes useless, and its 09:15 to 12:30 asleep
   window, which is shorter than his real morning.
 
+- **How the wife's app alerts her, his, 2026-09-13, accepting the mentor's
+  recommendation and sharpening it.** "There should be alerts with a proper
+  ring, not just one ting." Two levels:
+  | Loss against the trade's planned loss | What her phone does |
+  |---|---|
+  | 90% or more and growing | **One notification**: her attention is required |
+  | At or past the planned loss | **A continuous ring** until she opens the app, then she talks to the partner |
+  **Mentor's additions, for his correction:** the ring stops only when she
+  opens the app, never by being swiped away; the single notification is not
+  repeated for the same trade unless the loss reaches the planned loss; and at
+  the planned loss the partner's first words to her are that it is time to
+  wake him, not a discussion of the market, because his stop rule is "the
+  first reaction should be exit". **A fact to verify before any build, not
+  from memory:** whether an app can ring through her phone's silent or focus
+  mode depends on the phone. On an iPhone this is believed to need Apple's
+  Critical Alerts permission, granted by Apple on application; on Android an
+  alarm-style alert is believed to be possible without it. Both are to be
+  checked on the platform documentation before the build is written.
+- **What planned loss means on an adjusted trade, his, 2026-09-13.** "If I'm
+  adjusting a trade, then my plan loss will remain the same... The profit and
+  loss will be for a trade, not for a leg. Legs come and go, and their numbers
+  will be added and subtracted as profit and loss, but the total target and
+  loss remain the same." And the asymmetry, in his words: **"Profit has a
+  number, but no upper limit. Loss has a number, which is a maximum limit, but
+  can be cut earlier."** And the plan: "Every trade will have a plan that me
+  and AI will brainstorm, and that should stay with the trade discussion. If
+  the market is not behaving like we planned, we can even cut our losses early
+  with the discussion." He wants early exit encouraged when the market is not
+  flowing as planned.
+  **What this gives the partner.**
+  - The wake rule and the stop are measured on the WHOLE trade's net, realised
+    legs plus open legs, against a loss number fixed at the plan. An adjustment
+    never moves that line. This is the direct defence against Trade-07, planned
+    −₹7,000, actual −₹21,000.
+  - Reaching the profit number is a conversation, not an exit.
+  - Every trade has a written plan, brainstormed with the partner, kept with the
+    trade; the partner measures the market against that plan and is allowed,
+    and expected, to say "this is not behaving as we planned" before the loss
+    number is near.
+  **What the terminal already has, read in the code 2026-09-13.**
+  `swayam_positions.target_loss_inr` and `target_profit_inr` (migration 023):
+  whole-trade rupees, net of charges both ways, measured against
+  `net_if_exit_now_inr`. **That is his planned loss, and it is the right
+  number for the wake rule.** It is NOT `max_loss_inr`, which is the
+  structure's worst case, recomputed after every adjustment and empty for a
+  naked leg; the partner and the wife's app must never use that one. **Two
+  gaps found:** a blank loss target falls back to rule 1, one percent of the
+  live balance, so a trade with no plan still has a line but not his line;
+  and the targets route overwrites `target_loss_inr` freely with no history,
+  so a widened loss leaves no trace. **Mentor's recommendation, for his
+  correction:** the partner asks for the loss number when the plan is made;
+  tightening it is free; widening it is allowed but recorded with the old
+  number, the new number and the time, and the partner says so aloud, because
+  a silently widened loss is how Trade-07 happened. Warns, never blocks.
+- **Where the plan lives is not built.** The partner cannot see his trade
+  today (§2.17.11) and no conversation is attached to a position. A plan that
+  "stays with the trade discussion" needs both; it belongs in the partner's
+  build documents.
+
 **THE BACKTESTER CHAT AND THIS CHAT NOW WORK SIDE BY SIDE. Relayed by him,
 2026-09-13, from `00 - Developer Logs/PROMPT FOR MENTOR CHAT - From Backtester
 2026-09-13.md`.**
