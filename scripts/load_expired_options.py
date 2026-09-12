@@ -65,9 +65,15 @@ logger = logging.getLogger("expired-options")
 
 UNDERLYING = "NSE:NIFTY50-INDEX"
 PARTS = ("options_1m",)
-# Bisected against the live API on 2026-09-09: 29 Feb 2024 has candles,
-# 25 Jan 2024 and everything earlier answers `no_data`.
-EARLIEST_EXPIRY = date(2024, 2, 1)
+# Bisected against the live API on 2026-09-09: 29 Feb 2024 had candles, and
+# 25 Jan 2024 and everything earlier answered `no_data`.
+# RE-PROBED 2026-09-13: FYERS has since backfilled. Full minute candles came
+# back for every expiry tested, 2019-12-26, 2020-12-31, 2021-06-24, 2021-12-30,
+# 2022-01-06, 2022-06-30, 2022-12-29, 2023-03-29, 2023-09-28, 2023-12-28,
+# 2024-01-18 and 2024-01-25. The floor is now at least December 2019.
+# The default starts at HIS window, 2022-01-01, not at FYERS' floor: the market
+# before and after Corona are different markets (PLAN 2.16.2).
+EARLIEST_EXPIRY = date(2022, 1, 1)
 # How far before expiry a contract is worth asking for. His swings run days to
 # weeks and his calendars use the following month, so six weeks covers both.
 LOOKBACK_DAYS = 45

@@ -2411,6 +2411,14 @@ expired option contracts and its minute history starts in February 2024
 only be tested on about two and a half years, and one that works off daily
 closes can be tested on four and a half. Say which, on every result.
 
+> **⚠️ SUPERSEDED 2026-09-13, see §2.16.12.** Two things above are no longer
+> true. **FYERS now serves minute candles for expired NIFTY options back to at
+> least December 2019**, re-probed on twelve expiries, so the two-tier boundary
+> at February 2024 is gone for his window. And **the minute data held is not
+> "every strike"**: the loader takes 15 strikes either side of where NIFTY
+> closed at expiry, about 62 of ~316 contracts. The endpoint lists every strike;
+> the store does not hold them.
+
 **ONE IMPORTANT THING THE TWO-TIER WARNING DOES NOT APPLY TO. Measured
 2026-09-12.** The boundary is about OPTION prices. It is not about the chart.
 
@@ -3231,6 +3239,96 @@ downloader skips.
 few documents to file (NSE's closing-price page, the 2026 holiday circular), the
 token refresh, his decisions on the four vocabulary items and the sizing ladder,
 and a six-part plain-English plan for the first build.
+
+---
+
+#### 2.16.12 THE DATA UPDATE OF 13 SEPTEMBER NIGHT. His three-year minimum is now met at minute level.
+
+**He refreshed the token and said: "Why waste the day? Check everything, update
+the data."** Everything below was measured on his PC that night. **This section
+supersedes the minute-option row of §2.16.11 and the two-tier boundary of
+§2.16.2.**
+
+**THE HEADLINE: FYERS BACKFILLED ITS EXPIRED-OPTIONS HISTORY, AND IT IS NOW
+DOWNLOADED.** On 2026-09-09 nothing before the February 2024 expiries returned
+candles. Re-probed on 2026-09-13, full minute candles came back for every expiry
+tested: 2019-12-26, 2020-12-31, 2021-06-24, 2021-09-30, 2021-12-30, 2022-01-06,
+2022-01-27, 2022-03-31, 2022-06-30, 2022-12-29, 2023-03-29, 2023-09-28,
+2023-12-28, 2024-01-18, 2024-01-25. **The floor is at least December 2019.**
+
+The 2022-01 to 2024-01 expiries were then downloaded: 110 expiries, 42,917,501
+new minute bars, 63 minutes, 6,923 FYERS requests, **0 refusals, 0 empty
+contracts**. `EARLIEST_EXPIRY` in `scripts/load_expired_options.py` now defaults
+to his window start, 2022-01-01, with the re-probe dated in the comment.
+
+**AND IT AGREES WITH NSE, BETTER THAN THE DATA WE ALREADY HAD.** Each day's minute
+bars squashed into one bar and compared with NSE's daily file, within one tick:
+
+| Year | Contract-days | Open agrees | High agrees | Low agrees |
+|---|---|---|---|---|
+| 2022 | 63,031 | 100.00% | 99.37% | 99.04% |
+| 2023 | 57,861 | 100.00% | 99.58% | 99.28% |
+| 2024 | 63,082 | 99.80% | 99.43% | 98.88% |
+| 2025 | 66,214 | 98.51% | 98.22% | 98.13% |
+| 2026 | 41,780 | 99.38% | 97.25% | 96.14% |
+
+**What is on disk now, all free, all checked:**
+
+| Dataset | Rows | Size | Span |
+|---|---|---|---|
+| NIFTY index, minute | 805,129 | 18 MB | 2018-01-01 to 2026-09-11 |
+| NIFTY index, daily | 4,143 | included above | 2010 to 2026-09-11 |
+| NIFTY options, minute | **102,209,685** | **920 MB** | expiries 2022-01-06 to 2026-09-08, 244 expiries |
+| NIFTY options, daily, NSE | 4,582,239 | 73 MB | 2018 to 2026-09-11; every session since 2022 incl. special sessions, earlier years not checked |
+| NIFTY futures, daily, NSE, **new** | 3,495 | 0.5 MB | 2022-01-03 to 2026-09-11, 3 series every session |
+| India VIX, minute, FYERS, **new** | 435,074 | 5.9 MB | 2022 to 2026-09-11 |
+| India VIX, daily, FYERS and NSE | 1,165 each | included above | 2022-01-03 to 2026-09-11 |
+| NSE holiday master, **new** | 20 F&O rows for 2026 | 48 KB | raw, as NSE served it 2026-09-13 |
+
+**India VIX from two sources agrees:** all 1,165 sessions held by both; open, high
+and low within 0.005, close within 0.01, close exact on 99.3% of days.
+
+**NIFTY futures** come from the same NSE files as the options, which the options
+loader was discarding. New `scripts/load_nse_futures_eod.py`. Near-futures basis
+over the index close, median points: 2022 14.4, 2023 51.7, 2024 59.0, 2025 69.8,
+2026 48.1. No impossible prices. It is the forward level NSE uses for India VIX
+(Library A8).
+
+**THREE FAULTS FOUND AND FIXED, all silent when they happened:**
+
+1. **The NSE options loader records any missing file as a holiday, permanently.**
+   That lost Thursday 2026-09-10, probably fetched before NSE published it, and it
+   skips weekend special sessions by design. Refetched: 2023-11-12, 2024-01-20,
+   2024-03-02, 2024-05-18, 2025-02-01, 2026-02-01, 2026-09-10, 10,760 rows. **Every
+   session since January 2022 is now in the store.** The new futures loader takes
+   its days from the index bars and treats a missing file on a traded day as a
+   failure to retry, never a holiday. The options loader itself is not yet changed.
+2. **The terminal's 2026 holiday file was wrong**, reported to MAIN and handed to
+   the cloud chat. NSE's own master says **Monday 2026-09-14 is a holiday**.
+3. **The first futures test run produced one empty junk row a day**, from
+   placeholder columns built on the wrong row index. Fixed before the full run.
+   The options normaliser has the same pattern; its option-type filter drops those
+   rows, so its store is clean.
+
+**⚠️ THE ONE DECISION THIS PUTS IN FRONT OF HIM TOMORROW: THE STRIKE BAND.** The
+minute store is **not every strike**. It takes 15 strikes either side of where
+NIFTY closed **at expiry**: 62 of about 316 contracts per expiry. Measured over 252
+expiries 2022 to 2026, the at-the-money strike **on the day he would have entered**
+falls outside that band:
+
+| Entered before expiry | Outside ±15 strikes | Outside ±30 strikes |
+|---|---|---|
+| 5 days | 4% | 0% |
+| 10 days | 10% | 0% |
+| 21 days | **26%** | 3% |
+| 30 days | **32%** | 7% |
+
+Wings sit further out than the at-the-money strike, so they fall outside more
+often. **For his calendars and multi-week swings the current band is not enough.**
+Every contract is listed by FYERS, so nothing needs buying; it is a question of
+how many requests to spend and how to centre the band. Options for him: a wider
+fixed band; or a band centred on the index's whole path over the contract's life
+rather than on its expiry close, which covers what he could actually have traded.
 
 ---
 
